@@ -1,18 +1,16 @@
-const express = require('express');
+/**
+ * Express.js Server Entry Point
+ * Initializes and starts the Express application server
+ * @module server
+ */
 
-const hostname = '127.0.0.1';
-const port = 3000;
+const app = require('./src/app');
+const config = require('./src/config/server.config');
 
-const app = express();
-
-app.get('/', (req, res) => {
-  res.send('Hello, World!\n');
-});
-
-app.get('/evening', (req, res) => {
-  res.send('Good evening');
-});
-
-app.listen(port, hostname, () => {
-  console.log(`Server running at http://${hostname}:${port}/`);
+/**
+ * Start the Express server
+ * @function
+ */
+app.listen(config.port, config.hostname, () => {
+  console.log(`Server running at http://${config.hostname}:${config.port}/`);
 });
