@@ -9,14 +9,14 @@ module.exports = {
   collectCoverageFrom: ['server.js'],
 
   // Coverage thresholds - tests will fail if not met
-  // Note: Adjusted thresholds account for the if (require.main === module) pattern
-  // which intentionally prevents server auto-start during testing
+  // Comprehensive coverage targets per Agent Action Plan section 0.10
+  // These thresholds ensure high-quality test coverage for the Express application
   coverageThreshold: {
     global: {
-      statements: 83,
-      branches: 50,
-      functions: 66,
-      lines: 83
+      statements: 95,
+      branches: 90,
+      functions: 100,
+      lines: 95
     }
   },
 
