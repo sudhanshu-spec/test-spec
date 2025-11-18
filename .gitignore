@@ -19,3 +19,10 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Jest cache
+.jest/
