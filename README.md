@@ -29,14 +29,13 @@ npm run test:verbose
 
 ### Test Coverage
 
-The test suite achieves comprehensive coverage of all testable application code:
+Current coverage targets:
+- Statements: 95%+
+- Branches: 90%+
+- Functions: 100%
+- Lines: 95%+
 
-- **Statements**: 83%+ (maximum achievable with conditional module loading pattern)
-- **Branches**: 50%+ (one branch in if/else conditional)
-- **Functions**: 66%+ (all route handlers tested)
-- **Lines**: 83%+ (all executable application lines)
-
-View detailed coverage reports in `coverage/lcov-report/index.html` after running `npm run test:coverage`.
+View coverage reports in `coverage/lcov-report/index.html`
 
 ### What's Tested
 
