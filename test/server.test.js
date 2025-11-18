@@ -301,12 +301,14 @@ describe('Express Server Application', () => {
       });
     });
 
-    it('Routes are case-sensitive (/Evening should return 404, /evening returns 200)', async () => {
-      // Test that Express routes are case-sensitive by default
+    it('Routes are case-insensitive by default (/Evening returns 200, same as /evening)', async () => {
+      // Test that Express routes are case-insensitive by default
+      // Express 5.x (like 4.x) has case-insensitive routing by default
       const uppercaseResponse = await request(app).get('/Evening');
-      expect(uppercaseResponse.status).toBe(404);
+      expect(uppercaseResponse.status).toBe(200);
+      expect(uppercaseResponse.text).toBe(RESPONSES.evening);
       
-      // Verify the correct lowercase route works
+      // Verify the correct lowercase route also works
       const lowercaseResponse = await request(app).get('/evening');
       expect(lowercaseResponse.status).toBe(200);
       expect(lowercaseResponse.text).toBe(RESPONSES.evening);
@@ -328,13 +330,14 @@ describe('Express Server Application', () => {
       expect(response.text).toBe(RESPONSES.root);
     });
 
-    it('Trailing slash on /evening/ returns 404 (strict route matching)', async () => {
-      // Express by default does NOT match /evening/ to /evening route
-      // Route is defined as '/evening' without trailing slash
+    it('Trailing slash on /evening/ is allowed by default (non-strict routing)', async () => {
+      // Express by default allows trailing slashes (strict routing is false by default)
+      // Express 5.x (like 4.x) will match /evening/ to /evening route
       const responseWithSlash = await request(app).get('/evening/');
-      expect(responseWithSlash.status).toBe(404);
+      expect(responseWithSlash.status).toBe(200);
+      expect(responseWithSlash.text).toBe(RESPONSES.evening);
       
-      // Verify the route without trailing slash works correctly
+      // Verify the route without trailing slash also works correctly
       const responseNoSlash = await request(app).get('/evening');
       expect(responseNoSlash.status).toBe(200);
       expect(responseNoSlash.text).toBe(RESPONSES.evening);
