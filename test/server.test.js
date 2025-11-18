@@ -148,7 +148,7 @@ describe('Express Server Application', () => {
   });
 
   // =============================================================================
-  // Server Shutdown Tests (3 tests)
+  // Server Shutdown Tests (5 tests)
   // =============================================================================
   describe('Server Shutdown', () => {
     
@@ -186,6 +186,42 @@ describe('Express Server Application', () => {
         expect(callbackInvoked).toBe(true);
         server.close(done);
       });
+    });
+
+    it('Server should start when executed directly (require.main === module path)', (done) => {
+      const { spawn } = require('child_process');
+      const serverProcess = spawn('node', ['server.js'], {
+        cwd: __dirname + '/..',
+        env: { ...process.env }
+      });
+
+      let stdoutData = '';
+      let serverStarted = false;
+
+      serverProcess.stdout.on('data', (data) => {
+        stdoutData += data.toString();
+        if (stdoutData.includes('Server running at http://127.0.0.1:3000/')) {
+          serverStarted = true;
+          // Give it a moment to fully start, then kill it
+          setTimeout(() => {
+            serverProcess.kill('SIGTERM');
+          }, 100);
+        }
+      });
+
+      serverProcess.on('close', (code) => {
+        expect(serverStarted).toBe(true);
+        expect(stdoutData).toContain('Server running at http://127.0.0.1:3000/');
+        done();
+      });
+
+      // Timeout safety: kill process after 5 seconds if it hasn't started
+      setTimeout(() => {
+        if (!serverStarted) {
+          serverProcess.kill('SIGTERM');
+          done(new Error('Server did not start within timeout'));
+        }
+      }, 5000);
     });
 
   });
