@@ -1,18 +1,19 @@
-const express = require('express');
+// Minimal entry point following Express.js best practices
+// Responsibilities: Require app, start server, handle process errors
 
-const hostname = '127.0.0.1';
-const port = 3000;
+const app = require('./src/app');
+const config = require('./src/config/server.config');
 
-const app = express();
-
-app.get('/', (req, res) => {
-  res.send('Hello, World!\n');
+const server = app.listen(config.port, config.hostname, () => {
+  console.log(`Server running at http://${config.hostname}:${config.port}/`);
 });
 
-app.get('/evening', (req, res) => {
-  res.send('Good evening');
+// Graceful shutdown handling
+process.on('SIGTERM', () => {
+  console.log('SIGTERM signal received: closing HTTP server');
+  server.close(() => {
+    console.log('HTTP server closed');
+  });
 });
 
-app.listen(port, hostname, () => {
-  console.log(`Server running at http://${hostname}:${port}/`);
-});
+module.exports = server;
