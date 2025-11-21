@@ -1,0 +1,32 @@
+# SSL Certificate Files - DO NOT COMMIT
+#
+# Private keys and certificates should never be committed to version control.
+# These files contain sensitive cryptographic material that must be kept secure.
+#
+# For Development:
+#   - Generate certificates using: bash generate-cert.sh
+#   - Self-signed certificates are acceptable (will trigger browser warnings)
+#
+# For Production:
+#   - Use certificates from a trusted Certificate Authority (CA)
+#   - Options: Let's Encrypt (free), DigiCert, Comodo, AWS ACM, GCP Certificate Manager
+#   - Store certificates securely (environment variables, secrets manager, etc.)
+#   - Never commit production certificates to version control
+
+# Private Keys (CRITICAL - NEVER COMMIT)
+*.pem
+*.key
+*.crt
+*.cert
+*.p12
+*.pfx
+
+# Certificate Signing Requests
+*.csr
+
+# Certificate Revocation Lists
+*.crl
+
+# OpenSSL generated files
+*.srl
+*.old
