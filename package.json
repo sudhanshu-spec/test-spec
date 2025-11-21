@@ -1,7 +1,23 @@
 {
     "name": "hello_world",
     "version": "1.0.0",
-    "description": "Hello world in Node.js",
+    "description": "Express.js web server with greeting endpoints, demonstrating routing and API implementation. Test project for backprop integration.",
+    "keywords": [
+        "express",
+        "nodejs",
+        "api",
+        "rest",
+        "web-server",
+        "backprop"
+    ],
+    "homepage": "https://github.com/sudhanshu-spec/test-spec#readme",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/sudhanshu-spec/test-spec.git"
+    },
+    "bugs": {
+        "url": "https://github.com/sudhanshu-spec/test-spec/issues"
+    },
     "main": "server.js",
     "scripts": {
         "start": "node server.js",
@@ -9,6 +25,10 @@
     },
     "author": "hxu",
     "license": "MIT",
+    "engines": {
+        "node": ">=18.0.0",
+        "npm": ">=7.0.0"
+    },
     "dependencies": {
         "express": "^5.1.0"
     }
