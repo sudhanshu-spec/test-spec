@@ -273,47 +273,53 @@ async function test6_GracefulShutdown() {
   console.log('\nTest 6: Graceful shutdown');
   
   return new Promise((resolve) => {
-    // Spawn a new server instance for shutdown testing
-    const serverProcess = spawn('node', ['server.js'], {
-      cwd: __dirname,
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
-
-    let shutdownMessageReceived = false;
-    let serverOutput = '';
-
-    serverProcess.stdout.on('data', (data) => {
-      serverOutput += data.toString();
-    });
-
-    serverProcess.stderr.on('data', (data) => {
-      serverOutput += data.toString();
-    });
-
-    // Wait for server to start
-    setTimeout(() => {
-      // Send SIGTERM signal
-      serverProcess.kill('SIGTERM');
-      
-      // Wait for graceful shutdown
+    // Kill any existing server instances to free up port 3000
+    const { exec } = require('child_process');
+    exec('pkill -f "node server.js"', (killErr) => {
+      // Wait a bit for port to be freed
       setTimeout(() => {
-        // Check if shutdown message was logged
-        if (serverOutput.includes('Shutdown signal received') || 
-            serverOutput.includes('Graceful shutdown') ||
-            serverProcess.killed) {
-          logTestResult('Test 6', true, 'Server responds to SIGTERM gracefully');
-        } else {
-          logTestResult('Test 6', false, 'Server did not shutdown gracefully');
-        }
-        
-        // Ensure process is terminated
-        if (!serverProcess.killed) {
-          serverProcess.kill('SIGKILL');
-        }
-        
-        resolve();
-      }, 3000); // Wait 3 seconds for shutdown
-    }, SERVER_STARTUP_DELAY);
+        // Spawn a new server instance for shutdown testing
+        const serverProcess = spawn('node', ['server.js'], {
+          cwd: __dirname,
+          stdio: ['ignore', 'pipe', 'pipe'],
+        });
+
+        let serverOutput = '';
+
+        serverProcess.stdout.on('data', (data) => {
+          serverOutput += data.toString();
+        });
+
+        serverProcess.stderr.on('data', (data) => {
+          serverOutput += data.toString();
+        });
+
+        // Wait for server to start
+        setTimeout(() => {
+          // Send SIGTERM signal
+          serverProcess.kill('SIGTERM');
+          
+          // Wait for graceful shutdown
+          setTimeout(() => {
+            // Check if shutdown message was logged
+            if (serverOutput.includes('Shutdown signal received') || 
+                serverOutput.includes('Graceful shutdown') ||
+                serverProcess.killed) {
+              logTestResult('Test 6', true, 'Server responds to SIGTERM gracefully');
+            } else {
+              logTestResult('Test 6', false, 'Server did not shutdown gracefully');
+            }
+            
+            // Ensure process is terminated
+            if (!serverProcess.killed) {
+              serverProcess.kill('SIGKILL');
+            }
+            
+            resolve();
+          }, 3000); // Wait 3 seconds for shutdown
+        }, SERVER_STARTUP_DELAY);
+      }, 1000); // Wait 1 second for port to be freed
+    });
   });
 }
 
@@ -324,15 +330,23 @@ async function runAllTests() {
   console.log('Starting server tests...');
   console.log('='.repeat(50));
   
-  // Wait for server to be ready (assumes server.js is already running)
-  await new Promise(resolve => setTimeout(resolve, 1000));
+  // Start server for tests 1-5
+  const serverProcess = spawn('node', ['server.js'], {
+    cwd: __dirname,
+    stdio: 'ignore',
+  });
   
-  // Run all test scenarios
+  // Wait for server to be ready
+  await new Promise(resolve => setTimeout(resolve, SERVER_STARTUP_DELAY));
+  
+  // Run test scenarios 1-5 (require running server)
   await test1_BasicGetRoot();
   await test2_GetEvening();
   await test3_NotFoundHandling();
   await test4_SecurityHeaders();
   await test5_JsonBodyParsing();
+  
+  // Test 6 handles its own server lifecycle (kills existing and spawns new)
   await test6_GracefulShutdown();
   
   // Print test summary
