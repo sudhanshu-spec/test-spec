@@ -64,7 +64,7 @@ npm install
 ```
 
 **Expected Output:**
-```
+```text
 added 68 packages, and audited 69 packages in 2s
 
 12 packages are looking for funding
@@ -84,7 +84,7 @@ npm list express
 ```
 
 **Expected Output:**
-```
+```text
 hello_world@1.0.0
 └── express@5.1.0
 ```
@@ -146,7 +146,7 @@ npm start
 ```
 
 **Expected Output:**
-```
+```text
 Server running at http://127.0.0.1:3000/
 ```
 
@@ -189,7 +189,7 @@ Host: 127.0.0.1:3000
 ```
 
 **Response:**
-```
+```http
 HTTP/1.1 200 OK
 Content-Type: text/html; charset=utf-8
 Content-Length: 14
@@ -203,7 +203,7 @@ curl http://127.0.0.1:3000/
 ```
 
 **Expected Output:**
-```
+```text
 Hello, World!
 ```
 
@@ -222,7 +222,7 @@ Host: 127.0.0.1:3000
 ```
 
 **Response:**
-```
+```http
 HTTP/1.1 200 OK
 Content-Type: text/html; charset=utf-8
 Content-Length: 12
@@ -236,7 +236,7 @@ curl http://127.0.0.1:3000/evening
 ```
 
 **Expected Output:**
-```
+```text
 Good evening
 ```
 
@@ -254,7 +254,7 @@ curl http://127.0.0.1:3000/nonexistent
 ```
 
 **Response:**
-```
+```text
 Cannot GET /nonexistent
 ```
 
@@ -370,7 +370,10 @@ The application can be tested manually using curl commands or a web browser.
 npm start
 ```
 
-**Expected:** Console output showing `Server running at http://127.0.0.1:3000/`
+**Expected Output:** 
+```text
+Server running at http://127.0.0.1:3000/
+```
 
 #### Test 2: Root Endpoint (/)
 
@@ -378,7 +381,11 @@ npm start
 curl http://127.0.0.1:3000/
 ```
 
-**Expected Output:** `Hello, World!` (with newline)
+**Expected Output:**
+```text
+Hello, World!
+```
+(Response includes trailing newline)
 
 #### Test 3: Evening Endpoint (/evening)
 
@@ -386,7 +393,10 @@ curl http://127.0.0.1:3000/
 curl http://127.0.0.1:3000/evening
 ```
 
-**Expected Output:** `Good evening`
+**Expected Output:**
+```text
+Good evening
+```
 
 #### Test 4: 404 Handling
 
@@ -394,7 +404,10 @@ curl http://127.0.0.1:3000/evening
 curl http://127.0.0.1:3000/nonexistent
 ```
 
-**Expected Output:** `Cannot GET /nonexistent`
+**Expected Output:**
+```text
+Cannot GET /nonexistent
+```
 
 #### Test 5: HTTP Method Validation
 
@@ -402,7 +415,11 @@ curl http://127.0.0.1:3000/nonexistent
 curl -X POST http://127.0.0.1:3000/
 ```
 
-**Expected Output:** `Cannot POST /` (404 response)
+**Expected Output:**
+```text
+Cannot POST /
+```
+(404 response)
 
 ### Browser Testing
 
@@ -512,7 +529,7 @@ sudo systemctl start hao-backprop-test
 ### Issue: Port Already in Use
 
 **Symptom:**
-```
+```text
 Error: listen EADDRINUSE: address already in use 127.0.0.1:3000
 ```
 
@@ -539,7 +556,7 @@ const port = 3001; // Use different port
 ### Issue: Module Not Found
 
 **Symptom:**
-```
+```text
 Error: Cannot find module 'express'
 ```
 
@@ -560,7 +577,7 @@ npm list express
 ### Issue: npm install Fails
 
 **Symptom:**
-```
+```text
 npm ERR! network timeout
 ```
 
@@ -589,7 +606,7 @@ node --version  # Must be 18.0.0 or higher for Express 5.x
 ### Issue: Connection Refused
 
 **Symptom:**
-```
+```text
 curl: (7) Failed to connect to 127.0.0.1 port 3000: Connection refused
 ```
 
@@ -601,7 +618,7 @@ npm start
 ```
 
 2. Check server output for startup message:
-```
+```text
 Server running at http://127.0.0.1:3000/
 ```
 
