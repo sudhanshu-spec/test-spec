@@ -254,6 +254,42 @@ app.get('/evening', (req, res) => {
   res.send('Good evening');
 });
 
+/**
+ * Health check endpoint
+ * Returns the health status of the server
+ * Used for load balancer health checks and monitoring
+ * 
+ * @route GET /health
+ * @returns {Object} JSON object with status property
+ */
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'healthy' });
+});
+
+// =============================================================================
+// 404 Handler for Unmatched Routes
+// =============================================================================
+// This middleware catches all requests that don't match any route
+// and converts them to 404 errors for proper JSON error response
+// Must be placed after all routes but before the error handler
+// =============================================================================
+
+/**
+ * 404 Not Found Handler
+ * Catches requests that don't match any defined route and
+ * creates a 404 error to be handled by the error handler middleware
+ * 
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+app.use((req, res, next) => {
+  const error = new Error(`Route not found: ${req.method} ${req.originalUrl}`);
+  error.status = 404;
+  error.name = 'NotFoundError';
+  next(error);
+});
+
 // =============================================================================
 // Error Handling Middleware
 // =============================================================================
