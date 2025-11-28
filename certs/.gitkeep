@@ -1,0 +1,19 @@
+# Certificate Directory
+# This directory is used to store SSL/TLS certificates for HTTPS support.
+#
+# For development:
+# Generate self-signed certificates with:
+#   openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+#     -keyout certs/server.key \
+#     -out certs/server.cert \
+#     -subj "/CN=localhost"
+#
+# For production:
+# Use certificates from a trusted CA like Let's Encrypt
+#
+# Files expected:
+# - server.key: SSL private key
+# - server.cert: SSL certificate
+#
+# IMPORTANT: Never commit actual certificate files to version control.
+# Add server.key and server.cert to .gitignore
