@@ -45,13 +45,20 @@ const parseAllowedOrigins = () => {
 };
 
 /**
+ * Determines if the application is running in production mode
+ * @type {boolean}
+ */
+const isProduction = process.env.NODE_ENV === 'production';
+
+/**
  * Dynamic origin validation callback for the CORS middleware.
  * Validates incoming request origins against the whitelist from environment variables.
  * 
  * This callback function provides flexibility by:
  * - Allowing requests with no origin (same-origin, server-to-server)
  * - Checking origins against the configured whitelist
- * - Rejecting requests from non-whitelisted origins
+ * - In development mode, allowing all origins if no whitelist configured
+ * - In production mode, rejecting requests from non-whitelisted origins
  * 
  * @param {string|undefined} requestOrigin - The origin of the incoming request
  * @param {Function} callback - Callback function with signature (error, allow)
@@ -59,23 +66,28 @@ const parseAllowedOrigins = () => {
 const originCallback = (requestOrigin, callback) => {
   const allowedOrigins = parseAllowedOrigins();
   
-  // If no origins configured, block all cross-origin requests
-  if (!allowedOrigins) {
-    // Allow requests with no origin (same-origin requests, server-to-server)
-    if (!requestOrigin) {
-      return callback(null, true);
-    }
-    // Block cross-origin requests when no whitelist is configured
-    return callback(new Error('CORS not allowed: No origins configured'), false);
-  }
-  
   // Allow requests with no origin (same-origin requests, Postman, curl, etc.)
   if (!requestOrigin) {
     return callback(null, true);
   }
   
+  // If no origins configured
+  if (!allowedOrigins) {
+    // In development mode, allow all origins for easier testing
+    if (!isProduction) {
+      return callback(null, true);
+    }
+    // In production, block cross-origin requests when no whitelist is configured
+    return callback(new Error('CORS not allowed: No origins configured'), false);
+  }
+  
   // Check if the request origin is in the allowed list
   if (allowedOrigins.includes(requestOrigin)) {
+    return callback(null, true);
+  }
+  
+  // In development mode, allow localhost origins even if not explicitly whitelisted
+  if (!isProduction && (requestOrigin.includes('localhost') || requestOrigin.includes('127.0.0.1'))) {
     return callback(null, true);
   }
   
