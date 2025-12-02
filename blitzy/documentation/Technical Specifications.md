@@ -1,2479 +1,1277 @@
-# Agent Action Plan
+# Technical Specification
 
-# Install production dependencies
-0.1 Core Security Objective
+# 0. Agent Action Plan
 
-Based on the security requirements described, the Blitzy platform understands that the security enhancements to implement are:
+## 0.1 Core Refactoring Objective
 
-Primary Security Objective: Transform a minimal Express.js application into a production-ready, security-hardened service by implementing multiple layers of defense against common web vulnerabilities and attacks.
+Based on the prompt, the Blitzy platform understands that the refactoring objective is to restructure the existing Node.js/Express.js application into a well-organized Express.js project architecture while preserving 100% of the original functionality.
 
-Vulnerability Category: Multiple security enhancements including:
+### 0.1.1 Refactoring Type Classification
 
-Dependency vulnerability (body-parser CVE-2025-13466/GHSA-wqch-xfxh-vrr4)
+- **Refactoring Type**: Code structure reorganization with Express.js best practices application
+- **Target Repository**: Same repository (in-place refactoring)
+- **Migration Type**: Structural refactoring (no framework change - project already uses Express.js 5.1.0)
 
-Missing security headers
+### 0.1.2 Primary Refactoring Goals
 
-Absence of input validation
+The Blitzy platform interprets the user's requirements as follows:
 
-No rate limiting protection
+1. **Preserve All Existing Functionality**
+   - Maintain the GET `/` route returning `"Hello, World!\n"`
+   - Maintain the GET `/evening` route returning `"Good evening"`
+   - Preserve identical response formats, HTTP status codes, and headers
+   - Keep the server binding to `127.0.0.1:3000`
 
-Missing CORS configuration
+2. **Apply Express.js Project Structure Best Practices**
+   - Separate the Express application configuration from the HTTP server initialization
+   - Organize routes into dedicated route modules
+   - Create proper middleware organization
+   - Establish a configuration management layer
+   - Implement proper separation of concerns
 
-No HTTPS support
+3. **Maintain Backward Compatibility**
+   - The refactored application must pass all existing functionality tests
+   - `npm start` must continue to work identically
+   - Server startup logging must remain consistent
 
-Severity Assessment:
+### 0.1.3 Implicit Requirements Identified
 
-body-parser 2.2.0 vulnerability (CVE-2025-13466) - Moderate severity (CVSS \~5.5) - Denial of Service due to inefficient handling of URL-encoded bodies
+- **API Contract Preservation**: All public endpoints must maintain their exact signatures and response formats
+- **Environment Compatibility**: Continue supporting Node.js v20.x as the runtime environment
+- **Dependency Retention**: Keep Express 5.1.0 as the web framework
+- **Test Enablement**: Refactored structure should support unit testing by separating app from server
+- **Configuration Externalization**: Enable environment-based configuration for host and port settings
 
-Missing security controls - High risk exposure to XSS, CSRF, clickjacking, and DDoS attacks
+### 0.1.4 Current State Assessment
 
-Production readiness - Critical gaps in security posture
+The existing project is a minimal Express.js application with all code concentrated in a single `server.js` file:
 
-Specific Security Requirements:
+```
+Current Structure:
+/
+├── .gitignore
+├── README.md
+├── package.json
+├── package-lock.json
+├── server.js (19 lines - monolithic entry point)
+└── blitzy/
+    └── documentation/
+```
 
-Security Headers: Implement helmet.js to protect the app from well-known web vulnerabilities by setting HTTP headers appropriately
+**Current server.js Implementation:**
+- Single-file architecture combining app configuration, routes, and server initialization
+- Hard-coded configuration values (hostname: '127.0.0.1', port: 3000)
+- Two GET routes defined inline
+- No separation between application and server concerns
 
-Input Validation: Add comprehensive request validation to prevent injection attacks and malformed data
+### 0.1.5 Refactoring Success Criteria
 
-Rate Limiting: Implement basic rate-limiting middleware to limit repeated requests to public APIs and endpoints
+| Criterion | Validation Method |
+|-----------|-------------------|
+| GET `/` returns "Hello, World!\n" | `curl http://127.0.0.1:3000/` |
+| GET `/evening` returns "Good evening" | `curl http://127.0.0.1:3000/evening` |
+| Server binds to 127.0.0.1:3000 | Console output verification |
+| Application starts via `npm start` | Command execution |
+| No breaking changes to external interface | Integration test suite |
 
-HTTPS Support: Enable encrypted communication to protect data in transit
 
-Dependency Update: Upgrade body-parser from version 2.2.0 to 2.2.1 to patch the denial of service vulnerability
+## 0.2 Special Instructions and Constraints
 
-CORS Configuration: Configure CORS middleware with proper origin restrictions and security options
-
-Implicit Security Requirements:
-
-Maintain backward compatibility with existing functionality (two GET routes)
-
-Zero downtime deployment capability
-
-Environment-based configuration for different deployment stages
-
-Comprehensive security testing to verify all protections
-
-Documentation of security configurations for maintainability
-
-Error handling that doesn't leak sensitive information
-
-0.2 Special Instructions and Constraints
-
-0.2 Special Instructions and Constraints
-
-User-Specified Directives:
+### 0.2.1 User-Specified Directives
 
 The user has explicitly requested:
 
-"Implement security headers, input validation, rate limiting, and HTTPS support"
+> "Rewrite this Node.js server into a express.js refactor, keeping every feature and functionality exactly as in the original Node.js project. Ensure the rewritten version fully matches the behavior and logic of the current implementation."
 
-"Update dependencies, add helmet.js for security middleware, and configure proper CORS policies"
-
-Setup instruction: "npm build" (Note: This command is not standard and does not exist in package.json scripts)
-
-Change Scope Preference: Comprehensive - Add multiple security layers while maintaining minimal code footprint
-
-Security Standards to Follow:
-
-Helmet.js default security headers including Content-Security-Policy, Cross-Origin-Opener-Policy, Cross-Origin-Resource-Policy, Origin-Agent-Cluster, and disabling X-Powered-By
-
-OWASP best practices for input validation and sanitization
-
-Industry-standard rate limiting patterns (100 requests per 15-minute window)
-
-CORS configuration with explicit methods and origin controls
-
-Technical Constraints:
-
-Node.js Version: v20.19.5 (currently installed, highest explicitly supported)
-
-npm Version: 10.8.2
-
-Express Version: 5.1.0 (must maintain compatibility)
-
-No Breaking Changes: Existing routes (/ and /evening) must continue to function identically
-
-Environment Variables: DB_Host and host are provided but should not be hardcoded
-
-Setup and Build Considerations:
-
-The "npm build" command specified by user does not exist in package.json
-
-No build step is currently required for this Node.js application
-
-Project runs directly with "npm start" which executes "node server.js"
-
-No transpilation or compilation needed
-
-Deployment Constraints:
-
-Currently binds to 127.0.0.1:3000 (localhost only)
-
-For production, should support configurable host binding
-
-HTTPS certificates will be self-signed for development (production would use proper CA-signed certificates)
-
-Environment-based configuration required for different deployment scenarios
-
-0.3 Technical Interpretation
-
-Security Enhancement Translation:
-
-This security enhancement request translates to the following comprehensive technical fix strategy:
-
-For Dependency Vulnerability:
-
-To resolve the body-parser 2.2.0 denial of service vulnerability where attackers can send payloads with a high number of parameters to consume excessive CPU and memory resources, we will update Express to a version that includes body-parser 2.2.1 or explicitly override the transitive dependency
-
-For Missing Security Headers:
-
-To protect against XSS, clickjacking, and MIME-sniffing attacks, we will add helmet.js version 8.1.0 middleware to set security-related HTTP response headers
-
-Configure Content-Security-Policy, X-Frame-Options, Strict-Transport-Security, and other protective headers
-
-For Input Validation Gaps:
-
-To prevent injection attacks and malformed data processing, we will implement express-validator version 7.3.1 middleware for comprehensive request validation
-
-Add validation chains for query parameters, request body, and headers
-
-Implement sanitization to prevent XSS attacks
-
-For Rate Limiting Absence:
-
-To protect against brute-force attacks and denial of service, we will add express-rate-limit version 8.2.1 to limit repeated requests from single IP addresses
-
-Configure 100 requests per 15-minute window as the global limit
-
-Add stricter limits for sensitive endpoints if needed in future
-
-For CORS Configuration:
-
-To control cross-origin access securely, we will add cors middleware version 2.8.5 with explicit origin whitelisting
-
-Configure allowed HTTP methods, headers, and credentials handling
-
-Support preflight requests for complex CORS scenarios
-
-For HTTPS Support:
-
-To encrypt data in transit, we will add HTTPS server capability using Node.js built-in https module
-
-Generate self-signed certificates for development using OpenSSL
-
-Configure dual HTTP/HTTPS listeners or HTTPS-only based on environment
-
-User Understanding Level: Explicit security requirements with clear implementation needs
-
-Implementation Approach:
-
-Transform: Basic HTTP server\
-Into: Production-ready secure API server\
-By: Layering multiple security middleware components
-
-Minimal Change Philosophy:\
-While implementing comprehensive security, we will:
-
-Keep existing application logic untouched (routes remain unchanged)
-
-Add middleware in a modular, easy-to-understand structure
-
-Use well-established, battle-tested npm packages
-
-Maintain clear separation of concerns
-
-Enable/disable features through environment configuration
-
-0.4 Vulnerability Research and Analysis
-
-0.4.1 Dependency Vulnerability Assessment
-
-Identified Vulnerability:
-
-CVE: CVE-2025-13466
-
-GitHub Security Advisory: GHSA-wqch-xfxh-vrr4
-
-Package: body-parser
-
-Vulnerable Version: 2.2.0
-
-Fixed Version: 2.2.1
-
-Severity: Moderate (CVSS 5.5)
-
-Vulnerability Details:\
-body-parser 2.2.0 is vulnerable to denial of service due to inefficient handling of URL-encoded bodies with very large numbers of parameters. Attackers can send payloads with a high number of parameters, which can consume excessive CPU and memory resources.
-
-Attack Vector: Network-based\
-Exploitability: Medium - Requires crafted URL-encoded payloads\
-Impact: Service interruptions and degraded performance due to resource exhaustion
-
-Root Cause:\
-The vulnerability exists in the URL-encoded body parser component when processing requests with an unusually high number of parameters. The inefficient parsing algorithm causes CPU and memory consumption to spike, potentially leading to service denial.
-
-Current Exposure:
-
-body-parser 2.2.0 is installed as transitive dependency through express@5.1.0
-
-Affects all POST/PUT/PATCH requests that process URL-encoded bodies
-
-Application currently has minimal routes but is exposed if expanded
-
-0.4.2 Missing Security Controls Analysis
-
-Missing Security Headers:\
-Current state: No security headers are configured
-
-Risks without helmet.js security headers:
-
-X-Frame-Options: Vulnerable to clickjacking attacks
-
-Content-Security-Policy: No protection against XSS and code injection
-
-Strict-Transport-Security: No HTTPS enforcement leading to MITM attacks
-
-X-Content-Type-Options: Vulnerable to MIME-sniffing attacks
-
-X-Powered-By: Information leakage reveals Express framework
-
-Missing Input Validation:\
-Current state: No request validation implemented
-
-Risks without validation:
-
-SQL Injection if database queries added
-
-XSS attacks through reflected or stored malicious input
-
-Command injection if system calls added
-
-Business logic bypass with malformed data
-
-Application crashes from unexpected input types
-
-Missing Rate Limiting:\
-Current state: No throttling or rate limiting
-
-Risks without rate limiting:
-
-Brute-force attacks on authentication endpoints
-
-Denial of Service through request flooding
-
-API abuse and resource exhaustion
-
-Scraping and data harvesting
-
-Cost implications for metered services
-
-Missing CORS Configuration:\
-Current state: No CORS headers configured
-
-Risks without CORS:
-
-Uncontrolled cross-origin access
-
-CSRF vulnerabilities
-
-Data leakage to unauthorized origins
-
-Browser-based attacks from malicious sites
-
-Missing HTTPS:\
-Current state: HTTP only on port 3000
-
-Risks without HTTPS:
-
-Man-in-the-Middle attacks
-
-Credential theft during transmission
-
-Session hijacking
-
-Data tampering in transit
-
-Privacy violations
-
-0.4.3 Web Search Research Conducted
-
-Official Security Advisories Reviewed:
-
-GitHub Security Advisory: <https://github.com/expressjs/body-parser/security/advisories/GHSA-wqch-xfxh-vrr4>
-
-CVE Database entry for CVE-2025-13466
-
-Security Best Practices:
-
-Express.js official security best practices recommending helmet.js for setting HTTP headers appropriately
-
-Express.js rate limiting guide demonstrating tiered limits and authentication guards
-
-CORS configuration guidelines for defining custom policies and managing cross-origin resource sharing effectively
-
-Recommended Mitigation Strategies:
-
-Update body-parser to version 2.2.1 immediately
-
-Implement helmet.js with default secure configurations
-
-Add express-rate-limit with standard 100 req/15min window
-
-Configure cors with explicit origin whitelisting
-
-Implement express-validator for all user inputs
-
-Enable HTTPS with proper certificate management
-
-0.5 Security Scope Analysis
-
-0.5.1 Affected Component Discovery
-
-Repository Structure Analysis:
-
-hao-backprop-test/\
-├── server.js (main application file - REQUIRES UPDATE)\
-├── package.json (dependency manifest - REQUIRES UPDATE)\
-├── package-lock.json (dependency lock file - WILL BE REGENERATED)\
-├── node_modules/ (installed dependencies - managed by npm)\
-└── blitzy/ (documentation folder - NO CHANGES)
-
-Direct File Impact:
-
-server.js - Main application entry point requiring security middleware integration
-
-package.json - Dependency manifest requiring new security packages
-
-package-lock.json - Will be automatically updated when dependencies change
-
-Files to Create:
-
-.env.example - Environment configuration template
-
-.env - Local environment variables (gitignored)
-
-certificates/cert.pem - HTTPS certificate for development
-
-certificates/key.pem - HTTPS private key for development
-
-middleware/security.js - Consolidated security middleware configuration
-
-middleware/validation.js - Input validation middleware
-
-tests/security.test.js - Security feature tests
-
-[README.md](http://README.md) - Documentation for security features
-
-0.5.2 Root Cause Identification
-
-Identified Vulnerability Location:\
-The body-parser vulnerability exists in the transitive dependency chain:
-
-express@5.1.0\
-└── body-parser@2.2.0 (VULNERABLE - CVE-2025-13466)
-
-Vulnerability Propagation:
-
-Direct Usage: Express internally uses body-parser for req.body parsing
-
-Indirect Impact: All POST/PUT/PATCH requests are affected
-
-Configuration Enablers: URL-encoded body parsing is enabled by default in Express
-
-Current Application Flow:
-
-HTTP Request → Express Router → Route Handler → Response
-
-Security Gaps in Flow:
-
-\[Missing\] Security Headers\
-\[Missing\] Rate Limiting Check\
-\[Missing\] Input Validation\
-\[Missing\] CORS Verification\
-\[Missing\] HTTPS Encryption\
-\[Vulnerable\] Body Parser (2.2.0)
-
-0.5.3 Current State Assessment
-
-Dependency Analysis:
-
-Express Version: 5.1.0 (latest)
-
-body-parser Current: 2.2.0 (vulnerable)
-
-body-parser Required: 2.2.1 (patched)
-
-Node.js Runtime: v20.19.5 (suitable)
-
-Application Characteristics:
-
-// Current server.js structure\
-const express = require('express');\
-const app = express();\
-const host = '127.0.0.1';\
+**Key Directives Extracted:**
+- **Functionality Preservation**: Every feature must remain exactly as in the original
+- **Behavior Matching**: The refactored version must fully match the original behavior and logic
+- **Express.js Structure**: Apply Express.js organizational best practices
+
+### 0.2.2 Change Scope Preference
+
+- **Scope**: Structural refactoring only - no functional changes
+- **Approach**: Minimal-impact reorganization with Express.js conventions
+- **Risk Level**: Low (preserving all existing functionality)
+
+### 0.2.3 Technical Constraints
+
+| Constraint | Value | Source |
+|------------|-------|--------|
+| Node.js Version | v20.19.5+ | Package environment |
+| Express.js Version | 5.1.0 | package.json |
+| Entry Point | server.js | package.json "main" field |
+| Start Command | `npm start` → `node server.js` | package.json "scripts" |
+| Server Binding | 127.0.0.1:3000 | Original implementation |
+
+### 0.2.4 Functional Preservation Requirements
+
+**Route Contracts to Maintain:**
+
+| Route | Method | Response Body | Status Code | Content-Type |
+|-------|--------|---------------|-------------|--------------|
+| `/` | GET | `Hello, World!\n` | 200 | text/html |
+| `/evening` | GET | `Good evening` | 200 | text/html |
+
+**Behavioral Invariants:**
+- Server startup console log: `Server running at http://127.0.0.1:3000/`
+- Express response handling via `res.send()` method
+- No additional middleware beyond Express defaults
+- Synchronous route handlers (no async operations)
+
+### 0.2.5 Setup and Build Considerations
+
+- **No Build Step Required**: This is a pure Node.js application without transpilation
+- **Direct Execution**: Application runs with `node server.js`
+- **Dependencies**: Only express@^5.1.0 as production dependency
+- **No Setup Instructions Provided**: Standard `npm install` workflow applies
+
+### 0.2.6 Express.js Best Practices to Apply
+
+Based on industry research, the following Express.js patterns will be applied:
+
+1. **Separation of App and Server**
+   - Create standalone `app.js` for Express application configuration
+   - Keep `server.js` focused only on HTTP server initialization
+   - This enables unit testing without starting the actual server
+
+2. **Modular Route Organization**
+   - Extract routes into a dedicated `routes/` directory
+   - Create route modules that export Express Router instances
+   - Register routes centrally in the application configuration
+
+3. **Configuration Management**
+   - Externalize configuration values (host, port) into a config module
+   - Support environment variable overrides
+   - Provide sensible defaults matching original behavior
+
+4. **Clean Entry Point**
+   - Maintain `server.js` as entry point for backward compatibility
+   - Import the configured Express app from `app.js`
+   - Initialize and start the HTTP server
+
+### 0.2.7 Documentation Constraints
+
+- Preserve existing README.md content (project identification)
+- Update .gitignore if new folders are added
+- Maintain package.json metadata and scripts
+
+
+## 0.3 Technical Interpretation
+
+This refactoring translates to the following technical transformation strategy:
+
+### 0.3.1 Refactoring Translation Strategy
+
+**Transform:** Single-file Express.js application
+**Into:** Modular, well-structured Express.js project
+**By:** Decomposing monolithic server.js into purpose-specific modules
+
+### 0.3.2 Architecture Transformation Map
+
+```mermaid
+graph LR
+    subgraph Current["Current Architecture"]
+        A[server.js<br/>19 lines]
+    end
+    
+    subgraph Target["Target Architecture"]
+        B[server.js<br/>Entry Point]
+        C[src/app.js<br/>Express Config]
+        D[src/routes/index.js<br/>Route Aggregator]
+        E[src/routes/main.routes.js<br/>Application Routes]
+        F[src/config/index.js<br/>Configuration]
+    end
+    
+    A --> B
+    A --> C
+    A --> D
+    A --> E
+    A --> F
+    
+    B --> C
+    C --> D
+    D --> E
+    C --> F
+```
+
+### 0.3.3 Component Decomposition Plan
+
+| Original Component | Target Location | Responsibility |
+|-------------------|-----------------|----------------|
+| Express app initialization | `src/app.js` | Create and configure Express application |
+| Route definitions | `src/routes/main.routes.js` | Define GET `/` and GET `/evening` handlers |
+| Route registration | `src/routes/index.js` | Aggregate and export all route modules |
+| Configuration constants | `src/config/index.js` | Centralize host, port, and environment config |
+| HTTP server startup | `server.js` | Import app, create HTTP server, listen on port |
+
+### 0.3.4 Module Dependency Graph
+
+```mermaid
+graph TD
+    A[server.js] -->|imports| B[src/app.js]
+    B -->|imports| C[src/routes/index.js]
+    B -->|imports| D[src/config/index.js]
+    C -->|imports| E[src/routes/main.routes.js]
+    E -->|uses| F[express.Router]
+```
+
+### 0.3.5 Technical Implementation Approach
+
+**Phase 1: Create Directory Structure**
+- Create `src/` directory for application source code
+- Create `src/routes/` for route modules
+- Create `src/config/` for configuration modules
+
+**Phase 2: Extract Configuration**
+- Move hostname and port constants to `src/config/index.js`
+- Add environment variable support with defaults
+- Export configuration object
+
+**Phase 3: Extract Routes**
+- Create Express Router in `src/routes/main.routes.js`
+- Define GET `/` route handler
+- Define GET `/evening` route handler
+- Export the router
+
+**Phase 4: Create App Module**
+- Initialize Express app in `src/app.js`
+- Import and mount routes
+- Export configured app (do NOT call listen here)
+
+**Phase 5: Refactor Entry Point**
+- Update `server.js` to import app from `src/app.js`
+- Import configuration from `src/config/index.js`
+- Call `app.listen()` with configured host and port
+
+### 0.3.6 Code Transformation Examples
+
+**Original Pattern (server.js):**
+```javascript
+const express = require('express');
+const hostname = '127.0.0.1';
 const port = 3000;
-
-app.get('/', (req, res) =&gt; { /\* ... */ });\
-app.get('/evening', (req, res) =&gt; { /* ... \*/ });
-
-app.listen(port, host, () =&gt; { /\* ... \*/ });
-
-Security Posture:
-
-Authentication: None implemented
-
-Authorization: None implemented
-
-Encryption: HTTP only (no HTTPS)
-
-Headers: Default Express headers only
-
-Validation: None implemented
-
-Rate Limiting: None implemented
-
-CORS: Not configured (browser default)
-
-Error Handling: Basic Express defaults
-
-Logging: Console.log only
-
-Scope of Exposure:
-
-Current Risk: Low (localhost binding, minimal routes)
-
-Production Risk: High (multiple security controls missing)
-
-Public-Facing Risk: Critical if deployed without changes
-
-0.6 Version Compatibility Research
-
-0.6.1 Secure Version Identification
-
-body-parser Dependency Resolution:
-
-Current Version: 2.2.0 (transitive via express@5.1.0)
-
-First Patched Version: 2.2.1
-
-Rationale: GitHub Security Advisory GHSA-wqch-xfxh-vrr4 confirms fix in version 2.2.1
-
-Strategy: Use npm overrides to force body-parser@2.2.1 while keeping express@5.1.0
-
-Security Middleware Versions:
-
-Package
-
-Latest Version
-
-Reason for Selection
-
-helmet
-
-8.1.0
-
-Latest stable, comprehensive header protection
-
-express-rate-limit
-
-8.2.1
-
-Latest stable, supports Express 5.x
-
-cors
-
-2.8.5
-
-Latest stable, widely used
-
-express-validator
-
-7.3.1
-
-Latest stable, requires Node.js 14+
-
-0.6.2 Compatibility Verification
-
-Node.js Compatibility:
-
-Current Node.js: v20.19.5
-
-helmet@8.1.0: Compatible (requires Node.js 16+)
-
-express-rate-limit@8.2.1: Compatible (requires Node.js 16+)
-
-cors@2.8.5: Compatible (requires Node.js &gt;=0.10)
-
-express-validator@7.3.1: Compatible (requires Node.js 14+)
-
-Express 5.x Compatibility:\
-All selected packages explicitly support Express 4.x and 5.x:
-
-helmet: "help secure Express/Connect apps with various HTTP headers"
-
-express-rate-limit: "Basic rate-limiting middleware for Express"
-
-cors: "Connect/Express middleware that can be used to enable CORS"
-
-express-validator: "verified to work with express.js 4.x" (and 5.x)
-
-Dependency Conflict Analysis:
-
-{\
-"dependencies": {\
-"express": "^5.1.0",\
-"helmet": "^8.1.0",\
-"express-rate-limit": "^8.2.1",\
-"cors": "^2.8.5",\
-"express-validator": "^7.3.1"\
-},\
-"overrides": {\
-"body-parser": "2.2.1"\
-}\
-}
-
-No Version Conflicts Detected:
-
-All packages use compatible semver ranges
-
-No peer dependency conflicts
-
-All security packages are designed for Express middleware pattern
-
-0.6.3 Breaking Changes Assessment
-
-Express 5.1.0 → (no change):
-
-Maintaining current Express version
-
-Only updating transitive dependency
-
-body-parser 2.2.0 → 2.2.1:
-
-Breaking Changes: None
-
-API Changes: None
-
-Migration Required: None (patch version)
-
-Risk Level: Minimal (security patch only)
-
-New Package Integrations:\
-All new packages follow Express middleware signature:
-
-app.use(middleware(options))
-
-Impact on Existing Code:
-
-Existing routes require NO changes
-
-Response objects remain unchanged
-
-Request handling flow preserved
-
-Middleware order is important but non-breaking
-
-Configuration Requirements:
-
-// Before (current)\
-app.listen(port, host)
-
-// After (with security)\
-app.use(helmet());\
-app.use(cors(corsOptions));\
-app.use(rateLimit(limiterOptions));\
-// ... existing routes unchanged ...\
-app.listen(port, host)  // HTTP\
-https.createServer(credentials, app).listen(httpsPort)  // HTTPS
-
-0.7 Security Fix Design
-
-0.7.1 Minimal Fix Strategy
-
-Principle: Apply targeted security enhancements while maintaining minimal complexity and maximum effectiveness.
-
-Fix Approach: Combination of dependency update + security middleware additions + configuration
-
-0.7.2 Dependency Vulnerability Fix
-
-For body-parser CVE-2025-13466:
-
-Strategy: Use npm package overrides to force patched version
-
-{\
-"overrides": {\
-"body-parser": "2.2.1"\
-}\
-}
-
-Justification: GitHub Security Advisory GHSA-wqch-xfxh-vrr4 confirms the vulnerability is patched in body-parser 2.2.1
-
-Side Effects: None expected - patch version maintains full API compatibility
-
-Verification:
-
-npm audit
-
-
-0.7.3 Security Headers Implementation
-
-Implement helmet.js for comprehensive header protection:
-
-const helmet = require('helmet');
-
-app.use(helmet({\
-contentSecurityPolicy: {\
-directives: {\
-defaultSrc: \["'self'"\],\
-styleSrc: \["'self'", "'unsafe-inline'"\],\
-scriptSrc: \["'self'"\],\
-imgSrc: \["'self'", "data:", "https:"\],\
-},\
-},\
-hsts: {\
-maxAge: 31536000,\
-includeSubDomains: true,\
-preload: true\
-}\
-}));
-
-Security Improvements:
-
-Strict-Transport-Security header tells browsers to prefer HTTPS instead of insecure HTTP
-
-Content-Security-Policy provides powerful allow-list of what can happen on the page which mitigates many attacks
-
-Removes X-Powered-By header which could be used in simple attacks
-
-Prevents clickjacking with X-Frame-Options
-
-Disables MIME-sniffing with X-Content-Type-Options
-
-0.7.4 Rate Limiting Implementation
-
-Implement express-rate-limit for DoS protection:
-
-const rateLimit = require('express-rate-limit');
-
-const limiter = rateLimit({\
-windowMs: 15 \* 60 \* 1000, // 15 minutes\
-max: 100, // 100 requests per window\
-standardHeaders: true,\
-legacyHeaders: false,\
-message: 'Too many requests, please try again later.'\
-});
-
-app.use(limiter);
-
-Rationale: Configuration establishes a global rate limit allowing 100 requests per 15-minute window from each IP address with automatic request tracking
-
-0.7.5 CORS Configuration
-
-Implement cors middleware with security controls:
-
-const cors = require('cors');
-
-const corsOptions = {\
-origin: process.env.ALLOWED_ORIGINS?.split(',') || \['<http://localhost:3000>'\],\
-methods: \['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'\],\
-allowedHeaders: \['Content-Type', 'Authorization'\],\
-credentials: true,\
-maxAge: 86400\
-};
-
-app.use(cors(corsOptions));
-
-Security Rationale: Allow specific origins through configuration and use callback function to dynamically determine if a request is allowed
-
-0.7.6 Input Validation
-
-Implement express-validator for request validation:
-
-const { body, query, validationResult } = require('express-validator');
-
-// Example validation middleware\
-const validateRequest = (req, res, next) =&gt; {\
-const errors = validationResult(req);\
-if (!errors.isEmpty()) {\
-return res.status(400).json({ errors: errors.array() });\
-}\
-next();\
-};
-
-// Apply to routes as needed\
-app.get('/',\
-\[query('name').optional().trim().escape()\],\
-validateRequest,\
-(req, res) =&gt; { /\* ... \*/ }\
-);
-
-Rationale: express-validator wraps the extensive collection of validators and sanitizers, allowing you to validate and sanitize express requests
-
-0.7.7 HTTPS Support
-
-Add HTTPS server with certificate management:
-
-const https = require('https');\
-const fs = require('fs');
-
-const credentials = {\
-key: fs.readFileSync('./certificates/key.pem'),\
-cert: fs.readFileSync('./certificates/cert.pem')\
-};
-
-// HTTP server for redirects\
-app.listen(port, host, () =&gt; {\
-console.log(`HTTP Server: http://${host}:${port}`);\
-});
-
-// HTTPS server\
-https.createServer(credentials, app).listen(httpsPort, host, () =&gt; {\
-console.log(`HTTPS Server: https://${host}:${httpsPort}`);\
-});
-
-Certificate Generation (Development):
-
-openssl req -nodes -new -x509 -keyout key.pem -out cert.pem -days 365
-
-Production Consideration: Use proper CA-signed certificates (Let's Encrypt, commercial CA)
-
-0.7.8 Security Improvement Validation
-
-How Fixes Eliminate Vulnerabilities:
-
-Vulnerability
-
-Fix
-
-Verification Method
-
-body-parser DoS
-
-Update to 2.2.1
-
-npm audit shows 0 vulnerabilities
-
-Missing CSP
-
-helmet.js CSP
-
-Response headers include Content-Security-Policy
-
-Clickjacking
-
-helmet.js X-Frame-Options
-
-Response headers include X-Frame-Options: DENY
-
-MITM attacks
-
-HTTPS implementation
-
-Server responds on 443 with valid certificate
-
-Rate limit bypass
-
-express-rate-limit
-
-HTTP 429 after limit exceeded
-
-CORS violations
-
-cors middleware
-
-Preflight requests handled correctly
-
-XSS injection
-
-express-validator sanitization
-
-Malicious input escaped/rejected
-
-Verification Methods:
-
-Security header scanning: [securityheaders.com](http://securityheaders.com) or Mozilla Observatory
-
-Vulnerability scanning: npm audit, Snyk, or OWASP ZAP
-
-Manual testing: curl with malicious payloads
-
-Automated testing: Jest/Mocha test suites
-
-Rollback Plan:\
-If issues arise after deployment:
-
-Revert package.json changes
-
-Run npm install to restore previous versions
-
-Restart application with original server.js
-
-Monitor logs for stability
-
-Root cause analysis before retry
-
-0.8 File Transformation Mapping
-
-0.8.1 Comprehensive File-by-File Security Fix Plan
-
-Transformation Modes:
-
-UPDATE - Modify existing file to add security features
-
-CREATE - Create new file for security configuration
-
-REFERENCE - Use as pattern for implementation
-
-DELETE - Remove file (not applicable in this fix)
-
-Target File
-
-Transformation
-
-Source File/Reference
-
-Security Changes
-
-package.json
-
-UPDATE
-
-package.json
-
-Add helmet@^8.1.0, express-rate-limit@^8.2.1, cors@^2.8.5, express-validator@^7.3.1; Add overrides section with body-parser@2.2.1 to patch CVE-2025-13466
-
-package-lock.json
-
-UPDATE
-
-package-lock.json
-
-Automatically regenerated by npm install to reflect new dependencies and body-parser override
-
-server.js
-
-UPDATE
-
-server.js
-
-Import security middleware (helmet, rate-limit, cors); Configure HTTPS server; Add security middleware chain; Implement environment-based configuration; Add graceful error handling
-
-.env.example
-
-CREATE
-
-N/A
-
-Define environment variables template: NODE_ENV, PORT, HTTPS_PORT, ALLOWED_ORIGINS, RATE_LIMIT_WINDOW_MS, RATE_LIMIT_MAX, CERT_PATH, KEY_PATH
-
-.env
-
-CREATE
-
-.env.example
-
-Local environment configuration (gitignored) with default development values
-
-.gitignore
-
-UPDATE/CREATE
-
-N/A
-
-Add .env, certificates/\*.pem, node_modules to ignore list if not exists
-
-middleware/security.js
-
-CREATE
-
-N/A
-
-Consolidated security middleware configuration module exporting helmet, rate limiter, CORS, and validation middleware with environment-based settings
-
-middleware/validation.js
-
-CREATE
-
-N/A
-
-Input validation middleware using express-validator with reusable validation chains for query params, body, and headers
-
-certificates/cert.pem
-
-CREATE
-
-N/A
-
-Self-signed SSL certificate for HTTPS development (generated via openssl command)
-
-certificates/key.pem
-
-CREATE
-
-N/A
-
-Private key for SSL certificate (generated via openssl command)
-
-certificates/.gitkeep
-
-CREATE
-
-N/A
-
-Placeholder to ensure certificates directory is tracked in git
-
-tests/security.test.js
-
-CREATE
-
-N/A
-
-Jest/Mocha test suite validating: security headers presence, rate limiting behavior, CORS configuration, HTTPS functionality, input validation, body-parser patch
-
-tests/integration.test.js
-
-CREATE
-
-N/A
-
-Integration tests for existing routes (/ and /evening) ensuring backward compatibility after security changes
-
-[README.md](http://README.md)
-
-UPDATE/CREATE
-
-N/A
-
-Document security features, setup instructions, environment variables, HTTPS certificate generation, testing procedures, deployment considerations
-
-scripts/generate-certs.sh
-
-CREATE
-
-N/A
-
-Bash script to generate self-signed certificates for development: openssl req -nodes -new -x509 -keyout certificates/key.pem -out certificates/cert.pem -days 365
-
-config/security-config.js
-
-CREATE
-
-N/A
-
-Centralized security configuration object with CSP directives, CORS origins, rate limits, validation rules - importable by middleware modules
-
-0.8.2 Detailed Code Change Specifications
-
-File: server.js
-
-Lines Affected: Entire file restructure (currently \~20 lines)
-
-Before State:
-
-// Minimal Express server, no security middleware\
-const express = require('express');\
-const app = express();\
-// Basic routes\
-app.get('/', ...);\
-app.get('/evening', ...);\
-app.listen(3000, '127.0.0.1');
-
-After State:
-
-// Secure Express server with layered security\
-require('dotenv').config();\
-const express = require('express');\
-const https = require('https');\
-const fs = require('fs');\
-const { helmet, rateLimiter, corsMiddleware } = require('./middleware/security');
+const app = express();
+app.get('/', (req, res) => res.send('Hello'));
+app.listen(port, hostname);
+```
+
+**Target Pattern (Modular):**
+```javascript
+// server.js - Entry point only
+const app = require('./src/app');
+const config = require('./src/config');
+app.listen(config.port, config.host);
+```
+
+### 0.3.7 Invariant Preservation Checklist
+
+| Invariant | Preserved By |
+|-----------|--------------|
+| Route handler logic | Exact copy to route module |
+| Response strings | No modification to response content |
+| HTTP binding | Same host:port from config defaults |
+| Startup message | Identical console.log in server.js |
+| Entry point | server.js remains main entry |
+| npm start command | No change to package.json scripts |
+
+
+## 0.4 Source Analysis
+
+### 0.4.1 Comprehensive Source File Discovery
+
+**Repository Root Structure:**
+```
+/
+├── .gitignore                 (172 bytes - git ignore rules)
+├── README.md                  (73 bytes - project identifier)
+├── package.json               (345 bytes - npm manifest)
+├── package-lock.json          (34,769 bytes - dependency lock)
+├── server.js                  (348 bytes - application entry point)
+└── blitzy/
+    └── documentation/
+        ├── Project Guide.md   (existing documentation)
+        └── Technical Specifications.md (existing documentation)
+```
+
+### 0.4.2 Primary Source File Analysis
+
+**File: server.js (19 lines - Primary Refactoring Target)**
+
+| Line Range | Content | Refactoring Action |
+|------------|---------|-------------------|
+| 1 | `const express = require('express');` | Move to src/app.js |
+| 3 | `const hostname = '127.0.0.1';` | Move to src/config/index.js |
+| 4 | `const port = 3000;` | Move to src/config/index.js |
+| 6 | `const app = express();` | Move to src/app.js |
+| 8-10 | GET `/` route handler | Move to src/routes/main.routes.js |
+| 12-14 | GET `/evening` route handler | Move to src/routes/main.routes.js |
+| 16-18 | `app.listen(...)` | Keep in server.js |
+
+**Current server.js Complete Content:**
+```javascript
+const express = require('express');
+
+const hostname = '127.0.0.1';
+const port = 3000;
 
 const app = express();
 
-// Security middleware chain\
-app.use(helmet);\
-app.use(rateLimiter);\
-app.use(corsMiddleware);\
-app.use(express.json());
+app.get('/', (req, res) => {
+  res.send('Hello, World!\n');
+});
 
-// Existing routes (unchanged)\
-app.get('/', ...);\
-app.get('/evening', ...);
+app.get('/evening', (req, res) => {
+  res.send('Good evening');
+});
 
-// HTTP server\
-app.listen(port, host);
+app.listen(port, hostname, () => {
+  console.log(`Server running at http://${hostname}:${port}/`);
+});
+```
 
-// HTTPS server\
-https.createServer(credentials, app).listen(httpsPort, host);
+### 0.4.3 Secondary Source Files Analysis
 
-Security Improvement: Adds comprehensive security layer while preserving existing functionality
-
-File: package.json
-
-Lines Affected: dependencies (line \~7-9), add overrides section
-
-Before State:
-
-{\
-"dependencies": {\
-"express": "^5.1.0"\
-}\
+**File: package.json (Manifest - Requires Update)**
+```json
+{
+    "name": "hello_world",
+    "version": "1.0.0",
+    "description": "Hello world in Node.js",
+    "main": "server.js",
+    "scripts": {
+        "start": "node server.js",
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "author": "hxu",
+    "license": "MIT",
+    "dependencies": {
+        "express": "^5.1.0"
+    }
 }
+```
 
-After State:
+**Refactoring Notes for package.json:**
+- `"main": "server.js"` - Keep unchanged (server.js remains entry point)
+- `"start": "node server.js"` - Keep unchanged
+- May add test script for validation
 
-{\
-"dependencies": {\
-"express": "^5.1.0",\
-"helmet": "^8.1.0",\
-"express-rate-limit": "^8.2.1",\
-"cors": "^2.8.5",\
-"express-validator": "^7.3.1",\
-"dotenv": "^16.4.5"\
-},\
-"devDependencies": {\
-"jest": "^29.7.0",\
-"supertest": "^6.3.4"\
-},\
-"overrides": {\
-"body-parser": "2.2.1"\
-},\
-"scripts": {\
-"start": "node server.js",\
-"test": "jest",\
-"generate-certs": "bash scripts/generate-certs.sh"\
-}\
-}
+**File: .gitignore (No changes required)**
+```
+# Dependencies
+node_modules/
 
-Security Improvement: Patches body-parser vulnerability, adds security middleware dependencies
+#### Environment variables
+.env
+.env.local
 
-File: middleware/security.js
+#### Logs
+logs/
+*.log
+npm-debug.log*
 
-New File: Complete security middleware configuration
+#### OS files
+.DS_Store
+Thumbs.db
 
-Exports: helmet, rateLimiter, corsMiddleware
+#### IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+```
 
-Content: Configured instances of helmet(), rateLimit(), and cors() with environment-based settings
+**File: README.md (No changes required)**
+```
+# hao-backprop-test
+test project for backprop integration. Do not touch!
+```
 
-Purpose: Centralize security configuration for maintainability
+### 0.4.4 Code Component Extraction Map
 
-File: .env.example
+| Component Type | Current Location | Lines | Extract To |
+|---------------|------------------|-------|------------|
+| Express import | server.js:1 | 1 | src/app.js |
+| Hostname constant | server.js:3 | 1 | src/config/index.js |
+| Port constant | server.js:4 | 1 | src/config/index.js |
+| App initialization | server.js:6 | 1 | src/app.js |
+| Root route handler | server.js:8-10 | 3 | src/routes/main.routes.js |
+| Evening route handler | server.js:12-14 | 3 | src/routes/main.routes.js |
+| Server listen call | server.js:16-18 | 3 | server.js (refactored) |
 
-New File: Environment configuration template
+### 0.4.5 Route Handler Analysis
 
-Content:
+**Route 1: Root Path (`/`)**
+```javascript
+app.get('/', (req, res) => {
+  res.send('Hello, World!\n');
+});
+```
+- Method: GET
+- Path: `/`
+- Response: Plain text with trailing newline
+- Handler Type: Synchronous, stateless
 
-NODE_ENV=development\
-PORT=3000\
-HTTPS_PORT=3443\
-HOST=127.0.0.1\
-ALLOWED_ORIGINS=<http://localhost:3000>,<http://localhost:3001>\
-RATE_LIMIT_WINDOW_MS=900000\
-RATE_LIMIT_MAX=100\
-CERT_PATH=./certificates/cert.pem\
-KEY_PATH=./certificates/key.pem
+**Route 2: Evening Path (`/evening`)**
+```javascript
+app.get('/evening', (req, res) => {
+  res.send('Good evening');
+});
+```
+- Method: GET
+- Path: `/evening`
+- Response: Plain text without trailing newline
+- Handler Type: Synchronous, stateless
 
-Purpose: Document required environment variables for all environments
+### 0.4.6 Dependency Analysis
 
-0.8.3 Configuration File Changes
+**Direct Dependencies (from package-lock.json):**
 
-File: config/security-config.js
+| Package | Version | Type | Notes |
+|---------|---------|------|-------|
+| express | 5.1.0 | Production | Web framework |
 
-New File: Security policy definitions
+**Transitive Dependencies (Key Packages):**
 
-Content:
+| Package | Version | Via | Notes |
+|---------|---------|-----|-------|
+| body-parser | 2.2.0 | express | Has moderate vulnerability (CVE-2025-13466) |
+| accepts | 2.0.0 | express | Content negotiation |
+| content-type | 1.0.5 | body-parser | MIME type parsing |
+| raw-body | 3.0.0 | body-parser | Request body handling |
 
-module.exports = {\
-helmet: {\
-contentSecurityPolicy: {\
-directives: {\
-defaultSrc: \["'self'"\],\
-styleSrc: \["'self'", "'unsafe-inline'"\],\
-scriptSrc: \["'self'"\],\
-imgSrc: \["'self'", "data:", "https:"\]\
-}\
-},\
-hsts: {\
-maxAge: 31536000,\
-includeSubDomains: true,\
-preload: true\
-}\
-},\
-rateLimit: {\
-windowMs: process.env.RATE_LIMIT_WINDOW_MS || 900000,\
-max: process.env.RATE_LIMIT_MAX || 100,\
-message: 'Too many requests, please try again later.'\
-},\
-cors: {\
-origin: process.env.ALLOWED_ORIGINS?.split(',') || \[\],\
-methods: \['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'\],\
-allowedHeaders: \['Content-Type', 'Authorization'\],\
-credentials: true\
-}\
+### 0.4.7 Complete File Inventory
+
+| File Path | Status | Action Required |
+|-----------|--------|-----------------|
+| server.js | EXISTS | UPDATE (refactor to entry point only) |
+| package.json | EXISTS | NO CHANGE (entry point unchanged) |
+| package-lock.json | EXISTS | NO CHANGE (no dependency changes) |
+| .gitignore | EXISTS | NO CHANGE |
+| README.md | EXISTS | NO CHANGE |
+| src/app.js | NOT EXISTS | CREATE (Express app configuration) |
+| src/config/index.js | NOT EXISTS | CREATE (configuration module) |
+| src/routes/index.js | NOT EXISTS | CREATE (route aggregator) |
+| src/routes/main.routes.js | NOT EXISTS | CREATE (application routes) |
+| blitzy/documentation/* | EXISTS | NO CHANGE (documentation preserved) |
+
+
+## 0.5 Target Design
+
+### 0.5.1 Refactored Project Structure
+
+```
+Target Structure:
+/
+├── .gitignore                      (UNCHANGED)
+├── README.md                       (UNCHANGED)
+├── package.json                    (UNCHANGED)
+├── package-lock.json               (UNCHANGED)
+├── server.js                       (UPDATED - entry point only)
+├── src/
+│   ├── app.js                      (NEW - Express app configuration)
+│   ├── config/
+│   │   └── index.js                (NEW - configuration management)
+│   └── routes/
+│       ├── index.js                (NEW - route aggregator)
+│       └── main.routes.js          (NEW - application routes)
+└── blitzy/
+    └── documentation/              (UNCHANGED)
+        ├── Project Guide.md
+        └── Technical Specifications.md
+```
+
+### 0.5.2 New File Specifications
+
+**File: src/config/index.js**
+- Purpose: Centralize all configuration values with environment variable support
+- Exports: Configuration object with host, port, and environment
+- Default Values: Must match original implementation exactly
+
+```javascript
+// Specification for src/config/index.js
+module.exports = {
+  host: process.env.HOST || '127.0.0.1',
+  port: parseInt(process.env.PORT, 10) || 3000,
+  env: process.env.NODE_ENV || 'development'
 };
-
-0.8.4 Complete File Impact Summary
-
-Files Updated: 3
-
-server.js (major restructure for security)
-
-package.json (dependencies and overrides)
-
-[README.md](http://README.md) (documentation updates)
-
-Files Created: 12
-
-.env.example (environment template)
-
-.env (local configuration)
-
-.gitignore (if not exists)
-
-middleware/security.js (security middleware)
-
-middleware/validation.js (validation middleware)
-
-config/security-config.js (security policies)
-
-certificates/cert.pem (HTTPS certificate)
-
-certificates/key.pem (HTTPS private key)
-
-certificates/.gitkeep (directory placeholder)
-
-tests/security.test.js (security tests)
-
-tests/integration.test.js (compatibility tests)
-
-scripts/generate-certs.sh (certificate generation)
-
-Files Deleted: 0
-
-Total Files Affected: 15
-
-0.9 Dependency Inventory
-
-0.9.1 Security Patches and Updates
-
-Registry
-
-Package Name
-
-Current
-
-Patched To
-
-CVE/Advisory
-
-Severity
-
-npm
-
-body-parser
-
-2.2.0
-
-2.2.1
-
-CVE-2025-13466 / GHSA-wqch-xfxh-vrr4
-
-Moderate (CVSS 5.5)
-
-npm
-
-express
-
-5.1.0
-
-5.1.0 (no change)
-
-N/A
-
-N/A
-
-Security Advisory Links:
-
-body-parser vulnerability: <https://github.com/expressjs/body-parser/security/advisories/GHSA-wqch-xfxh-vrr4>
-
-CVE-2025-13466 details: Available in NVD and GitHub Security Database
-
-0.9.2 New Security Dependencies
-
-Registry
-
-Package Name
-
-Version
-
-Purpose
-
-Documentation
-
-npm
-
-helmet
-
-8.1.0
-
-Security headers middleware
-
-<https://helmetjs.github.io/>
-
-npm
-
-express-rate-limit
-
-8.2.1
-
-Rate limiting middleware
-
-<https://www.npmjs.com/package/express-rate-limit>
-
-npm
-
-cors
-
-2.8.5
-
-CORS middleware
-
-<https://www.npmjs.com/package/cors>
-
-npm
-
-express-validator
-
-7.3.1
-
-Input validation middleware
-
-<https://express-validator.github.io/>
-
-npm
-
-dotenv
-
-^16.4.5
-
-Environment variable management
-
-<https://www.npmjs.com/package/dotenv>
-
-0.9.3 Development Dependencies
-
-Registry
-
-Package Name
-
-Version
-
-Purpose
-
-npm
-
-jest
-
-^29.7.0
-
-Testing framework
-
-npm
-
-supertest
-
-^6.3.4
-
-HTTP assertion library
-
-0.9.4 Dependency Chain Analysis
-
-Direct Dependencies (Production):
-
-express@5.1.0 (existing)
-
-helmet@8.1.0 (new - security headers)
-
-express-rate-limit@8.2.1 (new - rate limiting)
-
-cors@2.8.5 (new - CORS configuration)
-
-express-validator@7.3.1 (new - input validation)
-
-dotenv@16.4.5 (new - environment configuration)
-
-Transitive Dependencies Affected:
-
-body-parser: 2.2.0 → 2.2.1 (overridden via package.json overrides)
-
-validator (via express-validator): Latest compatible version
-
-lodash.merge (via helmet): Security-audited version
-
-Peer Dependencies:\
-All selected packages list Express 4.x/5.x as peer dependency - no conflicts
-
-0.9.5 Import and Reference Updates
-
-server.js Import Changes:
-
-// NEW IMPORTS REQUIRED:\
-require('dotenv').config();\
-const https = require('https');  // Node.js built-in\
-const fs = require('fs');  // Node.js built-in\
-const helmet = require('helmet');\
-const rateLimit = require('express-rate-limit');\
-const cors = require('cors');\
-const { body, validationResult } = require('express-validator');
-
-// EXISTING IMPORTS (unchanged):\
+```
+
+**File: src/routes/main.routes.js**
+- Purpose: Define application route handlers
+- Exports: Express Router instance with GET `/` and GET `/evening`
+- Behavior: Exact replica of original route handler logic
+
+```javascript
+// Specification for src/routes/main.routes.js
 const express = require('express');
+const router = express.Router();
 
-middleware/security.js Imports:
+router.get('/', (req, res) => {
+  res.send('Hello, World!\n');
+});
 
-const helmet = require('helmet');\
-const rateLimit = require('express-rate-limit');\
-const cors = require('cors');\
-const securityConfig = require('../config/security-config');
+router.get('/evening', (req, res) => {
+  res.send('Good evening');
+});
 
-module.exports = {\
-helmet: helmet(securityConfig.helmet),\
-rateLimiter: rateLimit(securityConfig.rateLimit),\
-corsMiddleware: cors(securityConfig.cors)\
+module.exports = router;
+```
+
+**File: src/routes/index.js**
+- Purpose: Aggregate all route modules for clean imports
+- Exports: Object containing all route modules
+- Pattern: Central route registry
+
+```javascript
+// Specification for src/routes/index.js
+const mainRoutes = require('./main.routes');
+module.exports = { mainRoutes };
+```
+
+**File: src/app.js**
+- Purpose: Configure Express application without starting server
+- Exports: Configured Express app instance
+- Pattern: Separation of app configuration from server initialization
+
+```javascript
+// Specification for src/app.js
+const express = require('express');
+const { mainRoutes } = require('./routes');
+const app = express();
+
+// Mount routes at root path
+app.use('/', mainRoutes);
+
+module.exports = app;
+```
+
+**File: server.js (Refactored)**
+- Purpose: HTTP server entry point only
+- Imports: App from src/app.js, config from src/config
+- Behavior: Start server with identical startup message
+
+```javascript
+// Specification for server.js (refactored)
+const app = require('./src/app');
+const config = require('./src/config');
+
+app.listen(config.port, config.host, () => {
+  console.log(`Server running at http://${config.host}:${config.port}/`);
+});
+```
+
+### 0.5.3 Web Search Research Conducted
+
+**Express.js Best Practices Applied:**
+
+1. **Separation of App and Server** - Allows unit testing the Express app without starting the HTTP server. The app module exports the configured Express instance.
+
+2. **Modular Architecture** - Express.js is a flexible, unopinionated framework. Organizing code into purpose-specific modules ensures scalability and maintainability.
+
+3. **Router-Based Route Organization** - Using `express.Router()` for route modules enables clean separation and allows mounting routes at different base paths.
+
+4. **Configuration Externalization** - Following the Twelve-Factor App methodology, configuration is externalized and loaded from environment variables with sensible defaults.
+
+### 0.5.4 Design Pattern Applications
+
+| Pattern | Application | Benefit |
+|---------|-------------|---------|
+| Module Pattern | Each file exports a single concern | Clear responsibilities, testability |
+| Factory Pattern | src/app.js creates configured Express app | Enables multiple app instances for testing |
+| Aggregator Pattern | src/routes/index.js collects routes | Single import point for all routes |
+| Configuration Object | src/config/index.js exports config | Centralized, environment-aware settings |
+
+### 0.5.5 Directory Structure Rationale
+
+| Directory | Purpose | Convention Source |
+|-----------|---------|-------------------|
+| `src/` | Application source code | Industry standard for separating source from config |
+| `src/routes/` | Route handler modules | Express.js convention for route organization |
+| `src/config/` | Configuration modules | Node.js best practice for config management |
+
+### 0.5.6 Module Interface Specifications
+
+```mermaid
+classDiagram
+    class Config {
+        +string host
+        +number port
+        +string env
+    }
+    
+    class MainRoutes {
+        +Router router
+        +get("/")
+        +get("/evening")
+    }
+    
+    class Routes {
+        +Router mainRoutes
+    }
+    
+    class App {
+        +Express app
+        +use(routes)
+    }
+    
+    class Server {
+        +listen(port, host, callback)
+    }
+    
+    Config <-- Server : imports
+    App <-- Server : imports
+    Routes <-- App : imports
+    MainRoutes <-- Routes : imports
+```
+
+### 0.5.7 Startup Flow Specification
+
+```mermaid
+sequenceDiagram
+    participant CLI as npm start
+    participant Server as server.js
+    participant App as src/app.js
+    participant Config as src/config/index.js
+    participant Routes as src/routes/index.js
+    participant Main as src/routes/main.routes.js
+    
+    CLI->>Server: node server.js
+    Server->>App: require('./src/app')
+    App->>Routes: require('./routes')
+    Routes->>Main: require('./main.routes')
+    Main-->>Routes: Router (/, /evening)
+    Routes-->>App: { mainRoutes }
+    App->>App: app.use('/', mainRoutes)
+    App-->>Server: Express app
+    Server->>Config: require('./src/config')
+    Config-->>Server: { host, port }
+    Server->>Server: app.listen(port, host)
+    Server->>CLI: "Server running at..."
+```
+
+
+## 0.6 Transformation Mapping
+
+### 0.6.1 File-by-File Transformation Plan
+
+| Target File | Transformation | Source File | Key Changes |
+|-------------|----------------|-------------|-------------|
+| server.js | UPDATE | server.js | Refactor to entry point only; import app from src/app.js; import config from src/config; retain app.listen() call with console.log |
+| src/app.js | CREATE | server.js | Extract Express app initialization; import and mount routes; export configured app instance |
+| src/config/index.js | CREATE | server.js | Extract hostname and port constants; add environment variable support with defaults |
+| src/routes/index.js | CREATE | N/A | Create route aggregator module; import and export mainRoutes |
+| src/routes/main.routes.js | CREATE | server.js | Extract GET '/' and GET '/evening' route handlers; use express.Router() |
+| package.json | NO CHANGE | package.json | Entry point and scripts remain unchanged |
+| package-lock.json | NO CHANGE | package-lock.json | No dependency changes |
+| .gitignore | NO CHANGE | .gitignore | Already includes node_modules and IDE files |
+| README.md | NO CHANGE | README.md | Project identifier preserved |
+
+### 0.6.2 Detailed Code Transformation Specifications
+
+**Transformation 1: server.js → server.js (UPDATE)**
+
+| Original Code | Target Code | Transformation Type |
+|--------------|-------------|---------------------|
+| `const express = require('express');` | (removed - moved to src/app.js) | MOVE |
+| `const hostname = '127.0.0.1';` | (removed - moved to src/config) | MOVE |
+| `const port = 3000;` | (removed - moved to src/config) | MOVE |
+| `const app = express();` | `const app = require('./src/app');` | REPLACE |
+| `app.get('/', ...)` | (removed - moved to routes) | MOVE |
+| `app.get('/evening', ...)` | (removed - moved to routes) | MOVE |
+| `app.listen(port, hostname, ...)` | `const config = require('./src/config');`<br/>`app.listen(config.port, config.host, ...)` | REFACTOR |
+
+**Target server.js Content:**
+```javascript
+const app = require('./src/app');
+const config = require('./src/config');
+
+app.listen(config.port, config.host, () => {
+  console.log(`Server running at http://${config.host}:${config.port}/`);
+});
+```
+
+**Transformation 2: server.js → src/app.js (CREATE)**
+
+| Source Content | Target Implementation |
+|----------------|----------------------|
+| `const express = require('express');` | Import express |
+| `const app = express();` | Initialize Express app |
+| Route registration | Import routes and use app.use() |
+| (new) | Export app instance |
+
+**Target src/app.js Content:**
+```javascript
+const express = require('express');
+const { mainRoutes } = require('./routes');
+
+const app = express();
+
+app.use('/', mainRoutes);
+
+module.exports = app;
+```
+
+**Transformation 3: server.js → src/config/index.js (CREATE)**
+
+| Source Content | Target Implementation |
+|----------------|----------------------|
+| `const hostname = '127.0.0.1';` | `host: process.env.HOST \|\| '127.0.0.1'` |
+| `const port = 3000;` | `port: parseInt(process.env.PORT, 10) \|\| 3000` |
+| (new) | `env: process.env.NODE_ENV \|\| 'development'` |
+
+**Target src/config/index.js Content:**
+```javascript
+module.exports = {
+  host: process.env.HOST || '127.0.0.1',
+  port: parseInt(process.env.PORT, 10) || 3000,
+  env: process.env.NODE_ENV || 'development'
 };
+```
 
-middleware/validation.js Imports:
+**Transformation 4: server.js → src/routes/main.routes.js (CREATE)**
 
-const { body, query, param, validationResult } = require('express-validator');
+| Source Content | Target Implementation |
+|----------------|----------------------|
+| `app.get('/', (req, res) => {...});` | `router.get('/', (req, res) => {...});` |
+| `app.get('/evening', (req, res) => {...});` | `router.get('/evening', (req, res) => {...});` |
 
-// Export reusable validation chains\
-module.exports = {\
-validateQuery,\
-validateBody,\
-handleValidationErrors\
+**Target src/routes/main.routes.js Content:**
+```javascript
+const express = require('express');
+const router = express.Router();
+
+router.get('/', (req, res) => {
+  res.send('Hello, World!\n');
+});
+
+router.get('/evening', (req, res) => {
+  res.send('Good evening');
+});
+
+module.exports = router;
+```
+
+**Transformation 5: N/A → src/routes/index.js (CREATE)**
+
+**Target src/routes/index.js Content:**
+```javascript
+const mainRoutes = require('./main.routes');
+
+module.exports = {
+  mainRoutes
 };
+```
 
-tests/security.test.js Imports:
+### 0.6.3 Cross-File Dependency Updates
 
-const request = require('supertest');\
-const express = require('express');\
-const helmet = require('helmet');\
-const rateLimit = require('express-rate-limit');\
-const cors = require('cors');
+**Import Statement Transformations:**
 
-0.9.6 Configuration Reference Updates
+| File | Original Import | New Import |
+|------|-----------------|------------|
+| server.js | `const express = require('express');` | `const app = require('./src/app');`<br/>`const config = require('./src/config');` |
+| src/app.js | N/A (new file) | `const express = require('express');`<br/>`const { mainRoutes } = require('./routes');` |
+| src/routes/main.routes.js | N/A (new file) | `const express = require('express');` |
+| src/routes/index.js | N/A (new file) | `const mainRoutes = require('./main.routes');` |
+| src/config/index.js | N/A (new file) | None (pure configuration) |
 
-package.json scripts section:
+### 0.6.4 File Path Mapping Summary
 
-{\
-"scripts": {\
-"start": "node server.js",\
-"dev": "NODE_ENV=development node server.js",\
-"prod": "NODE_ENV=production node server.js",\
-"test": "jest --coverage",\
-"test:security": "jest tests/security.test.js",\
-"generate-certs": "bash scripts/generate-certs.sh"\
-}\
+| Source Path | Target Path | Operation |
+|-------------|-------------|-----------|
+| server.js | server.js | UPDATE |
+| server.js (lines 1, 6) | src/app.js | EXTRACT |
+| server.js (lines 3-4) | src/config/index.js | EXTRACT |
+| server.js (lines 8-14) | src/routes/main.routes.js | EXTRACT |
+| N/A | src/routes/index.js | CREATE |
+
+### 0.6.5 Directory Creation Requirements
+
+| Directory | Action | Purpose |
+|-----------|--------|---------|
+| src/ | CREATE | Application source root |
+| src/config/ | CREATE | Configuration modules |
+| src/routes/ | CREATE | Route handler modules |
+
+### 0.6.6 One-Phase Execution Plan
+
+**All transformations will be executed in a single phase:**
+
+1. Create directory structure (`src/`, `src/config/`, `src/routes/`)
+2. Create `src/config/index.js` (configuration module)
+3. Create `src/routes/main.routes.js` (route handlers)
+4. Create `src/routes/index.js` (route aggregator)
+5. Create `src/app.js` (Express app configuration)
+6. Update `server.js` (entry point refactoring)
+
+**No files require deletion. All transformations are additive or updates.**
+
+### 0.6.7 Transformation Validation Checklist
+
+| Validation | Command | Expected Result |
+|------------|---------|-----------------|
+| Syntax check | `node -c server.js` | No syntax errors |
+| App loads | `node -e "require('./src/app')"` | No errors |
+| Config loads | `node -e "require('./src/config')"` | No errors |
+| Routes load | `node -e "require('./src/routes')"` | No errors |
+| Server starts | `npm start` | "Server running at http://127.0.0.1:3000/" |
+| Root route | `curl http://127.0.0.1:3000/` | "Hello, World!\n" |
+| Evening route | `curl http://127.0.0.1:3000/evening` | "Good evening" |
+
+
+## 0.7 Dependency Inventory
+
+### 0.7.1 Key Public Packages
+
+| Registry | Package Name | Version | Purpose |
+|----------|--------------|---------|---------|
+| npm | express | ^5.1.0 | Web application framework - core dependency |
+
+### 0.7.2 Transitive Dependencies (Express 5.1.0)
+
+| Registry | Package Name | Version | Via | Purpose |
+|----------|--------------|---------|-----|---------|
+| npm | accepts | 2.0.0 | express | Content negotiation |
+| npm | body-parser | 2.2.0 | express | Request body parsing (has vulnerability) |
+| npm | content-disposition | 1.0.0 | express | Content-Disposition header handling |
+| npm | content-type | 1.0.5 | body-parser | MIME type parsing |
+| npm | cookie | 0.7.2 | express | Cookie parsing |
+| npm | cookie-signature | 1.2.2 | express | Cookie signing |
+| npm | debug | 4.4.0 | express, body-parser | Debug utility |
+| npm | encodeurl | 2.0.0 | express | URL encoding |
+| npm | escape-html | 1.0.3 | express | HTML escaping |
+| npm | etag | 1.8.1 | express | ETag generation |
+| npm | finalhandler | 2.1.0 | express | Final request handler |
+| npm | fresh | 2.0.0 | express | HTTP cache freshness |
+| npm | http-errors | 2.0.0 | body-parser, express | HTTP error creation |
+| npm | merge-descriptors | 2.0.0 | express | Object descriptor merging |
+| npm | mime-types | 3.0.0 | express | MIME type database |
+| npm | on-finished | 2.4.1 | express, body-parser | Request/response finish event |
+| npm | once | 1.4.0 | express | Ensure function called once |
+| npm | parseurl | 1.3.3 | express | URL parsing |
+| npm | proxy-addr | 2.0.7 | express | Proxy address handling |
+| npm | qs | 6.14.0 | body-parser, express | Query string parsing |
+| npm | range-parser | 1.2.1 | express | Range header parsing |
+| npm | raw-body | 3.0.0 | body-parser | Raw request body |
+| npm | router | 2.2.0 | express | Request routing |
+| npm | safe-buffer | 5.2.1 | express | Safe buffer operations |
+| npm | safer-buffer | 2.1.2 | iconv-lite | Safer buffer utilities |
+| npm | send | 1.1.0 | express | Static file serving |
+| npm | serve-static | 2.2.0 | express | Static file middleware |
+| npm | statuses | 2.0.1 | express | HTTP status codes |
+| npm | type-is | 2.0.0 | body-parser, express | Content-Type checking |
+| npm | utils-merge | 1.0.1 | express | Object merging |
+| npm | vary | 1.1.2 | express | Vary header handling |
+
+### 0.7.3 Dependency Tree (Total: 68 packages)
+
+```
+hello_world@1.0.0
+└── express@5.1.0
+    ├── accepts@2.0.0
+    ├── body-parser@2.2.0
+    ├── content-disposition@1.0.0
+    ├── cookie@0.7.2
+    ├── debug@4.4.0
+    ├── encodeurl@2.0.0
+    ├── escape-html@1.0.3
+    ├── etag@1.8.1
+    ├── finalhandler@2.1.0
+    ├── fresh@2.0.0
+    ├── http-errors@2.0.0
+    ├── merge-descriptors@2.0.0
+    ├── mime-types@3.0.0
+    ├── on-finished@2.4.1
+    ├── parseurl@1.3.3
+    ├── proxy-addr@2.0.7
+    ├── qs@6.14.0
+    ├── range-parser@1.2.1
+    ├── router@2.2.0
+    ├── safe-buffer@5.2.1
+    ├── send@1.1.0
+    ├── serve-static@2.2.0
+    ├── statuses@2.0.1
+    ├── type-is@2.0.0
+    ├── utils-merge@1.0.1
+    └── vary@1.1.2
+```
+
+### 0.7.4 Dependency Changes for Refactoring
+
+**No Dependency Changes Required**
+
+This refactoring is purely structural and does not require any dependency additions, removals, or version changes.
+
+| Action | Packages Affected | Reason |
+|--------|-------------------|--------|
+| ADD | None | Refactoring uses only existing Express features |
+| REMOVE | None | All dependencies still required |
+| UPDATE | None | No version upgrades needed for structural refactoring |
+
+### 0.7.5 Import Statement Updates
+
+**Files Requiring Import Updates:**
+
+| File | Import Changes |
+|------|----------------|
+| server.js | REPLACE: `const express = require('express');` WITH: `const app = require('./src/app');` AND ADD: `const config = require('./src/config');` |
+| src/app.js | ADD: `const express = require('express');` AND `const { mainRoutes } = require('./routes');` |
+| src/routes/main.routes.js | ADD: `const express = require('express');` |
+| src/routes/index.js | ADD: `const mainRoutes = require('./main.routes');` |
+| src/config/index.js | No imports required |
+
+**Import Transformation Rules:**
+
+| Old Pattern | New Pattern | Apply To |
+|-------------|-------------|----------|
+| `const express = require('express');` (in server.js) | `const app = require('./src/app');` | server.js |
+| Direct app definition | Import from module | server.js |
+| Inline constants | Config module import | server.js |
+| `app.get()` route definitions | Router-based definitions | src/routes/main.routes.js |
+
+### 0.7.6 Module Resolution Paths
+
+| Import Statement | Resolution Path |
+|------------------|-----------------|
+| `require('./src/app')` | /src/app.js |
+| `require('./src/config')` | /src/config/index.js |
+| `require('./routes')` | /src/routes/index.js |
+| `require('./main.routes')` | /src/routes/main.routes.js |
+| `require('express')` | node_modules/express |
+
+### 0.7.7 Configuration Reference Updates
+
+**package.json Scripts (No Changes):**
+```json
+{
+  "scripts": {
+    "start": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
 }
-
-Environment Configuration Updates:
-
-All security configurations will reference environment variables:
-
-process.env.NODE_ENV - Environment mode
-
-process.env.PORT - HTTP port
-
-process.env.HTTPS_PORT - HTTPS port
-
-process.env.ALLOWED_ORIGINS - CORS allowed origins
-
-process.env.RATE_LIMIT_MAX - Rate limit threshold
-
-process.env.CERT_PATH - SSL certificate path
-
-process.env.KEY_PATH - SSL key path
-
-0.9.7 Package Manager Operations
-
-Installation Commands:
-
-
-npm install helmet@8.1.0 express-rate-limit@8.2.1 cors@2.8.5 express-validator@7.3.1 dotenv@16.4.5
-
-#### Install development dependencies
-
-npm install --save-dev jest@29.7.0 supertest@6.3.4
-
-#### Force body-parser update via overrides
-
-npm install
-
-#### Verify no vulnerabilities
-
-npm audit
-
-Expected npm audit Output:
-
-found 0 vulnerabilities
-
-Lock File Regeneration:\
-package-lock.json will be automatically updated to reflect:
-
-New direct dependencies
-
-body-parser@2.2.1 override in dependency tree
-
-All transitive dependency resolutions
-
-0.10 Impact Analysis and Testing Strategy
-
-0.10.1 Security Testing Requirements
-
-Vulnerability Regression Tests:
-
-Test that body-parser CVE-2025-13466 is resolved:
-
-describe('body-parser DoS vulnerability', () =&gt; {\
-it('should handle large parameter payloads without DoS', async () =&gt; {\
-// Generate URL-encoded body with 1000+ parameters\
-const largePayload = Array(1000).fill(0)\
-.map((\_, i) =&gt; `param${i}=value${i}`)\
-.join('&');
-
-```plaintext
-const response = await request(app)
-  .post('/test-endpoint')
-  .set('Content-Type', 'application/x-www-form-urlencoded')
-  .send(largePayload)
-  .timeout(5000); // Should not timeout
-
-expect(response.status).not.toBe(503);
 ```
 
-});\
-});
+**Rationale:** The entry point `server.js` remains unchanged, so the `npm start` command continues to work identically.
 
-Security Header Tests:
+### 0.7.8 Known Vulnerabilities (Information Only)
 
-describe('Security Headers', () =&gt; {\
-it('should include helmet security headers', async () =&gt; {\
-const res = await request(app).get('/');
+The following vulnerabilities exist in the current dependency tree but are **out of scope** for this structural refactoring:
 
-```plaintext
-expect(res.headers['x-frame-options']).toBe('DENY');
-expect(res.headers['x-content-type-options']).toBe('nosniff');
-expect(res.headers['strict-transport-security']).toContain('max-age=31536000');
-expect(res.headers['content-security-policy']).toBeDefined();
+| Package | Version | Vulnerability | Severity | Advisory |
+|---------|---------|---------------|----------|----------|
+| body-parser | 2.2.0 | DoS via URL-encoded bodies | Moderate | GHSA-wqch-xfxh-vrr4 |
+| express | 5.0.0-5.1.0 | Query property modification | Low | GHSA-pj86-cfqh-vqx6 |
+
+**Note:** These vulnerabilities are not addressed in this refactoring scope as the user requested only structural changes while maintaining exact functionality. Security fixes would require additional dependency updates.
+
+
+## 0.8 Scope Boundaries
+
+### 0.8.1 Exhaustively In Scope
+
+**Source Transformations:**
+- server.js - Refactor to entry point only
+
+**New File Creation:**
+- src/app.js - Express application configuration
+- src/config/index.js - Configuration management module
+- src/routes/index.js - Route aggregator module
+- src/routes/main.routes.js - Application route handlers
+
+**Directory Creation:**
+- src/ - Application source root
+- src/config/ - Configuration modules
+- src/routes/ - Route modules
+
+**Configuration Files:**
+- package.json - No changes (entry point unchanged)
+- package-lock.json - No changes (no dependency changes)
+- .gitignore - No changes (already covers necessary patterns)
+
+**Documentation:**
+- README.md - No changes (preserving existing content)
+- blitzy/documentation/* - No changes (preserving existing documentation)
+
+**Route Handlers (Exact Preservation):**
+- GET `/` - Response: `"Hello, World!\n"`
+- GET `/evening` - Response: `"Good evening"`
+
+**Server Configuration (Preserved):**
+- Host binding: `127.0.0.1`
+- Port binding: `3000`
+- Startup message: `"Server running at http://127.0.0.1:3000/"`
+
+### 0.8.2 Explicitly Out of Scope
+
+**Functional Changes:**
+- ❌ Adding new routes or endpoints
+- ❌ Modifying response content or format
+- ❌ Changing HTTP methods or status codes
+- ❌ Adding authentication or authorization
+- ❌ Adding request logging middleware
+- ❌ Adding error handling middleware
+- ❌ Adding body parsing middleware beyond defaults
+
+**Dependency Changes:**
+- ❌ Adding new npm packages
+- ❌ Removing existing packages
+- ❌ Updating package versions
+- ❌ Fixing security vulnerabilities (body-parser, express)
+
+**Infrastructure Changes:**
+- ❌ Docker containerization
+- ❌ CI/CD pipeline configuration
+- ❌ Deployment scripts
+- ❌ Environment-specific configurations
+- ❌ HTTPS/SSL configuration
+
+**Testing:**
+- ❌ Adding test frameworks (jest, mocha)
+- ❌ Writing unit tests
+- ❌ Writing integration tests
+- ❌ Test coverage configuration
+
+**Code Quality:**
+- ❌ ESLint/Prettier configuration
+- ❌ Code style formatting
+- ❌ TypeScript migration
+- ❌ JSDoc documentation
+
+**Performance:**
+- ❌ Caching strategies
+- ❌ Compression middleware
+- ❌ Rate limiting
+- ❌ Performance monitoring
+
+**Security Hardening:**
+- ❌ Helmet.js security headers
+- ❌ CORS configuration
+- ❌ Input validation
+- ❌ Sanitization middleware
+
+**Database:**
+- ❌ Database connections
+- ❌ ORM/ODM integration
+- ❌ Models or schemas
+
+### 0.8.3 Boundary Validation
+
+**In-Scope Validation:**
+
+| Item | In Scope | Validation |
+|------|----------|------------|
+| Restructure server.js | ✅ | Code refactored to import from modules |
+| Create src/app.js | ✅ | File exists with Express app export |
+| Create src/config/index.js | ✅ | File exists with config export |
+| Create src/routes/main.routes.js | ✅ | File exists with router export |
+| Create src/routes/index.js | ✅ | File exists with route aggregation |
+| Preserve GET `/` response | ✅ | Returns "Hello, World!\n" |
+| Preserve GET `/evening` response | ✅ | Returns "Good evening" |
+| Preserve server binding | ✅ | Binds to 127.0.0.1:3000 |
+| Preserve startup message | ✅ | Logs exact message |
+| npm start works | ✅ | Server starts successfully |
+
+**Out-of-Scope Validation:**
+
+| Item | Out of Scope | Reason |
+|------|--------------|--------|
+| Add new routes | ❌ | User requested exact functionality preservation |
+| Update dependencies | ❌ | No dependency changes requested |
+| Add security middleware | ❌ | Functional change not requested |
+| Add test framework | ❌ | Not part of refactoring scope |
+| Fix vulnerabilities | ❌ | Would require dependency updates |
+
+### 0.8.4 File Scope Matrix
+
+| File Path | Create | Update | Delete | No Change |
+|-----------|--------|--------|--------|-----------|
+| server.js | | ✅ | | |
+| src/app.js | ✅ | | | |
+| src/config/index.js | ✅ | | | |
+| src/routes/index.js | ✅ | | | |
+| src/routes/main.routes.js | ✅ | | | |
+| package.json | | | | ✅ |
+| package-lock.json | | | | ✅ |
+| .gitignore | | | | ✅ |
+| README.md | | | | ✅ |
+| blitzy/documentation/* | | | | ✅ |
+
+### 0.8.5 Scope Change Control
+
+**If scope changes are requested, evaluate against:**
+
+1. **Functionality Impact**: Does it change existing behavior?
+2. **Dependency Impact**: Does it require new/updated packages?
+3. **Compatibility Impact**: Does it affect Node.js/Express compatibility?
+4. **Entry Point Impact**: Does it change how `npm start` works?
+
+**Change Request Process:**
+- Changes within scope: Proceed with implementation
+- Changes outside scope: Require explicit user approval
+- Breaking changes: Must be flagged and documented
+
+### 0.8.6 Wildcard Pattern Summary
+
+**Files In Scope (Specific Paths):**
+```
+server.js
+src/app.js
+src/config/index.js
+src/routes/index.js
+src/routes/main.routes.js
 ```
 
-});
-
-it('should not expose X-Powered-By header', async () =&gt; {\
-const res = await request(app).get('/');\
-expect(res.headers\['x-powered-by'\]).toBeUndefined();\
-});\
-});
-
-Rate Limiting Tests:
-
-describe('Rate Limiting', () =&gt; {\
-it('should enforce rate limits after threshold', async () =&gt; {\
-// Make 100 requests (at limit)\
-for (let i = 0; i &lt; 100; i++) {\
-await request(app).get('/');\
-}
-
-```plaintext
-// 101st request should be rate limited
-const res = await request(app).get('/');
-expect(res.status).toBe(429);
-expect(res.text).toContain('Too many requests');
+**Files Out of Scope (Explicit Exclusions):**
+```
+package.json
+package-lock.json
+.gitignore
+README.md
+blitzy/**/*
+node_modules/**/*
 ```
 
-});
-
-it('should include rate limit headers', async () =&gt; {\
-const res = await request(app).get('/');\
-expect(res.headers\['ratelimit-limit'\]).toBeDefined();\
-expect(res.headers\['ratelimit-remaining'\]).toBeDefined();\
-});\
-});
-
-CORS Tests:
-
-describe('CORS Configuration', () =&gt; {\
-it('should allow configured origins', async () =&gt; {\
-const res = await request(app)\
-.get('/')\
-.set('Origin', '<http://localhost:3000>');
-
-```plaintext
-expect(res.headers['access-control-allow-origin']).toBe('http://localhost:3000');
+**Directories Created:**
+```
+src/
+src/config/
+src/routes/
 ```
 
-});
 
-it('should reject non-whitelisted origins', async () =&gt; {\
-const res = await request(app)\
-.get('/')\
-.set('Origin', '<http://evil.com>');
+## 0.9 Special Instructions for Refactoring
 
-```plaintext
-expect(res.headers['access-control-allow-origin']).toBeUndefined();
+### 0.9.1 User-Emphasized Requirements
+
+The user explicitly emphasized the following requirements:
+
+> "Rewrite this Node.js server into a express.js refactor, keeping every feature and functionality exactly as in the original Node.js project."
+
+> "Ensure the rewritten version fully matches the behavior and logic of the current implementation."
+
+### 0.9.2 Refactoring-Specific Mandates
+
+**MUST Preserve:**
+- All existing route handlers with identical behavior
+- All response content exactly as currently implemented
+- Server binding configuration (127.0.0.1:3000)
+- Startup logging message format
+- npm start command functionality
+- Express 5.1.0 as the web framework
+
+**MUST Apply:**
+- Express.js project structure best practices
+- Separation of app configuration from server initialization
+- Modular route organization using express.Router()
+- Configuration externalization with environment variable support
+- Clean module exports and imports
+
+**MUST NOT:**
+- Add any new dependencies
+- Remove any existing dependencies
+- Change any HTTP response content
+- Modify route paths or methods
+- Add middleware not present in original implementation
+- Change the entry point from server.js
+
+### 0.9.3 Code Quality Standards
+
+| Standard | Requirement |
+|----------|-------------|
+| Module Exports | Each module must have a single, clear export |
+| Function Purity | Route handlers must remain synchronous and stateless |
+| Configuration | Use environment variables with hard-coded defaults |
+| Naming | Follow existing naming conventions (lowercase, kebab-case for files) |
+| Comments | Minimal comments - code should be self-documenting |
+
+### 0.9.4 Backward Compatibility Checklist
+
+| Compatibility Aspect | Requirement | Verification |
+|---------------------|-------------|--------------|
+| Entry point | server.js | `node server.js` starts app |
+| npm start | Works identically | `npm start` starts app |
+| Root route | GET `/` returns "Hello, World!\n" | curl verification |
+| Evening route | GET `/evening` returns "Good evening" | curl verification |
+| Server host | Binds to 127.0.0.1 | netstat/ss verification |
+| Server port | Listens on 3000 | netstat/ss verification |
+| Startup message | Exact format preserved | Console output check |
+
+### 0.9.5 Validation Commands
+
+**Pre-Refactoring Baseline Capture:**
+```bash
+# Capture current behavior
+npm start &
+sleep 2
+curl -s http://127.0.0.1:3000/ > /tmp/baseline_root.txt
+curl -s http://127.0.0.1:3000/evening > /tmp/baseline_evening.txt
+kill %1
 ```
 
-});
-
-it('should handle preflight OPTIONS requests', async () =&gt; {\
-const res = await request(app)\
-.options('/')\
-.set('Origin', '<http://localhost:3000>')\
-.set('Access-Control-Request-Method', 'POST');
-
-```plaintext
-expect(res.status).toBe(204);
-expect(res.headers['access-control-allow-methods']).toContain('POST');
+**Post-Refactoring Validation:**
+```bash
+# Validate refactored behavior matches baseline
+npm start &
+sleep 2
+curl -s http://127.0.0.1:3000/ | diff - /tmp/baseline_root.txt
+curl -s http://127.0.0.1:3000/evening | diff - /tmp/baseline_evening.txt
+kill %1
 ```
 
-});\
-});
-
-Input Validation Tests:
-
-describe('Input Validation', () =&gt; {\
-it('should reject invalid input', async () =&gt; {\
-const res = await request(app)\
-.get('/')\
-.query({ name: '' });
-
-```plaintext
-// Validation should sanitize or reject
-expect(res.body.name).not.toContain('<script>');
-```
-
-});
-
-it('should validate and sanitize user input', async () =&gt; {\
-const res = await request(app)\
-.post('/api/user')\
-.send({ email: 'test@example.com  ' });
-
-```plaintext
-// Should trim whitespace
-expect(res.body.email).toBe('test@example.com');
-```
-
-});\
-});
-
-HTTPS Tests:
-
-describe('HTTPS Configuration', () =&gt; {\
-it('should accept HTTPS connections', async () =&gt; {\
-const agent = new https.Agent({ rejectUnauthorized: false });
-
-```plaintext
-const res = await request.agent(app)
-  .get('/')
-  .set('Host', 'localhost:3443')
-  .agent(agent);
-
-expect(res.status).toBe(200);
-```
-
-});\
-});
-
-0.10.2 Integration and Compatibility Tests
-
-Backward Compatibility Tests:
-
-describe('Existing Routes Compatibility', () =&gt; {\
-it('GET / should return HTML with 200', async () =&gt; {\
-const res = await request(app).get('/');\
-expect(res.status).toBe(200);\
-expect(res.type).toBe('text/html');\
-expect(res.text).toContain('hao-backprop-test');\
-});
-
-it('GET /evening should return HTML with 200', async () =&gt; {\
-const res = await request(app).get('/evening');\
-expect(res.status).toBe(200);\
-expect(res.type).toBe('text/html');\
-expect(res.text).toContain('evening');\
-});
-
-it('should maintain response content after security changes', async () =&gt; {\
-const beforeSecurity = '
-
-# Hello from hao-backprop-test
-
-';\
-const res = await request(app).get('/');\
-expect(res.text).toBe(beforeSecurity);\
-});\
-});
-
-0.10.3 Verification Methods
-
-Automated Security Scanning:
-
-# npm audit for dependency vulnerabilities
-
-npm audit
-
-# Expected: 0 vulnerabilities
-
-#### Security header validation
-
-curl -I <https://localhost:3443/>
-
-#### Should show: X-Frame-Options, CSP, HSTS, etc.
-
-#### Rate limit testing
-
-for i in {1..101}; do curl <http://localhost:3000/>; done
-
-#### 101st request should return 429
-
-Manual Verification Steps:
-
-Verify body-parser patch:
-
-npm list body-parser
-
-# Should show body-parser@2.2.1
-
-Verify security headers:
-
-Open browser DevTools → Network
-
-Load <https://localhost:3443/>
-
-Check Response Headers for helmet protections
-
-Test rate limiting:
-
-Use browser or curl to make 100+ requests rapidly
-
-Verify 429 Too Many Requests response
-
-Test CORS:
-
-Create simple HTML page with fetch to localhost:3000
-
-Verify CORS headers allow/deny appropriately
-
-Test HTTPS:
-
-Navigate to <https://localhost:3443/>
-
-Accept self-signed certificate warning
-
-Verify secure connection established
-
-Security Scanning Tools:
-
-# Use Mozilla Observatory
-
-# <https://observatory.mozilla.org/>
-
-#### Use [securityheaders.com](http://securityheaders.com)
-
-## <https://securityheaders.com/>
-
-#### Use OWASP ZAP for penetration testing
-
-zap-cli quick-scan --self-contained --start-options '-config api.disablekey=true' <http://localhost:3000>
-
-0.10.4 Impact Assessment
-
-Direct Security Improvements Achieved:
-
-Improvement
-
-Metric
-
-Before
-
-After
-
-Dependency Vulnerabilities
-
-npm audit
-
-1 moderate
-
-0 vulnerabilities
-
-Security Headers
-
-Header count
-
-2 (basic)
-
-10+ (comprehensive)
-
-XSS Protection
-
-CSP coverage
-
-0%
-
-100%
-
-Rate Limiting
-
-Requests/15min
-
-Unlimited
-
-100 max
-
-HTTPS Support
-
-Encryption
-
-None
-
-TLS 1.2/1.3
-
-Input Validation
-
-Routes validated
-
-0/2
-
-2/2
-
-CORS Control
-
-Origins allowed
-
-All (\*)
-
-Whitelist only
-
-Minimal Side Effects on Existing Functionality:
-
-✅ No breaking changes to public APIs
-
-✅ Existing routes function identically
-
-✅ Response content unchanged
-
-✅ No new required parameters
-
-✅ Backward compatible middleware addition
-
-Potential Impacts and Mitigations:
-
-Potential Impact
-
-Mitigation
-
-Rate limiting blocks legitimate traffic
-
-Configure higher limits or whitelist IPs
-
-CORS blocks valid cross-origin requests
-
-Add origins to ALLOWED_ORIGINS env var
-
-CSP breaks inline scripts
-
-Update CSP directives or refactor code
-
-HTTPS certificate warnings
-
-Use proper CA-signed cert in production
-
-Performance overhead from middleware
-
-Minimal impact (&lt;5ms per request)
-
-0.10.5 Test Execution Plan
-
-Test Categories:
-
-{\
-"test:all": "jest --coverage",\
-"test:security": "jest tests/security.test.js",\
-"test:integration": "jest tests/integration.test.js",\
-"test:watch": "jest --watch",\
-"test:ci": "CI=true jest --ci --coverage --maxWorkers=2"\
-}
-
-Coverage Requirements:
-
-Security middleware: 100% coverage
-
-Route handlers: 100% coverage
-
-Validation functions: 100% coverage
-
-Error handlers: 100% coverage
-
-Continuous Integration:
-
-# .github/workflows/security-tests.yml
-
-name: Security Tests\
-on: \[push, pull_request\]\
-jobs:\
-test:\
-runs-on: ubuntu-latest\
-steps:\
-- uses: actions/checkout@v3\
-- uses: actions/setup-node@v3\
-- run: npm ci\
-- run: npm audit\
-- run: npm test
-
-0.11 Scope Boundaries
-
-0.11.1 Exhaustively In Scope
-
-Dependency Management Files:
-
-package.json (add dependencies, overrides, scripts)
-
-package-lock.json (regenerated automatically)
-
-node_modules/ (managed by npm, body-parser updated)
-
-Application Core Files:
-
-server.js (security middleware integration, HTTPS setup)
-
-Security Configuration Files:
-
-middleware/security.js (helmet, rate-limit, CORS configuration)
-
-middleware/validation.js (express-validator middleware)
-
-config/security-config.js (centralized security policies)
-
-Environment Configuration:
-
-.env.example (environment variables template)
-
-.env (local development configuration)
-
-.gitignore (add .env, certificates/\*.pem to ignore patterns)
-
-SSL/TLS Certificates:
-
-certificates/cert.pem (self-signed SSL certificate)
-
-certificates/key.pem (SSL private key)
-
-certificates/.gitkeep (directory placeholder)
-
-scripts/generate-certs.sh (certificate generation script)
-
-Testing Files:
-
-tests/security.test.js (security feature validation)
-
-tests/integration.test.js (backward compatibility tests)
-
-tests/\*\*/\*.test.js (any additional test files)
-
-Documentation:
-
-[README.md](http://README.md) (security setup, configuration, deployment)
-
-[SECURITY.md](http://SECURITY.md) (security policies and reporting - optional but recommended)
-
-Specific File Patterns:
-
-All files matching: server.js
-
-All files matching: package\*.json
-
-All files matching: middleware/\*\*/\*.js
-
-All files matching: config/\*\*/\*.js
-
-All files matching: tests/\*\*/\*.test.js
-
-All files matching: certificates/\*\*/\*
-
-All files matching: scripts/\*.sh
-
-All files matching: .env\*
-
-All files matching: .gitignore
-
-Routes Requiring Security Enhancements:
-
-GET / (add validation, maintain functionality)
-
-GET /evening (add validation, maintain functionality)
-
-All future POST/PUT/DELETE routes (validation ready)
-
-HTTP/HTTPS Servers:
-
-HTTP server on port 3000 (existing, add security middleware)
-
-HTTPS server on port 3443 (new, with certificates)
-
-0.11.2 Explicitly Out of Scope
-
-Feature Additions Unrelated to Security:
-
-❌ New business logic routes
-
-❌ Database integration
-
-❌ Authentication/authorization systems (unless user specifies)
-
-❌ User management
-
-❌ Session management
-
-❌ API versioning
-
-❌ Logging infrastructure beyond console
-
-❌ Monitoring and observability tools
-
-❌ CI/CD pipeline setup (unless security-related tests)
-
-Performance Optimizations:
-
-❌ Caching strategies
-
-❌ Load balancing
-
-❌ Database query optimization
-
-❌ Asset compression
-
-❌ CDN integration
-
-Non-Security Code Refactoring:
-
-❌ Code style changes
-
-❌ ESLint/Prettier setup
-
-❌ TypeScript migration
-
-❌ Directory restructuring beyond security modules
-
-❌ Modularizing existing routes
-
-Non-Vulnerable Dependencies:
-
-❌ express@5.1.0 update (current version is latest and secure)
-
-❌ Other transitive dependencies without vulnerabilities
-
-❌ Development dependencies without security issues
-
-Infrastructure Beyond Application:
-
-❌ Docker containerization
-
-❌ Kubernetes configuration
-
-❌ Cloud deployment scripts
-
-❌ Reverse proxy configuration (nginx, Apache)
-
-❌ DNS configuration
-
-❌ Firewall rules
-
-Testing Beyond Security:
-
-❌ Performance testing
-
-❌ Load testing
-
-❌ UI/UX testing
-
-❌ End-to-end browser tests
-
-❌ Accessibility testing
-
-Documentation Beyond Security:
-
-❌ API documentation (Swagger/OpenAPI)
-
-❌ Architecture diagrams
-
-❌ User guides
-
-❌ Contribution guidelines
-
-Deployment and Operations:
-
-❌ Production server provisioning
-
-❌ Database setup
-
-❌ Backup strategies
-
-❌ Disaster recovery plans
-
-❌ Scaling strategies
-
-0.11.3 Conditional Scope Items
-
-Items that MAY be included if explicitly needed:
-
-Authentication: Only if user specifies or required for rate limiting bypass
-
-Logging: Enhanced security logging if needed for audit trails
-
-Error Handling: Custom error pages to prevent information leakage
-
-Health Checks: Endpoint for load balancer health checks
-
-Metrics: Security metrics endpoint for monitoring
-
-Environment-Specific Configuration:
-
-Development: Self-signed certificates, relaxed rate limits
-
-Staging: Production-like security with testing allowances
-
-Production: Strict security, CA-signed certificates
-
-0.11.4 Boundary Validation
-
-In-Scope Validation Checklist:
-
-✅ All security headers configured via helmet.js\
-✅ Rate limiting applied to all routes\
-✅ CORS configured for cross-origin requests\
-✅ Input validation ready for all current and future routes\
-✅ HTTPS support with certificate management\
-✅ body-parser vulnerability patched\
-✅ Security tests cover all new functionality\
-✅ Documentation explains all security features\
-✅ Environment configuration supports dev/staging/prod\
-✅ Existing routes maintain backward compatibility
-
-Out-of-Scope Confirmation:
-
-❌ No new business features added\
-❌ No authentication/authorization implemented\
-❌ No database connections created\
-❌ No performance optimization beyond security\
-❌ No code style or linting changes\
-❌ No infrastructure provisioning scripts\
-❌ No non-security refactoring
-
-Gray Area Resolution:
-
-Item
-
-Decision
-
-Rationale
-
-Environment variable validation
-
-IN SCOPE
-
-Required for secure configuration
-
-Error handler that hides stack traces
-
-IN SCOPE
-
-Prevents information leakage
-
-Request logging middleware
-
-OUT OF SCOPE
-
-Not explicitly requested, can add later
-
-API documentation
-
-OUT OF SCOPE
-
-Not security-related
-
-Health check endpoint
-
-OUT OF SCOPE
-
-Not explicitly requested
-
-Graceful shutdown handling
-
-IN SCOPE
-
-Prevents incomplete request handling
-
-0.12 Execution Parameters
-
-0.12.1 Security Verification Commands
-
-Dependency Vulnerability Scan:
-
-npm audit
-
-# Expected output: found 0 vulnerabilities
-
-Full Dependency Update:
-
-npm install
-
-# Installs new dependencies and applies body-parser override
-
-Security Test Execution:
-
-npm test
-
-# Runs Jest test suite including security and integration tests
-
-npm run test:security
-
-# Runs only security-specific tests
-
-npm run test:coverage
-
-# Generates coverage report, should show &gt;90% coverage
-
-Manual Security Validation:
-
-# Check installed body-parser version
-
-npm list body-parser
-
-# Should show: body-parser@2.2.1
-
-#### Verify security headers (requires running server)
-
-curl -I <http://localhost:3000/>
-
-#### Should include: X-Frame-Options, CSP, HSTS, etc.
-
-#### Test rate limiting
-
-for i in {1..101}; do curl <http://localhost:3000/> 2&gt;/dev/null | head -1; done
-
-#### 101st request should return HTTP 429
-
-#### Test HTTPS
-
-curl -k <https://localhost:3443/>
-
-#### Should return response over HTTPS
-
-#### Test CORS
-
-curl -H "Origin: <http://example.com>" <http://localhost:3000/>
-
-#### Should show Access-Control-Allow-Origin header
-
-Certificate Generation:
-
-npm run generate-certs
-
-# or manually:
-
-openssl req -nodes -new -x509 \
--keyout certificates/key.pem \
--out certificates/cert.pem \
--days 365 \
--subj "/C=US/ST=State/L=City/O=Organization/CN=localhost"
-
-Application Startup:
-
-# Development mode
-
+**Expected Results:**
+- Both diff commands should produce no output (identical responses)
+- Server startup message should be identical
+- Process should exit cleanly
+
+### 0.9.6 Rollback Plan
+
+If the refactoring introduces issues:
+
+1. **Git Revert**: Restore server.js to original state
+2. **Remove New Files**: Delete src/ directory and contents
+3. **Verify Recovery**: Run `npm start` and test both routes
+4. **Document Issue**: Log what caused the failure
+
+**Rollback Commands:**
+```bash
+# Restore original state
+git checkout HEAD -- server.js
+rm -rf src/
 npm start
+```
 
-#### Production mode
+### 0.9.7 Implementation Sequence
 
-NODE_ENV=production npm start
+The refactoring must be executed in this specific order to maintain a working application at each step:
 
-#### With custom port
+1. **Create Directory Structure**
+   - Create `src/`, `src/config/`, `src/routes/`
 
-PORT=8080 HTTPS_PORT=8443 npm start
+2. **Create Configuration Module**
+   - Create `src/config/index.js`
+   - Extract hostname and port with defaults
 
-0.12.2 Research Documentation
+3. **Create Route Handlers**
+   - Create `src/routes/main.routes.js`
+   - Define both GET routes using Router
 
-Security Advisories Consulted:
+4. **Create Route Aggregator**
+   - Create `src/routes/index.js`
+   - Import and export mainRoutes
 
-body-parser CVE-2025-13466:
+5. **Create App Module**
+   - Create `src/app.js`
+   - Initialize Express, mount routes, export app
 
-Official Advisory: <https://github.com/expressjs/body-parser/security/advisories/GHSA-wqch-xfxh-vrr4>
+6. **Update Entry Point**
+   - Modify `server.js`
+   - Import app and config
+   - Keep only listen() call
 
-CVE Database: <https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2025-13466>
+7. **Validate**
+   - Run syntax check
+   - Start server
+   - Test both routes
+   - Verify identical behavior
 
-Summary: Denial of service vulnerability due to inefficient handling of URL-encoded bodies with very large numbers of parameters
 
-helmet.js Security Headers:
-
-Official Documentation: <https://helmetjs.github.io/>
-
-npm Package: <https://www.npmjs.com/package/helmet>
-
-Express Best Practices: <https://expressjs.com/en/advanced/best-practice-security.html>
-
-Key Insight: Helmet can help protect your app from some well-known web vulnerabilities by setting HTTP headers appropriately as middleware
-
-express-rate-limit:
-
-Official Documentation: <https://express-rate-limit.mintlify.app>
-
-npm Package: <https://www.npmjs.com/package/express-rate-limit>
-
-GitHub Repository: <https://github.com/express-rate-limit/express-rate-limit>
-
-Key Insight: Basic rate-limiting middleware for Express to limit repeated requests to public APIs and endpoints such as password reset
-
-CORS Configuration:
-
-npm Package: <https://www.npmjs.com/package/cors>
-
-Express Documentation: <https://expressjs.com/en/resources/middleware/cors.html>
-
-Key Insight: CORS middleware can be used to enable CORS with various options for Connect/Express
-
-express-validator:
-
-Official Documentation: <https://express-validator.github.io>
-
-npm Package: <https://www.npmjs.com/package/express-validator>
-
-Key Insight: Wraps the extensive collection of validators and sanitizers offered by validator.js to validate and sanitize express requests
-
-OWASP Guidelines Applied:
-
-Input Validation (OWASP ASVS V5)
-
-Security Headers (OWASP Secure Headers Project)
-
-Rate Limiting (OWASP API Security Top 10)
-
-TLS/HTTPS (OWASP Transport Layer Protection Cheat Sheet)
-
-CORS (OWASP CORS Cheat Sheet)
-
-0.12.3 Implementation Constraints
-
-Priority: Security fixes first, minimal disruption second
-
-Backward Compatibility Requirements:
-
-✅ MUST maintain existing route functionality
-
-✅ MUST preserve response content and format
-
-✅ MUST maintain HTTP status codes for existing routes
-
-✅ MUST support existing environment variables (DB_Host, host)
-
-✅ MAY add new environment variables for configuration
-
-Acceptable Breaking Changes for Security:
-
-✅ Rate limiting may return 429 for excessive requests
-
-✅ CORS may block requests from non-whitelisted origins
-
-✅ Input validation may reject malformed requests with 400
-
-✅ Security headers may cause CSP violations if inline scripts used
-
-Deployment Considerations:
-
-Immediate Deployment (Development/Testing):
-
-# Quick security enhancement
-
-npm install\
-npm run generate-certs\
-npm start
-
-Staged Production Deployment:
-
-Stage 1: Deploy with rate limiting disabled to monitor baseline
-
-Stage 2: Enable rate limiting with high threshold (1000 req/15min)
-
-Stage 3: Gradually reduce to production threshold (100 req/15min)
-
-Stage 4: Enable strict CSP after validating no inline script usage
-
-Stage 5: Enforce HTTPS-only with HSTS preload
-
-Rollback Plan:
-
-# Revert to previous version
-
-git checkout HEAD\~1 package.json server.js\
-npm install\
-npm start
-
-#### Or use git tag
-
-git checkout v1.0.0\
-npm install\
-npm start
-
-0.12.4 Compliance and Standards
-
-Security Standards Compliance:
-
-Standard
-
-Requirement
-
-Implementation
-
-OWASP Top 10
-
-A03:2021 Injection
-
-express-validator input sanitization
-
-OWASP Top 10
-
-A05:2021 Security Misconfiguration
-
-helmet.js security headers
-
-OWASP Top 10
-
-A07:2021 Identification and Authentication Failures
-
-Rate limiting for brute-force protection
-
-OWASP API Security
-
-API4:2023 Unrestricted Resource Consumption
-
-express-rate-limit throttling
-
-OWASP API Security
-
-API7:2023 Server Side Request Forgery
-
-Input validation on all parameters
-
-CWE-400
-
-Uncontrolled Resource Consumption
-
-body-parser 2.2.1 patch
-
-CWE-79
-
-Cross-site Scripting (XSS)
-
-CSP headers + input sanitization
-
-CWE-352
-
-Cross-Site Request Forgery (CSRF)
-
-CORS configuration + SameSite cookies
-
-Audit Trail Requirements:
-
-// Security event logging\
-console.log('\[SECURITY\]', {\
-event: 'rate_limit_exceeded',\
-ip: req.ip,\
-path: req.path,\
-timestamp: new Date().toISOString()\
-});
-
-0.12.5 Performance Considerations
-
-Middleware Overhead:
-
-Middleware
-
-Avg Latency
-
-Impact
-
-helmet()
-
-&lt;1ms
-
-Negligible
-
-rateLimit()
-
-1-2ms
-
-Low
-
-cors()
-
-&lt;1ms
-
-Negligible
-
-express-validator
-
-2-5ms
-
-Low (only on validated routes)
-
-HTTPS
-
-5-10ms
-
-Low (TLS handshake)
-
-Total Overhead: 5-15ms per request (acceptable for most applications)
-
-Optimization Recommendations:
-
-Use in-memory store for rate limiting (default)
-
-Cache CORS origin checks
-
-Compile validation chains once at startup
-
-Use persistent HTTPS connections (keep-alive)
-
-0.12.6 Monitoring and Alerting
-
-Key Metrics to Monitor:
-
-// Example monitoring integration points\
-{\
-"security.rate_limit.hits": "Counter of rate limit violations",\
-"security.cors.blocked": "Counter of CORS-blocked requests",\
-"security.validation.failed": "Counter of validation failures",\
-"security.https.connections": "Gauge of active HTTPS connections",\
-"security.body_parser.version": "2.2.1" // Ensure patch applied\
-}
-
-Alert Triggers:
-
-Rate limit violations &gt; 100/hour → Potential DDoS attack
-
-CORS blocks &gt; 50/hour → Configuration issue or scan attempt
-
-Validation failures &gt; 200/hour → Attack or integration issue
-
-body-parser not at 2.2.1 → Critical security regression
-## 0.1 Core Security Objective
-## 0.2 Special Instructions and Constraints
-## 0.3 Technical Interpretation
-## 0.4 Vulnerability Research and Analysis
-## 0.5 Security Scope Analysis
-## 0.6 Version Compatibility Research
-## 0.7 Security Fix Design
-## 0.8 File Transformation Mapping
-## 0.9 Dependency Inventory
-## 0.10 Impact Analysis and Testing Strategy
-## 0.11 Scope Boundaries
-## 0.12 Execution Parameters
