@@ -1,11 +1,16 @@
 /**
  * HTTP Server Entry Point
  * 
- * This file serves as the entry point for the Express application.
- * It imports the configured Express app from src/app.js and starts
- * the HTTP server using configuration from src/config.
+ * This file serves as the application entry point only, responsible for
+ * starting the HTTP server. Express application configuration and routes
+ * are separated into their respective modules per Express.js best practices.
  * 
- * Startup: npm start or node server.js
+ * This separation enables:
+ * - Unit testing the Express app without starting the HTTP server
+ * - Clean separation of concerns
+ * - Environment-based configuration
+ * 
+ * Entry point: npm start -> node server.js
  * 
  * @module server
  */
