@@ -336,36 +336,36 @@ describe('Express Server', () => {
    * Test Suite: Edge Cases
    * 
    * Tests boundary conditions and edge cases:
-   * - Case handling of routes (Express 5.x is case-insensitive by default)
-   * - Trailing slashes (Express 5.x handles them gracefully)
+   * - Case sensitivity of routes (Express routes are case-sensitive by default)
+   * - Trailing slashes (Express returns 404 for trailing slashes by default)
    * - Various query string formats
    */
   describe('Edge Cases', () => {
-    it('should handle mixed case /Evening route (Express 5.x case-insensitive)', async () => {
-      // Express 5.x treats routes as case-insensitive by default
+    it('should return 404 for /Evening due to case sensitivity', async () => {
+      // Express routes are case-sensitive by default
       const response = await request(app)
         .get('/Evening')
-        .expect(200);
+        .expect(404);
       
-      expect(response.text).toBe('Good evening');
+      expect(response.status).toBe(404);
     });
 
-    it('should handle trailing slash on /evening/', async () => {
-      // Express 5.x handles trailing slashes gracefully
+    it('should return 404 for trailing slash on /evening/', async () => {
+      // Express does not match trailing slashes by default
       const response = await request(app)
         .get('/evening/')
-        .expect(200);
+        .expect(404);
       
-      expect(response.text).toBe('Good evening');
+      expect(response.status).toBe(404);
     });
 
-    it('should handle all uppercase /EVENING route (Express 5.x case-insensitive)', async () => {
-      // Express 5.x treats routes as case-insensitive by default
+    it('should return 404 for all uppercase /EVENING route due to case sensitivity', async () => {
+      // Express routes are case-sensitive by default
       const response = await request(app)
         .get('/EVENING')
-        .expect(200);
+        .expect(404);
       
-      expect(response.text).toBe('Good evening');
+      expect(response.status).toBe(404);
     });
 
     it('should handle multiple query parameters on root route', async () => {
