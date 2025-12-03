@@ -18,7 +18,8 @@
  * @description Rate limiting configuration (defaults from config/security.js):
  * - windowMs: 900000ms (15 minutes)
  * - limit: 100 requests per IP per window
- * - standardHeaders: 'draft-8' (RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset)
+ * - standardHeaders: 'draft-8' (combined RateLimit header per IETF draft-8)
+ *   Format: "policy"; r=remaining; t=reset_seconds
  * - legacyHeaders: false (no X-RateLimit-* headers)
  * - message: 'Too many requests from this IP, please try again after 15 minutes.'
  * 
@@ -28,13 +29,23 @@
  * 
  * @example
  * // Run tests with Jest
- * npm test -- tests/security/test_rate_limit.js
+ * TRUST_PROXY=true npm test -- tests/security/test_rate_limit.js
  * 
  * @see https://www.npmjs.com/package/express-rate-limit
  * @see https://datatracker.ietf.org/doc/draft-ietf-httpapi-ratelimit-headers/
  */
 
 'use strict';
+
+// =============================================================================
+// Environment Configuration (MUST be set BEFORE importing the app)
+// =============================================================================
+
+/**
+ * Enable trust proxy for X-Forwarded-For header support in tests.
+ * This is required for per-IP rate limit testing.
+ */
+process.env.TRUST_PROXY = 'true';
 
 // =============================================================================
 // Test Dependencies
@@ -51,6 +62,66 @@ const request = require('supertest');
  * Imports the app from server.js which includes express-rate-limit middleware.
  */
 const { app } = require('../../server');
+
+// =============================================================================
+// IETF Draft-8 RateLimit Header Parsers
+// =============================================================================
+
+/**
+ * Parse IETF draft-8 combined RateLimit header.
+ * The draft-8 format uses a combined header: "policy-name"; r=remaining; t=reset_seconds
+ * Example: "100-in-15min"; r=99; t=900
+ * 
+ * @param {string} headerValue - The value of the ratelimit header
+ * @returns {Object} Parsed rate limit info { remaining, reset }
+ */
+function parseDraft8RateLimitHeader(headerValue) {
+  if (!headerValue) {
+    return { remaining: null, reset: null };
+  }
+  
+  const parts = headerValue.split(';').map(p => p.trim());
+  let remaining = null;
+  let reset = null;
+  
+  for (const part of parts) {
+    if (part.startsWith('r=')) {
+      remaining = parseInt(part.substring(2), 10);
+    } else if (part.startsWith('t=')) {
+      reset = parseInt(part.substring(2), 10);
+    }
+  }
+  
+  return { remaining, reset };
+}
+
+/**
+ * Parse RateLimit-Policy header for limit information.
+ * Format: "policy-name"; q=limit; w=window_seconds; pk=:base64:
+ * Example: "100-in-15min"; q=100; w=900; pk=:MTJjYTE3YjQ5YWYy:
+ * 
+ * @param {string} headerValue - The value of the ratelimit-policy header
+ * @returns {Object} Parsed policy info { limit, windowSeconds }
+ */
+function parseDraft8PolicyHeader(headerValue) {
+  if (!headerValue) {
+    return { limit: null, windowSeconds: null };
+  }
+  
+  const parts = headerValue.split(';').map(p => p.trim());
+  let limit = null;
+  let windowSeconds = null;
+  
+  for (const part of parts) {
+    if (part.startsWith('q=')) {
+      limit = parseInt(part.substring(2), 10);
+    } else if (part.startsWith('w=')) {
+      windowSeconds = parseInt(part.substring(2), 10);
+    }
+  }
+  
+  return { limit, windowSeconds };
+}
 
 // =============================================================================
 // Test Constants
@@ -143,29 +214,47 @@ async function makeSequentialRequests(count, endpoint = '/', headers = {}) {
 
 /**
  * Extracts rate limit headers from a response object.
- * Handles both draft-8 standard headers and legacy X-RateLimit headers.
+ * Handles draft-8 combined RateLimit header format.
+ * 
+ * Draft-8 format:
+ * - ratelimit: "policy-name"; r=remaining; t=reset_seconds
+ * - ratelimit-policy: "policy-name"; q=limit; w=window_seconds; pk=:base64:
  * 
  * @function extractRateLimitHeaders
  * @param {Object} response - Supertest response object
  * @returns {Object} Object containing extracted rate limit header values
- * @returns {string|undefined} return.limit - Maximum requests allowed
- * @returns {string|undefined} return.remaining - Requests remaining in window
- * @returns {string|undefined} return.reset - Time when window resets (Unix timestamp)
+ * @returns {number|null} return.limit - Maximum requests allowed
+ * @returns {number|null} return.remaining - Requests remaining in window
+ * @returns {number|null} return.reset - Seconds until rate limit resets
  * @returns {string|undefined} return.retryAfter - Seconds until retry is allowed (when limited)
+ * @returns {string|undefined} return.rawRateLimit - Raw combined ratelimit header
+ * @returns {string|undefined} return.rawPolicy - Raw ratelimit-policy header
  * 
  * @example
  * const response = await request(app).get('/');
  * const headers = extractRateLimitHeaders(response);
- * console.log(headers.remaining); // '99'
+ * console.log(headers.remaining); // 99
  */
 function extractRateLimitHeaders(response) {
+  // Get raw headers
+  const rawRateLimit = response.headers['ratelimit'];
+  const rawPolicy = response.headers['ratelimit-policy'];
+  
+  // Parse draft-8 combined headers
+  const rateLimitParsed = parseDraft8RateLimitHeader(rawRateLimit);
+  const policyParsed = parseDraft8PolicyHeader(rawPolicy);
+  
   return {
-    // Draft-8 standard headers (primary)
-    limit: response.headers['ratelimit-limit'],
-    remaining: response.headers['ratelimit-remaining'],
-    reset: response.headers['ratelimit-reset'],
+    // Draft-8 parsed values
+    limit: policyParsed.limit,
+    remaining: rateLimitParsed.remaining,
+    reset: rateLimitParsed.reset,
+    windowSeconds: policyParsed.windowSeconds,
     // Retry-After header (sent when rate limited)
     retryAfter: response.headers['retry-after'],
+    // Raw headers for debugging
+    rawRateLimit: rawRateLimit,
+    rawPolicy: rawPolicy,
     // Legacy headers (if enabled - should be undefined with current config)
     legacyLimit: response.headers['x-ratelimit-limit'],
     legacyRemaining: response.headers['x-ratelimit-remaining'],
