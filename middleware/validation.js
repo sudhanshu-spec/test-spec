@@ -451,7 +451,7 @@ const validationMiddleware = (type = 'default', options = {}) => {
         ])
       ];
 
-    case 'jsonBody':
+    case 'jsonBody': {
       // Validation for JSON body requests
       const { fields = [] } = options;
       const validations = fields.map((field) => {
@@ -466,14 +466,16 @@ const validationMiddleware = (type = 'default', options = {}) => {
         });
       });
       return [validateRequest(validations)];
+    }
 
-    case 'custom':
+    case 'custom': {
       // Custom validation with user-provided validation chains
-      const { validations = [] } = options;
-      if (!Array.isArray(validations) || validations.length === 0) {
+      const { validations: customValidations = [] } = options;
+      if (!Array.isArray(customValidations) || customValidations.length === 0) {
         throw new Error('Custom validation type requires a non-empty validations array in options');
       }
-      return [validateRequest(validations)];
+      return [validateRequest(customValidations)];
+    }
 
     default:
       // Fallback to basic sanitization
