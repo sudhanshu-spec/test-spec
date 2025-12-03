@@ -285,9 +285,38 @@ function createSecurityMiddleware() {
     }
   };
 
-  // Build CORS configuration with loaded settings
+  // Build CORS configuration with function-based origin validator
+  // Using a function instead of static string ensures unauthorized origins
+  // don't receive any CORS headers (stricter security model)
+  const allowedOrigin = config.cors.origin;
+  
+  /**
+   * Origin validation function for CORS middleware.
+   * Only adds CORS headers when the request origin matches the whitelist.
+   * Non-matching origins receive no CORS headers, causing browser blocking.
+   * 
+   * @param {string|undefined} requestOrigin - The Origin header from the request
+   * @param {Function} callback - Callback(err, allow) to signal CORS decision
+   */
+  const originValidator = (requestOrigin, callback) => {
+    // Allow requests with no origin (same-origin requests, non-browser clients)
+    if (!requestOrigin) {
+      return callback(null, true);
+    }
+    
+    // Check if origin matches the configured allowed origin
+    if (requestOrigin === allowedOrigin) {
+      // Origin is whitelisted - add CORS headers with the origin value
+      return callback(null, true);
+    }
+    
+    // Origin not whitelisted - don't add CORS headers
+    // This is more secure than returning a static string for all origins
+    return callback(null, false);
+  };
+  
   const corsOptions = {
-    origin: config.cors.origin,
+    origin: originValidator,
     credentials: config.cors.credentials,
     optionsSuccessStatus: config.cors.optionsSuccessStatus
   };
