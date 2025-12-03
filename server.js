@@ -415,8 +415,11 @@ const startServer = () => {
   }
 };
 
-// Start the server
-startServer();
+// Start the server only when running directly (not when imported for testing)
+// Using require.main === module pattern to detect if this is the main entry point
+if (require.main === module) {
+  startServer();
+}
 
 // =============================================================================
 // Module Exports
