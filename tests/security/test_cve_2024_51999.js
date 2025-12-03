@@ -367,8 +367,12 @@ describe('CVE-2024-51999 - Query Parser Vulnerability', () => {
     expect(response.headers['x-content-type-options']).toBe('nosniff');
     
     // Rate limit headers should be present (from express-rate-limit)
-    // The exact header name depends on standardHeaders configuration
+    // Using standardHeaders: 'draft-8' configuration, headers are:
+    // - 'ratelimit' (e.g., "100-in-15min"; r=99; t=900)
+    // - 'ratelimit-policy' (e.g., "100-in-15min"; q=100; w=900; pk=:...)
     const hasRateLimitHeaders = 
+      response.headers['ratelimit'] !== undefined ||
+      response.headers['ratelimit-policy'] !== undefined ||
       response.headers['ratelimit-limit'] !== undefined ||
       response.headers['x-ratelimit-limit'] !== undefined;
     
