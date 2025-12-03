@@ -193,14 +193,17 @@ describe('CVE-2025-13466 - Body Parser DoS Vulnerability', () => {
     // Request should complete within the maximum allowed processing time
     expect(duration).toBeLessThan(TEST_CONFIG.MAX_PROCESSING_TIME_MS);
     
-    // Request should be processed (body-parser middleware executed)
-    // Since there's no POST route at '/', we expect a 404 but the body was parsed
-    // A 404 response indicates the request was processed past the body-parser
-    // If body-parser caused a DoS, the request would timeout or fail
+    // Request should be processed efficiently (body-parser middleware executed)
+    // With 1500 parameters exceeding the default parameterLimit of 1000,
+    // body-parser will return 413 "too many parameters" - this is EXPECTED behavior
+    // The key verification is that the rejection happens QUICKLY (no DoS)
+    // If body-parser had the CVE-2025-13466 vulnerability, processing would be slow/hang
     expect(result.status).toBeDefined();
     
     // Log the result status for verification
-    console.log(`Response status: ${result.status} (expected 404 - no POST route, but body parsed)`);
+    // 413 = too many parameters (expected - parameterLimit is 1000, we sent 1500)
+    // The important thing is the response time, not the status code
+    console.log(`Response status: ${result.status} (413 expected - too many params, but processed efficiently)`);
   }, TEST_CONFIG.TEST_TIMEOUT);
 
   /**
@@ -286,25 +289,38 @@ describe('CVE-2025-13466 - Body Parser DoS Vulnerability', () => {
    * 
    * This test verifies the behavior when a URL-encoded body is exactly at
    * or slightly below the configured 100KB limit.
+   * 
+   * Note: body-parser has TWO limits:
+   * - size limit: 100KB (configurable via 'limit' option)
+   * - parameter limit: 1000 parameters (default, configurable via 'parameterLimit')
+   * 
+   * This test generates a body that is under BOTH limits to verify
+   * the size limit behavior specifically.
    */
   it('should accept body at or just below size limit', async () => {
-    // Generate a body that's just under the limit (99KB)
-    const safeSize = 99 * 1024; // 99KB
-    const params = [];
-    let currentSize = 0;
-    let counter = 0;
+    // Generate a body that's just under the 100KB size limit
+    // but also under the 1000 parameter limit
+    // We use ~100 bytes per parameter (larger values) to stay under param limit
+    const targetSize = 95 * 1024; // 95KB - safely under 100KB limit
+    const maxParams = 900; // Stay under 1000 parameter limit
+    const valueLength = Math.ceil(targetSize / maxParams) - 15; // Account for key length and separators
     
-    while (currentSize < safeSize) {
-      const param = `k${counter}=v${counter}`;
-      params.push(param);
-      currentSize += param.length + 1;
-      counter++;
+    const params = [];
+    for (let i = 0; i < maxParams; i++) {
+      // Generate parameter with large value to fill size while staying under param limit
+      const value = 'x'.repeat(valueLength);
+      params.push(`param_${i.toString().padStart(3, '0')}=${value}`);
     }
     
     const atLimitBody = params.join('&');
     const bodySizeKB = (Buffer.byteLength(atLimitBody) / 1024).toFixed(2);
+    const paramCount = params.length;
     
-    console.log(`CVE-2025-13466 Test: Sending body at limit (${bodySizeKB}KB)`);
+    console.log(`CVE-2025-13466 Test: Sending body at limit (${bodySizeKB}KB, ${paramCount} params)`);
+    
+    // Verify we're under both limits before sending
+    expect(Buffer.byteLength(atLimitBody)).toBeLessThan(100 * 1024); // Under 100KB
+    expect(paramCount).toBeLessThan(1000); // Under 1000 params
     
     // Send the body at the limit
     const response = await request(app)
@@ -312,13 +328,13 @@ describe('CVE-2025-13466 - Body Parser DoS Vulnerability', () => {
       .set('Content-Type', 'application/x-www-form-urlencoded')
       .send(atLimitBody);
     
-    // Body should be accepted (not rejected for size)
+    // Body should be accepted (not rejected for size or parameter count)
     // 404 = body parsed, route not found (expected)
-    // 413 = body too large (unexpected for this size)
+    // 413 = body too large OR too many parameters (unexpected for this size/count)
     expect(response.status).not.toBe(413);
     expect(response.status).not.toBeGreaterThanOrEqual(500);
     
-    console.log(`Response status: ${response.status} (expected NOT 413 - body within limit)`);
+    console.log(`Response status: ${response.status} (expected NOT 413 - body within limits)`);
   });
 
   /**
