@@ -21,7 +21,10 @@
     "main": "server.js",
     "scripts": {
         "start": "node server.js",
-        "test": "jest --detectOpenHandles --forceExit"
+        "test": "jest --detectOpenHandles --forceExit",
+        "test:unit": "jest tests/unit --detectOpenHandles --forceExit",
+        "test:security": "jest tests/security --detectOpenHandles --forceExit",
+        "test:coverage": "jest --coverage --detectOpenHandles --forceExit"
     },
     "author": "hxu",
     "license": "MIT",
