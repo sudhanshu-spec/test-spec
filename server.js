@@ -443,3 +443,13 @@ if (require.main === module) {
  * });
  */
 module.exports = { app };
+
+// =============================================================================
+// Testing Purpose Log
+// =============================================================================
+
+/**
+ * Console log added for testing purposes.
+ * This log confirms the server module has been loaded successfully.
+ */
+console.log('Server module loaded successfully - security hardening applied.');
