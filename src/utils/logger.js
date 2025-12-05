@@ -40,8 +40,15 @@ const config = require('../config');
 const logLevel = config.logLevel || (config.env === 'production' ? 'info' : 'debug');
 
 /**
+ * Simple format for basic console output (alternative format option)
+ * Uses winston's built-in simple format for minimal output
+ */
+const simpleFormat = winston.format.simple();
+
+/**
  * Custom format for development console output
  * Provides human-readable timestamps and colorized levels
+ * Uses colorize + timestamp + printf for maximum readability
  */
 const devFormat = winston.format.combine(
   winston.format.colorize(),
