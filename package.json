@@ -21,7 +21,7 @@
     "main": "server.js",
     "scripts": {
         "start": "node server.js",
-        "test": "echo \"Error: no test specified\" && exit 1"
+        "test": "jest --detectOpenHandles --forceExit"
     },
     "author": "hxu",
     "license": "MIT",
@@ -30,6 +30,20 @@
         "npm": ">=7.0.0"
     },
     "dependencies": {
-        "express": "^5.1.0"
+        "cors": "^2.8.5",
+        "express": "^5.2.0",
+        "express-rate-limit": "^8.2.1",
+        "express-validator": "^7.2.0",
+        "helmet": "^8.1.0"
+    },
+    "devDependencies": {
+        "jest": "^29.7.0",
+        "supertest": "^7.1.4"
+    },
+    "jest": {
+        "testMatch": ["**/tests/**/*.js", "**/test_*.js"],
+        "testPathIgnorePatterns": ["/node_modules/"],
+        "testEnvironment": "node",
+        "verbose": true
     }
 }
