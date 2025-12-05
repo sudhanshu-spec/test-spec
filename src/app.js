@@ -8,16 +8,16 @@
  * 
  * Design pattern: Factory pattern - creates configured Express app
  * 
- * Middleware stack (in order):
+ * Production middleware stack (in order):
  * 1. helmet - Security HTTP headers
- * 2. morgan - Request logging
+ * 2. morgan - HTTP request logging
  * 3. express.json - JSON body parsing
  * 4. express.urlencoded - URL-encoded body parsing
  * 5. compression - Response compression
  * 6. cors - Cross-Origin Resource Sharing
- * 7. rateLimit - Rate limiting
- * 8. Routes (main, health)
- * 9. errorHandler - Centralized error handling (last)
+ * 7. rateLimit - Rate limiting protection
+ * 8. Routes (mainRoutes, healthRoutes)
+ * 9. errorHandler - Centralized error handling (must be last)
  * 
  * @module src/app
  */
@@ -28,6 +28,7 @@ const morgan = require('morgan');
 const compression = require('compression');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
+
 const { mainRoutes, healthRoutes } = require('./routes');
 const { errorHandler } = require('./middleware');
 const config = require('./config');
@@ -35,27 +36,35 @@ const config = require('./config');
 const app = express();
 
 /**
- * Security headers middleware
- * Sets various HTTP headers to protect against common vulnerabilities
+ * Security middleware - Sets various HTTP headers to protect against
+ * common web vulnerabilities including XSS, clickjacking, and content type sniffing
  */
 app.use(helmet());
 
 /**
- * Request logging middleware
- * Uses 'combined' format in production, 'dev' format in development
+ * HTTP request logging middleware
+ * - Production: 'combined' format for comprehensive logging
+ * - Development: 'dev' format for colored, concise output
  */
 app.use(morgan(config.env === 'production' ? 'combined' : 'dev'));
 
 /**
- * Body parsing middleware
- * Parses incoming JSON and URL-encoded request bodies
+ * Body parsing middleware - JSON
+ * Parses incoming request bodies with JSON payloads
  */
 app.use(express.json());
+
+/**
+ * Body parsing middleware - URL-encoded
+ * Parses incoming request bodies with URL-encoded payloads
+ */
 app.use(express.urlencoded({ extended: true }));
 
 /**
  * Response compression middleware
- * Compresses responses above threshold for improved performance
+ * Compresses responses using gzip/deflate based on configuration:
+ * - threshold: Minimum response size in bytes to compress
+ * - level: Compression level (0-9, 6 is balanced)
  */
 app.use(compression({
   threshold: config.compression.threshold,
@@ -64,7 +73,7 @@ app.use(compression({
 
 /**
  * CORS middleware
- * Enables cross-origin requests from configured origins
+ * Enables Cross-Origin Resource Sharing with configurable origin
  */
 app.use(cors({
   origin: config.cors.origin
@@ -73,6 +82,10 @@ app.use(cors({
 /**
  * Rate limiting middleware
  * Protects against brute force and DoS attacks
+ * - windowMs: Time window for rate limiting
+ * - max: Maximum requests per window per IP
+ * - standardHeaders: Return rate limit info in RateLimit-* headers
+ * - legacyHeaders: Disable X-RateLimit-* headers
  */
 const limiter = rateLimit({
   windowMs: config.rateLimit.windowMs,
@@ -91,18 +104,18 @@ app.use(limiter);
 app.use('/', mainRoutes);
 
 /**
- * Mount health check routes
- * Provides endpoints for load balancer and orchestration:
- * - GET '/health' -> Basic health check
- * - GET '/health/ready' -> Readiness probe
- * - GET '/health/live' -> Liveness probe
+ * Mount health routes at /health path
+ * Provides endpoints for load balancer and orchestration health checks:
+ * - GET /health -> Basic health check
+ * - GET /health/ready -> Readiness probe
+ * - GET /health/live -> Liveness probe
  */
 app.use('/health', healthRoutes);
 
 /**
  * Centralized error handling middleware
- * Must be registered LAST after all routes
- * Provides environment-aware error responses
+ * Must be registered AFTER all routes to catch errors from route handlers
+ * Provides environment-aware error responses with logging integration
  */
 app.use(errorHandler);
 
