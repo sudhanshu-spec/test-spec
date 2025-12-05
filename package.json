@@ -45,7 +45,7 @@
     },
     "jest": {
         "testMatch": ["**/tests/**/*.js", "**/test_*.js"],
-        "testPathIgnorePatterns": ["/node_modules/"],
+        "testPathIgnorePatterns": ["/node_modules/", "/tests/helpers/", "/tests/fixtures/"],
         "testEnvironment": "node",
         "verbose": true
     }
