@@ -1,4 +1,11 @@
 /**
+ * Load environment variables from .env file
+ * MUST be first line before any other imports that use configuration
+ * This ensures environment variables are available throughout the application
+ */
+require('dotenv').config();
+
+/**
  * HTTP Server Entry Point
  * 
  * This file serves as the application entry point only, responsible for
@@ -10,40 +17,30 @@
  * - Clean separation of concerns
  * - Environment-based configuration
  * 
- * Features:
- * - Dotenv integration for environment variable loading
- * - Winston logger for structured startup/shutdown logging
- * - Graceful shutdown handling for SIGTERM/SIGINT signals
- * - PM2 compatible process management
- * 
  * Entry point: npm start -> node server.js
  * 
  * @module server
  */
-
-// Load environment variables FIRST before any other imports that use config
-require('dotenv').config();
 
 const app = require('./src/app');
 const config = require('./src/config');
 const logger = require('./src/utils/logger');
 
 /**
- * Start HTTP server
- * Store reference for graceful shutdown
+ * Start the HTTP server and listen on configured host and port
+ * Server instance is stored to enable graceful shutdown
  */
 const server = app.listen(config.port, config.host, () => {
   logger.info(`Server running at http://${config.host}:${config.port}/`);
-  logger.info(`Environment: ${config.env}`);
 });
 
 /**
  * Graceful shutdown handler
  * 
- * Handles clean shutdown when receiving termination signals.
- * Closes the HTTP server to stop accepting new connections,
- * allows existing requests to complete, and exits cleanly.
- * Forces exit after 10 second timeout if shutdown hangs.
+ * Handles process termination signals by:
+ * 1. Stopping acceptance of new connections
+ * 2. Allowing in-flight requests to complete
+ * 3. Forcing shutdown after timeout to prevent hanging
  * 
  * @param {string} signal - The signal received (SIGTERM or SIGINT)
  */
@@ -54,8 +51,9 @@ const gracefulShutdown = (signal) => {
     logger.info('HTTP server closed');
     process.exit(0);
   });
-
-  // Force close after timeout if graceful shutdown hangs
+  
+  // Force close after timeout to prevent hanging indefinitely
+  // Allows 10 seconds for in-flight requests to complete
   setTimeout(() => {
     logger.error('Forcing shutdown after timeout');
     process.exit(1);
@@ -63,9 +61,10 @@ const gracefulShutdown = (signal) => {
 };
 
 /**
- * Signal handlers for graceful shutdown
+ * Register signal handlers for graceful shutdown
+ * 
  * SIGTERM: Sent by PM2 on stop/restart, container orchestration
- * SIGINT: Sent when pressing Ctrl+C in terminal
+ * SIGINT: Sent when user presses Ctrl+C in terminal
  */
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
