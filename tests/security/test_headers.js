@@ -368,10 +368,6 @@ describe('Security Headers - Helmet Middleware', () => {
     
     const rootValidation = validateSecurityHeaders(rootResponse.headers, coreSecurityHeaders);
     expect(rootValidation.allPresent).toBe(true);
-    if (!rootValidation.allPresent) {
-      // Provide detailed failure message
-      console.error('Missing headers on root endpoint:', rootValidation.missingHeaders);
-    }
     
     // Test /evening endpoint
     const eveningResponse = await request(app)
@@ -380,10 +376,6 @@ describe('Security Headers - Helmet Middleware', () => {
     
     const eveningValidation = validateSecurityHeaders(eveningResponse.headers, coreSecurityHeaders);
     expect(eveningValidation.allPresent).toBe(true);
-    if (!eveningValidation.allPresent) {
-      // Provide detailed failure message
-      console.error('Missing headers on /evening endpoint:', eveningValidation.missingHeaders);
-    }
     
     // Verify header values are consistent across endpoints
     coreSecurityHeaders.forEach(header => {

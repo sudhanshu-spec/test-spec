@@ -186,8 +186,7 @@ describe('CVE-2025-13466 - Body Parser DoS Vulnerability', () => {
         .send(largeBody);
     });
     
-    // Log performance metrics for debugging
-    console.log(`CVE-2025-13466 Test: Processed ${parameterCount} parameters in ${duration.toFixed(2)}ms`);
+    // Performance metrics: Processed parameters in duration.toFixed(2)ms
     
     // The patched body-parser should process the request efficiently
     // Request should complete within the maximum allowed processing time
@@ -200,10 +199,8 @@ describe('CVE-2025-13466 - Body Parser DoS Vulnerability', () => {
     // If body-parser had the CVE-2025-13466 vulnerability, processing would be slow/hang
     expect(result.status).toBeDefined();
     
-    // Log the result status for verification
     // 413 = too many parameters (expected - parameterLimit is 1000, we sent 1500)
     // The important thing is the response time, not the status code
-    console.log(`Response status: ${result.status} (413 expected - too many params, but processed efficiently)`);
   }, TEST_CONFIG.TEST_TIMEOUT);
 
   /**
@@ -222,9 +219,8 @@ describe('CVE-2025-13466 - Body Parser DoS Vulnerability', () => {
     // Verify the body size exceeds the configured limit
     expect(Buffer.byteLength(oversizedBody)).toBeGreaterThan(TEST_CONFIG.DEFAULT_BODY_LIMIT);
     
-    // Log the body size for debugging
+    // Body size for debugging
     const bodySizeKB = (Buffer.byteLength(oversizedBody) / 1024).toFixed(2);
-    console.log(`CVE-2025-13466 Test: Sending oversized body (${bodySizeKB}KB, limit: 100KB)`);
     
     // Send the oversized body
     const response = await request(app)
@@ -236,8 +232,7 @@ describe('CVE-2025-13466 - Body Parser DoS Vulnerability', () => {
     // Express body-parser returns 413 Payload Too Large when body exceeds limit
     expect(response.status).toBe(413);
     
-    // Log the response for verification
-    console.log(`Response status: ${response.status} (expected 413 Payload Too Large)`);
+    // Response status should be 413 Payload Too Large
   });
 
   /**
@@ -280,8 +275,7 @@ describe('CVE-2025-13466 - Body Parser DoS Vulnerability', () => {
     expect(healthResponse.status).toBeDefined();
     expect(healthResponse.status).not.toBeGreaterThanOrEqual(500);
     
-    // Log the response for verification
-    console.log(`Normal body parsing test: POST / = ${response.status}, POST /health = ${healthResponse.status}`);
+    // Response status verified above
   });
 
   /**
@@ -316,7 +310,7 @@ describe('CVE-2025-13466 - Body Parser DoS Vulnerability', () => {
     const bodySizeKB = (Buffer.byteLength(atLimitBody) / 1024).toFixed(2);
     const paramCount = params.length;
     
-    console.log(`CVE-2025-13466 Test: Sending body at limit (${bodySizeKB}KB, ${paramCount} params)`);
+    // Sending body at limit: bodySizeKB KB, paramCount params
     
     // Verify we're under both limits before sending
     expect(Buffer.byteLength(atLimitBody)).toBeLessThan(100 * 1024); // Under 100KB
@@ -334,7 +328,7 @@ describe('CVE-2025-13466 - Body Parser DoS Vulnerability', () => {
     expect(response.status).not.toBe(413);
     expect(response.status).not.toBeGreaterThanOrEqual(500);
     
-    console.log(`Response status: ${response.status} (expected NOT 413 - body within limits)`);
+    // Response status should NOT be 413 - body within limits
   });
 
   /**
@@ -348,7 +342,7 @@ describe('CVE-2025-13466 - Body Parser DoS Vulnerability', () => {
     const requestCount = 10;
     const paramsPerRequest = 500;
     
-    console.log(`CVE-2025-13466 Test: Sending ${requestCount} sequential requests with ${paramsPerRequest} params each`);
+    // Sending requestCount sequential requests with paramsPerRequest params each
     
     const startTime = process.hrtime.bigint();
     
@@ -366,7 +360,7 @@ describe('CVE-2025-13466 - Body Parser DoS Vulnerability', () => {
     const endTime = process.hrtime.bigint();
     const totalDuration = Number(endTime - startTime) / 1e6;
     
-    console.log(`Completed ${requestCount} requests in ${totalDuration.toFixed(2)}ms`);
+    // Completed requestCount requests in totalDuration.toFixed(2)ms
     
     // All requests should complete successfully
     requests.forEach((response, index) => {
@@ -378,7 +372,7 @@ describe('CVE-2025-13466 - Body Parser DoS Vulnerability', () => {
     const avgTimePerRequest = totalDuration / requestCount;
     expect(avgTimePerRequest).toBeLessThan(TEST_CONFIG.MAX_PROCESSING_TIME_MS);
     
-    console.log(`Average time per request: ${avgTimePerRequest.toFixed(2)}ms`);
+    // Average time per request: avgTimePerRequest.toFixed(2)ms
   }, TEST_CONFIG.TEST_TIMEOUT * 2);
 });
 
@@ -400,7 +394,7 @@ describe('Body Parser Security Configuration', () => {
     const largeJson = JSON.stringify(largeObject);
     
     const bodySizeKB = (Buffer.byteLength(largeJson) / 1024).toFixed(2);
-    console.log(`Body Parser Security: Testing JSON body size limit (${bodySizeKB}KB)`);
+    // Testing JSON body size limit: bodySizeKB KB
     
     const response = await request(app)
       .post('/')
@@ -410,7 +404,7 @@ describe('Body Parser Security Configuration', () => {
     // Should be rejected for exceeding size limit
     expect(response.status).toBe(413);
     
-    console.log(`Response status: ${response.status} (expected 413 for oversized JSON)`);
+    // Response status expected 413 for oversized JSON
   });
 
   /**
@@ -425,6 +419,6 @@ describe('Body Parser Security Configuration', () => {
     // Should not cause server error
     expect(response.status).not.toBeGreaterThanOrEqual(500);
     
-    console.log(`Content-Type validation: status ${response.status}`);
+    // Content-Type validation complete
   });
 });

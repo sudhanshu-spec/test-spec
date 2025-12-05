@@ -137,7 +137,6 @@ const app = express();
  */
 if (trustProxy) {
   app.set('trust proxy', 1);
-  console.log('Trust proxy enabled for reverse proxy environment');
 }
 
 // =============================================================================
@@ -287,51 +286,18 @@ app.get('/health', (req, res) => {
 const startServer = () => {
   /**
    * Callback executed when server starts listening.
-   * Logs server information including protocol, address, and security status.
+   * Server information including protocol, address, and security status.
    * @param {string} protocol - The protocol being used (http or https)
    */
   const onListening = (protocol) => {
-    console.log('═══════════════════════════════════════════════════════════════');
-    console.log('  EXPRESS.JS SERVER STARTED');
-    console.log('═══════════════════════════════════════════════════════════════');
-    console.log(`  Address:     ${protocol}://${hostname}:${port}/`);
-    console.log(`  Protocol:    ${protocol.toUpperCase()}`);
-    console.log(`  Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log('───────────────────────────────────────────────────────────────');
-    console.log('  SECURITY STATUS');
-    console.log('───────────────────────────────────────────────────────────────');
-    console.log(`  ✓ Rate Limiting:     ENABLED (DoS protection)`);
-    console.log(`  ✓ Security Headers:  ENABLED (Helmet.js)`);
-    console.log(`  ✓ CORS:              ENABLED (Origin validation)`);
-    console.log(`  ✓ Input Validation:  ENABLED (express-validator)`);
-    console.log(`  ✓ Trust Proxy:       ${trustProxy ? 'ENABLED' : 'DISABLED'}`);
-    console.log(`  ✓ HTTPS:             ${enableHttps ? 'ENABLED' : 'DISABLED'}`);
-    console.log('───────────────────────────────────────────────────────────────');
-    console.log('  VULNERABILITY PATCHES');
-    console.log('───────────────────────────────────────────────────────────────');
-    console.log('  ✓ CVE-2024-51999:    PATCHED (Express 5.2.0+)');
-    console.log('  ✓ CVE-2025-13466:    PATCHED (body-parser 2.2.1+)');
-    console.log('═══════════════════════════════════════════════════════════════');
-    console.log('  Endpoints: GET /, GET /evening, GET /health');
-    console.log('═══════════════════════════════════════════════════════════════');
+    // Server started successfully - no console output per project requirements
   };
 
   // Check if HTTPS is enabled
   if (enableHttps) {
     // Validate SSL certificate paths are provided
     if (!sslKeyPath || !sslCertPath) {
-      console.error('═══════════════════════════════════════════════════════════════');
-      console.error('  HTTPS CONFIGURATION ERROR');
-      console.error('═══════════════════════════════════════════════════════════════');
-      console.error('  HTTPS is enabled but SSL certificate paths are not configured.');
-      console.error('  Please set the following environment variables:');
-      console.error('    - SSL_KEY_PATH: Path to SSL private key file (.pem)');
-      console.error('    - SSL_CERT_PATH: Path to SSL certificate file (.pem)');
-      console.error('═══════════════════════════════════════════════════════════════');
-      console.error('  Falling back to HTTP server...');
-      console.error('═══════════════════════════════════════════════════════════════');
-      
-      // Fall back to HTTP
+      // HTTPS enabled but SSL certificate paths not configured - fall back to HTTP
       app.listen(port, hostname, () => onListening('http'));
       return;
     }
@@ -350,45 +316,12 @@ const startServer = () => {
 
       // Handle HTTPS server errors
       httpsServer.on('error', (error) => {
-        console.error('═══════════════════════════════════════════════════════════════');
-        console.error('  HTTPS SERVER ERROR');
-        console.error('═══════════════════════════════════════════════════════════════');
-        console.error(`  Error: ${error.message}`);
-        
-        if (error.code === 'EADDRINUSE') {
-          console.error(`  Port ${port} is already in use.`);
-        } else if (error.code === 'EACCES') {
-          console.error(`  Permission denied for port ${port}. Try a port > 1024.`);
-        }
-        
-        console.error('═══════════════════════════════════════════════════════════════');
+        // HTTPS server error - exit with error code
         process.exit(1);
       });
 
     } catch (error) {
-      // Handle SSL certificate loading errors
-      console.error('═══════════════════════════════════════════════════════════════');
-      console.error('  SSL CERTIFICATE ERROR');
-      console.error('═══════════════════════════════════════════════════════════════');
-      console.error(`  Failed to load SSL certificates: ${error.message}`);
-      console.error('');
-      console.error('  Possible causes:');
-      
-      if (error.code === 'ENOENT') {
-        console.error('  - Certificate file not found at specified path');
-        console.error(`    Key path: ${sslKeyPath}`);
-        console.error(`    Cert path: ${sslCertPath}`);
-      } else if (error.code === 'EACCES') {
-        console.error('  - Permission denied reading certificate files');
-      } else {
-        console.error('  - Invalid certificate format or corrupted file');
-      }
-      
-      console.error('═══════════════════════════════════════════════════════════════');
-      console.error('  Falling back to HTTP server...');
-      console.error('═══════════════════════════════════════════════════════════════');
-      
-      // Fall back to HTTP
+      // Handle SSL certificate loading errors - fall back to HTTP
       app.listen(port, hostname, () => onListening('http'));
     }
   } else {
@@ -397,19 +330,7 @@ const startServer = () => {
 
     // Handle HTTP server errors
     httpServer.on('error', (error) => {
-      console.error('═══════════════════════════════════════════════════════════════');
-      console.error('  HTTP SERVER ERROR');
-      console.error('═══════════════════════════════════════════════════════════════');
-      console.error(`  Error: ${error.message}`);
-      
-      if (error.code === 'EADDRINUSE') {
-        console.error(`  Port ${port} is already in use.`);
-        console.error('  Try: lsof -i :' + port + ' to find the process');
-      } else if (error.code === 'EACCES') {
-        console.error(`  Permission denied for port ${port}. Try a port > 1024.`);
-      }
-      
-      console.error('═══════════════════════════════════════════════════════════════');
+      // HTTP server error - exit with error code
       process.exit(1);
     });
   }
@@ -445,11 +366,7 @@ if (require.main === module) {
 module.exports = { app };
 
 // =============================================================================
-// Testing Purpose Log
+// Module Initialization Complete
 // =============================================================================
 
-/**
- * Console log added for testing purposes.
- * This log confirms the server module has been loaded successfully.
- */
-console.log('Server module loaded successfully - security hardening applied.');
+// Server module loaded successfully with security hardening applied

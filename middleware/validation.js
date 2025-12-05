@@ -362,7 +362,6 @@ const validateRequest = (validations) => {
       return next();
     } catch (error) {
       // Handle unexpected errors during validation
-      console.error('Validation middleware error:', error.message);
       return res.status(500).json({
         success: false,
         error: {
