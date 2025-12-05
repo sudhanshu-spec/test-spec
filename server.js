@@ -59,11 +59,6 @@
 // Express.js framework import using CommonJS module system (require syntax)
 const express = require('express');
 
-// Security middleware packages for comprehensive protection
-const helmet = require('helmet');
-const cors = require('cors');
-const { rateLimit } = require('express-rate-limit');
-
 // Node.js built-in modules for HTTPS support
 const https = require('https');
 const fs = require('fs');
