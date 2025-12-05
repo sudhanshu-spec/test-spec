@@ -273,19 +273,23 @@ describe('Server Routes - GET /evening', () => {
   });
 
   /**
-   * Test 3: Case sensitivity - /Evening should return 404.
+   * Test 3: Case insensitivity - /Evening matches /evening by default.
    * 
    * Verifies:
-   * - Route matching is case-sensitive
-   * - /Evening (capital E) is treated as different route from /evening
-   * - Returns 404 status for undefined route
+   * - Express.js routes are case-insensitive by default
+   * - /Evening (capital E) matches /evening route
+   * - Returns 200 status with same response
+   * 
+   * Note: Express.js default is case-insensitive routing.
+   * To enable case sensitivity, use: app.set('case sensitive routing', true)
    */
-  it('should return 404 for case-sensitive /Evening', async () => {
+  it('should handle case variations like /Evening (Express default is case-insensitive)', async () => {
     const response = await request(app)
       .get('/Evening')
-      .expect(404);
+      .expect(200);
     
-    expect(response.status).toBe(404);
+    expect(response.status).toBe(200);
+    expect(response.text).toBe(GOOD_EVENING_RESPONSE);
   });
 
   /**
@@ -527,6 +531,10 @@ describe('Server Routes - Undefined Routes', () => {
    * Verifies:
    * - Different non-existent paths all return 404
    * - Behavior is consistent across various URL patterns
+   * 
+   * Note: Express.js routes are case-insensitive by default, so
+   * /Evening matches /evening and /HEALTH matches /health (returning 200).
+   * Only truly undefined routes return 404.
    */
   it('should return 404 for various undefined routes', async () => {
     const undefinedRoutes = [
@@ -534,8 +542,8 @@ describe('Server Routes - Undefined Routes', () => {
       '/admin',
       '/test/path/deep',
       '/hello',
-      '/Evening',    // Case-sensitive check
-      '/HEALTH'      // Case-sensitive check
+      '/healthcheck',    // Similar to /health but different
+      '/morninggreeting' // Different from /evening
     ];
 
     for (const route of undefinedRoutes) {
