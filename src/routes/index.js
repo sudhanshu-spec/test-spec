@@ -5,6 +5,10 @@
  * It serves as the central route registry, allowing src/app.js to import
  * all routes with a single require statement.
  * 
+ * Exports:
+ * - mainRoutes: Main application routes for / and /evening endpoints
+ * - healthRoutes: Health check routes for load balancer and orchestration integration
+ * 
  * Usage in src/app.js:
  *   const { mainRoutes, healthRoutes } = require('./routes');
  *   app.use('/', mainRoutes);
