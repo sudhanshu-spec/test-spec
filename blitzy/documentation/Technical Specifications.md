@@ -1,1192 +1,796 @@
-# Agent Action Plan
+# Technical Specification
 
 # 0. Agent Action Plan
+
 ## 0.1 Intent Clarification
 
-Based on the provided requirements, the Blitzy platform understands that the documentation objective is to **enhance code documentation and create comprehensive project documentation** for a minimal Node.js + Express.js tutorial server.
+Based on the prompt, the Blitzy platform understands that the refactoring objective is to **completely rewrite an existing Node.js/Express.js web server application into a Python 3 Flask application**, preserving 100% feature parity with the original implementation.
 
-### 0.1.1 Core Documentation Objective Analysis
+### 0.1.1 Core Refactoring Objective
 
-**Documentation Category:** Create new documentation + Update existing documentation
+- **Refactoring Type:** Tech stack migration (Node.js/Express → Python 3/Flask)
+- **Target Repository:** Same repository (complete replacement of Node.js codebase with Python/Flask equivalent)
+- **Migration Scope:** Full application rewrite maintaining identical HTTP API behavior
 
-**Documentation Types Required:**
+**Refactoring Goals:**
 
-- JSDoc comments (inline code documentation)
-- README file (comprehensive project documentation)
-- API documentation
-- Setup/installation guide
-- Deployment guide
-- Code explanations (inline comments)
+- Migrate server entry point from `server.js` (Node.js) to `run.py` (Python/Flask)
+- Convert Express.js application factory pattern to Flask application factory pattern
+- Translate CommonJS module system to Python package structure
+- Preserve exact HTTP endpoint behavior including response bodies and status codes
+- Maintain configuration management through environment variables
+- Replicate the modular architecture: separate config, routes, and app initialization
 
-| Requirement | Interpretation | Action |
-| --- | --- | --- |
-| Add JSDoc comments to server.js functions | Enhance existing JSDoc comments with comprehensive function-level documentation for all modules | UPDATE existing JSDoc |
-| Create comprehensive README | Replace minimal [README.md](http://README.md) with full project documentation | CREATE new [README.md](http://README.md) |
-| Setup instructions | Document installation, configuration, and startup procedures | CREATE in [README.md](http://README.md) |
-| API documentation | Document all HTTP endpoints with request/response examples | CREATE in [README.md](http://README.md) |
-| Deployment guide | Document production deployment considerations | CREATE in [README.md](http://README.md) |
-| Inline code explanations | Add contextual comments explaining code logic | UPDATE source files |
+### 0.1.2 Implicit Requirements
 
-### 0.1.2 Technical Interpretation
+The following implicit technical requirements are derived from the source analysis:
 
-These documentation requirements translate to the following technical documentation strategy:
+- **API Compatibility:** All HTTP endpoints must return identical response bodies
+  - `GET /` must return exactly `Hello, World!\n` (including trailing newline)
+  - `GET /evening` must return exactly `Good evening` (no trailing newline)
+- **Configuration Preservation:** Environment variable names and defaults must be maintained
+  - `HOST` → default `127.0.0.1`
+  - `PORT` → default `3000`
+  - `NODE_ENV` → `FLASK_ENV` (renamed per Flask convention, default `development`)
+- **Startup Behavior:** Console output format preserved: `Server running at http://{host}:{port}/`
+- **Testability:** Application factory pattern must allow importing app without starting server
 
-- To **document server.js functions**, we will enhance JSDoc comments in `server.js` to include `@function`, `@param`, `@returns`, `@example`, and `@fires` annotations where applicable
-- To **document the Express app factory**, we will enhance JSDoc in `src/app.js` with module-level and middleware documentation
-- To **document routes**, we will enhance JSDoc in `src/routes/main.routes.js` with route annotations including HTTP method, path, request/response types
-- To **document configuration**, we will enhance JSDoc in `src/config/index.js` with environment variable documentation
-- To **create comprehensive README**, we will replace `README.md` with structured documentation following best practices
+### 0.1.3 Technical Interpretation
 
-### 0.1.3 Inferred Documentation Needs
+This refactoring translates to the following technical transformation strategy:
 
-Based on code analysis and documentation best practices:
-
-- **Module documentation gaps:** While modules have JSDoc headers, they lack:
-
-  - `@example` tags showing usage patterns
-  - `@see` tags linking related modules
-  - `@requires` tags documenting dependencies
-
-- **Route documentation gaps:** Route handlers need:
-
-  - HTTP method and path annotations
-  - Response content-type documentation
-  - Example curl commands
-
-- **Configuration documentation needs:**
-
-  - Environment variable table
-  - Default value documentation
-  - Production vs development settings
-
-- **README must include:**
-
-  - Project overview and purpose
-  - Prerequisites (Node.js &gt;= 20.19.x, npm &gt;= 10.8.x)
-  - Installation steps
-  - Environment configuration
-  - Running the server
-  - API endpoint reference
-  - Deployment guide for production
-  - Contributing guidelines
-  - License information
-
-### 0.1.4 Special Instructions and Constraints
-
-**User Requirements (Exact):**
-
-> "Add JSDoc comments to server.js functions, create a comprehensive README with setup instructions, API documentation, deployment guide, and inline code explanations."
-
-**Constraints Identified:**
-
-- Maintain existing modular architecture
-- Preserve exact route response strings (`'Hello, World!\n'` and `'Good evening'`)
-- Follow existing JSDoc style patterns already present in codebase
-- Keep tutorial-friendly, beginner-accessible documentation
-- Use Markdown format for [README.md](http://README.md)
-
-**Style Preferences:**
-
-- Use JSDoc 3 syntax for JavaScript documentation
-- Follow Express.js documentation conventions
-- Include practical examples and curl commands
-- Maintain consistent voice and technical depth
-
-## 0.2 Documentation Discovery and Analysis
-
-### 0.2.1 Existing Documentation Infrastructure Assessment
-
-Repository analysis reveals a **minimal documentation structure** with existing JSDoc patterns in source files but insufficient user-facing documentation.
-
-**Search Patterns Employed:**
-
-- README\*, docs/\*\*, \*.md, \*.mdx - Found: `README.md`, `blitzy/documentation/*.md`
-- Documentation generators (mkdocs.yml, docusaurus.config.js) - None found
-- Existing JSDoc comments - Found in all 5 JavaScript source files
-- Style guides and templates - None found
-
-**Documentation Discovery Results:**
-
-| File/Location | Type | Status | Content |
-| --- | --- | --- | --- |
-| `README.md` | Project README | Minimal | 2 lines - placeholder text only |
-| `blitzy/documentation/Project Guide.md` | Project guide | Complete | Comprehensive validation and setup |
-| `blitzy/documentation/Technical Specifications.md` | Tech spec | Complete | Technical implementation details |
-| `server.js` | JSDoc | Partial | Module header present, no function-level docs |
-| `src/app.js` | JSDoc | Partial | Module header and route mounting comment |
-| `src/config/index.js` | JSDoc | Good | Module header + property-level docs |
-| `src/routes/index.js` | JSDoc | Partial | Module header only |
-| `src/routes/main.routes.js` | JSDoc | Good | Module header + route handler docs |
-
-**Documentation Infrastructure:**
-
-- Current documentation framework: None (raw Markdown only)
-- API documentation tools: JSDoc comments in source files
-- Diagram tools: Mermaid (used in blitzy/documentation/)
-- Documentation hosting: None configured
-
-### 0.2.2 Repository Code Analysis for Documentation
-
-**Source Files Requiring Documentation Enhancement:**
-
-| File | Lines | Public APIs | Current JSDoc | Documentation Needed |
-| --- | --- | --- | --- | --- |
-| `server.js` | 23 | `app.listen()` callback | Module header only | Add `@example`, enhance callback docs |
-| `src/app.js` | 27 | Express app export | Module header | Add `@exports`, `@requires`, `@example` |
-| `src/config/index.js` | 41 | `host`, `port`, `env` exports | Complete | Add `@example` usage |
-| `src/routes/index.js` | 19 | `mainRoutes` export | Module header | Add `@exports`, barrel pattern docs |
-| `src/routes/main.routes.js` | 41 | `GET /`, `GET /evening` | Good | Enhance with `@example`, response docs |
-
-**Key Directories Examined:**
-
-- `/` - Root directory with entry point and package files
-- `src/` - Application source with modular architecture
-- `src/config/` - Environment configuration module
-- `src/routes/` - Express routing surface
-- `blitzy/documentation/` - Existing specification documents
-
-### 0.2.3 Web Search Research Conducted
-
-**JSDoc Best Practices for Node.js/Express:**
-
-- JSDoc comments should be placed immediately before the code being documented
-- Each comment must start with `/**` sequence to be recognized by the parser
-- Use `@module` tag for CommonJS modules
-- Use `@param {express.Request}`, `@param {express.Response}` for Express handlers
-- Include `@example` tags for practical usage demonstrations
-- Document routes with `@route` or custom tags showing HTTP method and path
-
-**README Best Practices:**
-
-- Include badges (license, version, build status)
-- Start with clear project description
-- Provide quick start section
-- Document all prerequisites
-- Include API reference with examples
-- Add deployment/production guide
-- Include contributing guidelines
-
-### 0.2.4 Current README Content
-
-**File:** `README.md`
-
-```plaintext
-# hao-backprop-test
-test project for backprop integration. Do not touch!
+```
+Node.js/Express Architecture    →    Python/Flask Architecture
+─────────────────────────────────────────────────────────────────
+server.js (entry point)         →    run.py (entry point)
+src/app.js (Express factory)    →    src/app.py (Flask factory)
+src/config/index.js             →    src/config/__init__.py
+src/routes/index.js             →    src/routes/__init__.py
+src/routes/main.routes.js       →    src/routes/main.py
+package.json                    →    requirements.txt
+.gitignore                      →    .gitignore (updated for Python)
+README.md                       →    README.md (updated for Flask)
 ```
 
-**Assessment:** This README is a placeholder that does not serve documentation purposes. It requires complete replacement with comprehensive documentation covering:
+### 0.1.4 Framework Mapping
 
-- Project identity and purpose
-- Installation and setup
-- Configuration options
-- API documentation
-- Deployment guidance
-- License and contribution information
+| Express.js Concept | Flask Equivalent | Notes |
+|-------------------|------------------|-------|
+| `require('express')` | `from flask import Flask` | Framework import |
+| `express.Router()` | `Blueprint` | Route grouping mechanism |
+| `app.use('/', router)` | `app.register_blueprint(bp)` | Route mounting |
+| `app.listen(port, host, callback)` | `app.run(host, port)` | Server binding |
+| `res.send(text)` | `return text` | Response handling |
+| `module.exports` | Python module/package exports | Module system |
+| `process.env.VAR` | `os.environ.get('VAR')` | Environment variables |
 
-## 0.3 Documentation Scope Analysis
+### 0.1.5 Special Constraints
 
-### 0.3.1 Code-to-Documentation Mapping
+- **Exact Response Preservation:** Response strings must match character-for-character including whitespace
+- **Default Port:** Flask default is 5000, but must be changed to 3000 for compatibility
+- **Synchronous Design:** Flask's synchronous nature matches the original Express implementation
+- **No Async Required:** Original Node.js code uses synchronous handlers only
 
-**Modules Requiring Documentation:**
+## 0.2 Source Analysis
 
-**Module:** `server.js` **(HTTP Server Entry Point)**
+### 0.2.1 Comprehensive Source File Discovery
 
-- Public APIs: `app.listen()` invocation with callback
-- Current documentation: Module-level JSDoc header (lines 1-16)
-- Documentation needed:
-  - Enhanced `@example` showing how to start the server
-  - Server startup flow explanation
-  - Environment variable usage for `HOST` and `PORT`
-  - Callback function documentation
+The complete Node.js source repository contains the following files requiring analysis and refactoring:
 
-**Module:** `src/app.js` **(Express Application Factory)**
-
-- Public APIs: Exported `app` Express instance
-- Current documentation: Module-level JSDoc (lines 1-12), route mounting comment (lines 19-24)
-- Documentation needed:
-  - `@exports` tag documenting the Express app export
-  - `@requires` tags for express and routes dependencies
-  - `@example` showing how to import and use the app
-  - Middleware chain documentation
-
-**Module:** `src/config/index.js` **(Configuration Module)**
-
-- Public APIs: `host`, `port`, `env` exports
-- Current documentation: Good - has module header and property-level JSDoc
-- Documentation needed:
-  - `@example` showing configuration usage
-  - Environment variable cross-reference
-  - Default value behavior explanation
-
-**Module:** `src/routes/index.js` **(Route Aggregator)**
-
-- Public APIs: `mainRoutes` export
-- Current documentation: Module-level JSDoc (lines 1-13)
-- Documentation needed:
-  - `@exports` tag for named export pattern
-  - `@example` showing consumption in app.js
-  - Barrel pattern explanation
-
-**Module:** `src/routes/main.routes.js` **(Route Handlers)**
-
-- Endpoints:
-  - `GET /` - Returns `'Hello, World!\n'`
-  - `GET /evening` - Returns `'Good evening'`
-- Current documentation: Good - has module header and route handler docs
-- Documentation needed:
-  - `@example` with curl commands
-  - Response Content-Type documentation
-  - Status code documentation
-
-### 0.3.2 Configuration Documentation Requirements
-
-**Configuration File:** `src/config/index.js`
-
-| Option | Environment Variable | Type | Default | Documented |
-| --- | --- | --- | --- | --- |
-| `host` | `HOST` | string | `'127.0.0.1'` | ✅ Yes |
-| `port` | `PORT` | number | `3000` | ✅ Yes |
-| `env` | `NODE_ENV` | string | `'development'` | ✅ Yes |
-
-**Missing Documentation:**
-
-- Production configuration recommendations
-- Docker/container environment considerations
-- Security implications of binding to `0.0.0.0` vs `127.0.0.1`
-
-### 0.3.3 Features Requiring User Guides
-
-| Feature | Current Coverage | Gaps |
-| --- | --- | --- |
-| Server Startup | Basic in code comments | No README section, no troubleshooting |
-| API Endpoints | Route handler JSDoc | No user-facing API reference |
-| Configuration | JSDoc in config module | No README section, no examples |
-| Deployment | None | No deployment guide exists |
-
-### 0.3.4 Documentation Gap Analysis
-
-Given the requirements and repository analysis, documentation gaps include:
-
-**Critical Gaps (Must Address):**
-
-- `README.md` - Completely inadequate, needs full rewrite
-- API endpoint documentation for end users
-- Setup and installation instructions
-- Deployment guide
-
-**JSDoc Enhancement Gaps:**
-
-- Missing `@example` tags in all modules
-- Missing `@requires` and `@see` cross-references
-- No inline code explanations for complex logic
-- Missing response type documentation for routes
-
-**Structural Gaps:**
-
-- No table of contents in any documentation
-- No quick-start section
-- No troubleshooting guide
-- No contribution guidelines
-
-## 0.4 Documentation Implementation Design
-
-### 0.4.1 Documentation Structure Planning
-
-**Target [README.md](http://README.md) Structure:**
-
-```plaintext
-README.md
-├── Title and Badges
-├── Description
-├── Table of Contents
-├── Prerequisites
-├── Installation
-│   ├── Clone Repository
-│   ├── Install Dependencies
-│   └── Verify Installation
-├── Configuration
-│   ├── Environment Variables
-│   └── Default Values
-├── Usage
-│   ├── Start Server
-│   └── Test Endpoints
-├── API Reference
-│   ├── GET /
-│   └── GET /evening
-├── Project Structure
-├── Deployment Guide
-│   ├── Production Configuration
-│   ├── Docker Deployment
-│   └── Process Management
-├── Contributing
-├── License
-└── Acknowledgments
+**Repository Root Structure:**
+```
+/
+├── .gitignore                 # Git ignore patterns for Node.js
+├── README.md                  # Project documentation  
+├── package.json               # Node.js dependency manifest
+├── package-lock.json          # Dependency lock file
+├── server.js                  # Application entry point
+├── src/
+│   ├── app.js                 # Express application factory
+│   ├── config/
+│   │   └── index.js           # Configuration module
+│   └── routes/
+│       ├── index.js           # Route aggregator
+│       └── main.routes.js     # Main route handlers
+└── blitzy/
+    ├── Project Guide.md       # Generated project guide
+    └── Technical Specifications.md  # Technical specifications
 ```
 
-**JSDoc Enhancement Structure Per Module:**
+### 0.2.2 Source File Analysis
 
+**Entry Point: `server.js`**
+
+Responsibilities:
+- Imports Express application factory from `src/app.js`
+- Imports configuration from `src/config`
+- Starts HTTP server with `app.listen()`
+- Outputs startup message to console
+
+Key Implementation:
 ```javascript
-/**
- * @module module-name
- * @description Module purpose and responsibility
- * @requires dependency-list
- * @see related-modules
- * @example
- * // Usage example
- */
+const app = require('./src/app');
+const config = require('./src/config');
+app.listen(config.port, config.host, () => {
+    console.log(`Server running at http://${config.host}:${config.port}/`);
+});
 ```
 
-### 0.4.2 Content Generation Strategy
+**Application Factory: `src/app.js`**
 
-**Information Extraction Approach:**
+Responsibilities:
+- Creates Express application instance
+- Mounts route middleware from `src/routes`
+- Exports configured application
 
-- Extract API signatures from `src/routes/main.routes.js` using code parsing
-- Extract configuration options from `src/config/index.js`
-- Generate examples by analyzing existing verification in `blitzy/documentation/`
-- Create diagrams by mapping component relationships in `src/`
-
-**Documentation Standards:**
-
-- Markdown formatting with proper headers (`#`, `##`, `###`)
-- Code examples using triple backticks with language identifiers
-- Tables for configuration options and API parameters
-- Source citations as inline references: `Source: /path/to/file.js:LineNumber`
-- Consistent terminology following existing codebase patterns
-
-### 0.4.3 JSDoc Enhancement Patterns
-
-**For Server Entry Point (**`server.js`**):**
-
+Key Implementation:
 ```javascript
-/**
- * @module server
- * @requires ./src/app
- * @requires ./src/config
- * @example
- * // Start the server
- * npm start
- * // Server running at http://127.0.0.1:3000/
- */
+const express = require('express');
+const routes = require('./routes');
+const app = express();
+app.use('/', routes);
+module.exports = app;
 ```
 
-**For Express Route Handlers:**
+**Configuration Module: `src/config/index.js`**
 
-```javascript
-/**
- * @route GET /
- * @description Returns Hello World greeting
- * @param {express.Request} req - Express request
- * @param {express.Response} res - Express response
- * @returns {void} Sends 'Hello, World!\n'
- * @example
- * curl http://127.0.0.1:3000/
- * // Response: Hello, World!
- */
-```
+Responsibilities:
+- Reads environment variables with defaults
+- Exports configuration object
 
-**For Configuration Properties:**
+Key Configuration Values:
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `HOST` | `127.0.0.1` | Server bind address |
+| `PORT` | `3000` | Server bind port |
+| `NODE_ENV` | `development` | Runtime environment |
 
-```javascript
-/**
- * @type {number}
- * @default 3000
- * @example
- * // Override port via environment
- * PORT=8080 npm start
- */
-```
+**Route Aggregator: `src/routes/index.js`**
 
-### 0.4.4 Diagram and Visual Strategy
+Responsibilities:
+- Creates Express Router instance
+- Imports and mounts route modules
+- Exports combined router
 
-**Mermaid Diagrams to Create:**
+**Route Handlers: `src/routes/main.routes.js`**
 
-**Application Architecture Diagram (for README):**
+Responsibilities:
+- Defines HTTP endpoint handlers
+- Exports router with registered routes
 
-```mermaid
-graph TD
-    A[npm start] --> B[server.js]
-    B --> C[src/app.js]
-    C --> D[src/routes/index.js]
-    D --> E[src/routes/main.routes.js]
-    B --> F[src/config/index.js]
-    E --> G["GET / → Hello, World!"]
-    E --> H["GET /evening → Good evening"]
-```
+Endpoints Defined:
+| Method | Path | Response | Content-Type |
+|--------|------|----------|--------------|
+| `GET` | `/` | `Hello, World!\n` | `text/html; charset=utf-8` |
+| `GET` | `/evening` | `Good evening` | `text/html; charset=utf-8` |
 
-**Request Flow Diagram (for API documentation):**
+### 0.2.3 Dependency Analysis
 
-```mermaid
-sequenceDiagram
-    participant Client
-    participant Server
-    participant Routes
-    Client->>Server: HTTP Request
-    Server->>Routes: Route matching
-    Routes->>Server: Response data
-    Server->>Client: HTTP Response
-```
-
-### 0.4.5 README Content Sections
-
-| Section | Content Source | Format |
-| --- | --- | --- |
-| Title/Badges | package.json | Markdown shields |
-| Description | package.json description | Prose |
-| Prerequisites | blitzy/documentation | Table |
-| Installation | blitzy/documentation | Numbered steps + code blocks |
-| Configuration | src/config/index.js | Table + code examples |
-| Usage | Verification commands | Code blocks |
-| API Reference | src/routes/main.routes.js | Table + curl examples |
-| Project Structure | Directory tree | Code block |
-| Deployment | Best practices research | Prose + code |
-| License | package.json | Badge + text |
-
-## 0.5 Documentation File Transformation Mapping
-
-### 0.5.1 File-by-File Documentation Plan
-
-**Documentation Transformation Modes:**
-
-- **CREATE** - Create a new documentation file
-- **UPDATE** - Update an existing documentation file
-- **DELETE** - Remove an obsolete documentation file
-- **REFERENCE** - Use as an example for documentation style and structure
-
-| Target Documentation File | Transformation | Source Code/Docs | Content/Changes |
-| --- | --- | --- | --- |
-| `README.md` | UPDATE | `README.md`, `blitzy/documentation/Project Guide.md` | Complete rewrite with comprehensive documentation including setup, API reference, deployment guide |
-| `server.js` | UPDATE | `server.js` | Enhance JSDoc with `@requires`, `@example`, `@fires` tags and inline code explanations |
-| `src/app.js` | UPDATE | `src/app.js` | Enhance JSDoc with `@exports`, `@requires`, `@example` tags and middleware documentation |
-| `src/config/index.js` | UPDATE | `src/config/index.js` | Add `@example` tags for each property, enhance usage documentation |
-| `src/routes/index.js` | UPDATE | `src/routes/index.js` | Add `@exports` tag, barrel pattern documentation, cross-references |
-| `src/routes/main.routes.js` | UPDATE | `src/routes/main.routes.js` | Enhance route handlers with `@example` curl commands, response documentation |
-| `blitzy/documentation/Project Guide.md` | REFERENCE | N/A | Use as style reference for README structure and content |
-| `blitzy/documentation/Technical Specifications.md` | REFERENCE | N/A | Use as technical reference for accurate documentation |
-
-### 0.5.2 New Documentation Files Detail
-
-No new documentation files need to be created. All documentation will be added to existing files or enhance existing content.
-
-### 0.5.3 Documentation Files to Update - Detail
-
-**File:** `README.md` **- Complete Rewrite**
-
-```plaintext
-Type: Project README
-Source References: 
-  - blitzy/documentation/Project Guide.md (structure template)
-  - package.json (project metadata)
-  - src/config/index.js (configuration docs)
-  - src/routes/main.routes.js (API endpoints)
-  
-Sections:
-  - Header with project name, badges (License: MIT)
-  - Description: "Hello world in Node.js" Express.js tutorial server
-  - Table of Contents with anchor links
-  - Prerequisites: Node.js >= 20.19.x, npm >= 10.8.x
-  - Installation: Clone, npm install, verify
-  - Configuration: HOST, PORT, NODE_ENV environment variables
-  - Usage: npm start, curl commands
-  - API Reference: GET /, GET /evening with examples
-  - Project Structure: Directory tree diagram
-  - Deployment Guide: Production considerations, PM2, Docker
-  - Contributing: Basic guidelines
-  - License: MIT
-  
-Diagrams:
-  - Application architecture (Mermaid flowchart)
-  
-Key Citations:
-  - package.json:1-15 (metadata)
-  - src/config/index.js:20-41 (configuration)
-  - src/routes/main.routes.js:26-39 (routes)
-```
-
-**File:** `server.js` **- JSDoc Enhancement**
-
-```plaintext
-Type: JSDoc Enhancement
-Current Lines: 23
-Target Additions:
-  - Line 1-16: Enhance @module with @requires tags
-  - Line 18-19: Add @constant tags for imports
-  - Line 21-23: Add @fires and @example for listen callback
-  - Add inline comments explaining server binding
-
-Example Enhancement:
-  /**
-   * @module server
-   * @requires module:src/app
-   * @requires module:src/config
-   * @example
-   * // Start the server from command line
-   * npm start
-   * // Output: Server running at http://127.0.0.1:3000/
-   */
-```
-
-**File:** `src/app.js` **- JSDoc Enhancement**
-
-```plaintext
-Type: JSDoc Enhancement
-Current Lines: 27
-Target Additions:
-  - Line 1-12: Add @requires and @exports tags
-  - Line 14-15: Add @constant tags for express import
-  - Line 17: Add comment explaining app initialization
-  - Line 25: Add @middleware documentation
-
-Example Enhancement:
-  /**
-   * @exports ExpressApplication
-   * @requires express
-   * @requires module:src/routes
-   */
-```
-
-**File:** `src/config/index.js` **- JSDoc Enhancement**
-
-```plaintext
-Type: JSDoc Enhancement
-Current Lines: 41
-Target Additions:
-  - Lines 26, 33, 40: Add @example tags to each property
-  
-Example Enhancement:
-  /**
-   * @example
-   * // Override default port
-   * process.env.PORT = '8080';
-   * const config = require('./src/config');
-   * console.log(config.port); // 8080
-   */
-```
-
-**File:** `src/routes/index.js` **- JSDoc Enhancement**
-
-```plaintext
-Type: JSDoc Enhancement
-Current Lines: 19
-Target Additions:
-  - Line 1-13: Add @exports tag documenting barrel export
-  - Line 15: Add @see reference to main.routes
-  
-Example Enhancement:
-  /**
-   * @exports {Object} routes
-   * @property {express.Router} mainRoutes - Main application routes
-   * @see module:src/routes/main.routes
-   */
-```
-
-**File:** `src/routes/main.routes.js` **- JSDoc Enhancement**
-
-```plaintext
-Type: JSDoc Enhancement
-Current Lines: 41
-Target Additions:
-  - Lines 19-28: Enhance GET / handler with @example curl
-  - Lines 30-39: Enhance GET /evening handler with @example curl
-  
-Example Enhancement:
-  /**
-   * @example
-   * // Test with curl
-   * curl -i http://127.0.0.1:3000/
-   * // HTTP/1.1 200 OK
-   * // Content-Type: text/html; charset=utf-8
-   * // Hello, World!
-   */
-```
-
-### 0.5.4 Documentation Configuration Updates
-
-No documentation configuration files need to be created or updated as the project uses raw Markdown without a documentation generator.
-
-### 0.5.5 Cross-Documentation Dependencies
-
-| Documentation Element | References | Updates Needed |
-| --- | --- | --- |
-| [README.md](http://README.md) prerequisites | package.json engines | Verify Node.js version |
-| [README.md](http://README.md) API Reference | src/routes/main.routes.js | Keep in sync with routes |
-| [README.md](http://README.md) Configuration | src/config/index.js | Mirror environment variables |
-| JSDoc @requires tags | Actual require statements | Match import paths |
-| JSDoc @example tags | Verification commands | Use tested commands |
-
-## 0.6 Dependency Inventory
-
-### 0.6.1 Documentation Dependencies
-
-This documentation task requires only the existing project dependencies. No additional documentation tools are needed since the project uses:
-
-- Raw Markdown for [README.md](http://README.md)
-- JSDoc comments embedded in source files (no JSDoc generator configured)
-
-**Runtime Dependencies (from package.json):**
-
-| Registry | Package Name | Version | Purpose |
-| --- | --- | --- | --- |
-| npm | express | ^5.1.0 | Web framework - primary subject of documentation |
-
-**Development Environment Requirements:**
-
-| Requirement | Version | Purpose |
-| --- | --- | --- |
-| Node.js | &gt;= 20.19.x | JavaScript runtime |
-| npm | &gt;= 10.8.x | Package manager |
-| Git | Any | Version control |
-| curl | Any | API endpoint testing (documentation examples) |
-
-**Optional Documentation Tools (Not Required but Recommended for Future):**
-
-| Registry | Package Name | Version | Purpose |
-| --- | --- | --- | --- |
-| npm | jsdoc | \~4.0.2 | Generate HTML docs from JSDoc comments |
-| npm | docdash | \~2.0.2 | JSDoc template for better readability |
-| npm | swagger-jsdoc | \~6.2.8 | OpenAPI spec generation from comments |
-| npm | swagger-ui-express | \~5.0.0 | Swagger UI for API documentation |
-
-### 0.6.2 Documentation Reference Updates
-
-**Files Requiring Internal Link Updates:**
-
-Since this is a minimal project with no existing internal documentation links, no link transformations are required.
-
-**New Cross-References to Add:**
-
-| File | Cross-Reference | Target |
-| --- | --- | --- |
-| `server.js` | `@see module:src/app` | Links to app module docs |
-| `server.js` | `@see module:src/config` | Links to config module docs |
-| `src/app.js` | `@see module:src/routes` | Links to routes module docs |
-| `src/routes/index.js` | `@see module:src/routes/main.routes` | Links to main routes docs |
-| `README.md` | `[Configuration](#configuration)` | Internal anchor link |
-| `README.md` | `[API Reference](#api-reference)` | Internal anchor link |
-
-### 0.6.3 Verified Package Versions
-
-All package versions verified against `package.json` and `package-lock.json`:
-
+**package.json Dependencies:**
 ```json
 {
-  "name": "hello_world",
-  "version": "1.0.0",
   "dependencies": {
     "express": "^5.1.0"
   }
 }
 ```
 
-**Transitive Dependencies:** 68 packages (per npm audit)
+- **express ^5.1.0:** Web framework - translates to Flask 3.1.0
+- **Node.js >=20.x:** Runtime requirement from `package-lock.json`
 
-**Known Issues:**
+### 0.2.4 Non-Transferable Files
 
-- body-parser@2.2.0 has a moderate DoS vulnerability (documented in blitzy/documentation/)
-- Recommendation: Run `npm audit fix` before production deployment
+The following files will be replaced (not converted):
 
-## 0.7 Coverage and Quality Targets
+| Source File | Reason | Target Replacement |
+|-------------|--------|-------------------|
+| `package.json` | Node.js specific | `requirements.txt` |
+| `package-lock.json` | npm lock file | Not needed (pip freeze) |
+| `.gitignore` | Contains Node.js patterns | Updated for Python |
 
-### 0.7.1 Documentation Coverage Metrics
+### 0.2.5 Documentation Files
 
-**Current Coverage Analysis:**
+| File | Action Required |
+|------|-----------------|
+| `README.md` | UPDATE - Reflect Flask installation and usage |
+| `blitzy/*.md` | NO CHANGE - Auto-generated documentation |
 
-| Category | Items | Documented | Coverage | Target |
-| --- | --- | --- | --- | --- |
-| JavaScript Modules | 5 | 5 | 100% | 100% |
-| Module-level JSDoc | 5 | 5 | 100% | 100% |
-| Function/Route JSDoc | 3 | 2 | 67% | 100% |
-| @example Tags | 5 modules | 0 | 0% | 100% |
-| @requires Tags | 4 modules | 0 | 0% | 100% |
-| API Endpoints | 2 | 0 (in README) | 0% | 100% |
-| Configuration Options | 3 | 0 (in README) | 0% | 100% |
-| README Sections | 12 target | 1 | 8% | 100% |
+## 0.3 Target Design
 
-**Coverage Gaps to Address:**
+### 0.3.1 Refactored Structure Planning
 
-| Module | Current | Target | Focus Areas |
-| --- | --- | --- | --- |
-| `server.js` | 60% | 100% | Add @example, @requires, inline comments |
-| `src/app.js` | 70% | 100% | Add @exports, @requires, @example |
-| `src/config/index.js` | 85% | 100% | Add @example for each property |
-| `src/routes/index.js` | 65% | 100% | Add @exports, @see cross-references |
-| `src/routes/main.routes.js` | 80% | 100% | Add @example curl commands |
-| `README.md` | 8% | 100% | Complete rewrite required |
+The target Flask application structure maintains architectural parity with the source while following Python and Flask conventions:
 
-### 0.7.2 Documentation Quality Criteria
+**Target Architecture:**
+```
+/
+├── .gitignore                 # Updated for Python/Flask
+├── README.md                  # Updated for Flask usage
+├── requirements.txt           # Python dependencies
+├── run.py                     # Application entry point
+├── src/
+│   ├── __init__.py            # Package initialization
+│   ├── app.py                 # Flask application factory
+│   ├── config/
+│   │   └── __init__.py        # Configuration module
+│   └── routes/
+│       ├── __init__.py        # Route aggregator (Blueprint registration)
+│       └── main.py            # Main route handlers (Blueprint)
+└── blitzy/
+    ├── Project Guide.md       # Unchanged
+    └── Technical Specifications.md  # Unchanged
+```
 
-**Completeness Requirements:**
+### 0.3.2 Web Search Research Conducted
 
-| Element | Requirement | Validation |
-| --- | --- | --- |
-| All modules | Have @module tag | Check first JSDoc block |
-| All modules | Have @description | Check JSDoc block content |
-| All public exports | Have @exports or documented | Check module.exports |
-| All route handlers | Have @route annotation | Check router.get/post calls |
-| All config options | Have @type and @default | Check config properties |
-| README | Has all 12 sections | Check headers |
-| API endpoints | Have request/response examples | Check curl commands |
+Research was conducted on the following topics to inform the target design:
 
-**Accuracy Validation:**
+- **Node.js Express to Flask migration best practices:** Key findings include maintaining route structure, using Flask Blueprints to replace Express Router, and preserving the application factory pattern
+- **Flask application factory pattern conventions:** Use of `create_app()` function that returns a configured Flask instance, allowing testability and multiple configurations
+- **Python package structure best practices:** Use of `__init__.py` files for package recognition, modular organization mirroring the source structure
 
-| Check | Method | Expected Result |
-| --- | --- | --- |
-| API examples | Execute curl commands | Match documented responses |
-| Config defaults | Compare with code | `host='127.0.0.1'`, `port=3000`, `env='development'` |
-| Version numbers | Compare with package.json | Node.js &gt;= 20.19.x, npm &gt;= 10.8.x |
-| Response strings | Compare with route handlers | `'Hello, World!\n'`, `'Good evening'` |
+### 0.3.3 Design Pattern Applications
 
-**Clarity Standards:**
+**Application Factory Pattern:**
+- Flask's `create_app()` function mirrors Express's module export pattern
+- Enables configuration injection for testing
+- Supports multiple application instances
 
-- Technical accuracy with accessible language for tutorial audience
-- Progressive disclosure: Quick start → Detailed reference
-- Consistent terminology: Use "endpoint" not "route" in user-facing docs
-- Code examples must be copy-paste ready
-- All commands must include expected output
+**Blueprint Pattern:**
+- Flask Blueprints directly map to Express Router instances
+- Enable route modularization and grouping
+- Support URL prefix mounting (using `/` root prefix)
 
-**Maintainability:**
+**Configuration Object Pattern:**
+- Python module with configuration class or dictionary
+- Environment variable loading via `os.environ`
+- Default value fallback mechanism
 
-- Source citations for all technical claims
-- Version-specific information clearly marked
-- Environment-specific notes (development vs production)
-- Update dates in README header
+### 0.3.4 Target File Specifications
 
-### 0.7.3 Example and Diagram Requirements
+**Entry Point: `run.py`**
+```python
+from src.app import create_app
+from src.config import config
+app = create_app()
+if __name__ == '__main__':
+    print(f"Server running at http://{config['host']}:{config['port']}/")
+    app.run(host=config['host'], port=config['port'])
+```
 
-**Minimum Examples Per Element:**
+**Application Factory: `src/app.py`**
+```python
+from flask import Flask
+def create_app():
+    app = Flask(__name__)
+    from src.routes import main_bp
+    app.register_blueprint(main_bp)
+    return app
+```
 
-| Element | Minimum Examples |
-| --- | --- |
-| Each API endpoint | 1 curl command + response |
-| Each config option | 1 usage example |
-| Server startup | 1 npm start example |
-| Installation | Step-by-step commands |
+**Configuration: `src/config/__init__.py`**
+```python
+import os
+config = {
+    'host': os.environ.get('HOST', '127.0.0.1'),
+    'port': int(os.environ.get('PORT', 3000)),
+    'env': os.environ.get('FLASK_ENV', 'development')
+}
+```
 
-**Required Diagrams:**
+**Route Blueprint: `src/routes/main.py`**
+```python
+from flask import Blueprint
+main_bp = Blueprint('main', __name__)
+@main_bp.route('/')
+def index():
+    return 'Hello, World!\n'
+@main_bp.route('/evening')
+def evening():
+    return 'Good evening'
+```
 
-| Diagram | Type | Purpose |
-| --- | --- | --- |
-| Application Architecture | Mermaid flowchart | Show module relationships |
-| Request Flow | Mermaid sequence | Show HTTP request handling |
+**Route Aggregator: `src/routes/__init__.py`**
+```python
+from src.routes.main import main_bp
+```
 
-**Example Testing Strategy:**
+### 0.3.5 Architecture Diagram
 
-- All curl commands must be verified against running server
-- All npm commands must be verified in clean environment
-- Response strings must exactly match source code
+```mermaid
+graph TB
+    subgraph "Python/Flask Application"
+        RP[run.py<br/>Entry Point]
+        APP[src/app.py<br/>create_app factory]
+        CFG[src/config/__init__.py<br/>Configuration]
+        RTI[src/routes/__init__.py<br/>Blueprint Exports]
+        RTM[src/routes/main.py<br/>main_bp Blueprint]
+    end
+    
+    RP --> APP
+    RP --> CFG
+    APP --> RTI
+    RTI --> RTM
+    
+    subgraph "HTTP Endpoints"
+        E1["GET / → 'Hello, World!\n'"]
+        E2["GET /evening → 'Good evening'"]
+    end
+    
+    RTM --> E1
+    RTM --> E2
+```
 
-### 0.7.4 Quality Checklist
+### 0.3.6 Package Initialization Files
 
-- [ ] All JSDoc blocks start with `/**`
-
-- [ ] All @module tags match file paths
-
-- [ ] All @requires tags match actual require statements
-
-- [ ] All @example tags contain tested code
-
-- [ ] README has valid Markdown syntax
-
-- [ ] README anchor links work correctly
-
-- [ ] All code blocks have language identifiers
-
-- [ ] All tables have consistent column widths
-
-- [ ] No broken internal references
-
-- [ ] Response strings exactly match source code
-
-## 0.8 Scope Boundaries
-
-### 0.8.1 Exhaustively In Scope
-
-**Documentation File Updates:**
-
-| File Pattern | Type | Changes |
-| --- | --- | --- |
-| `README.md` | Project README | Complete rewrite with comprehensive documentation |
-| `server.js` | Source file | JSDoc enhancement + inline comments |
-| `src/app.js` | Source file | JSDoc enhancement + inline comments |
-| `src/config/index.js` | Source file | JSDoc enhancement with @example tags |
-| `src/routes/index.js` | Source file | JSDoc enhancement + barrel docs |
-| `src/routes/main.routes.js` | Source file | JSDoc enhancement + curl examples |
-
-**Documentation Content Additions:**
-
-- Project title and description
-- Table of contents with anchor links
-- Prerequisites documentation (Node.js, npm versions)
-- Installation instructions (clone, npm install, verify)
-- Configuration documentation (environment variables table)
-- Usage instructions (start server, test endpoints)
-- API reference (GET /, GET /evening with examples)
-- Project structure diagram
-- Deployment guide (production, Docker, PM2)
-- Contributing guidelines
-- License information
-
-**JSDoc Enhancements:**
-
-- `@module` tag verification and enhancement
-- `@requires` tags for all dependencies
-- `@exports` tags for all module exports
-- `@example` tags with practical usage
-- `@see` tags for cross-references
-- `@param` tags for function parameters
-- `@returns` tags for return values
-- Inline code explanations
-
-**Reference Files (Read-Only):**
+Each `__init__.py` file serves a specific purpose:
 
 | File | Purpose |
-| --- | --- |
-| `blitzy/documentation/Project Guide.md` | Style and content reference |
-| `blitzy/documentation/Technical Specifications.md` | Technical accuracy reference |
-| `package.json` | Metadata source |
-| `package-lock.json` | Dependency verification |
+|------|---------|
+| `src/__init__.py` | Marks `src` as a Python package |
+| `src/config/__init__.py` | Contains configuration logic and exports |
+| `src/routes/__init__.py` | Exports `main_bp` Blueprint for registration |
 
-### 0.8.2 Explicitly Out of Scope
+## 0.4 Transformation Mapping
 
-**Source Code Modifications (Logic Changes):**
+### 0.4.1 File-by-File Transformation Plan
 
-- ❌ Adding new endpoints or routes
-- ❌ Modifying existing route response strings
-- ❌ Changing server configuration logic
-- ❌ Adding middleware or error handlers
-- ❌ Modifying package.json dependencies
-- ❌ Changing application architecture
+The following table maps every target file to its source equivalent with specific transformation instructions:
 
-**Test File Modifications:**
+| Target File | Transformation | Source File | Key Changes |
+|-------------|----------------|-------------|-------------|
+| `run.py` | CREATE | `server.js` | Convert Node.js entry point to Python; use Flask app.run() |
+| `requirements.txt` | CREATE | `package.json` | Extract Flask dependency; add python-dotenv if needed |
+| `src/__init__.py` | CREATE | N/A | Create empty package marker file |
+| `src/app.py` | CREATE | `src/app.js` | Convert Express app factory to Flask create_app() pattern |
+| `src/config/__init__.py` | CREATE | `src/config/index.js` | Convert CommonJS config to Python module with os.environ |
+| `src/routes/__init__.py` | CREATE | `src/routes/index.js` | Convert Express Router aggregation to Blueprint import/export |
+| `src/routes/main.py` | CREATE | `src/routes/main.routes.js` | Convert Express routes to Flask Blueprint routes |
+| `.gitignore` | UPDATE | `.gitignore` | Replace Node.js patterns with Python patterns |
+| `README.md` | UPDATE | `README.md` | Update installation and usage instructions for Flask |
 
-- ❌ Creating or modifying test files
-- ❌ Setting up test frameworks (Jest, Mocha)
-- ❌ Adding test scripts to package.json
+### 0.4.2 Detailed File Transformations
 
-**Documentation Generator Setup:**
+**Entry Point Transformation: `server.js` → `run.py`**
 
-- ❌ Installing JSDoc generator
-- ❌ Creating jsdoc.json configuration
-- ❌ Setting up documentation hosting
+| Aspect | Node.js Source | Python Target |
+|--------|---------------|---------------|
+| Import app | `const app = require('./src/app')` | `from src.app import create_app` |
+| Import config | `const config = require('./src/config')` | `from src.config import config` |
+| Create instance | Implicit via require | `app = create_app()` |
+| Start server | `app.listen(port, host, callback)` | `app.run(host=..., port=...)` |
+| Console output | `console.log(...)` | `print(...)` |
 
-**External Documentation:**
+**Application Factory Transformation: `src/app.js` → `src/app.py`**
 
-- ❌ Creating separate API documentation site
-- ❌ Creating wiki pages
-- ❌ Creating changelog entries
+| Aspect | Node.js Source | Python Target |
+|--------|---------------|---------------|
+| Framework import | `const express = require('express')` | `from flask import Flask` |
+| Router import | `const routes = require('./routes')` | `from src.routes import main_bp` |
+| App creation | `const app = express()` | `app = Flask(__name__)` |
+| Route mounting | `app.use('/', routes)` | `app.register_blueprint(main_bp)` |
+| Export | `module.exports = app` | `return app` from function |
 
-**Existing Blitzy Documentation:**
+**Configuration Transformation: `src/config/index.js` → `src/config/__init__.py`**
 
-- ❌ Modifying `blitzy/documentation/Project Guide.md`
-- ❌ Modifying `blitzy/documentation/Technical Specifications.md`
+| Aspect | Node.js Source | Python Target |
+|--------|---------------|---------------|
+| Env access | `process.env.VAR` | `os.environ.get('VAR')` |
+| Default value | `process.env.VAR \|\| 'default'` | `os.environ.get('VAR', 'default')` |
+| Port type | String (implicit) | `int(...)` cast required |
+| Export | `module.exports = { ... }` | `config = { ... }` module-level dict |
 
-**Infrastructure Changes:**
+**Route Transformation: `src/routes/main.routes.js` → `src/routes/main.py`**
 
-- ❌ Adding CI/CD documentation pipelines
-- ❌ Creating Dockerfile
-- ❌ Setting up documentation deployment
+| Aspect | Node.js Source | Python Target |
+|--------|---------------|---------------|
+| Router creation | `const router = express.Router()` | `main_bp = Blueprint('main', __name__)` |
+| Route definition | `router.get('/', handler)` | `@main_bp.route('/')` decorator |
+| Handler function | `(req, res) => { res.send(...) }` | `def handler(): return ...` |
+| Response | `res.send('text')` | `return 'text'` |
+| Export | `module.exports = router` | Blueprint auto-available via import |
 
-### 0.8.3 Scope Clarifications
+### 0.4.3 Import Statement Transformations
 
-| Item | Status | Rationale |
-| --- | --- | --- |
-| JSDoc in source files | ✅ IN SCOPE | User explicitly requested JSDoc comments |
-| Inline code comments | ✅ IN SCOPE | User requested "inline code explanations" |
-| [README.md](http://README.md) | ✅ IN SCOPE | User requested "comprehensive README" |
-| API documentation | ✅ IN SCOPE | User explicitly requested |
-| Deployment guide | ✅ IN SCOPE | User explicitly requested |
-| Setup instructions | ✅ IN SCOPE | User explicitly requested |
-| Code logic changes | ❌ OUT OF SCOPE | Documentation-only task |
-| New features | ❌ OUT OF SCOPE | Documentation-only task |
-| Test framework | ❌ OUT OF SCOPE | Not requested, tutorial scope |
+**Global Import Updates Required:**
 
-### 0.8.4 Documentation-Only Constraint
+| Original Pattern | Transformed Pattern | Files Affected |
+|-----------------|---------------------|----------------|
+| `require('express')` | `from flask import Flask` | `src/app.py` |
+| `require('./routes')` | `from src.routes import main_bp` | `src/app.py` |
+| `require('./src/app')` | `from src.app import create_app` | `run.py` |
+| `require('./src/config')` | `from src.config import config` | `run.py` |
+| `require('./main.routes')` | `from src.routes.main import main_bp` | `src/routes/__init__.py` |
+| `express.Router()` | `Blueprint('name', __name__)` | `src/routes/main.py` |
+| `process.env` | `os.environ` | `src/config/__init__.py` |
 
-This task is strictly documentation-focused:
+### 0.4.4 Response Behavior Preservation
 
-**Allowed Changes:**
+Critical response preservation mapping:
 
-- Adding/modifying JSDoc comment blocks
-- Adding/modifying inline code comments
-- Rewriting [README.md](http://README.md) content
-- Adding Markdown diagrams
+| Endpoint | Original Response | Python Implementation | Verification |
+|----------|-------------------|----------------------|--------------|
+| `GET /` | `"Hello, World!\n"` | `return 'Hello, World!\n'` | Includes `\n` newline |
+| `GET /evening` | `"Good evening"` | `return 'Good evening'` | No trailing newline |
 
-**Prohibited Changes:**
+### 0.4.5 Files to Delete (Node.js-Specific)
 
-- Executable JavaScript code
-- Module exports or imports
-- Package dependencies
-- Configuration values
-- Route handlers or responses
+The following files should be removed as they are Node.js-specific:
 
-## 0.9 Execution Parameters
+| File to Delete | Reason |
+|---------------|--------|
+| `server.js` | Replaced by `run.py` |
+| `package.json` | Replaced by `requirements.txt` |
+| `package-lock.json` | Node.js lock file not needed |
+| `src/app.js` | Replaced by `src/app.py` |
+| `src/config/index.js` | Replaced by `src/config/__init__.py` |
+| `src/routes/index.js` | Replaced by `src/routes/__init__.py` |
+| `src/routes/main.routes.js` | Replaced by `src/routes/main.py` |
 
-### 0.9.1 Documentation-Specific Instructions
+### 0.4.6 One-Phase Execution
 
-**Documentation Build Command:**
+The entire refactoring operation will be executed by Blitzy in **ONE phase**. All file transformations, deletions, and creations will occur atomically to ensure system integrity.
 
+**Execution Order:**
+1. Create all Python files (`run.py`, `requirements.txt`, `src/**/*.py`)
+2. Update existing files (`.gitignore`, `README.md`)
+3. Remove obsolete Node.js files (`server.js`, `package*.json`, `src/**/*.js`)
+
+## 0.5 Dependency Inventory
+
+### 0.5.1 Key Private and Public Packages
+
+The following table documents all dependencies required for the Flask application:
+
+| Registry | Package Name | Version | Purpose |
+|----------|-------------|---------|---------|
+| PyPI | `Flask` | `3.1.0` | Web application framework (replaces Express.js) |
+| PyPI | `Werkzeug` | `>=3.1.0` | WSGI utilities (auto-installed with Flask) |
+| PyPI | `Jinja2` | `>=3.1.0` | Template engine (auto-installed with Flask) |
+| PyPI | `MarkupSafe` | `>=2.0` | Safe string handling (auto-installed) |
+| PyPI | `ItsDangerous` | `>=2.2.0` | Data signing (auto-installed with Flask) |
+| PyPI | `click` | `>=8.0` | CLI framework (auto-installed with Flask) |
+| PyPI | `Blinker` | `>=1.9.0` | Signal support (auto-installed with Flask) |
+| Runtime | `Python` | `>=3.9` | Python runtime (Flask 3.1.x requirement) |
+
+### 0.5.2 Source to Target Dependency Mapping
+
+| Source Dependency (Node.js) | Target Dependency (Python) | Notes |
+|----------------------------|---------------------------|-------|
+| `express@^5.1.0` | `Flask==3.1.0` | Primary web framework |
+| `node@>=20.x` | `Python>=3.9` | Runtime environment |
+| npm ecosystem | PyPI ecosystem | Package registry |
+
+### 0.5.3 Requirements File Content
+
+**Target: `requirements.txt`**
+```
+Flask==3.1.0
+```
+
+Flask 3.1.0 automatically installs all required sub-dependencies (Werkzeug, Jinja2, etc.).
+
+### 0.5.4 Environment Variable Mapping
+
+The following environment variables are preserved with updated naming conventions where appropriate:
+
+| Source Variable | Target Variable | Default | Type | Description |
+|----------------|-----------------|---------|------|-------------|
+| `HOST` | `HOST` | `127.0.0.1` | string | Server bind address |
+| `PORT` | `PORT` | `3000` | integer | Server bind port |
+| `NODE_ENV` | `FLASK_ENV` | `development` | string | Runtime environment mode |
+
+**User-Provided Environment Variables:**
+The following environment variables were specified by the user and should be available:
+- `Api Key`
+- `Token`
+- `https://8008`
+
+### 0.5.5 Import Refactoring
+
+**Files Requiring Import Updates:**
+
+| File | Old Import Style | New Import Style |
+|------|-----------------|------------------|
+| `run.py` | N/A (new file) | `from src.app import create_app` |
+| `run.py` | N/A (new file) | `from src.config import config` |
+| `src/app.py` | N/A (new file) | `from flask import Flask` |
+| `src/app.py` | N/A (new file) | `from src.routes import main_bp` |
+| `src/config/__init__.py` | N/A (new file) | `import os` |
+| `src/routes/__init__.py` | N/A (new file) | `from src.routes.main import main_bp` |
+| `src/routes/main.py` | N/A (new file) | `from flask import Blueprint` |
+
+### 0.5.6 Python Version Requirements
+
+Based on Flask 3.1.0 requirements:
+
+| Requirement | Specification | Verification |
+|-------------|--------------|--------------|
+| Minimum Python | 3.9 | Flask 3.1.x dropped Python 3.8 support |
+| Recommended Python | 3.11 or 3.12 | Latest stable versions |
+| Maximum Python | 3.13+ | Forward compatible |
+
+### 0.5.7 Development vs Production Dependencies
+
+| Dependency Type | Packages | Installation |
+|----------------|----------|--------------|
+| Production | `Flask==3.1.0` | `pip install -r requirements.txt` |
+| Development (Optional) | `pytest`, `pytest-cov` | For testing if needed |
+| Development (Optional) | `python-dotenv` | For .env file support |
+
+### 0.5.8 External Reference Updates
+
+The following configuration and documentation files require updates to reflect the new dependency structure:
+
+| File Pattern | Update Required |
+|--------------|-----------------|
+| `README.md` | Installation instructions (npm → pip) |
+| `.gitignore` | Python patterns (`__pycache__/`, `*.pyc`, `venv/`) |
+
+## 0.6 Scope Boundaries
+
+### 0.6.1 Exhaustively In Scope
+
+**Source Files for Transformation:**
+- `server.js` - Entry point transformation
+- `src/app.js` - Application factory transformation
+- `src/config/index.js` - Configuration module transformation
+- `src/routes/index.js` - Route aggregator transformation
+- `src/routes/main.routes.js` - Route handler transformation
+
+**Target Files to Create:**
+- `run.py` - New Python entry point
+- `requirements.txt` - Python dependency manifest
+- `src/__init__.py` - Package initialization
+- `src/app.py` - Flask application factory
+- `src/config/__init__.py` - Configuration module
+- `src/routes/__init__.py` - Blueprint exports
+- `src/routes/main.py` - Route Blueprint handlers
+
+**Configuration Updates:**
+- `.gitignore` - Update patterns for Python ecosystem
+- `README.md` - Update documentation for Flask installation and usage
+
+**Documentation Updates:**
+- `README.md` - Comprehensive rewrite for Python/Flask usage
+  - Installation instructions (Python, pip, virtualenv)
+  - Running instructions (`python run.py` or `flask run`)
+  - Environment variable documentation
+
+### 0.6.2 Explicitly Out of Scope
+
+**No Changes Required:**
+- `blitzy/` directory - Auto-generated documentation files
+  - `blitzy/Project Guide.md` - No modification
+  - `blitzy/Technical Specifications.md` - No modification
+
+**Not Applicable (No Test Files Present):**
+- Test file updates - Source project contains no test files
+- Test configuration - No test framework configuration exists
+
+**Not Included:**
+- Database migrations - Source uses no database
+- Authentication/Authorization - Source implements no auth
+- Static file serving - Source serves no static files
+- Template rendering - Source returns plain text only
+- CORS configuration - Source has no CORS setup
+- Logging configuration - Source uses basic console.log only
+- Error handling middleware - Source uses Express defaults
+
+### 0.6.3 Scope Validation Matrix
+
+| Component | Source Has | Target Needs | In Scope |
+|-----------|-----------|--------------|----------|
+| HTTP Server | ✓ | ✓ | ✓ |
+| Route Handlers | ✓ | ✓ | ✓ |
+| Configuration | ✓ | ✓ | ✓ |
+| Dependency Manifest | ✓ | ✓ | ✓ |
+| Git Ignore | ✓ | ✓ | ✓ |
+| README | ✓ | ✓ | ✓ |
+| Tests | ✗ | ✗ | ✗ |
+| Database | ✗ | ✗ | ✗ |
+| Authentication | ✗ | ✗ | ✗ |
+| Static Files | ✗ | ✗ | ✗ |
+| Templates | ✗ | ✗ | ✗ |
+
+### 0.6.4 Feature Parity Checklist
+
+All source features must be preserved in the target:
+
+| Feature | Source Implementation | Target Implementation | Status |
+|---------|----------------------|----------------------|--------|
+| `GET /` endpoint | `res.send('Hello, World!\n')` | `return 'Hello, World!\n'` | Required |
+| `GET /evening` endpoint | `res.send('Good evening')` | `return 'Good evening'` | Required |
+| Environment config | `process.env` | `os.environ` | Required |
+| Default HOST | `127.0.0.1` | `127.0.0.1` | Required |
+| Default PORT | `3000` | `3000` | Required |
+| Startup message | Console output | Print statement | Required |
+| Factory pattern | Module export | `create_app()` | Required |
+| Modular routes | Express Router | Flask Blueprint | Required |
+
+### 0.6.5 Boundary Diagram
+
+```mermaid
+graph TB
+    subgraph "IN SCOPE"
+        S1[server.js → run.py]
+        S2[src/app.js → src/app.py]
+        S3[src/config/index.js → src/config/__init__.py]
+        S4[src/routes/index.js → src/routes/__init__.py]
+        S5[src/routes/main.routes.js → src/routes/main.py]
+        S6[package.json → requirements.txt]
+        S7[.gitignore UPDATE]
+        S8[README.md UPDATE]
+        S9[src/__init__.py CREATE]
+    end
+    
+    subgraph "OUT OF SCOPE"
+        O1[blitzy/ - No Changes]
+        O2[Tests - Not Present]
+        O3[Database - Not Used]
+        O4[Auth - Not Implemented]
+    end
+```
+
+### 0.6.6 Files Summary by Action
+
+| Action | Files |
+|--------|-------|
+| CREATE | `run.py`, `requirements.txt`, `src/__init__.py`, `src/app.py`, `src/config/__init__.py`, `src/routes/__init__.py`, `src/routes/main.py` |
+| UPDATE | `.gitignore`, `README.md` |
+| DELETE | `server.js`, `package.json`, `package-lock.json`, `src/app.js`, `src/config/index.js`, `src/routes/index.js`, `src/routes/main.routes.js` |
+| NO CHANGE | `blitzy/Project Guide.md`, `blitzy/Technical Specifications.md` |
+
+## 0.7 Special Instructions for Refactoring
+
+### 0.7.1 User-Specified Requirements
+
+The user has explicitly emphasized the following critical requirements:
+
+> **"Rewrite this Node.js server into a Python 3 Flask application, keeping every feature and functionality exactly as in the original Node.js project. Ensure the rewritten version fully matches the behavior and logic of the current implementation."**
+
+This mandate translates to the following non-negotiable requirements:
+
+- **100% Feature Parity:** Every endpoint must return identical responses
+- **Exact Behavior Match:** Response bodies, status codes, and content types must be preserved
+- **Logic Preservation:** Application flow and configuration handling must remain functionally identical
+- **Complete Rewrite:** All Node.js code must be converted to Python/Flask equivalents
+
+### 0.7.2 Response Preservation Requirements
+
+**Critical Response Validation:**
+
+| Endpoint | Exact Response | Character Count | Notes |
+|----------|---------------|-----------------|-------|
+| `GET /` | `Hello, World!\n` | 14 characters | MUST include trailing newline (`\n`) |
+| `GET /evening` | `Good evening` | 12 characters | NO trailing whitespace |
+
+**Response Headers:**
+- Default Flask response type: `text/html; charset=utf-8`
+- Matches Express default behavior
+
+### 0.7.3 Configuration Preservation Requirements
+
+**Environment Variables Must Be Honored:**
+```python
+HOST = os.environ.get('HOST', '127.0.0.1')
+PORT = int(os.environ.get('PORT', 3000))
+```
+
+**Port Number Override:**
+- Flask default port is 5000
+- This application MUST use port 3000 to match Node.js behavior
+- The `PORT` environment variable default MUST be `3000`, not `5000`
+
+### 0.7.4 Startup Message Preservation
+
+The console output on startup must match the original format:
+
+**Original Node.js:**
+```
+Server running at http://127.0.0.1:3000/
+```
+
+**Required Flask Output:**
+```
+Server running at http://127.0.0.1:3000/
+```
+
+Implementation:
+```python
+print(f"Server running at http://{config['host']}:{config['port']}/")
+```
+
+### 0.7.5 Application Factory Pattern Requirements
+
+The Flask application MUST use the factory pattern to enable:
+- Importing the app without starting the server
+- Potential future testing scenarios
+- Configuration injection capability
+
+**Required Pattern:**
+```python
+def create_app():
+    app = Flask(__name__)
+    # ... configure app
+    return app
+```
+
+**NOT Acceptable:**
+```python
+app = Flask(__name__)  # Global instantiation
+```
+
+### 0.7.6 Package Structure Requirements
+
+The `src/` directory must be a proper Python package:
+
+| File | Requirement |
+|------|-------------|
+| `src/__init__.py` | MUST exist (can be empty) |
+| `src/config/__init__.py` | MUST contain configuration code |
+| `src/routes/__init__.py` | MUST export `main_bp` Blueprint |
+
+### 0.7.7 Blueprint Naming Convention
+
+| Blueprint | Variable Name | Registration |
+|-----------|--------------|--------------|
+| Main routes | `main_bp` | `app.register_blueprint(main_bp)` |
+
+The Blueprint must be registered at the root URL prefix (no prefix modification).
+
+### 0.7.8 User-Provided Setup Instructions
+
+The user specified:
+```
+npm run
+```
+
+This is interpreted as the original project's run command. The equivalent Python command will be:
 ```bash
-# No build required - raw Markdown files
-# To preview README.md locally:
-cat README.md
-# Or use a Markdown viewer
+python run.py
 ```
 
-**Documentation Preview Command:**
-
+Or using Flask CLI:
 ```bash
-# Preview README in terminal (with markdown rendering if available)
-npx marked README.md
-# Or view in browser
-# Open README.md in VS Code and use Markdown Preview (Ctrl+Shift+V)
+flask run --host=127.0.0.1 --port=3000
 ```
 
-**Diagram Generation:**
+### 0.7.9 Environment Variables from User
+
+The user has provided the following environment variables:
+- `Api Key`
+- `Token`
+- `https://8008`
+
+These should be available in the runtime environment but are not used by the current application logic. They remain available for potential future use.
+
+### 0.7.10 Validation Criteria
+
+The refactoring will be considered successful when:
+
+| Criteria | Validation Method |
+|----------|------------------|
+| `GET /` returns correct response | `curl http://127.0.0.1:3000/` returns `Hello, World!\n` |
+| `GET /evening` returns correct response | `curl http://127.0.0.1:3000/evening` returns `Good evening` |
+| Server starts on correct port | Application binds to port 3000 |
+| Configuration reads environment | Setting `PORT=8080` changes bind port |
+| Factory pattern works | `from src.app import create_app` succeeds |
+| All Python files valid | No syntax errors on import |
+| Requirements installable | `pip install -r requirements.txt` succeeds |
+
+### 0.7.11 Summary of Special Instructions
+
+| Instruction | Priority | Status |
+|-------------|----------|--------|
+| Maintain all endpoint behaviors | CRITICAL | Required |
+| Preserve exact response strings | CRITICAL | Required |
+| Use Flask 3.1.0 | HIGH | Required |
+| Use Python 3.9+ | HIGH | Required |
+| Use Application Factory pattern | HIGH | Required |
+| Use Blueprints for routes | HIGH | Required |
+| Default PORT to 3000 | HIGH | Required |
+| Preserve startup console message | MEDIUM | Required |
+| Update README for Flask usage | MEDIUM | Required |
+| Update .gitignore for Python | MEDIUM | Required |
 
-```bash
-# Mermaid diagrams render automatically on GitHub
-# For local preview, use mermaid-cli:
-npx @mermaid-js/mermaid-cli -i README.md -o preview.md
-```
-
-**Documentation Validation:**
-
-```bash
-# Validate Markdown syntax
-npx markdownlint README.md
-
-#### Check for broken links (if links added)
-npx markdown-link-check README.md
-```
-
-### 0.9.2 JSDoc Comment Format
-
-**Standard JSDoc Block Structure:**
-
-```javascript
-/**
- * Brief description of the element.
- * 
- * Longer description with additional context
- * spanning multiple lines if needed.
- * 
- * @module module-name
- * @requires dependency
- * @exports ExportedItem
- * @see module:related-module
- * 
- * @example
- * // Example usage
- * const result = myFunction();
- */
-```
-
-**Route Handler JSDoc Format:**
-
-```javascript
-/**
- * Brief description of the endpoint.
- * 
- * @route {METHOD} /path
- * @param {express.Request} req - Request object
- * @param {express.Response} res - Response object
- * @returns {void} Sends response
- * 
- * @example
- * curl http://127.0.0.1:3000/path
- * // Response: Expected output
- */
-```
-
-### 0.9.3 README Format Standards
-
-**Document Structure:**
-
-- Use ATX-style headers (`#`, `##`, `###`)
-- Maximum heading depth: 3 levels
-- One blank line before and after headers
-- One blank line before and after code blocks
-
-**Code Block Format:**
-
-```plaintext
-    ```language
-    code here
-    ```
-```
-
-**Table Format:**
-
-```plaintext
-| Column 1 | Column 2 |
-|----------|----------|
-| Data 1   | Data 2   |
-```
-
-**Badge Format:**
-
-```plaintext
-![Badge Name](https://img.shields.io/badge/...)
-```
-
-### 0.9.4 Verification Commands
-
-**Server Startup Verification:**
-
-```bash
-cd /tmp/blitzy/test-spec/blitzy0c2547c18
-npm start &
-sleep 2
-```
-
-**Endpoint Testing (for documentation examples):**
-
-```bash
-# Test root endpoint
-curl -s http://127.0.0.1:3000/
-# Expected: Hello, World!
-
-#### Test evening endpoint
-curl -s http://127.0.0.1:3000/evening
-#### Expected: Good evening
-
-#### Test with headers
-curl -i http://127.0.0.1:3000/
-#### Shows HTTP headers + response
-```
-
-**Stop Server:**
-
-```bash
-# Kill background server
-pkill -f "node server.js"
-```
-
-### 0.9.5 Style Guide Reference
-
-**JSDoc Style:**
-
-- Use present tense for descriptions ("Returns", not "Will return")
-- Start descriptions with capital letter
-- End descriptions without period (unless multi-sentence)
-- Use `@example` for all executable code snippets
-- Include expected output in examples as comments
-
-**README Style:**
-
-- Use imperative mood for instructions ("Run", not "You should run")
-- Include expected output for all commands
-- Use consistent capitalization for headings
-- Link to external resources where helpful
-
-**Code Examples:**
-
-- Must be copy-paste ready
-- Must include comments showing expected output
-- Must work with default configuration
-- Should demonstrate common use cases
-
-## 0.10 Special Instructions
-
-### 0.10.1 User-Specified Documentation Requirements
-
-**User's Exact Request:**
-
-> "Add JSDoc comments to server.js functions, create a comprehensive README with setup instructions, API documentation, deployment guide, and inline code explanations."
-
-**Interpreted Directives:**
-
-| Directive | Implementation |
-| --- | --- |
-| "Add JSDoc comments to server.js functions" | Enhance existing JSDoc in all source files with @example, @requires, and function-level documentation |
-| "comprehensive README" | Complete rewrite of [README.md](http://README.md) with 12+ sections |
-| "setup instructions" | Include Prerequisites, Installation, Configuration sections |
-| "API documentation" | Include API Reference section with all endpoints, methods, examples |
-| "deployment guide" | Include Deployment section covering production, Docker, PM2 |
-| "inline code explanations" | Add contextual comments explaining code logic within source files |
-
-### 0.10.2 Documentation-Specific Constraints
-
-**Preserve Existing Behavior:**
-
-- Do not modify route response strings (`'Hello, World!\n'`, `'Good evening'`)
-- Do not change configuration defaults (`127.0.0.1`, `3000`, `development`)
-- Do not alter module export patterns
-- Do not change server startup behavior
-
-**Follow Existing Patterns:**
-
-- Match existing JSDoc style already in codebase
-- Use consistent Mermaid diagram syntax as in blitzy/documentation/
-- Maintain modular architecture documentation
-
-**Tutorial Audience Focus:**
-
-- Use beginner-friendly language
-- Explain concepts before using them
-- Include expected output for all commands
-- Provide troubleshooting hints where relevant
-
-### 0.10.3 JSDoc Enhancement Guidelines
-
-**For Each Source File:**
-
-1. **Verify @module tag** matches file path
-2. **Add @requires tags** for all require() statements
-3. **Add @exports tag** for module.exports
-4. **Add @example tag** with practical usage
-5. **Add @see tags** for cross-references
-6. **Add inline comments** explaining complex logic
-
-**Specific Enhancements by File:**
-
-| File | Required Enhancements |
-| --- | --- |
-| `server.js` | Add @requires for app and config; add @example for npm start; explain listen callback |
-| `src/app.js` | Add @exports for app; add @requires for express and routes; explain middleware mounting |
-| `src/config/index.js` | Add @example for each property showing env override |
-| `src/routes/index.js` | Add @exports for mainRoutes; explain barrel pattern |
-| `src/routes/main.routes.js` | Add @example curl commands for each route |
-
-### 0.10.4 README Content Requirements
-
-**Mandatory Sections:**
-
- 1. **Title and Badges** - Project name, license badge, Node.js version badge
- 2. **Description** - One-paragraph project overview
- 3. **Table of Contents** - Links to all sections
- 4. **Prerequisites** - Node.js &gt;= 20.19.x, npm &gt;= 10.8.x
- 5. **Installation** - Clone, cd, npm install
- 6. **Configuration** - Environment variables table
- 7. **Usage** - npm start, endpoint testing
- 8. **API Reference** - All endpoints with curl examples
- 9. **Project Structure** - Directory tree
-10. **Deployment Guide** - Production considerations
-11. **Contributing** - Basic guidelines
-12. **License** - MIT with link
-
-### 0.10.5 Quality Assurance Checklist
-
-Before marking documentation complete:
-
-- [ ] All JSDoc blocks have valid syntax (start with `/**`)
-
-- [ ] All @module tags match file paths
-
-- [ ] All @requires tags match actual require statements
-
-- [ ] All @example tags contain tested, working code
-
-- [ ] [README.md](http://README.md) renders correctly on GitHub
-
-- [ ] All curl commands produce documented output
-
-- [ ] All Mermaid diagrams render correctly
-
-- [ ] No broken anchor links in README
-
-- [ ] Consistent terminology throughout
-
-- [ ] Version numbers match package.json/blitzy docs
-
-- [ ] Response strings exactly match source code
