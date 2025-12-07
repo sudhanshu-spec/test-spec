@@ -1,17 +1,28 @@
-# Dependencies
-node_modules/
-
-# Python
+# Python bytecode and cache
 __pycache__/
+*.py[cod]
 *.pyc
 *.pyo
-*.pyd
+*$py.class
+
+# Python virtual environments
 venv/
 .venv/
+env/
+ENV/
+
+# Python package and distribution
+*.egg
 *.egg-info/
 dist/
 build/
+eggs/
+.eggs/
+
+# Python test cache
 .pytest_cache/
+.coverage
+htmlcov/
 
 # Environment variables
 .env
@@ -20,7 +31,6 @@ build/
 # Logs
 logs/
 *.log
-npm-debug.log*
 
 # OS files
 .DS_Store
