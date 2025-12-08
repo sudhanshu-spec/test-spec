@@ -5,18 +5,29 @@
     "main": "server.js",
     "scripts": {
         "start": "node server.js",
-        "test": "echo \"Error: no test specified\" && exit 1"
+        "dev": "node server.js",
+        "prod": "NODE_ENV=production node server.js",
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "pm2:start": "pm2 start ecosystem.config.js",
+        "pm2:stop": "pm2 stop ecosystem.config.js",
+        "pm2:restart": "pm2 restart ecosystem.config.js",
+        "pm2:reload": "pm2 reload ecosystem.config.js",
+        "pm2:logs": "pm2 logs",
+        "pm2:status": "pm2 status"
     },
     "author": "hxu",
     "license": "MIT",
+    "engines": {
+        "node": ">=20.0.0"
+    },
     "dependencies": {
-        "compression": "^1.8.1",
+        "compression": "^1.7.5",
         "cors": "^2.8.5",
-        "dotenv": "^16.6.1",
+        "dotenv": "^16.4.7",
         "express": "^5.1.0",
-        "express-rate-limit": "^7.5.1",
-        "helmet": "^8.1.0",
-        "winston": "^3.19.0"
+        "express-rate-limit": "^7.5.0",
+        "helmet": "^8.0.0",
+        "winston": "^3.17.0"
     },
     "devDependencies": {
         "pm2": "^5.4.3"
