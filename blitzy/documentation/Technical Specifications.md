@@ -1,1192 +1,1147 @@
-# Agent Action Plan
+# Technical Specification
 
 # 0. Agent Action Plan
+
 ## 0.1 Intent Clarification
 
-Based on the provided requirements, the Blitzy platform understands that the documentation objective is to **enhance code documentation and create comprehensive project documentation** for a minimal Node.js + Express.js tutorial server.
+### 0.1.1 Core Objective
 
-### 0.1.1 Core Documentation Objective Analysis
+Based on the provided requirements, the Blitzy platform understands that the objective is to transform the existing minimal Node.js + Express.js tutorial server into a **production-ready application** with enhanced routing, middleware architecture, environment configuration management, structured logging, and process management for deployment.
 
-**Documentation Category:** Create new documentation + Update existing documentation
+**Explicit Requirements Interpreted:**
 
-**Documentation Types Required:**
+| Requirement | Technical Interpretation |
+|-------------|-------------------------|
+| "Enhance this basic HTTP server" | Evolve the existing modular architecture at `server.js`, `src/app.js`, and `src/routes/` |
+| "Express.js framework" | Framework already present (v5.1.0) - focus on leveraging additional Express capabilities |
+| "Add routing" | Expand the route structure with additional endpoints, route organization, and RESTful patterns |
+| "Middleware" | Implement middleware pipeline including body parsing, CORS, security headers, request logging |
+| "Environment config" | Enhance `src/config/index.js` with `dotenv` integration and environment-specific configuration |
+| "Logging" | Integrate structured logging library (Winston or Pino) with configurable log levels and output |
+| "Prepare for production deployment with PM2" | Create `ecosystem.config.js`, add startup scripts, implement graceful shutdown |
 
-- JSDoc comments (inline code documentation)
-- README file (comprehensive project documentation)
-- API documentation
-- Setup/installation guide
-- Deployment guide
-- Code explanations (inline comments)
+**Implicit Requirements Detected:**
 
-| Requirement | Interpretation | Action |
-| --- | --- | --- |
-| Add JSDoc comments to server.js functions | Enhance existing JSDoc comments with comprehensive function-level documentation for all modules | UPDATE existing JSDoc |
-| Create comprehensive README | Replace minimal [README.md](http://README.md) with full project documentation | CREATE new [README.md](http://README.md) |
-| Setup instructions | Document installation, configuration, and startup procedures | CREATE in [README.md](http://README.md) |
-| API documentation | Document all HTTP endpoints with request/response examples | CREATE in [README.md](http://README.md) |
-| Deployment guide | Document production deployment considerations | CREATE in [README.md](http://README.md) |
-| Inline code explanations | Add contextual comments explaining code logic | UPDATE source files |
+- Error handling middleware for centralized exception management
+- Health check endpoint for production monitoring
+- Request validation middleware for API robustness
+- Security headers middleware (helmet) for OWASP compliance
+- Rate limiting for DoS protection in production
+- Graceful shutdown handling for zero-downtime deployments
 
-### 0.1.2 Technical Interpretation
+### 0.1.2 Task Categorization
 
-These documentation requirements translate to the following technical documentation strategy:
+| Category | Classification |
+|----------|---------------|
+| **Primary task type** | Mixed (Configuration + Infrastructure + Feature Enhancement) |
+| **Secondary aspects** | Security enhancement, Operational tooling, Development workflow |
+| **Scope classification** | Cross-cutting change affecting multiple layers |
 
-- To **document server.js functions**, we will enhance JSDoc comments in `server.js` to include `@function`, `@param`, `@returns`, `@example`, and `@fires` annotations where applicable
-- To **document the Express app factory**, we will enhance JSDoc in `src/app.js` with module-level and middleware documentation
-- To **document routes**, we will enhance JSDoc in `src/routes/main.routes.js` with route annotations including HTTP method, path, request/response types
-- To **document configuration**, we will enhance JSDoc in `src/config/index.js` with environment variable documentation
-- To **create comprehensive README**, we will replace `README.md` with structured documentation following best practices
+### 0.1.3 Special Instructions and Constraints
 
-### 0.1.3 Inferred Documentation Needs
+**Critical Directives:**
 
-Based on code analysis and documentation best practices:
+- Preserve existing functionality of `GET /` ("Hello, World!") and `GET /evening` ("Good evening") endpoints
+- Maintain the current layered architecture pattern (Entry Layer → Application Layer → Routing Layer)
+- Use Express.js 5.x best practices including async error handling patterns
+- Follow Twelve-Factor App methodology for configuration management
+- Ensure backward compatibility with existing environment variables (`HOST`, `PORT`, `NODE_ENV`)
 
-- **Module documentation gaps:** While modules have JSDoc headers, they lack:
+**Methodological Requirements:**
 
-  - `@example` tags showing usage patterns
-  - `@see` tags linking related modules
-  - `@requires` tags documenting dependencies
+- Leverage existing modular structure in `src/` directory
+- Implement middleware in dedicated `src/middleware/` directory
+- Maintain separation of concerns established in current codebase
 
-- **Route documentation gaps:** Route handlers need:
+### 0.1.4 Technical Interpretation
 
-  - HTTP method and path annotations
-  - Response content-type documentation
-  - Example curl commands
+These requirements translate to the following technical implementation strategy:
 
-- **Configuration documentation needs:**
+| Goal | Technical Actions |
+|------|-------------------|
+| **Enhanced routing** | Create additional route modules in `src/routes/`, implement route parameter handling, add health check endpoint |
+| **Middleware architecture** | Create `src/middleware/` directory with individual middleware modules for logging, error handling, security, validation |
+| **Environment configuration** | Install `dotenv`, create `.env` and `.env.example` files, enhance `src/config/index.js` with validation and typed configuration |
+| **Structured logging** | Install `winston` or `pino`, create logger service in `src/utils/logger.js`, integrate with middleware |
+| **PM2 production deployment** | Create `ecosystem.config.js` at project root, add npm scripts for PM2 management, implement graceful shutdown in `server.js` |
 
-  - Environment variable table
-  - Default value documentation
-  - Production vs development settings
+**Technical Approach Summary:**
 
-- **README must include:**
+- "To achieve enhanced routing, we will expand `src/routes/` with organized route modules and add RESTful endpoint patterns"
+- "To implement middleware architecture, we will create `src/middleware/` directory with modular, single-responsibility middleware functions"
+- "To enable environment configuration, we will integrate `dotenv` at application bootstrap and enhance the config module with validation"
+- "To add logging, we will create a centralized logger utility with environment-aware configuration and request logging middleware"
+- "To prepare for PM2 deployment, we will create ecosystem configuration, add cluster mode support, and implement graceful shutdown handling"
 
-  - Project overview and purpose
-  - Prerequisites (Node.js &gt;= 20.19.x, npm &gt;= 10.8.x)
-  - Installation steps
-  - Environment configuration
-  - Running the server
-  - API endpoint reference
-  - Deployment guide for production
-  - Contributing guidelines
-  - License information
+## 0.2 Repository Scope Discovery
 
-### 0.1.4 Special Instructions and Constraints
+### 0.2.1 Comprehensive File Analysis
 
-**User Requirements (Exact):**
+The repository search revealed a minimal but well-structured Node.js application following Express.js best practices with clear separation of concerns.
 
-> "Add JSDoc comments to server.js functions, create a comprehensive README with setup instructions, API documentation, deployment guide, and inline code explanations."
+**Source Code Files:**
 
-**Constraints Identified:**
+| File Path | Purpose | Lines | Impact Level |
+|-----------|---------|-------|--------------|
+| `server.js` | HTTP server bootstrap and network binding | 23 | High - Add graceful shutdown |
+| `src/app.js` | Express application factory and route mounting | 27 | High - Add middleware stack |
+| `src/config/index.js` | Environment-based configuration management | 41 | High - Integrate dotenv |
+| `src/routes/index.js` | Route module aggregation (barrel pattern) | 19 | Medium - Add new routes |
+| `src/routes/main.routes.js` | Endpoint handler implementations | 41 | Medium - Reference for new routes |
 
-- Maintain existing modular architecture
-- Preserve exact route response strings (`'Hello, World!\n'` and `'Good evening'`)
-- Follow existing JSDoc style patterns already present in codebase
-- Keep tutorial-friendly, beginner-accessible documentation
-- Use Markdown format for [README.md](http://README.md)
+**Configuration Files:**
 
-**Style Preferences:**
+| File Path | Purpose | Impact Level |
+|-----------|---------|--------------|
+| `package.json` | npm manifest with dependencies | High - Add new dependencies |
+| `package-lock.json` | Deterministic lockfile | Auto-updated |
+| `.gitignore` | Git ignore patterns | Medium - Add env files |
 
-- Use JSDoc 3 syntax for JavaScript documentation
-- Follow Express.js documentation conventions
-- Include practical examples and curl commands
-- Maintain consistent voice and technical depth
+**Documentation Files:**
 
-## 0.2 Documentation Discovery and Analysis
+| File Path | Purpose | Impact Level |
+|-----------|---------|--------------|
+| `README.md` | Project description | Low - Update with new features |
+| `blitzy/documentation/Project Guide.md` | Development guide | Low - Reference only |
+| `blitzy/documentation/Technical Specifications.md` | Tech specs | Low - Reference only |
 
-### 0.2.1 Existing Documentation Infrastructure Assessment
+**Files to Create:**
 
-Repository analysis reveals a **minimal documentation structure** with existing JSDoc patterns in source files but insufficient user-facing documentation.
+| Target Path | Purpose |
+|-------------|---------|
+| `src/middleware/logger.js` | Request logging middleware |
+| `src/middleware/errorHandler.js` | Centralized error handling |
+| `src/middleware/security.js` | Security headers middleware |
+| `src/middleware/index.js` | Middleware barrel export |
+| `src/utils/logger.js` | Centralized logger configuration |
+| `src/routes/health.routes.js` | Health check endpoint |
+| `ecosystem.config.js` | PM2 configuration |
+| `.env` | Environment variables |
+| `.env.example` | Environment template |
 
-**Search Patterns Employed:**
+### 0.2.2 Web Search Research Conducted
 
-- README\*, docs/\*\*, \*.md, \*.mdx - Found: `README.md`, `blitzy/documentation/*.md`
-- Documentation generators (mkdocs.yml, docusaurus.config.js) - None found
-- Existing JSDoc comments - Found in all 5 JavaScript source files
-- Style guides and templates - None found
+**Research Areas Explored:**
 
-**Documentation Discovery Results:**
+| Topic | Key Findings |
+|-------|--------------|
+| Express.js middleware best practices 2024 | <cite index="2-19,2-20,2-21">Keeping middleware functions small and focused is essential for maintainable and efficient code. A single responsibility principle should be applied to each middleware function, meaning it should perform only one specific task. This approach makes it easier to test, debug, and reuse middleware functions across different routes and applications.</cite> |
+| PM2 production deployment | <cite index="11-3,11-5">PM2 is a popular process manager for Node.js applications that helps you keep your app running 24/7 in production environments. By following these steps, you'll have a robust Node.js deployment using PM2 in production mode.</cite> |
+| Winston vs Pino logging | <cite index="21-4,21-5,21-6">Winston is a highly configurable and modular logging library that supports multiple transports. Multi-Transport Support – Easily log to different outputs (files, databases, cloud services, etc.). Highly Customizable – It offers rich formatting, custom log levels, and flexible configurations.</cite> |
+| dotenv configuration | <cite index="38-1,38-2">Dotenv is a zero-dependency module that loads environment variables from a .env file into process.env. Storing configuration in the environment separate from code is based on The Twelve-Factor App methodology.</cite> |
 
-| File/Location | Type | Status | Content |
-| --- | --- | --- | --- |
-| `README.md` | Project README | Minimal | 2 lines - placeholder text only |
-| `blitzy/documentation/Project Guide.md` | Project guide | Complete | Comprehensive validation and setup |
-| `blitzy/documentation/Technical Specifications.md` | Tech spec | Complete | Technical implementation details |
-| `server.js` | JSDoc | Partial | Module header present, no function-level docs |
-| `src/app.js` | JSDoc | Partial | Module header and route mounting comment |
-| `src/config/index.js` | JSDoc | Good | Module header + property-level docs |
-| `src/routes/index.js` | JSDoc | Partial | Module header only |
-| `src/routes/main.routes.js` | JSDoc | Good | Module header + route handler docs |
+**Best Practices Adopted:**
 
-**Documentation Infrastructure:**
+- <cite index="7-9,7-10">Optimizing the order of middleware functions in Express.js not only enhances performance but also improves the readability and maintainability of your application code. By adhering to these best practices—placing lightweight middleware first, grouping related middleware, deferring heavy middleware, using conditional loading, leveraging route-specific middleware, and properly positioning error-handling middleware—you can minimize processing overhead and ensure quicker response times.</cite>
+- <cite index="15-5,15-6">PM2 provides automatic crash recovery, startup script generation, and process monitoring to keep applications reliably online. PM2's cluster mode runs multiple instances across all available cores and load-balances traffic between them, dramatically improving throughput.</cite>
 
-- Current documentation framework: None (raw Markdown only)
-- API documentation tools: JSDoc comments in source files
-- Diagram tools: Mermaid (used in blitzy/documentation/)
-- Documentation hosting: None configured
+### 0.2.3 Existing Infrastructure Assessment
 
-### 0.2.2 Repository Code Analysis for Documentation
+**Current Project Structure:**
 
-**Source Files Requiring Documentation Enhancement:**
-
-| File | Lines | Public APIs | Current JSDoc | Documentation Needed |
-| --- | --- | --- | --- | --- |
-| `server.js` | 23 | `app.listen()` callback | Module header only | Add `@example`, enhance callback docs |
-| `src/app.js` | 27 | Express app export | Module header | Add `@exports`, `@requires`, `@example` |
-| `src/config/index.js` | 41 | `host`, `port`, `env` exports | Complete | Add `@example` usage |
-| `src/routes/index.js` | 19 | `mainRoutes` export | Module header | Add `@exports`, barrel pattern docs |
-| `src/routes/main.routes.js` | 41 | `GET /`, `GET /evening` | Good | Enhance with `@example`, response docs |
-
-**Key Directories Examined:**
-
-- `/` - Root directory with entry point and package files
-- `src/` - Application source with modular architecture
-- `src/config/` - Environment configuration module
-- `src/routes/` - Express routing surface
-- `blitzy/documentation/` - Existing specification documents
-
-### 0.2.3 Web Search Research Conducted
-
-**JSDoc Best Practices for Node.js/Express:**
-
-- JSDoc comments should be placed immediately before the code being documented
-- Each comment must start with `/**` sequence to be recognized by the parser
-- Use `@module` tag for CommonJS modules
-- Use `@param {express.Request}`, `@param {express.Response}` for Express handlers
-- Include `@example` tags for practical usage demonstrations
-- Document routes with `@route` or custom tags showing HTTP method and path
-
-**README Best Practices:**
-
-- Include badges (license, version, build status)
-- Start with clear project description
-- Provide quick start section
-- Document all prerequisites
-- Include API reference with examples
-- Add deployment/production guide
-- Include contributing guidelines
-
-### 0.2.4 Current README Content
-
-**File:** `README.md`
-
-```plaintext
-# hao-backprop-test
-test project for backprop integration. Do not touch!
+```
+/
+├── server.js                    # Entry point (23 lines)
+├── package.json                 # npm manifest
+├── package-lock.json            # Lock file
+├── README.md                    # Basic description
+├── .gitignore                   # Git rules
+├── src/
+│   ├── app.js                   # Express factory (27 lines)
+│   ├── config/
+│   │   └── index.js             # Config module (41 lines)
+│   └── routes/
+│       ├── index.js             # Route aggregator (19 lines)
+│       └── main.routes.js       # Route handlers (41 lines)
+└── blitzy/
+    └── documentation/           # Docs
 ```
 
-**Assessment:** This README is a placeholder that does not serve documentation purposes. It requires complete replacement with comprehensive documentation covering:
-
-- Project identity and purpose
-- Installation and setup
-- Configuration options
-- API documentation
-- Deployment guidance
-- License and contribution information
-
-## 0.3 Documentation Scope Analysis
-
-### 0.3.1 Code-to-Documentation Mapping
-
-**Modules Requiring Documentation:**
-
-**Module:** `server.js` **(HTTP Server Entry Point)**
-
-- Public APIs: `app.listen()` invocation with callback
-- Current documentation: Module-level JSDoc header (lines 1-16)
-- Documentation needed:
-  - Enhanced `@example` showing how to start the server
-  - Server startup flow explanation
-  - Environment variable usage for `HOST` and `PORT`
-  - Callback function documentation
-
-**Module:** `src/app.js` **(Express Application Factory)**
-
-- Public APIs: Exported `app` Express instance
-- Current documentation: Module-level JSDoc (lines 1-12), route mounting comment (lines 19-24)
-- Documentation needed:
-  - `@exports` tag documenting the Express app export
-  - `@requires` tags for express and routes dependencies
-  - `@example` showing how to import and use the app
-  - Middleware chain documentation
-
-**Module:** `src/config/index.js` **(Configuration Module)**
-
-- Public APIs: `host`, `port`, `env` exports
-- Current documentation: Good - has module header and property-level JSDoc
-- Documentation needed:
-  - `@example` showing configuration usage
-  - Environment variable cross-reference
-  - Default value behavior explanation
-
-**Module:** `src/routes/index.js` **(Route Aggregator)**
-
-- Public APIs: `mainRoutes` export
-- Current documentation: Module-level JSDoc (lines 1-13)
-- Documentation needed:
-  - `@exports` tag for named export pattern
-  - `@example` showing consumption in app.js
-  - Barrel pattern explanation
-
-**Module:** `src/routes/main.routes.js` **(Route Handlers)**
-
-- Endpoints:
-  - `GET /` - Returns `'Hello, World!\n'`
-  - `GET /evening` - Returns `'Good evening'`
-- Current documentation: Good - has module header and route handler docs
-- Documentation needed:
-  - `@example` with curl commands
-  - Response Content-Type documentation
-  - Status code documentation
-
-### 0.3.2 Configuration Documentation Requirements
-
-**Configuration File:** `src/config/index.js`
-
-| Option | Environment Variable | Type | Default | Documented |
-| --- | --- | --- | --- | --- |
-| `host` | `HOST` | string | `'127.0.0.1'` | ✅ Yes |
-| `port` | `PORT` | number | `3000` | ✅ Yes |
-| `env` | `NODE_ENV` | string | `'development'` | ✅ Yes |
-
-**Missing Documentation:**
-
-- Production configuration recommendations
-- Docker/container environment considerations
-- Security implications of binding to `0.0.0.0` vs `127.0.0.1`
-
-### 0.3.3 Features Requiring User Guides
-
-| Feature | Current Coverage | Gaps |
-| --- | --- | --- |
-| Server Startup | Basic in code comments | No README section, no troubleshooting |
-| API Endpoints | Route handler JSDoc | No user-facing API reference |
-| Configuration | JSDoc in config module | No README section, no examples |
-| Deployment | None | No deployment guide exists |
-
-### 0.3.4 Documentation Gap Analysis
-
-Given the requirements and repository analysis, documentation gaps include:
-
-**Critical Gaps (Must Address):**
-
-- `README.md` - Completely inadequate, needs full rewrite
-- API endpoint documentation for end users
-- Setup and installation instructions
-- Deployment guide
-
-**JSDoc Enhancement Gaps:**
-
-- Missing `@example` tags in all modules
-- Missing `@requires` and `@see` cross-references
-- No inline code explanations for complex logic
-- Missing response type documentation for routes
-
-**Structural Gaps:**
-
-- No table of contents in any documentation
-- No quick-start section
-- No troubleshooting guide
-- No contribution guidelines
-
-## 0.4 Documentation Implementation Design
-
-### 0.4.1 Documentation Structure Planning
-
-**Target [README.md](http://README.md) Structure:**
-
-```plaintext
-README.md
-├── Title and Badges
-├── Description
-├── Table of Contents
-├── Prerequisites
-├── Installation
-│   ├── Clone Repository
-│   ├── Install Dependencies
-│   └── Verify Installation
-├── Configuration
-│   ├── Environment Variables
-│   └── Default Values
-├── Usage
-│   ├── Start Server
-│   └── Test Endpoints
-├── API Reference
-│   ├── GET /
-│   └── GET /evening
-├── Project Structure
-├── Deployment Guide
-│   ├── Production Configuration
-│   ├── Docker Deployment
-│   └── Process Management
-├── Contributing
-├── License
-└── Acknowledgments
-```
-
-**JSDoc Enhancement Structure Per Module:**
-
-```javascript
-/**
- * @module module-name
- * @description Module purpose and responsibility
- * @requires dependency-list
- * @see related-modules
- * @example
- * // Usage example
- */
-```
-
-### 0.4.2 Content Generation Strategy
-
-**Information Extraction Approach:**
-
-- Extract API signatures from `src/routes/main.routes.js` using code parsing
-- Extract configuration options from `src/config/index.js`
-- Generate examples by analyzing existing verification in `blitzy/documentation/`
-- Create diagrams by mapping component relationships in `src/`
-
-**Documentation Standards:**
-
-- Markdown formatting with proper headers (`#`, `##`, `###`)
-- Code examples using triple backticks with language identifiers
-- Tables for configuration options and API parameters
-- Source citations as inline references: `Source: /path/to/file.js:LineNumber`
-- Consistent terminology following existing codebase patterns
-
-### 0.4.3 JSDoc Enhancement Patterns
-
-**For Server Entry Point (**`server.js`**):**
-
-```javascript
-/**
- * @module server
- * @requires ./src/app
- * @requires ./src/config
- * @example
- * // Start the server
- * npm start
- * // Server running at http://127.0.0.1:3000/
- */
-```
-
-**For Express Route Handlers:**
-
-```javascript
-/**
- * @route GET /
- * @description Returns Hello World greeting
- * @param {express.Request} req - Express request
- * @param {express.Response} res - Express response
- * @returns {void} Sends 'Hello, World!\n'
- * @example
- * curl http://127.0.0.1:3000/
- * // Response: Hello, World!
- */
-```
-
-**For Configuration Properties:**
-
-```javascript
-/**
- * @type {number}
- * @default 3000
- * @example
- * // Override port via environment
- * PORT=8080 npm start
- */
-```
-
-### 0.4.4 Diagram and Visual Strategy
-
-**Mermaid Diagrams to Create:**
-
-**Application Architecture Diagram (for README):**
-
-```mermaid
-graph TD
-    A[npm start] --> B[server.js]
-    B --> C[src/app.js]
-    C --> D[src/routes/index.js]
-    D --> E[src/routes/main.routes.js]
-    B --> F[src/config/index.js]
-    E --> G["GET / → Hello, World!"]
-    E --> H["GET /evening → Good evening"]
-```
-
-**Request Flow Diagram (for API documentation):**
-
-```mermaid
-sequenceDiagram
-    participant Client
-    participant Server
-    participant Routes
-    Client->>Server: HTTP Request
-    Server->>Routes: Route matching
-    Routes->>Server: Response data
-    Server->>Client: HTTP Response
-```
-
-### 0.4.5 README Content Sections
-
-| Section | Content Source | Format |
-| --- | --- | --- |
-| Title/Badges | package.json | Markdown shields |
-| Description | package.json description | Prose |
-| Prerequisites | blitzy/documentation | Table |
-| Installation | blitzy/documentation | Numbered steps + code blocks |
-| Configuration | src/config/index.js | Table + code examples |
-| Usage | Verification commands | Code blocks |
-| API Reference | src/routes/main.routes.js | Table + curl examples |
-| Project Structure | Directory tree | Code block |
-| Deployment | Best practices research | Prose + code |
-| License | package.json | Badge + text |
-
-## 0.5 Documentation File Transformation Mapping
-
-### 0.5.1 File-by-File Documentation Plan
-
-**Documentation Transformation Modes:**
-
-- **CREATE** - Create a new documentation file
-- **UPDATE** - Update an existing documentation file
-- **DELETE** - Remove an obsolete documentation file
-- **REFERENCE** - Use as an example for documentation style and structure
-
-| Target Documentation File | Transformation | Source Code/Docs | Content/Changes |
-| --- | --- | --- | --- |
-| `README.md` | UPDATE | `README.md`, `blitzy/documentation/Project Guide.md` | Complete rewrite with comprehensive documentation including setup, API reference, deployment guide |
-| `server.js` | UPDATE | `server.js` | Enhance JSDoc with `@requires`, `@example`, `@fires` tags and inline code explanations |
-| `src/app.js` | UPDATE | `src/app.js` | Enhance JSDoc with `@exports`, `@requires`, `@example` tags and middleware documentation |
-| `src/config/index.js` | UPDATE | `src/config/index.js` | Add `@example` tags for each property, enhance usage documentation |
-| `src/routes/index.js` | UPDATE | `src/routes/index.js` | Add `@exports` tag, barrel pattern documentation, cross-references |
-| `src/routes/main.routes.js` | UPDATE | `src/routes/main.routes.js` | Enhance route handlers with `@example` curl commands, response documentation |
-| `blitzy/documentation/Project Guide.md` | REFERENCE | N/A | Use as style reference for README structure and content |
-| `blitzy/documentation/Technical Specifications.md` | REFERENCE | N/A | Use as technical reference for accurate documentation |
-
-### 0.5.2 New Documentation Files Detail
-
-No new documentation files need to be created. All documentation will be added to existing files or enhance existing content.
-
-### 0.5.3 Documentation Files to Update - Detail
-
-**File:** `README.md` **- Complete Rewrite**
-
-```plaintext
-Type: Project README
-Source References: 
-  - blitzy/documentation/Project Guide.md (structure template)
-  - package.json (project metadata)
-  - src/config/index.js (configuration docs)
-  - src/routes/main.routes.js (API endpoints)
-  
-Sections:
-  - Header with project name, badges (License: MIT)
-  - Description: "Hello world in Node.js" Express.js tutorial server
-  - Table of Contents with anchor links
-  - Prerequisites: Node.js >= 20.19.x, npm >= 10.8.x
-  - Installation: Clone, npm install, verify
-  - Configuration: HOST, PORT, NODE_ENV environment variables
-  - Usage: npm start, curl commands
-  - API Reference: GET /, GET /evening with examples
-  - Project Structure: Directory tree diagram
-  - Deployment Guide: Production considerations, PM2, Docker
-  - Contributing: Basic guidelines
-  - License: MIT
-  
-Diagrams:
-  - Application architecture (Mermaid flowchart)
-  
-Key Citations:
-  - package.json:1-15 (metadata)
-  - src/config/index.js:20-41 (configuration)
-  - src/routes/main.routes.js:26-39 (routes)
-```
-
-**File:** `server.js` **- JSDoc Enhancement**
-
-```plaintext
-Type: JSDoc Enhancement
-Current Lines: 23
-Target Additions:
-  - Line 1-16: Enhance @module with @requires tags
-  - Line 18-19: Add @constant tags for imports
-  - Line 21-23: Add @fires and @example for listen callback
-  - Add inline comments explaining server binding
-
-Example Enhancement:
-  /**
-   * @module server
-   * @requires module:src/app
-   * @requires module:src/config
-   * @example
-   * // Start the server from command line
-   * npm start
-   * // Output: Server running at http://127.0.0.1:3000/
-   */
-```
-
-**File:** `src/app.js` **- JSDoc Enhancement**
-
-```plaintext
-Type: JSDoc Enhancement
-Current Lines: 27
-Target Additions:
-  - Line 1-12: Add @requires and @exports tags
-  - Line 14-15: Add @constant tags for express import
-  - Line 17: Add comment explaining app initialization
-  - Line 25: Add @middleware documentation
-
-Example Enhancement:
-  /**
-   * @exports ExpressApplication
-   * @requires express
-   * @requires module:src/routes
-   */
-```
-
-**File:** `src/config/index.js` **- JSDoc Enhancement**
-
-```plaintext
-Type: JSDoc Enhancement
-Current Lines: 41
-Target Additions:
-  - Lines 26, 33, 40: Add @example tags to each property
-  
-Example Enhancement:
-  /**
-   * @example
-   * // Override default port
-   * process.env.PORT = '8080';
-   * const config = require('./src/config');
-   * console.log(config.port); // 8080
-   */
-```
-
-**File:** `src/routes/index.js` **- JSDoc Enhancement**
-
-```plaintext
-Type: JSDoc Enhancement
-Current Lines: 19
-Target Additions:
-  - Line 1-13: Add @exports tag documenting barrel export
-  - Line 15: Add @see reference to main.routes
-  
-Example Enhancement:
-  /**
-   * @exports {Object} routes
-   * @property {express.Router} mainRoutes - Main application routes
-   * @see module:src/routes/main.routes
-   */
-```
-
-**File:** `src/routes/main.routes.js` **- JSDoc Enhancement**
-
-```plaintext
-Type: JSDoc Enhancement
-Current Lines: 41
-Target Additions:
-  - Lines 19-28: Enhance GET / handler with @example curl
-  - Lines 30-39: Enhance GET /evening handler with @example curl
-  
-Example Enhancement:
-  /**
-   * @example
-   * // Test with curl
-   * curl -i http://127.0.0.1:3000/
-   * // HTTP/1.1 200 OK
-   * // Content-Type: text/html; charset=utf-8
-   * // Hello, World!
-   */
-```
-
-### 0.5.4 Documentation Configuration Updates
-
-No documentation configuration files need to be created or updated as the project uses raw Markdown without a documentation generator.
-
-### 0.5.5 Cross-Documentation Dependencies
-
-| Documentation Element | References | Updates Needed |
-| --- | --- | --- |
-| [README.md](http://README.md) prerequisites | package.json engines | Verify Node.js version |
-| [README.md](http://README.md) API Reference | src/routes/main.routes.js | Keep in sync with routes |
-| [README.md](http://README.md) Configuration | src/config/index.js | Mirror environment variables |
-| JSDoc @requires tags | Actual require statements | Match import paths |
-| JSDoc @example tags | Verification commands | Use tested commands |
-
-## 0.6 Dependency Inventory
-
-### 0.6.1 Documentation Dependencies
-
-This documentation task requires only the existing project dependencies. No additional documentation tools are needed since the project uses:
-
-- Raw Markdown for [README.md](http://README.md)
-- JSDoc comments embedded in source files (no JSDoc generator configured)
-
-**Runtime Dependencies (from package.json):**
+**Current Patterns and Conventions:**
+
+| Pattern | Location | Observation |
+|---------|----------|-------------|
+| CommonJS modules | All files | `require()` / `module.exports` pattern |
+| Factory pattern | `src/app.js` | Express app exported without listening |
+| Barrel exports | `src/routes/index.js` | Aggregates route modules |
+| Environment defaults | `src/config/index.js` | Fallback values for HOST, PORT, NODE_ENV |
+| Layered architecture | Project structure | Entry → Application → Routes |
+
+**Build and Deployment Configuration:**
+
+| Aspect | Current State | Enhancement Needed |
+|--------|--------------|-------------------|
+| npm scripts | `start`, `test` (placeholder) | Add `dev`, `prod`, `pm2:start`, `pm2:stop` |
+| Environment management | Direct `process.env` access | Add dotenv integration |
+| Process management | None | Add PM2 ecosystem config |
+| Logging | Console only | Add structured logger |
+
+**Testing Infrastructure:**
+
+| Aspect | Current State |
+|--------|--------------|
+| Test framework | Placeholder script (`"test": "echo ..."`) |
+| Test files | None present |
+| Coverage | Not configured |
+
+**Documentation System:**
+
+| File | Purpose |
+|------|---------|
+| `README.md` | Basic project description |
+| `blitzy/documentation/` | Technical specifications and project guide |
+
+## 0.3 File Transformation Mapping
+
+### 0.3.1 File-by-File Execution Plan
+
+| Target File | Transformation | Source File/Reference | Purpose/Changes |
+|-------------|----------------|----------------------|-----------------|
+| `package.json` | UPDATE | `package.json` | Add dependencies (dotenv, winston, helmet, cors, compression, express-rate-limit), add npm scripts for PM2 |
+| `server.js` | UPDATE | `server.js` | Add graceful shutdown handling, signal listeners (SIGTERM, SIGINT), PM2 integration |
+| `src/app.js` | UPDATE | `src/app.js` | Mount middleware stack (logger, security, body-parser, compression, rate-limit), error handler |
+| `src/config/index.js` | UPDATE | `src/config/index.js` | Integrate dotenv, add validation, expand configuration options for logging and PM2 |
+| `src/routes/index.js` | UPDATE | `src/routes/index.js` | Add health routes export |
+| `src/middleware/index.js` | CREATE | `src/routes/index.js` | Create middleware barrel export following existing route aggregator pattern |
+| `src/middleware/logger.js` | CREATE | N/A | Create request logging middleware using winston/morgan |
+| `src/middleware/errorHandler.js` | CREATE | N/A | Create centralized error handling middleware |
+| `src/middleware/security.js` | CREATE | N/A | Create security middleware aggregating helmet, cors |
+| `src/utils/logger.js` | CREATE | N/A | Create winston logger configuration with environment-aware transports |
+| `src/routes/health.routes.js` | CREATE | `src/routes/main.routes.js` | Create health check endpoint following existing route patterns |
+| `ecosystem.config.js` | CREATE | N/A | Create PM2 ecosystem configuration for cluster mode and deployment |
+| `.env` | CREATE | N/A | Create environment variables file for local development |
+| `.env.example` | CREATE | N/A | Create environment template for documentation |
+| `.gitignore` | UPDATE | `.gitignore` | Add `.env` pattern, logs directory |
+| `README.md` | UPDATE | `README.md` | Add documentation for new features, environment setup, PM2 commands |
+
+### 0.3.2 New Files Detail
+
+**`src/middleware/index.js`** - Middleware barrel export
+- Content type: source/module
+- Based on: `src/routes/index.js` barrel pattern
+- Key exports: `{ loggerMiddleware, errorHandler, securityMiddleware }`
+
+**`src/middleware/logger.js`** - Request logging middleware
+- Content type: source/middleware
+- Based on: morgan/winston patterns
+- Key functions: `requestLogger(req, res, next)`, configurable log format
+
+**`src/middleware/errorHandler.js`** - Error handling middleware
+- Content type: source/middleware
+- Based on: Express.js 5.x error handling patterns
+- Key functions: `errorHandler(err, req, res, next)`, async error wrapper
+
+**`src/middleware/security.js`** - Security middleware configuration
+- Content type: source/middleware
+- Based on: helmet/cors best practices
+- Key functions: Security header configuration, CORS policy
+
+**`src/utils/logger.js`** - Winston logger service
+- Content type: source/utility
+- Based on: winston configuration patterns
+- Key exports: `logger` instance with `info()`, `error()`, `warn()`, `debug()` methods
+
+**`src/routes/health.routes.js`** - Health check routes
+- Content type: source/routes
+- Based on: `src/routes/main.routes.js`
+- Key endpoints: `GET /health`, `GET /health/live`, `GET /health/ready`
+
+**`ecosystem.config.js`** - PM2 configuration
+- Content type: configuration
+- Based on: PM2 documentation
+- Key sections: apps array, cluster mode, environment variables
+
+**`.env`** - Local environment variables
+- Content type: configuration
+- Based on: existing config defaults
+- Key variables: `HOST`, `PORT`, `NODE_ENV`, `LOG_LEVEL`
+
+**`.env.example`** - Environment template
+- Content type: documentation/configuration
+- Based on: `.env` structure
+- Key sections: Commented template with all variables
+
+### 0.3.3 Files to Modify Detail
+
+**`package.json`** - Dependency and scripts update
+- Sections to update: `dependencies`, `scripts`, `devDependencies`
+- New content to add:
+  - Dependencies: `dotenv`, `winston`, `helmet`, `cors`, `compression`, `express-rate-limit`
+  - Scripts: `dev`, `prod`, `pm2:start`, `pm2:stop`, `pm2:restart`, `pm2:logs`
+- Refactoring needed: None
+
+**`server.js`** - Graceful shutdown integration
+- Sections to update: Server startup section, add shutdown handlers
+- New content to add:
+  - Process signal handlers for SIGTERM, SIGINT
+  - Server close logic with timeout
+  - Logger integration for startup/shutdown messages
+- Content to remove: None
+
+**`src/app.js`** - Middleware stack integration
+- Sections to update: Express app configuration
+- New content to add:
+  - Import middleware modules
+  - Mount middleware in correct order (security → logger → body-parser → routes → errorHandler)
+  - Built-in middleware configuration (express.json(), express.urlencoded())
+- Refactoring needed: Reorganize route mounting after middleware
+
+**`src/config/index.js`** - Enhanced configuration
+- Sections to update: Configuration object structure
+- New content to add:
+  - `require('dotenv').config()` at top
+  - Additional config properties (LOG_LEVEL, LOG_FORMAT, etc.)
+  - Configuration validation function
+- Refactoring needed: Structure config into nested objects (server, logging, security)
+
+**`src/routes/index.js`** - Route expansion
+- Sections to update: Exports object
+- New content to add: `healthRoutes` export
+- Content to remove: None
+
+**`.gitignore`** - Pattern updates
+- Sections to update: Environment files section
+- New content to add: `.env`, `.env.local`, `logs/`, `*.log`
+
+**`README.md`** - Documentation update
+- Sections to update: All sections
+- New content to add: Environment setup, PM2 commands, middleware documentation
+
+### 0.3.4 Configuration and Documentation Updates
+
+**Configuration Changes:**
+
+| Config File | Specific Settings | Impact |
+|-------------|-------------------|--------|
+| `package.json` | Add `pm2` to devDependencies | Enables PM2 CLI locally |
+| `package.json` | Add scripts for PM2 lifecycle | Simplifies deployment commands |
+| `ecosystem.config.js` | Cluster mode with `max` instances | Utilizes all CPU cores |
+| `.env` | `LOG_LEVEL=info` | Controls verbosity |
+
+**Documentation Updates:**
+
+| Doc File | Sections | Cross-references |
+|----------|----------|------------------|
+| `README.md` | Environment Setup | Links to `.env.example` |
+| `README.md` | Production Deployment | Links to PM2 docs |
+| `README.md` | API Reference | Links to health endpoints |
+
+### 0.3.5 Cross-File Dependencies
+
+**Import/Reference Updates Required:**
+
+| Source File | Import Change | Reason |
+|-------------|--------------|--------|
+| `src/app.js` | Add `require('./middleware')` | Mount middleware stack |
+| `src/app.js` | Add `require('./utils/logger')` | Application logging |
+| `server.js` | Add `require('./src/utils/logger')` | Startup logging |
+| `src/routes/index.js` | Add `healthRoutes` export | New route module |
+
+**Configuration Sync Requirements:**
+
+| Config Source | Consumers | Sync Requirement |
+|---------------|-----------|------------------|
+| `.env` | `src/config/index.js` | dotenv loads before config |
+| `src/config/index.js` | All modules | Centralized configuration |
+| `ecosystem.config.js` | PM2 runtime | Mirrors `.env` variables |
+
+**Documentation Consistency:**
+
+| Update Source | Affected Docs |
+|---------------|---------------|
+| New environment variables | `.env.example`, `README.md` |
+| New npm scripts | `README.md`, `package.json` |
+| New endpoints | `README.md` |
+
+## 0.4 Dependency Inventory
+
+### 0.4.1 Key Private and Public Packages
+
+**Existing Dependencies:**
 
 | Registry | Package Name | Version | Purpose |
-| --- | --- | --- | --- |
-| npm | express | ^5.1.0 | Web framework - primary subject of documentation |
+|----------|--------------|---------|---------|
+| npm | express | ^5.1.0 | Web application framework |
 
-**Development Environment Requirements:**
-
-| Requirement | Version | Purpose |
-| --- | --- | --- |
-| Node.js | &gt;= 20.19.x | JavaScript runtime |
-| npm | &gt;= 10.8.x | Package manager |
-| Git | Any | Version control |
-| curl | Any | API endpoint testing (documentation examples) |
-
-**Optional Documentation Tools (Not Required but Recommended for Future):**
+**New Dependencies to Add:**
 
 | Registry | Package Name | Version | Purpose |
-| --- | --- | --- | --- |
-| npm | jsdoc | \~4.0.2 | Generate HTML docs from JSDoc comments |
-| npm | docdash | \~2.0.2 | JSDoc template for better readability |
-| npm | swagger-jsdoc | \~6.2.8 | OpenAPI spec generation from comments |
-| npm | swagger-ui-express | \~5.0.0 | Swagger UI for API documentation |
+|----------|--------------|---------|---------|
+| npm | dotenv | ^16.4.7 | Environment variable management |
+| npm | winston | ^3.17.0 | Structured logging library |
+| npm | helmet | ^8.0.0 | Security headers middleware |
+| npm | cors | ^2.8.5 | Cross-origin resource sharing |
+| npm | compression | ^1.7.5 | Response compression middleware |
+| npm | express-rate-limit | ^7.5.0 | Rate limiting middleware |
 
-### 0.6.2 Documentation Reference Updates
+**New Development Dependencies:**
 
-**Files Requiring Internal Link Updates:**
+| Registry | Package Name | Version | Purpose |
+|----------|--------------|---------|---------|
+| npm | pm2 | ^5.4.3 | Process manager for production |
 
-Since this is a minimal project with no existing internal documentation links, no link transformations are required.
+### 0.4.2 Dependency Updates
 
-**New Cross-References to Add:**
+**New Dependencies to Add:**
 
-| File | Cross-Reference | Target |
-| --- | --- | --- |
-| `server.js` | `@see module:src/app` | Links to app module docs |
-| `server.js` | `@see module:src/config` | Links to config module docs |
-| `src/app.js` | `@see module:src/routes` | Links to routes module docs |
-| `src/routes/index.js` | `@see module:src/routes/main.routes` | Links to main routes docs |
-| `README.md` | `[Configuration](#configuration)` | Internal anchor link |
-| `README.md` | `[API Reference](#api-reference)` | Internal anchor link |
+| Package | Version | Reason for Addition |
+|---------|---------|---------------------|
+| `dotenv` | ^16.4.7 | Load environment variables from `.env` file following Twelve-Factor App methodology |
+| `winston` | ^3.17.0 | Structured logging with multiple transports, log levels, and formatting options |
+| `helmet` | ^8.0.0 | Set security HTTP headers to protect against common web vulnerabilities |
+| `cors` | ^2.8.5 | Enable Cross-Origin Resource Sharing for API access from different domains |
+| `compression` | ^1.7.5 | Gzip compression for HTTP responses to reduce bandwidth |
+| `express-rate-limit` | ^7.5.0 | Protect endpoints from brute-force attacks and DoS |
+| `pm2` | ^5.4.3 (dev) | Production process management with cluster mode, monitoring, and auto-restart |
 
-### 0.6.3 Verified Package Versions
+**Dependencies to Update:**
 
-All package versions verified against `package.json` and `package-lock.json`:
+| Package | Current | Target | Reason |
+|---------|---------|--------|--------|
+| N/A | - | - | No existing dependencies require updates |
+
+**Dependencies to Remove:**
+
+| Package | Reason |
+|---------|--------|
+| N/A | No dependencies to remove |
+
+### 0.4.3 Import/Reference Updates
+
+**Files Requiring Import Updates:**
+
+| File Pattern | Update Reason |
+|--------------|---------------|
+| `src/config/index.js` | Add `require('dotenv').config()` at top |
+| `src/app.js` | Import middleware modules, logger utility |
+| `server.js` | Import logger for startup messages |
+
+**Import Transformation Rules:**
+
+**Rule 1: dotenv configuration in config module**
+```javascript
+// Old: (none)
+// New: Add at top of file
+require('dotenv').config();
+// Apply to: src/config/index.js
+```
+
+**Rule 2: Middleware imports in app factory**
+```javascript
+// Old: const { mainRoutes } = require('./routes');
+// New: Add middleware imports
+const helmet = require('helmet');
+const cors = require('cors');
+const compression = require('compression');
+// Apply to: src/app.js
+```
+
+**Rule 3: Logger utility import**
+```javascript
+// Old: (none)
+// New: const logger = require('./utils/logger');
+// Apply to: src/app.js, server.js
+```
+
+### 0.4.4 Package Installation Commands
+
+**Installation Command:**
+
+```bash
+npm install dotenv@^16.4.7 winston@^3.17.0 helmet@^8.0.0 cors@^2.8.5 compression@^1.7.5 express-rate-limit@^7.5.0
+npm install --save-dev pm2@^5.4.3
+```
+
+**Post-Installation Verification:**
+
+```bash
+npm ls dotenv winston helmet cors compression express-rate-limit pm2
+```
+
+### 0.4.5 Dependency Compatibility Matrix
+
+| Package | Node.js Requirement | Express.js Compatibility |
+|---------|---------------------|-------------------------|
+| dotenv@16.x | >= 12.0.0 | Any |
+| winston@3.x | >= 12.0.0 | Any |
+| helmet@8.x | >= 18.0.0 | >= 4.x |
+| cors@2.x | >= 0.10.0 | >= 4.x |
+| compression@1.x | >= 0.8.0 | >= 4.x |
+| express-rate-limit@7.x | >= 16.0.0 | >= 4.x |
+| pm2@5.x | >= 16.0.0 | Any |
+
+All dependencies are compatible with:
+- Node.js >= 20.19.x (project requirement)
+- Express.js 5.1.0 (current version)
+
+## 0.5 Implementation Design
+
+### 0.5.1 Technical Approach
+
+**Primary Objectives with Implementation Approach:**
+
+| Objective | Approach | Rationale |
+|-----------|----------|-----------|
+| "Achieve enhanced routing by creating organized route modules with RESTful patterns" | Add `src/routes/health.routes.js` with health check endpoints | Health endpoints are standard for production monitoring |
+| "Achieve middleware architecture by implementing single-responsibility middleware modules" | Create `src/middleware/` with logger, errorHandler, security modules | Follows Express.js best practices for maintainability |
+| "Achieve environment configuration by integrating dotenv and enhancing config module" | Add dotenv at bootstrap, expand config with validation | Twelve-Factor App compliance |
+| "Achieve structured logging by creating centralized winston logger" | Create `src/utils/logger.js` with environment-aware transports | Production observability |
+| "Achieve PM2 deployment by creating ecosystem config and graceful shutdown" | Add `ecosystem.config.js`, modify `server.js` for signal handling | Zero-downtime deployments |
+
+**Logical Implementation Flow:**
+
+1. **First, establish configuration foundation** by integrating dotenv in `src/config/index.js` and creating `.env` files
+2. **Next, create logging infrastructure** by implementing `src/utils/logger.js` with winston
+3. **Then, implement middleware layer** by creating `src/middleware/` modules for security, logging, and error handling
+4. **Then, enhance application factory** by mounting middleware in `src/app.js` in correct order
+5. **Next, add health endpoints** by creating `src/routes/health.routes.js`
+6. **Then, prepare production deployment** by creating `ecosystem.config.js` for PM2
+7. **Finally, implement graceful shutdown** by adding signal handlers in `server.js`
+
+### 0.5.2 Component Impact Analysis
+
+**Direct Modifications Required:**
+
+| Component | Specific Changes | Capability Enabled |
+|-----------|-----------------|-------------------|
+| `src/config/index.js` | Add dotenv, expand config object | Environment-aware configuration |
+| `src/app.js` | Mount middleware stack | Request processing pipeline |
+| `server.js` | Add shutdown handlers | Graceful process termination |
+| `package.json` | Add dependencies and scripts | New capabilities and workflows |
+
+**Indirect Impacts and Dependencies:**
+
+| Component | Impact | Reason |
+|-----------|--------|--------|
+| `src/routes/main.routes.js` | No change required | Routes work with enhanced middleware |
+| `.gitignore` | Update required | Exclude new `.env` file |
+| `README.md` | Update required | Document new features |
+
+**New Components Introduction:**
+
+| Component | Type | Responsibility | Rationale |
+|-----------|------|----------------|-----------|
+| `src/middleware/` | Directory | Middleware modules | Organized middleware architecture |
+| `src/utils/` | Directory | Utility modules | Centralized utilities |
+| `src/utils/logger.js` | Module | Logging service | Single logger instance |
+| `src/middleware/logger.js` | Middleware | Request logging | HTTP request tracking |
+| `src/middleware/errorHandler.js` | Middleware | Error handling | Centralized error responses |
+| `src/middleware/security.js` | Middleware | Security headers | OWASP compliance |
+| `ecosystem.config.js` | Config | PM2 configuration | Production deployment |
+
+### 0.5.3 Architecture Diagram
+
+```mermaid
+flowchart TB
+    subgraph External["External"]
+        CLIENT([HTTP Client])
+        ENV[".env File"]
+        PM2[PM2 Process Manager]
+    end
+    
+    subgraph Entry["Entry Layer"]
+        SERVER["server.js"]
+        SHUTDOWN["Graceful Shutdown"]
+    end
+    
+    subgraph Config["Configuration"]
+        DOTENV["dotenv"]
+        CONFIGMOD["src/config/index.js"]
+    end
+    
+    subgraph Middleware["Middleware Layer"]
+        HELMET["helmet (security)"]
+        CORS["cors"]
+        COMPRESS["compression"]
+        RATELIMIT["rate-limit"]
+        REQLOG["request-logger"]
+        ERRHANDLER["error-handler"]
+    end
+    
+    subgraph Utils["Utilities"]
+        LOGGER["winston logger"]
+    end
+    
+    subgraph App["Application Layer"]
+        APPJS["src/app.js"]
+    end
+    
+    subgraph Routes["Routing Layer"]
+        MAINROUTES["main.routes"]
+        HEALTHROUTES["health.routes"]
+    end
+    
+    ENV --> DOTENV
+    DOTENV --> CONFIGMOD
+    PM2 --> SERVER
+    SERVER --> SHUTDOWN
+    SERVER --> APPJS
+    CONFIGMOD --> SERVER
+    CONFIGMOD --> APPJS
+    
+    CLIENT --> HELMET
+    HELMET --> CORS
+    CORS --> COMPRESS
+    COMPRESS --> RATELIMIT
+    RATELIMIT --> REQLOG
+    REQLOG --> APPJS
+    APPJS --> MAINROUTES
+    APPJS --> HEALTHROUTES
+    MAINROUTES --> ERRHANDLER
+    HEALTHROUTES --> ERRHANDLER
+    ERRHANDLER --> CLIENT
+    
+    LOGGER --> REQLOG
+    LOGGER --> ERRHANDLER
+    LOGGER --> SERVER
+```
+
+### 0.5.4 Critical Implementation Details
+
+**Middleware Order (Critical):**
+
+```javascript
+// src/app.js - Correct middleware order
+app.use(helmet());           // 1. Security headers first
+app.use(cors());             // 2. CORS before other processing
+app.use(compression());      // 3. Compression for responses
+app.use(rateLimit());        // 4. Rate limiting early
+app.use(requestLogger);      // 5. Log after security checks
+app.use(express.json());     // 6. Body parsing
+app.use(express.urlencoded());
+app.use('/', routes);        // 7. Routes
+app.use(errorHandler);       // 8. Error handler LAST
+```
+
+**Winston Logger Configuration:**
+
+```javascript
+// src/utils/logger.js - Key structure
+const winston = require('winston');
+const config = require('../config');
+
+const logger = winston.createLogger({
+  level: config.logging.level,
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.json()
+  ),
+  transports: [/* environment-based */]
+});
+```
+
+**Graceful Shutdown Pattern:**
+
+```javascript
+// server.js - Signal handling
+process.on('SIGTERM', gracefulShutdown);
+process.on('SIGINT', gracefulShutdown);
+
+function gracefulShutdown(signal) {
+  logger.info(`${signal} received, shutting down`);
+  server.close(() => process.exit(0));
+}
+```
+
+**PM2 Ecosystem Configuration:**
+
+```javascript
+// ecosystem.config.js - Cluster mode
+module.exports = {
+  apps: [{
+    name: 'hello-world',
+    script: 'server.js',
+    instances: 'max',
+    exec_mode: 'cluster',
+    env_production: { NODE_ENV: 'production' }
+  }]
+};
+```
+
+### 0.5.5 Data Flow Modifications
+
+**Configuration Flow (Enhanced):**
+
+1. PM2 starts Node.js process
+2. `dotenv.config()` loads `.env` file
+3. `src/config/index.js` reads `process.env` with validation
+4. Configuration object available to all modules
+5. Logger initialized with config values
+6. Server binds to configured host:port
+
+**Request Flow (New):**
+
+1. Request received by Express
+2. `helmet` sets security headers
+3. `cors` handles cross-origin
+4. `compression` prepares response compression
+5. `rateLimit` checks request limits
+6. `requestLogger` logs request details
+7. Route handler processes request
+8. `errorHandler` catches any errors
+9. Response sent to client
+
+### 0.5.6 Error Handling Strategy
+
+**Error Handling Layers:**
+
+| Layer | Handler | Behavior |
+|-------|---------|----------|
+| Route handlers | try-catch or async wrapper | Pass errors to next() |
+| Middleware | Express.js 5.x auto-catch | Promise rejections forwarded |
+| Error middleware | errorHandler.js | Format and log error response |
+| Uncaught exceptions | process handlers | Log and graceful shutdown |
+
+**Error Response Format:**
 
 ```json
 {
-  "name": "hello_world",
-  "version": "1.0.0",
-  "dependencies": {
-    "express": "^5.1.0"
+  "error": {
+    "message": "Error description",
+    "status": 500,
+    "timestamp": "ISO8601"
   }
 }
 ```
 
-**Transitive Dependencies:** 68 packages (per npm audit)
-
-**Known Issues:**
-
-- body-parser@2.2.0 has a moderate DoS vulnerability (documented in blitzy/documentation/)
-- Recommendation: Run `npm audit fix` before production deployment
-
-## 0.7 Coverage and Quality Targets
-
-### 0.7.1 Documentation Coverage Metrics
-
-**Current Coverage Analysis:**
-
-| Category | Items | Documented | Coverage | Target |
-| --- | --- | --- | --- | --- |
-| JavaScript Modules | 5 | 5 | 100% | 100% |
-| Module-level JSDoc | 5 | 5 | 100% | 100% |
-| Function/Route JSDoc | 3 | 2 | 67% | 100% |
-| @example Tags | 5 modules | 0 | 0% | 100% |
-| @requires Tags | 4 modules | 0 | 0% | 100% |
-| API Endpoints | 2 | 0 (in README) | 0% | 100% |
-| Configuration Options | 3 | 0 (in README) | 0% | 100% |
-| README Sections | 12 target | 1 | 8% | 100% |
-
-**Coverage Gaps to Address:**
-
-| Module | Current | Target | Focus Areas |
-| --- | --- | --- | --- |
-| `server.js` | 60% | 100% | Add @example, @requires, inline comments |
-| `src/app.js` | 70% | 100% | Add @exports, @requires, @example |
-| `src/config/index.js` | 85% | 100% | Add @example for each property |
-| `src/routes/index.js` | 65% | 100% | Add @exports, @see cross-references |
-| `src/routes/main.routes.js` | 80% | 100% | Add @example curl commands |
-| `README.md` | 8% | 100% | Complete rewrite required |
-
-### 0.7.2 Documentation Quality Criteria
-
-**Completeness Requirements:**
-
-| Element | Requirement | Validation |
-| --- | --- | --- |
-| All modules | Have @module tag | Check first JSDoc block |
-| All modules | Have @description | Check JSDoc block content |
-| All public exports | Have @exports or documented | Check module.exports |
-| All route handlers | Have @route annotation | Check router.get/post calls |
-| All config options | Have @type and @default | Check config properties |
-| README | Has all 12 sections | Check headers |
-| API endpoints | Have request/response examples | Check curl commands |
-
-**Accuracy Validation:**
-
-| Check | Method | Expected Result |
-| --- | --- | --- |
-| API examples | Execute curl commands | Match documented responses |
-| Config defaults | Compare with code | `host='127.0.0.1'`, `port=3000`, `env='development'` |
-| Version numbers | Compare with package.json | Node.js &gt;= 20.19.x, npm &gt;= 10.8.x |
-| Response strings | Compare with route handlers | `'Hello, World!\n'`, `'Good evening'` |
-
-**Clarity Standards:**
-
-- Technical accuracy with accessible language for tutorial audience
-- Progressive disclosure: Quick start → Detailed reference
-- Consistent terminology: Use "endpoint" not "route" in user-facing docs
-- Code examples must be copy-paste ready
-- All commands must include expected output
-
-**Maintainability:**
-
-- Source citations for all technical claims
-- Version-specific information clearly marked
-- Environment-specific notes (development vs production)
-- Update dates in README header
-
-### 0.7.3 Example and Diagram Requirements
-
-**Minimum Examples Per Element:**
-
-| Element | Minimum Examples |
-| --- | --- |
-| Each API endpoint | 1 curl command + response |
-| Each config option | 1 usage example |
-| Server startup | 1 npm start example |
-| Installation | Step-by-step commands |
-
-**Required Diagrams:**
-
-| Diagram | Type | Purpose |
-| --- | --- | --- |
-| Application Architecture | Mermaid flowchart | Show module relationships |
-| Request Flow | Mermaid sequence | Show HTTP request handling |
-
-**Example Testing Strategy:**
-
-- All curl commands must be verified against running server
-- All npm commands must be verified in clean environment
-- Response strings must exactly match source code
-
-### 0.7.4 Quality Checklist
-
-- [ ] All JSDoc blocks start with `/**`
-
-- [ ] All @module tags match file paths
-
-- [ ] All @requires tags match actual require statements
-
-- [ ] All @example tags contain tested code
-
-- [ ] README has valid Markdown syntax
-
-- [ ] README anchor links work correctly
-
-- [ ] All code blocks have language identifiers
-
-- [ ] All tables have consistent column widths
-
-- [ ] No broken internal references
-
-- [ ] Response strings exactly match source code
-
-## 0.8 Scope Boundaries
-
-### 0.8.1 Exhaustively In Scope
-
-**Documentation File Updates:**
-
-| File Pattern | Type | Changes |
-| --- | --- | --- |
-| `README.md` | Project README | Complete rewrite with comprehensive documentation |
-| `server.js` | Source file | JSDoc enhancement + inline comments |
-| `src/app.js` | Source file | JSDoc enhancement + inline comments |
-| `src/config/index.js` | Source file | JSDoc enhancement with @example tags |
-| `src/routes/index.js` | Source file | JSDoc enhancement + barrel docs |
-| `src/routes/main.routes.js` | Source file | JSDoc enhancement + curl examples |
-
-**Documentation Content Additions:**
-
-- Project title and description
-- Table of contents with anchor links
-- Prerequisites documentation (Node.js, npm versions)
-- Installation instructions (clone, npm install, verify)
-- Configuration documentation (environment variables table)
-- Usage instructions (start server, test endpoints)
-- API reference (GET /, GET /evening with examples)
-- Project structure diagram
-- Deployment guide (production, Docker, PM2)
-- Contributing guidelines
-- License information
-
-**JSDoc Enhancements:**
-
-- `@module` tag verification and enhancement
-- `@requires` tags for all dependencies
-- `@exports` tags for all module exports
-- `@example` tags with practical usage
-- `@see` tags for cross-references
-- `@param` tags for function parameters
-- `@returns` tags for return values
-- Inline code explanations
-
-**Reference Files (Read-Only):**
-
-| File | Purpose |
-| --- | --- |
-| `blitzy/documentation/Project Guide.md` | Style and content reference |
-| `blitzy/documentation/Technical Specifications.md` | Technical accuracy reference |
-| `package.json` | Metadata source |
-| `package-lock.json` | Dependency verification |
-
-### 0.8.2 Explicitly Out of Scope
-
-**Source Code Modifications (Logic Changes):**
-
-- ❌ Adding new endpoints or routes
-- ❌ Modifying existing route response strings
-- ❌ Changing server configuration logic
-- ❌ Adding middleware or error handlers
-- ❌ Modifying package.json dependencies
-- ❌ Changing application architecture
-
-**Test File Modifications:**
-
-- ❌ Creating or modifying test files
-- ❌ Setting up test frameworks (Jest, Mocha)
-- ❌ Adding test scripts to package.json
-
-**Documentation Generator Setup:**
-
-- ❌ Installing JSDoc generator
-- ❌ Creating jsdoc.json configuration
-- ❌ Setting up documentation hosting
-
-**External Documentation:**
-
-- ❌ Creating separate API documentation site
-- ❌ Creating wiki pages
-- ❌ Creating changelog entries
-
-**Existing Blitzy Documentation:**
-
-- ❌ Modifying `blitzy/documentation/Project Guide.md`
-- ❌ Modifying `blitzy/documentation/Technical Specifications.md`
-
-**Infrastructure Changes:**
-
-- ❌ Adding CI/CD documentation pipelines
-- ❌ Creating Dockerfile
-- ❌ Setting up documentation deployment
-
-### 0.8.3 Scope Clarifications
-
-| Item | Status | Rationale |
-| --- | --- | --- |
-| JSDoc in source files | ✅ IN SCOPE | User explicitly requested JSDoc comments |
-| Inline code comments | ✅ IN SCOPE | User requested "inline code explanations" |
-| [README.md](http://README.md) | ✅ IN SCOPE | User requested "comprehensive README" |
-| API documentation | ✅ IN SCOPE | User explicitly requested |
-| Deployment guide | ✅ IN SCOPE | User explicitly requested |
-| Setup instructions | ✅ IN SCOPE | User explicitly requested |
-| Code logic changes | ❌ OUT OF SCOPE | Documentation-only task |
-| New features | ❌ OUT OF SCOPE | Documentation-only task |
-| Test framework | ❌ OUT OF SCOPE | Not requested, tutorial scope |
-
-### 0.8.4 Documentation-Only Constraint
-
-This task is strictly documentation-focused:
-
-**Allowed Changes:**
-
-- Adding/modifying JSDoc comment blocks
-- Adding/modifying inline code comments
-- Rewriting [README.md](http://README.md) content
-- Adding Markdown diagrams
-
-**Prohibited Changes:**
-
-- Executable JavaScript code
-- Module exports or imports
-- Package dependencies
-- Configuration values
-- Route handlers or responses
-
-## 0.9 Execution Parameters
-
-### 0.9.1 Documentation-Specific Instructions
-
-**Documentation Build Command:**
-
-```bash
-# No build required - raw Markdown files
-# To preview README.md locally:
-cat README.md
-# Or use a Markdown viewer
+## 0.6 Scope Boundaries
+
+### 0.6.1 Exhaustively In Scope
+
+**Source Code Changes:**
+
+| Pattern | Description |
+|---------|-------------|
+| `server.js` | Add graceful shutdown, logger integration |
+| `src/app.js` | Mount middleware stack, import utilities |
+| `src/config/index.js` | Integrate dotenv, expand configuration |
+| `src/routes/index.js` | Add health routes export |
+| `src/routes/health.routes.js` | New health check endpoints |
+| `src/middleware/*.js` | New middleware modules (logger, error, security) |
+| `src/utils/logger.js` | New winston logger configuration |
+
+**Configuration Updates:**
+
+| Pattern | Description |
+|---------|-------------|
+| `package.json` | Dependencies and scripts |
+| `ecosystem.config.js` | PM2 configuration file |
+| `.env` | Environment variables for development |
+| `.env.example` | Environment template documentation |
+| `.gitignore` | Add .env patterns |
+
+**Documentation Updates:**
+
+| Pattern | Description |
+|---------|-------------|
+| `README.md` | Update with new features, setup, commands |
+
+**New Directories:**
+
+| Path | Purpose |
+|------|---------|
+| `src/middleware/` | Middleware modules |
+| `src/utils/` | Utility modules |
+
+### 0.6.2 Explicitly Out of Scope
+
+**Related Features Not Specified:**
+
+- Database integration (MongoDB, PostgreSQL, etc.)
+- User authentication/authorization (JWT, sessions)
+- API versioning (v1/, v2/ routes)
+- WebSocket support
+- File upload handling
+- Caching layer (Redis integration)
+- Email/notification services
+
+**Performance Optimizations Beyond Requirements:**
+
+- Load balancing configuration (Nginx, HAProxy)
+- CDN integration
+- Database connection pooling
+- Memory caching strategies
+- Response caching headers
+
+**Refactoring Unrelated to Core Objectives:**
+
+- Converting to TypeScript
+- Migrating to ES modules (`import`/`export`)
+- Restructuring to monorepo
+- Adding GraphQL support
+- Implementing microservices architecture
+
+**Additional Tooling Not Mentioned:**
+
+- Docker containerization
+- Kubernetes manifests
+- CI/CD pipeline configuration
+- Code quality tools (ESLint, Prettier)
+- Pre-commit hooks
+
+**Future Enhancements Not Part of Request:**
+
+- API documentation (Swagger/OpenAPI)
+- Test framework implementation
+- Code coverage reporting
+- Performance monitoring (APM)
+- Distributed tracing
+
+**Explicitly Excluded by Design:**
+
+- Modification of existing endpoint responses (`GET /`, `GET /evening`)
+- Changes to existing route handler logic
+- Removal of any existing functionality
+- Breaking changes to current configuration defaults
+
+### 0.6.3 Scope Boundary Diagram
+
+```mermaid
+flowchart TB
+    subgraph InScope["IN SCOPE"]
+        direction TB
+        MW["Middleware Layer"]
+        LOG["Logging System"]
+        CFG["Enhanced Config"]
+        PM2["PM2 Deployment"]
+        HEALTH["Health Endpoints"]
+        SHUTDOWN["Graceful Shutdown"]
+    end
+    
+    subgraph OutOfScope["OUT OF SCOPE"]
+        direction TB
+        DB["Database Integration"]
+        AUTH["Authentication"]
+        DOCKER["Docker/K8s"]
+        TEST["Test Framework"]
+        CICD["CI/CD Pipeline"]
+        TS["TypeScript Migration"]
+    end
+    
+    subgraph Existing["PRESERVE (No Changes)"]
+        direction TB
+        HELLO["GET / endpoint"]
+        EVENING["GET /evening endpoint"]
+        ARCH["Layered Architecture"]
+    end
+    
+    InScope --> Existing
+    OutOfScope -.->|"Not Included"| InScope
 ```
 
-**Documentation Preview Command:**
+### 0.6.4 Change Impact Summary
 
-```bash
-# Preview README in terminal (with markdown rendering if available)
-npx marked README.md
-# Or view in browser
-# Open README.md in VS Code and use Markdown Preview (Ctrl+Shift+V)
-```
+| Area | Files Affected | Change Type |
+|------|---------------|-------------|
+| Entry Layer | 1 (`server.js`) | Modification |
+| Application Layer | 1 (`src/app.js`) | Modification |
+| Configuration | 1 (`src/config/index.js`) | Modification |
+| Routing | 2 (`src/routes/index.js`, `health.routes.js`) | Modification + Creation |
+| Middleware | 4 (new directory + 3 files) | Creation |
+| Utilities | 2 (new directory + logger) | Creation |
+| Configuration Files | 3 (`package.json`, `.gitignore`, `ecosystem.config.js`) | Modification + Creation |
+| Environment Files | 2 (`.env`, `.env.example`) | Creation |
+| Documentation | 1 (`README.md`) | Modification |
 
-**Diagram Generation:**
+**Total Files:**
 
-```bash
-# Mermaid diagrams render automatically on GitHub
-# For local preview, use mermaid-cli:
-npx @mermaid-js/mermaid-cli -i README.md -o preview.md
-```
+| Category | Count |
+|----------|-------|
+| Files to Create | 9 |
+| Files to Modify | 7 |
+| Files to Delete | 0 |
+| **Total Affected** | **16** |
 
-**Documentation Validation:**
+## 0.7 Execution Parameters
 
-```bash
-# Validate Markdown syntax
-npx markdownlint README.md
+### 0.7.1 Special Execution Instructions
 
-#### Check for broken links (if links added)
-npx markdown-link-check README.md
-```
+**Process-Specific Requirements:**
 
-### 0.9.2 JSDoc Comment Format
+| Requirement | Description |
+|-------------|-------------|
+| Preserve existing endpoints | Do not modify responses from `GET /` and `GET /evening` |
+| Maintain CommonJS | Continue using `require()`/`module.exports` pattern |
+| Non-breaking changes | Existing functionality must remain operational |
+| Production-ready defaults | Configuration should work without `.env` file |
 
-**Standard JSDoc Block Structure:**
+**Tools and Platforms:**
 
-```javascript
-/**
- * Brief description of the element.
- * 
- * Longer description with additional context
- * spanning multiple lines if needed.
- * 
- * @module module-name
- * @requires dependency
- * @exports ExportedItem
- * @see module:related-module
- * 
- * @example
- * // Example usage
- * const result = myFunction();
- */
-```
+| Tool | Usage |
+|------|-------|
+| Node.js | Runtime (>= 20.19.x required) |
+| npm | Package management |
+| PM2 | Process management for production |
+| Winston | Logging framework |
 
-**Route Handler JSDoc Format:**
+**Quality Requirements:**
 
-```javascript
-/**
- * Brief description of the endpoint.
- * 
- * @route {METHOD} /path
- * @param {express.Request} req - Request object
- * @param {express.Response} res - Response object
- * @returns {void} Sends response
- * 
- * @example
- * curl http://127.0.0.1:3000/path
- * // Response: Expected output
- */
-```
+| Aspect | Requirement |
+|--------|-------------|
+| Code style | Follow existing patterns in codebase |
+| Error handling | All async operations must handle errors |
+| Logging | All significant operations logged |
+| Security | OWASP headers applied by default |
 
-### 0.9.3 README Format Standards
+**Code Review Considerations:**
 
-**Document Structure:**
+- Middleware order is critical for security
+- Rate limiting configuration appropriate for use case
+- Logger levels appropriate for each environment
+- Graceful shutdown timeout adequate (default: 10 seconds)
 
-- Use ATX-style headers (`#`, `##`, `###`)
-- Maximum heading depth: 3 levels
-- One blank line before and after headers
-- One blank line before and after code blocks
+**Deployment Considerations:**
 
-**Code Block Format:**
+| Environment | Configuration |
+|-------------|---------------|
+| Development | Single process, debug logging, pretty console output |
+| Production | Cluster mode, info logging, JSON output |
 
-```plaintext
-    ```language
-    code here
-    ```
-```
+### 0.7.2 Constraints and Boundaries
 
-**Table Format:**
+**Technical Constraints:**
 
-```plaintext
-| Column 1 | Column 2 |
-|----------|----------|
-| Data 1   | Data 2   |
-```
+| Constraint | Specification |
+|------------|---------------|
+| Node.js version | >= 20.19.x (per package.json engines) |
+| Express.js version | 5.1.0 (existing, do not change) |
+| Module system | CommonJS (existing pattern) |
+| Configuration defaults | Must work without `.env` file |
 
-**Badge Format:**
+**Process Constraints:**
 
-```plaintext
-![Badge Name](https://img.shields.io/badge/...)
-```
+| Constraint | Description |
+|------------|-------------|
+| No breaking changes | Existing API must continue working |
+| Backward compatibility | Existing env vars (`HOST`, `PORT`, `NODE_ENV`) must work |
+| Minimal dependencies | Add only necessary packages |
+| Documentation | All new features must be documented |
 
-### 0.9.4 Verification Commands
+**Output Constraints:**
 
-**Server Startup Verification:**
+| Constraint | Description |
+|------------|-------------|
+| Response format | Existing endpoints return plain text |
+| Error responses | JSON format for API errors |
+| Log format | JSON in production, pretty in development |
+| Health endpoints | JSON responses |
 
-```bash
-cd /tmp/blitzy/test-spec/blitzy0c2547c18
-npm start &
-sleep 2
-```
+**Timeline/Dependency Constraints:**
 
-**Endpoint Testing (for documentation examples):**
+| Constraint | Description |
+|------------|-------------|
+| dotenv first | Must load before any config access |
+| Logger before middleware | Logger must be available for middleware |
+| Middleware order | Security → Logging → Routes → Errors |
 
-```bash
-# Test root endpoint
-curl -s http://127.0.0.1:3000/
-# Expected: Hello, World!
+**Compatibility Requirements:**
 
-#### Test evening endpoint
-curl -s http://127.0.0.1:3000/evening
-#### Expected: Good evening
+| Requirement | Specification |
+|-------------|---------------|
+| Existing tests | Placeholder test must still pass |
+| npm scripts | Existing `start` and `test` must work |
+| Environment | Must work on Linux, macOS, Windows |
 
-#### Test with headers
-curl -i http://127.0.0.1:3000/
-#### Shows HTTP headers + response
-```
+### 0.7.3 npm Scripts to Add
 
-**Stop Server:**
+**New Scripts:**
 
-```bash
-# Kill background server
-pkill -f "node server.js"
-```
+| Script | Command | Purpose |
+|--------|---------|---------|
+| `dev` | `node server.js` | Development mode (alias for start) |
+| `prod` | `NODE_ENV=production node server.js` | Production mode without PM2 |
+| `pm2:start` | `pm2 start ecosystem.config.js` | Start with PM2 |
+| `pm2:stop` | `pm2 stop ecosystem.config.js` | Stop PM2 processes |
+| `pm2:restart` | `pm2 restart ecosystem.config.js` | Restart PM2 processes |
+| `pm2:reload` | `pm2 reload ecosystem.config.js` | Zero-downtime reload |
+| `pm2:logs` | `pm2 logs` | View PM2 logs |
+| `pm2:status` | `pm2 status` | View PM2 process status |
 
-### 0.9.5 Style Guide Reference
+### 0.7.4 Environment Variables
 
-**JSDoc Style:**
+**Required Environment Variables:**
 
-- Use present tense for descriptions ("Returns", not "Will return")
-- Start descriptions with capital letter
-- End descriptions without period (unless multi-sentence)
-- Use `@example` for all executable code snippets
-- Include expected output in examples as comments
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `HOST` | `127.0.0.1` | Server bind address |
+| `PORT` | `3000` | Server port |
+| `NODE_ENV` | `development` | Environment mode |
 
-**README Style:**
+**New Environment Variables:**
 
-- Use imperative mood for instructions ("Run", not "You should run")
-- Include expected output for all commands
-- Use consistent capitalization for headings
-- Link to external resources where helpful
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `LOG_LEVEL` | `info` | Logging level (error, warn, info, debug) |
+| `LOG_FORMAT` | `combined` | Request log format |
+| `RATE_LIMIT_WINDOW_MS` | `900000` | Rate limit window (15 min) |
+| `RATE_LIMIT_MAX` | `100` | Max requests per window |
+| `CORS_ORIGIN` | `*` | Allowed CORS origins |
 
-**Code Examples:**
+### 0.7.5 Verification Checklist
 
-- Must be copy-paste ready
-- Must include comments showing expected output
-- Must work with default configuration
-- Should demonstrate common use cases
+**Post-Implementation Verification:**
 
-## 0.10 Special Instructions
+| Check | Command | Expected Result |
+|-------|---------|-----------------|
+| Dependencies installed | `npm ls` | All packages present |
+| Server starts | `npm start` | No errors, log message |
+| Existing endpoints work | `curl localhost:3000/` | "Hello, World!" |
+| Evening endpoint works | `curl localhost:3000/evening` | "Good evening" |
+| Health endpoint works | `curl localhost:3000/health` | JSON health response |
+| PM2 starts | `npm run pm2:start` | Process running |
+| Graceful shutdown | `kill -SIGTERM <pid>` | Clean shutdown log |
+| Logs appear | Check console/file | Structured log entries |
 
-### 0.10.1 User-Specified Documentation Requirements
+## 0.8 Special Instructions
 
-**User's Exact Request:**
+### 0.8.1 Task-Specific Requirements
 
-> "Add JSDoc comments to server.js functions, create a comprehensive README with setup instructions, API documentation, deployment guide, and inline code explanations."
-
-**Interpreted Directives:**
+**Explicitly Emphasized by Requirements:**
 
 | Directive | Implementation |
-| --- | --- |
-| "Add JSDoc comments to server.js functions" | Enhance existing JSDoc in all source files with @example, @requires, and function-level documentation |
-| "comprehensive README" | Complete rewrite of [README.md](http://README.md) with 12+ sections |
-| "setup instructions" | Include Prerequisites, Installation, Configuration sections |
-| "API documentation" | Include API Reference section with all endpoints, methods, examples |
-| "deployment guide" | Include Deployment section covering production, Docker, PM2 |
-| "inline code explanations" | Add contextual comments explaining code logic within source files |
+|-----------|----------------|
+| "Enhance this basic HTTP server" | Build upon existing architecture, do not replace |
+| "with Express.js framework" | Leverage Express.js 5.x features already present |
+| "add routing" | Create additional route modules, expand patterns |
+| "middleware" | Implement comprehensive middleware stack |
+| "environment config" | Integrate dotenv with validation |
+| "logging" | Add winston with environment-aware configuration |
+| "prepare for production deployment with PM2" | Create ecosystem.config.js, implement graceful shutdown |
 
-### 0.10.2 Documentation-Specific Constraints
+### 0.8.2 Implementation Patterns to Follow
 
-**Preserve Existing Behavior:**
+**Pattern: Follow Existing Code Style**
 
-- Do not modify route response strings (`'Hello, World!\n'`, `'Good evening'`)
-- Do not change configuration defaults (`127.0.0.1`, `3000`, `development`)
-- Do not alter module export patterns
-- Do not change server startup behavior
+The existing codebase uses specific patterns that must be continued:
 
-**Follow Existing Patterns:**
+```javascript
+// Pattern: Module exports style
+module.exports = { namedExport };
 
-- Match existing JSDoc style already in codebase
-- Use consistent Mermaid diagram syntax as in blitzy/documentation/
-- Maintain modular architecture documentation
+// Pattern: Express router creation
+const router = express.Router();
 
-**Tutorial Audience Focus:**
+// Pattern: Configuration access
+const config = require('./config');
+```
 
-- Use beginner-friendly language
-- Explain concepts before using them
-- Include expected output for all commands
-- Provide troubleshooting hints where relevant
+**Pattern: Maintain Layered Architecture**
 
-### 0.10.3 JSDoc Enhancement Guidelines
+```
+Entry Layer (server.js)
+    ↓
+Application Layer (src/app.js)
+    ↓
+Middleware Layer (src/middleware/)
+    ↓
+Routing Layer (src/routes/)
+```
 
-**For Each Source File:**
+**Pattern: Barrel Exports**
 
-1. **Verify @module tag** matches file path
-2. **Add @requires tags** for all require() statements
-3. **Add @exports tag** for module.exports
-4. **Add @example tag** with practical usage
-5. **Add @see tags** for cross-references
-6. **Add inline comments** explaining complex logic
+```javascript
+// src/middleware/index.js - follow src/routes/index.js pattern
+const { loggerMiddleware } = require('./logger');
+const { errorHandler } = require('./errorHandler');
+const { securityMiddleware } = require('./security');
 
-**Specific Enhancements by File:**
+module.exports = {
+  loggerMiddleware,
+  errorHandler,
+  securityMiddleware
+};
+```
 
-| File | Required Enhancements |
-| --- | --- |
-| `server.js` | Add @requires for app and config; add @example for npm start; explain listen callback |
-| `src/app.js` | Add @exports for app; add @requires for express and routes; explain middleware mounting |
-| `src/config/index.js` | Add @example for each property showing env override |
-| `src/routes/index.js` | Add @exports for mainRoutes; explain barrel pattern |
-| `src/routes/main.routes.js` | Add @example curl commands for each route |
+### 0.8.3 Critical Do's and Don'ts
 
-### 0.10.4 README Content Requirements
+**DO:**
 
-**Mandatory Sections:**
+- Preserve existing `GET /` response: "Hello, World!\n"
+- Preserve existing `GET /evening` response: "Good evening"
+- Use existing configuration defaults as fallbacks
+- Follow Express.js 5.x async error handling patterns
+- Add security middleware at the start of the pipeline
+- Place error handler middleware at the end
+- Log startup and shutdown events
+- Support zero-downtime reloads in cluster mode
 
- 1. **Title and Badges** - Project name, license badge, Node.js version badge
- 2. **Description** - One-paragraph project overview
- 3. **Table of Contents** - Links to all sections
- 4. **Prerequisites** - Node.js &gt;= 20.19.x, npm &gt;= 10.8.x
- 5. **Installation** - Clone, cd, npm install
- 6. **Configuration** - Environment variables table
- 7. **Usage** - npm start, endpoint testing
- 8. **API Reference** - All endpoints with curl examples
- 9. **Project Structure** - Directory tree
-10. **Deployment Guide** - Production considerations
-11. **Contributing** - Basic guidelines
-12. **License** - MIT with link
+**DON'T:**
 
-### 0.10.5 Quality Assurance Checklist
+- Remove or modify existing route handlers
+- Change the existing module system (stay with CommonJS)
+- Add unnecessary dependencies
+- Hard-code configuration values
+- Skip error handling in async middleware
+- Forget to export new modules
+- Break backward compatibility with existing env vars
 
-Before marking documentation complete:
+### 0.8.4 Quality Criteria
 
-- [ ] All JSDoc blocks have valid syntax (start with `/**`)
+**Code Quality:**
 
-- [ ] All @module tags match file paths
+| Criteria | Requirement |
+|----------|-------------|
+| No linting errors | Code passes standard Node.js patterns |
+| Consistent formatting | Match existing file style |
+| Complete exports | All public functions exported |
+| Error handling | All async code wrapped |
 
-- [ ] All @requires tags match actual require statements
+**Documentation Quality:**
 
-- [ ] All @example tags contain tested, working code
+| Criteria | Requirement |
+|----------|-------------|
+| README updated | New features documented |
+| .env.example complete | All variables with comments |
+| Inline comments | Complex logic explained |
 
-- [ ] [README.md](http://README.md) renders correctly on GitHub
+**Functionality Quality:**
 
-- [ ] All curl commands produce documented output
+| Criteria | Requirement |
+|----------|-------------|
+| All endpoints work | Existing + new endpoints respond |
+| Graceful shutdown | Clean exit on signals |
+| Logging works | Entries appear in expected format |
+| PM2 cluster mode | Multiple instances start |
 
-- [ ] All Mermaid diagrams render correctly
+### 0.8.5 Reference Materials
 
-- [ ] No broken anchor links in README
+**Best Practices Sources:**
 
-- [ ] Consistent terminology throughout
+- <cite index="1-2">Middleware functions are functions that have access to the request object (req), the response object (res), and the next function in the application's request-response cycle.</cite>
+- <cite index="9-8">Best Practices: Define application-level middleware before defining routes to ensure they run in the correct order.</cite>
+- <cite index="17-9,17-10">PM2 is a production process manager for Node.js/Bun applications with a built-in load balancer. It allows you to keep applications alive forever, to reload them without downtime and to facilitate common system admin tasks.</cite>
 
-- [ ] Version numbers match package.json/blitzy docs
+**Security Guidelines:**
 
-- [ ] Response strings exactly match source code
+- Apply helmet for HTTP security headers
+- Enable CORS with appropriate origins
+- Implement rate limiting for public endpoints
+- Never log sensitive information (passwords, tokens)
+
+**Logging Guidelines:**
+
+- Use appropriate log levels:
+  - `error`: System errors, exceptions
+  - `warn`: Degraded service, recoverable issues
+  - `info`: Normal operations, startup/shutdown
+  - `debug`: Detailed debugging information
+- Include request ID for tracing
+- Use JSON format in production for parsing
+
+### 0.8.6 Success Criteria
+
+**Implementation Complete When:**
+
+| Checkpoint | Verification |
+|------------|--------------|
+| All dependencies installed | `npm ls` shows no missing packages |
+| Server starts without errors | `npm start` logs startup message |
+| Existing endpoints unchanged | Curl returns expected responses |
+| Health endpoint responds | `GET /health` returns JSON |
+| Middleware executes | Request logs appear |
+| Security headers present | Response includes helmet headers |
+| PM2 starts cluster | `npm run pm2:start` shows instances |
+| Graceful shutdown works | SIGTERM causes clean exit |
+| Documentation complete | README has new sections |
+| Environment template exists | `.env.example` has all variables |
+
