@@ -162,12 +162,4 @@ app.use('/health', healthRoutes);
  */
 app.use(errorHandler);
 
-// Log successful application initialization
-logger.info({
-  message: 'Express application initialized',
-  middleware: ['helmet', 'cors', 'compression', 'rateLimit', 'loggerMiddleware', 'json', 'urlencoded'],
-  routes: ['mainRoutes', 'healthRoutes'],
-  errorHandling: 'centralized'
-});
-
 module.exports = app;

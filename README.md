@@ -261,24 +261,21 @@ Good evening
 {
   "status": "healthy",
   "timestamp": "2024-01-15T10:30:00.000Z",
-  "uptime": 3600,
-  "environment": "production"
+  "uptime": 3600.123
 }
 ```
 
 **GET /health/live**
 ```json
 {
-  "status": "alive",
-  "timestamp": "2024-01-15T10:30:00.000Z"
+  "status": "alive"
 }
 ```
 
 **GET /health/ready**
 ```json
 {
-  "status": "ready",
-  "timestamp": "2024-01-15T10:30:00.000Z"
+  "status": "ready"
 }
 ```
 
@@ -335,14 +332,14 @@ The application uses Winston for structured logging with environment-aware confi
 
 Development:
 ```
-2024-01-15 10:30:00 [info]: Server running at http://127.0.0.1:3000
-2024-01-15 10:30:05 [info]: GET / 200 15ms
+2024-01-15 10:30:00 [info]: Server running at http://127.0.0.1:3000/
+2024-01-15 10:30:05 [info]: { method: 'GET', url: '/', status: 200, duration: '5ms', userAgent: 'curl/8.5.0' }
 ```
 
 Production:
 ```json
-{"level":"info","message":"Server running at http://127.0.0.1:3000","timestamp":"2024-01-15T10:30:00.000Z"}
-{"level":"info","message":"GET / 200 15ms","timestamp":"2024-01-15T10:30:05.000Z"}
+{"level":"info","message":"Server running at http://127.0.0.1:3000/","timestamp":"2024-01-15T10:30:00.000Z"}
+{"level":"info","method":"GET","url":"/","status":200,"duration":"5ms","userAgent":"curl/8.5.0","timestamp":"2024-01-15T10:30:05.000Z"}
 ```
 
 ### Configuring Log Level
