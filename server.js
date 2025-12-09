@@ -438,3 +438,6 @@ if (require.main === module) {
  * });
  */
 module.exports = { app };
+
+// Log statement added for testing purposes per Refine PR request
+console.log('Server module loaded successfully');
