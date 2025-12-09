@@ -289,7 +289,7 @@ The application uses a carefully ordered middleware stack for optimal security a
 | 2 | **cors** | Enables Cross-Origin Resource Sharing with configurable origins |
 | 3 | **compression** | Gzip compression for HTTP responses to reduce bandwidth |
 | 4 | **rate-limit** | Protects against brute-force attacks and DoS by limiting requests per IP |
-| 5 | **request-logger** | Logs incoming HTTP requests with method, path, status, and response time |
+| 5 | **request-logger** | Logs incoming HTTP requests with method, path, status, and response time (excludes health checks) |
 | 6 | **express.json()** | Parses JSON request bodies |
 | 7 | **express.urlencoded()** | Parses URL-encoded request bodies |
 | 8 | **routes** | Application route handlers |
