@@ -109,3 +109,6 @@ process.on('unhandledRejection', (reason, promise) => {
   });
   gracefulShutdown('unhandledRejection');
 });
+
+// End of server initialization
+logger.info('Server module fully initialized');
