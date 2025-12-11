@@ -314,6 +314,130 @@ describe('Server Lifecycle', () => {
       expect(result).toHaveProperty('close');
       expect(typeof result.close).toBe('function');
     });
+
+    test('should handle port binding failure gracefully when listen throws synchronously', () => {
+      resetModules();
+      const bindError = new Error('EADDRINUSE: address already in use');
+      bindError.code = 'EADDRINUSE';
+
+      mockListen = jest.fn().mockImplementation(() => {
+        throw bindError;
+      });
+      jest.doMock('../src/app', () => ({ listen: mockListen }));
+
+      // The server.js does not have try/catch, so error should propagate
+      expect(() => {
+        require('../server');
+      }).toThrow('EADDRINUSE: address already in use');
+    });
+
+    test('should propagate error when listen throws with EACCES (permission denied)', () => {
+      resetModules();
+      const permError = new Error('EACCES: permission denied');
+      permError.code = 'EACCES';
+
+      mockListen = jest.fn().mockImplementation(() => {
+        throw permError;
+      });
+      jest.doMock('../src/app', () => ({ listen: mockListen }));
+
+      expect(() => {
+        require('../server');
+      }).toThrow('EACCES: permission denied');
+    });
+
+    test('should handle listen returning error via callback', () => {
+      resetModules();
+      const callbackError = new Error('Connection refused');
+      let capturedCallback;
+
+      mockListen = jest.fn().mockImplementation((port, host, cb) => {
+        capturedCallback = cb;
+        return { close: jest.fn() };
+      });
+      jest.doMock('../src/app', () => ({ listen: mockListen }));
+
+      // Require server - this captures the callback
+      require('../server');
+
+      expect(mockListen).toHaveBeenCalled();
+      expect(typeof capturedCallback).toBe('function');
+
+      // Callback in server.js doesn't handle errors, it just logs
+      // So calling callback should succeed even without error handling
+      expect(() => {
+        capturedCallback();
+      }).not.toThrow();
+    });
+
+    test('should verify callback is passed correctly even when listen succeeds', () => {
+      resetModules();
+      let capturedCallback;
+      let capturedPort;
+      let capturedHost;
+
+      mockListen = jest.fn().mockImplementation((port, host, cb) => {
+        capturedPort = port;
+        capturedHost = host;
+        capturedCallback = cb;
+        // Don't invoke callback automatically
+        return { close: jest.fn() };
+      });
+      jest.doMock('../src/app', () => ({ listen: mockListen }));
+
+      require('../server');
+
+      expect(capturedPort).toBe(3000);
+      expect(capturedHost).toBe('127.0.0.1');
+      expect(typeof capturedCallback).toBe('function');
+    });
+
+    test('should not call console.log if callback is never invoked', () => {
+      resetModules();
+      consoleSpy = mockConsole();
+
+      mockListen = jest.fn().mockImplementation((port, host, cb) => {
+        // Don't invoke callback - simulates pending connection
+        return { close: jest.fn() };
+      });
+      jest.doMock('../src/app', () => ({ listen: mockListen }));
+
+      require('../server');
+
+      // Since callback was never invoked, console.log should not be called
+      expect(consoleSpy.log).not.toHaveBeenCalled();
+    });
+
+    test('should handle graceful shutdown scenario', () => {
+      resetModules();
+      const mockClose = jest.fn().mockImplementation((cb) => {
+        if (typeof cb === 'function') {
+          cb();
+        }
+      });
+      const mockServerInstance = { close: mockClose };
+
+      mockListen = jest.fn().mockImplementation((port, host, cb) => {
+        if (cb) cb();
+        return mockServerInstance;
+      });
+      jest.doMock('../src/app', () => ({ listen: mockListen }));
+
+      require('../server');
+
+      // Verify server instance can be closed
+      expect(mockListen).toHaveBeenCalled();
+      expect(typeof mockServerInstance.close).toBe('function');
+
+      // Simulate graceful shutdown
+      let shutdownComplete = false;
+      mockServerInstance.close(() => {
+        shutdownComplete = true;
+      });
+
+      expect(shutdownComplete).toBe(true);
+      expect(mockClose).toHaveBeenCalled();
+    });
   });
 
   // -------------------------------------------------------------------------
