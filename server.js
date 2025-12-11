@@ -143,3 +143,6 @@ logger.info('Application initialization complete - server ready to accept reques
 
 // Log added per Refine PR request - confirming server startup sequence completed
 logger.info('Server startup sequence completed successfully');
+
+// Additional log added per user Refine PR instruction for testing purposes
+logger.info('Refine PR test log: Server module fully loaded and initialized');
