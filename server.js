@@ -134,3 +134,9 @@ process.on('unhandledRejection', (reason) => {
   });
   gracefulShutdown('unhandledRejection');
 });
+
+// =============================================================================
+// Application Initialization Complete
+// =============================================================================
+
+logger.info('Application initialization complete - server ready to accept requests');
