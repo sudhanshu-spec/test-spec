@@ -332,16 +332,15 @@ function createRateLimitOptions(windowMs, limit) {
       
       // Send JSON error response
       res.status(options.statusCode).json(options.message);
-    },
-
-    // Key generator function - uses req.ip by default
-    // express-rate-limit v8.x handles IPv6 correctly with req.ip
-    // Customize if behind a proxy (trust proxy must be set on Express app)
-    keyGenerator: (req) => {
-      // Use X-Forwarded-For header if available (when behind proxy)
-      // Otherwise use req.ip which Express populates
-      return req.ip || req.headers['x-forwarded-for'] || 'unknown';
     }
+
+    // Note: Intentionally NOT using a custom keyGenerator function.
+    // express-rate-limit v8.x uses req.ip by default which correctly handles:
+    // - IPv4 addresses
+    // - IPv6 addresses (with proper normalization via ipKeyGenerator helper)
+    // - Proxy configurations (when 'trust proxy' is set on the Express app)
+    // Custom keyGenerators require using the ipKeyGenerator helper for IPv6 support.
+    // See: https://express-rate-limit.github.io/ERR_ERL_KEY_GEN_IPV6/
   };
 }
 
