@@ -33,14 +33,26 @@
 const express = require('express');
 
 /**
- * Security middleware imports.
- * Configured instances of helmet, cors, and rate-limit.
+ * Application configuration.
+ * Contains security settings including rate limit and CORS origins.
+ */
+const config = require('./config');
+
+/**
+ * Security middleware factory.
+ * Creates configured instances of helmet, cors, and rate-limit middleware.
+ */
+const { createSecurityMiddleware } = require('./middleware/security');
+
+/**
+ * Create configured security middleware instances.
+ * Passes config to factory for environment-aware configuration.
  */
 const { 
   helmetMiddleware, 
   corsMiddleware, 
   rateLimitMiddleware 
-} = require('./middleware/security');
+} = createSecurityMiddleware(config);
 
 /**
  * Route imports.
