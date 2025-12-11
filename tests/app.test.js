@@ -174,6 +174,37 @@ describe('Factory Pattern Validation', () => {
     expect(firstRes.text).toBe('Hello, World!\n');
     expect(secondRes.text).toBe('Good evening');
   });
+
+  test('fresh import after resetModules returns working app', () => {
+    // Use resetModules to clear module cache and get fresh import
+    resetModules();
+    
+    // After reset, require returns fresh module evaluation
+    const freshApp = require('../src/app');
+    
+    // Fresh app should still be a valid Express instance
+    expect(typeof freshApp).toBe('function');
+    expect(typeof freshApp.get).toBe('function');
+    expect(typeof freshApp.use).toBe('function');
+    expect(typeof freshApp.listen).toBe('function');
+  });
+
+  test('fresh import after resetModules has routes registered', async () => {
+    // Clear module cache to ensure fresh import
+    resetModules();
+    
+    // Import fresh app instance
+    const freshApp = require('../src/app');
+    
+    // Routes should still be mounted on fresh import
+    const rootRes = await request(freshApp).get('/');
+    expect(rootRes.status).toBe(200);
+    expect(rootRes.text).toBe('Hello, World!\n');
+    
+    const eveningRes = await request(freshApp).get('/evening');
+    expect(eveningRes.status).toBe(200);
+    expect(eveningRes.text).toBe('Good evening');
+  });
 });
 
 // ---------------------------------------------------------------------------
