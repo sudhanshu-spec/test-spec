@@ -235,22 +235,45 @@ This project follows a modular Express.js architecture with separation of concer
 
 ```
 Request Flow:
-Client → server.js → Express App (src/app.js) → Router (src/routes/) → Response
-                           ↑
-                     Configuration
-                   (src/config/index.js)
+Client → server.js (HTTP/HTTPS) → Express App (src/app.js)
+                                        ↓
+                              Security Middleware
+                           (helmet → cors → rate-limit)
+                                        ↓
+                               Router (src/routes/)
+                                        ↓
+                                    Response
+                                        
+Configuration: src/config/index.js (server, security, HTTPS settings)
+Security: src/middleware/security.js (middleware factories)
 ```
 
 ### Design Patterns Used
 
 - **Factory Pattern**: `src/app.js` exports a configured Express app without starting the server, enabling testability
+- **Middleware Pattern**: Security middleware applied in specific order (helmet → cors → rate-limit → routes)
 - **Barrel Pattern**: `src/routes/index.js` aggregates route exports for clean imports
 - **CommonJS Modules**: Uses `require`/`module.exports` for Node.js compatibility
-- **Twelve-Factor App**: Configuration externalized to environment variables
+- **Twelve-Factor App**: Configuration externalized to environment variables (including security settings)
 
 ## Security
 
 This application includes comprehensive security middleware for production-ready deployments.
+
+### Security Features Overview
+
+| Feature | Package | Purpose |
+|---------|---------|---------|
+| **Security Headers** | `helmet@^8.1.0` | Sets 11+ HTTP security headers to protect against common web vulnerabilities |
+| **Rate Limiting** | `express-rate-limit@^8.2.1` | Prevents DDoS and brute-force attacks by limiting requests per IP |
+| **CORS** | `cors@^2.8.5` | Controls cross-origin resource sharing with configurable origin whitelist |
+| **HTTPS** | Node.js `https` module | Encrypts all traffic with TLS/SSL when enabled |
+
+**Middleware Order:** Security middleware is applied in a specific order for maximum effectiveness:
+1. **Helmet** (first) - Sets security headers before any response
+2. **CORS** (second) - Handles preflight requests and sets CORS headers
+3. **Rate Limit** (third) - Applies request throttling to all routes
+4. **Routes** (last) - Business logic runs after all security checks
 
 ### Security Headers (Helmet)
 
@@ -261,10 +284,11 @@ Helmet.js sets the following security headers:
 | `Content-Security-Policy` | Configurable | Prevents XSS and data injection attacks |
 | `Cross-Origin-Opener-Policy` | `same-origin` | Isolates browsing context |
 | `Cross-Origin-Resource-Policy` | `same-origin` | Prevents cross-origin reads |
-| `Referrer-Policy` | `strict-origin-when-cross-origin` | Controls referrer information |
-| `Strict-Transport-Security` | Production only | Enforces HTTPS (in production) |
+| `Origin-Agent-Cluster` | `?1` | Requests dedicated process for origin |
+| `Referrer-Policy` | `no-referrer` | Controls referrer information |
+| `Strict-Transport-Security` | `max-age=15552000; includeSubDomains` | Enforces HTTPS connections |
 | `X-Content-Type-Options` | `nosniff` | Prevents MIME sniffing |
-| `X-Frame-Options` | `DENY` | Prevents clickjacking |
+| `X-Frame-Options` | `SAMEORIGIN` | Prevents clickjacking |
 | `X-DNS-Prefetch-Control` | `off` | Controls DNS prefetching |
 | `X-Download-Options` | `noopen` | Prevents IE from executing downloads |
 | `X-Permitted-Cross-Domain-Policies` | `none` | Controls Adobe Flash/PDF policies |
@@ -288,9 +312,73 @@ Cross-Origin Resource Sharing is configurable:
 
 ### Verifying Security Headers
 
+Verify all security headers are present in responses:
+
 ```bash
+# Check all security headers
 curl -I http://127.0.0.1:3000/
-# Check for security headers in response
+
+# Expected security headers in response:
+# Content-Security-Policy: ...
+# Cross-Origin-Opener-Policy: same-origin
+# Cross-Origin-Resource-Policy: same-origin
+# Origin-Agent-Cluster: ?1
+# Referrer-Policy: no-referrer
+# Strict-Transport-Security: max-age=15552000; includeSubDomains
+# X-Content-Type-Options: nosniff
+# X-DNS-Prefetch-Control: off
+# X-Download-Options: noopen
+# X-Frame-Options: SAMEORIGIN
+# X-Permitted-Cross-Domain-Policies: none
+# Note: X-Powered-By header should be ABSENT (removed by helmet)
+```
+
+### Verifying Rate Limiting
+
+Test rate limiting by sending multiple requests:
+
+```bash
+# Send 105 requests and observe rate limiting
+for i in $(seq 1 105); do
+  curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:3000/
+done | sort | uniq -c
+
+# Expected: 100 responses with 200, remaining with 429
+
+# Check rate limit headers in response
+curl -I http://127.0.0.1:3000/
+# Look for: RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset headers
+```
+
+### Verifying CORS Configuration
+
+Test CORS handling:
+
+```bash
+# Test unauthorized origin (should not include Access-Control-Allow-Origin for restricted configs)
+curl -H "Origin: http://unauthorized.com" \
+     -H "Access-Control-Request-Method: GET" \
+     -X OPTIONS \
+     -I http://127.0.0.1:3000/
+
+# Test preflight request
+curl -H "Origin: http://localhost:3000" \
+     -H "Access-Control-Request-Method: GET" \
+     -H "Access-Control-Request-Headers: Content-Type" \
+     -X OPTIONS \
+     -I http://127.0.0.1:3000/
+```
+
+### HTTPS Verification
+
+When HTTPS is enabled, verify TLS configuration:
+
+```bash
+# Test HTTPS connection (with self-signed cert)
+curl -k -I https://127.0.0.1:3000/
+
+# Verify TLS certificate details
+openssl s_client -connect 127.0.0.1:3000 -showcerts </dev/null 2>/dev/null | openssl x509 -noout -text
 ```
 
 ## Dependencies
@@ -343,6 +431,35 @@ PORT=8080 npm start
 # Error: Cannot find module 'express'
 # Solution: Install dependencies
 npm install
+```
+
+**Rate limit exceeded (HTTP 429):**
+```bash
+# Error: Too Many Requests
+# Solution: Wait for rate limit window to reset, or increase RATE_LIMIT_MAX
+RATE_LIMIT_MAX=200 npm start
+```
+
+**CORS blocking requests:**
+```bash
+# Error: Cross-Origin Request Blocked
+# Solution: Add your origin to CORS_ORIGINS
+CORS_ORIGINS="http://localhost:8080,https://myapp.com" npm start
+```
+
+**HTTPS certificate errors:**
+```bash
+# Error: unable to verify the first certificate
+# Solution: Ensure SSL_KEY_PATH and SSL_CERT_PATH point to valid PEM files
+# For development, generate self-signed certificates:
+openssl req -x509 -newkey rsa:4096 -keyout certs/key.pem -out certs/cert.pem -days 365 -nodes -subj "/CN=localhost"
+```
+
+**CSP blocking inline scripts:**
+```bash
+# Issue: Inline scripts blocked by Content-Security-Policy
+# Note: This is expected security behavior. Refactor to use external scripts.
+# For development only, CSP can be adjusted in src/middleware/security.js
 ```
 
 ## License
