@@ -140,3 +140,6 @@ process.on('unhandledRejection', (reason) => {
 // =============================================================================
 
 logger.info('Application initialization complete - server ready to accept requests');
+
+// Log added per Refine PR request - confirming server startup sequence completed
+logger.info('Server startup sequence completed successfully');
