@@ -297,3 +297,6 @@ describe('Response Body Exactness', () => {
     expect(newlineCount).toBe(0);
   });
 });
+
+// Log added for testing purposes per Refine PR request
+console.log('Routes test suite loaded successfully');
