@@ -63,3 +63,6 @@ app.listen(config.port, config.host, () => {
   // Log server startup information
   console.log(`Server running at http://${config.host}:${config.port}/`);
 });
+
+// Log application initialization complete
+console.log('Application module loaded successfully');
