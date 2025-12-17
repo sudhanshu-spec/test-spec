@@ -425,7 +425,7 @@ describe('server.js Module', () => {
       );
     });
 
-    it('should log application initialization message', () => {
+    it('should log message only once during startup', () => {
       // Mock the app module's listen method
       jest.doMock('../src/app', () => ({
         listen: mockListen
@@ -434,13 +434,14 @@ describe('server.js Module', () => {
       // Require server.js - this will execute it
       require('../server');
       
-      // Verify console.log was called with initialization message
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Application module loaded')
+      // Verify console.log was called exactly once for the startup message
+      const serverRunningCalls = consoleSpy.mock.calls.filter(
+        call => call[0] && call[0].includes('Server running at')
       );
+      expect(serverRunningCalls.length).toBe(1);
     });
 
-    it('should log PR validation message', () => {
+    it('should format startup message correctly with http protocol', () => {
       // Mock the app module's listen method
       jest.doMock('../src/app', () => ({
         listen: mockListen
@@ -449,9 +450,9 @@ describe('server.js Module', () => {
       // Require server.js - this will execute it
       require('../server');
       
-      // Verify console.log was called with PR validation message
+      // Verify console.log includes http:// protocol
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Express.js server initialization complete')
+        expect.stringContaining('http://')
       );
     });
 
