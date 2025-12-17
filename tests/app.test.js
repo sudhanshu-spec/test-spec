@@ -180,7 +180,6 @@ describe('Express App Factory', () => {
 
     it('should have router functionality indicating routes are mounted', async () => {
       // Express 5.x may not expose _router directly, verify routing works instead
-      const request = require('supertest');
       const response = await request(app).get('/');
       expect(response.status).toBe(200);
     });
