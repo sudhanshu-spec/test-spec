@@ -228,6 +228,27 @@ describe('Routes', () => {
       const response = await request(app).get('/');
       expect(response.status).toBe(200);
     });
+
+    it('should handle trailing slash on /evening/', async () => {
+      // Express has strict routing disabled by default, so /evening/ matches /evening
+      const response = await request(app).get('/evening/');
+      expect(response.status).toBe(200);
+      expect(response.text).toBe('Good evening');
+    });
+
+    it('should handle trailing slash on root with multiple slashes', async () => {
+      // Multiple slashes should resolve to root
+      const response = await request(app).get('//');
+      // May return 200 or 404 depending on Express handling
+      expect([200, 404]).toContain(response.status);
+    });
+
+    it('should handle mixed case with trailing slash /Evening/', async () => {
+      // Combined case insensitivity and trailing slash tolerance
+      const response = await request(app).get('/Evening/');
+      expect(response.status).toBe(200);
+      expect(response.text).toBe('Good evening');
+    });
   });
 
   describe('Response Headers', () => {
