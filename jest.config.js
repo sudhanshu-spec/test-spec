@@ -6,7 +6,7 @@
  * 
  * Configuration per Agent Action Plan sections 0.5.3 and 0.9.6:
  * - testEnvironment: 'node' for Node.js testing
- * - testMatch: ['**/tests/**/*.test.js'] for test file discovery
+ * - testMatch: patterns for test file discovery in tests/ directory
  * - verbose: true for detailed output
  * - Coverage thresholds: 80% lines/branches/statements, 100% functions
  */
