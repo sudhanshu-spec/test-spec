@@ -250,6 +250,101 @@ PORT=8080 npm start
 npm install
 ```
 
+## Deployment Guide
+
+This section covers deploying the application to production environments.
+
+### Production Configuration
+
+| Setting | Development | Production | Description |
+|---------|-------------|------------|-------------|
+| `HOST` | `127.0.0.1` | `0.0.0.0` | Bind to all network interfaces in production |
+| `PORT` | `3000` | `80` or `8080` | Use standard HTTP port or container port |
+| `NODE_ENV` | `development` | `production` | Enables Express.js production optimizations |
+
+**Production startup command:**
+```bash
+HOST=0.0.0.0 PORT=8080 NODE_ENV=production node server.js
+```
+
+**Important Notes:**
+- Setting `NODE_ENV=production` enables Express.js caching and optimizations
+- Using `HOST=0.0.0.0` allows connections from external hosts (required for containerized deployments)
+- Ports below 1024 (like 80) require root privileges; use 8080 or a reverse proxy instead
+
+### Health Check Verification
+
+Verify the server is running and endpoints are responding correctly after deployment.
+
+**Startup verification:**
+```bash
+# Start server and verify startup logs
+node server.js &
+sleep 2
+
+# Expected logs:
+# Server running at http://0.0.0.0:8080/
+# Application module loaded successfully
+# Express.js server initialization complete - PR validation log
+# PR update test: Server module fully initialized
+```
+
+**Endpoint health checks:**
+```bash
+# Root endpoint check
+curl -sf http://localhost:8080/ && echo "Root endpoint: OK" || echo "Root endpoint: FAILED"
+
+# Evening endpoint check  
+curl -sf http://localhost:8080/evening && echo "Evening endpoint: OK" || echo "Evening endpoint: FAILED"
+
+# Combined health check script
+curl -sf http://localhost:8080/ > /dev/null && \
+curl -sf http://localhost:8080/evening > /dev/null && \
+echo "All health checks passed" || echo "Health check failed"
+```
+
+**Readiness probe example (for orchestrators):**
+```bash
+# Returns exit code 0 if healthy, 1 if unhealthy
+curl -sf http://localhost:8080/ > /dev/null
+```
+
+### Container Deployment
+
+Guidelines for running the application in containerized environments.
+
+**Docker run example:**
+```bash
+docker run -d \
+  -e HOST=0.0.0.0 \
+  -e PORT=3000 \
+  -e NODE_ENV=production \
+  -p 8080:3000 \
+  your-image-name
+```
+
+**Environment variables for containers:**
+
+| Variable | Container Value | Purpose |
+|----------|-----------------|---------|
+| `HOST` | `0.0.0.0` | Accept connections from container network |
+| `PORT` | `3000` | Internal container port |
+| `NODE_ENV` | `production` | Enable production optimizations |
+
+**Port mapping recommendations:**
+- Container internal port: `3000` (default application port)
+- External mapped port: `8080` or `80` (based on your infrastructure)
+- Health check endpoint: `GET /` returns 200 OK
+
+**Container health check:**
+```bash
+# Docker HEALTHCHECK instruction example:
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD curl -sf http://localhost:3000/ || exit 1
+```
+
+---
+
 ## License
 
 This project is licensed under the MIT License.

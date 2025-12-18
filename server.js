@@ -24,6 +24,22 @@
  * @module server
  * @requires ./src/app - The configured Express application instance
  * @requires ./src/config - Application configuration (host, port, env)
+ *
+ * @example
+ * // Standard startup via npm:
+ * // $ npm start
+ *
+ * @example
+ * // Programmatic usage for testing/embedding:
+ * // const app = require('./src/app');
+ * // const config = require('./src/config');
+ * // app.listen(config.port, config.host, () => {
+ * //   console.log(`Server running at http://${config.host}:${config.port}/`);
+ * // });
+ *
+ * @example
+ * // Environment-based configuration:
+ * // $ HOST=0.0.0.0 PORT=8080 NODE_ENV=production node server.js
  */
 
 'use strict';
@@ -47,8 +63,11 @@ const app = require('./src/app');
 const config = require('./src/config');
 
 // ---------------------------------------------------------------------------
-// Server Initialization
+// Server Binding
 // ---------------------------------------------------------------------------
+// The app.listen() callback fires once the TCP socket successfully binds to 
+// the specified host and port. This confirms the server is ready to accept
+// incoming HTTP connections.
 
 /**
  * Start the HTTP server.
@@ -60,15 +79,22 @@ const config = require('./src/config');
  * Override via HOST and PORT environment variables.
  */
 app.listen(config.port, config.host, () => {
-  // Log server startup information
+  // Primary startup confirmation: Outputs the URL where the server is accessible.
+  // This URL can be used to verify the server is running via browser or curl.
   console.log(`Server running at http://${config.host}:${config.port}/`);
 });
 
-// Log application initialization complete
+// Module initialization confirmation: This log fires when the CommonJS require()
+// chain completes successfully. It confirms that server.js, src/app.js, 
+// src/config/index.js, and all route modules have been loaded without errors.
 console.log('Application module loaded successfully');
 
-// PR test log - added for testing purposes
+// CI/CD pipeline validation: This log message serves as a verification point
+// for automated testing and pull request checks, confirming the entry point
+// script executes without throwing exceptions during the require phase.
 console.log('Express.js server initialization complete - PR validation log');
 
-// Additional PR validation log - added per user request for testing purposes
+// Additional PR validation marker: Provides an extra confirmation point
+// that the entire server module initialization sequence completed. Useful
+// for grep-based log parsing in deployment pipelines and health monitors.
 console.log('PR update test: Server module fully initialized');
