@@ -32,7 +32,7 @@
 
 'use strict';
 
-const { rateLimit } = require('express-rate-limit');
+const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
 
 /**
  * Default configuration values for rate limiting.
@@ -180,18 +180,26 @@ const rateLimiter = rateLimit({
   // Can be configured to bypass rate limiting for specific conditions
   skip: getSkipFunction(),
   
-  // Key generator function - uses IP address by default
-  // express-rate-limit handles IPv6 subnet grouping automatically
+  // Key generator function - uses built-in ipKeyGenerator for proper IPv6 subnet handling
   // This provides protection against distributed attacks from IPv6 ranges
+  // The ipKeyGenerator helper automatically groups IPv6 addresses into /56 subnets
   keyGenerator: (req) => {
     // Use X-Forwarded-For header if behind a reverse proxy
     // Otherwise fall back to req.ip (which Express sets based on trust proxy setting)
     const forwarded = req.headers['x-forwarded-for'];
+    let clientIp;
+    
     if (forwarded) {
       // Take the first IP in the chain (original client)
-      return forwarded.split(',')[0].trim();
+      clientIp = forwarded.split(',')[0].trim();
+    } else {
+      // Use req.ip which Express sets based on trust proxy configuration
+      clientIp = req.ip || (req.connection && req.connection.remoteAddress) || 'unknown';
     }
-    return req.ip || req.connection.remoteAddress || 'unknown';
+    
+    // Use ipKeyGenerator to properly handle IPv6 subnet grouping
+    // This ensures IPv6 addresses are grouped into /56 subnets to prevent bypass
+    return ipKeyGenerator(clientIp);
   },
   
   // Validate configuration on startup
