@@ -72,8 +72,8 @@ describe('Invalid methods on /', () => {
   it('should return 200 for HEAD / (implicit support for GET routes)', async () => {
     const response = await request(app).head('/');
     expect(response.status).toBe(200);
-    // HEAD returns no body
-    expect(response.text).toBe('');
+    // HEAD returns no body - response.text is undefined or empty string
+    expect(response.text === undefined || response.text === '').toBe(true);
   });
 
   /**
@@ -137,8 +137,8 @@ describe('Invalid methods on /evening', () => {
   it('should return 200 for HEAD /evening (implicit support for GET routes)', async () => {
     const response = await request(app).head('/evening');
     expect(response.status).toBe(200);
-    // HEAD returns no body
-    expect(response.text).toBe('');
+    // HEAD returns no body - response.text is undefined or empty string
+    expect(response.text === undefined || response.text === '').toBe(true);
   });
 
   /**
