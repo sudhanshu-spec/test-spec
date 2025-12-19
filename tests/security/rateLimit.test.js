@@ -69,6 +69,99 @@ const DEFAULT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 const TEST_RATE_LIMIT = 5;
 
 // =============================================================================
+// DRAFT-8 RATELIMIT HEADER PARSERS
+// =============================================================================
+
+/**
+ * Parse draft-8 RateLimit header to extract rate limit information
+ * 
+ * The draft-8 format uses a combined header:
+ * ratelimit: "100-in-15min"; r=99; t=900
+ * 
+ * Where:
+ * - "100-in-15min" is the quota name
+ * - r=N is the remaining requests
+ * - t=N is the time until reset in seconds
+ * 
+ * @param {Object} headers - Response headers object
+ * @returns {Object} Parsed rate limit info with limit, remaining, and reset
+ */
+function parseRateLimitHeaders(headers) {
+  const result = {
+    limit: null,
+    remaining: null,
+    reset: null,
+    hasRateLimitHeaders: false
+  };
+
+  // Check for draft-8 combined header format
+  const rateLimitHeader = headers['ratelimit'];
+  const rateLimitPolicy = headers['ratelimit-policy'];
+
+  if (rateLimitHeader) {
+    result.hasRateLimitHeaders = true;
+    
+    // Parse remaining: r=N
+    const remainingMatch = rateLimitHeader.match(/r=(\d+)/);
+    if (remainingMatch) {
+      result.remaining = parseInt(remainingMatch[1], 10);
+    }
+    
+    // Parse time until reset: t=N
+    const timeMatch = rateLimitHeader.match(/t=(\d+)/);
+    if (timeMatch) {
+      result.reset = parseInt(timeMatch[1], 10);
+    }
+  }
+
+  if (rateLimitPolicy) {
+    result.hasRateLimitHeaders = true;
+    
+    // Parse quota/limit: q=N
+    const quotaMatch = rateLimitPolicy.match(/q=(\d+)/);
+    if (quotaMatch) {
+      result.limit = parseInt(quotaMatch[1], 10);
+    }
+    
+    // Alternative: parse from quota name like "100-in-15min"
+    if (!result.limit) {
+      const quotaNameMatch = rateLimitPolicy.match(/"(\d+)-in-/);
+      if (quotaNameMatch) {
+        result.limit = parseInt(quotaNameMatch[1], 10);
+      }
+    }
+  }
+
+  // Also check for legacy headers (fallback)
+  if (!result.hasRateLimitHeaders) {
+    const legacyLimit = headers['ratelimit-limit'] || 
+                        headers['RateLimit-Limit'] ||
+                        headers['x-ratelimit-limit'];
+    const legacyRemaining = headers['ratelimit-remaining'] || 
+                            headers['RateLimit-Remaining'] ||
+                            headers['x-ratelimit-remaining'];
+    const legacyReset = headers['ratelimit-reset'] || 
+                        headers['RateLimit-Reset'] ||
+                        headers['x-ratelimit-reset'];
+    
+    if (legacyLimit !== undefined) {
+      result.limit = parseInt(legacyLimit, 10);
+      result.hasRateLimitHeaders = true;
+    }
+    if (legacyRemaining !== undefined) {
+      result.remaining = parseInt(legacyRemaining, 10);
+      result.hasRateLimitHeaders = true;
+    }
+    if (legacyReset !== undefined) {
+      result.reset = parseInt(legacyReset, 10);
+      result.hasRateLimitHeaders = true;
+    }
+  }
+
+  return result;
+}
+
+// =============================================================================
 // HELPER FUNCTIONS
 // =============================================================================
 
@@ -188,9 +281,8 @@ describe('Rate Limiting', () => {
    * clients about their current rate limit status.
    * 
    * Expected headers (draft-8):
-   * - RateLimit-Limit: Maximum requests allowed
-   * - RateLimit-Remaining: Requests remaining in window
-   * - RateLimit-Reset: Time until window resets
+   * - ratelimit: Combined header with remaining and reset time
+   * - ratelimit-policy: Header with limit/quota and window info
    */
   it('should include RateLimit headers in response', async () => {
     // Make a GET request to the root endpoint
@@ -201,32 +293,27 @@ describe('Rate Limiting', () => {
     // Verify the request succeeds
     expect(response.status).toBe(200);
     
-    // Verify RateLimit-Limit header exists (draft-8 format uses lowercase)
-    // The header indicates maximum requests allowed per window
-    const rateLimitHeader = response.headers['ratelimit-limit'] || 
-                            response.headers['RateLimit-Limit'] ||
-                            response.headers['x-ratelimit-limit'];
+    // Parse rate limit headers using draft-8 format parser
+    const rateLimitInfo = parseRateLimitHeaders(response.headers);
     
-    expect(rateLimitHeader).toBeDefined();
+    // Verify RateLimit headers are present
+    expect(rateLimitInfo.hasRateLimitHeaders).toBe(true);
     
-    // Verify RateLimit-Remaining header exists
-    // Shows how many requests remain in the current window
-    const remainingHeader = response.headers['ratelimit-remaining'] || 
-                            response.headers['RateLimit-Remaining'] ||
-                            response.headers['x-ratelimit-remaining'];
+    // Verify limit is defined and valid
+    expect(rateLimitInfo.limit).toBeDefined();
+    expect(rateLimitInfo.limit).toBeGreaterThan(0);
     
-    expect(remainingHeader).toBeDefined();
-    
-    // Parse remaining value and verify it's a valid number
-    const remainingValue = parseInt(remainingHeader, 10);
-    expect(remainingValue).toBeGreaterThanOrEqual(0);
+    // Verify remaining is defined and valid
+    expect(rateLimitInfo.remaining).toBeDefined();
+    expect(rateLimitInfo.remaining).toBeGreaterThanOrEqual(0);
   });
   
   /**
-   * Test: RateLimit-Reset header should indicate window reset time
+   * Test: RateLimit reset time should be included in response
    * 
    * Verifies the rate limiter includes timing information
    * about when the current rate limit window will reset.
+   * In draft-8 format, this is the 't' parameter in the ratelimit header.
    */
   it('should include RateLimit-Reset header in response', async () => {
     // Make a GET request
@@ -237,17 +324,15 @@ describe('Rate Limiting', () => {
     // Verify success
     expect(response.status).toBe(200);
     
-    // Verify RateLimit-Reset header exists
-    // This is a Unix timestamp or seconds until reset (depending on implementation)
-    const resetHeader = response.headers['ratelimit-reset'] || 
-                        response.headers['RateLimit-Reset'] ||
-                        response.headers['x-ratelimit-reset'];
+    // Parse rate limit headers using draft-8 format parser
+    const rateLimitInfo = parseRateLimitHeaders(response.headers);
     
-    expect(resetHeader).toBeDefined();
+    // Verify RateLimit headers are present
+    expect(rateLimitInfo.hasRateLimitHeaders).toBe(true);
     
-    // The reset value should be a valid number
-    const resetValue = parseInt(resetHeader, 10);
-    expect(resetValue).toBeGreaterThan(0);
+    // Verify reset time is defined and valid (t=N in draft-8)
+    expect(rateLimitInfo.reset).toBeDefined();
+    expect(rateLimitInfo.reset).toBeGreaterThan(0);
   });
   
   /**
@@ -255,6 +340,7 @@ describe('Rate Limiting', () => {
    * 
    * Verifies the configured rate limit value is correctly
    * reported in the response headers.
+   * In draft-8 format, this is the 'q' parameter in ratelimit-policy header.
    */
   it('should report the configured rate limit in headers', async () => {
     // Make a GET request
@@ -265,24 +351,23 @@ describe('Rate Limiting', () => {
     // Verify success
     expect(response.status).toBe(200);
     
-    // Get the limit header
-    const limitHeader = response.headers['ratelimit-limit'] || 
-                        response.headers['RateLimit-Limit'] ||
-                        response.headers['x-ratelimit-limit'];
+    // Parse rate limit headers using draft-8 format parser
+    const rateLimitInfo = parseRateLimitHeaders(response.headers);
     
-    expect(limitHeader).toBeDefined();
+    // Verify RateLimit headers are present
+    expect(rateLimitInfo.hasRateLimitHeaders).toBe(true);
     
-    // Parse the limit value
-    const limitValue = parseInt(limitHeader, 10);
+    // Verify limit is defined and valid
+    expect(rateLimitInfo.limit).toBeDefined();
     
     // The limit should be a positive number (default is 100 or custom)
-    expect(limitValue).toBeGreaterThan(0);
+    expect(rateLimitInfo.limit).toBeGreaterThan(0);
   });
   
   /**
    * Test: Remaining count should decrease with each request
    * 
-   * Verifies that the RateLimit-Remaining header decreases
+   * Verifies that the remaining request count decreases
    * with each subsequent request, showing the quota being consumed.
    */
   it('should decrement remaining count with each request', async () => {
@@ -292,11 +377,8 @@ describe('Rate Limiting', () => {
       .set('Accept', 'text/plain')
       .set('X-Forwarded-For', '10.0.0.1');
     
-    const remaining1 = parseInt(
-      response1.headers['ratelimit-remaining'] || 
-      response1.headers['RateLimit-Remaining'] || '0', 
-      10
-    );
+    const rateLimitInfo1 = parseRateLimitHeaders(response1.headers);
+    const remaining1 = rateLimitInfo1.remaining;
     
     // Send second request from the same IP
     const response2 = await request(app)
@@ -304,11 +386,8 @@ describe('Rate Limiting', () => {
       .set('Accept', 'text/plain')
       .set('X-Forwarded-For', '10.0.0.1');
     
-    const remaining2 = parseInt(
-      response2.headers['ratelimit-remaining'] || 
-      response2.headers['RateLimit-Remaining'] || '0', 
-      10
-    );
+    const rateLimitInfo2 = parseRateLimitHeaders(response2.headers);
+    const remaining2 = rateLimitInfo2.remaining;
     
     // Remaining should have decreased by 1 (or more if concurrent)
     expect(remaining2).toBeLessThan(remaining1);
@@ -340,10 +419,9 @@ describe('Rate Limit Exceeded Behavior', () => {
       .set('Accept', 'application/json')
       .set('X-Forwarded-For', testIP);
     
-    // Parse the limit from headers
-    const limitHeader = initialResponse.headers['ratelimit-limit'] || 
-                        initialResponse.headers['RateLimit-Limit'];
-    const limit = parseInt(limitHeader, 10) || DEFAULT_RATE_LIMIT;
+    // Parse the limit from headers using draft-8 parser
+    const rateLimitInfo = parseRateLimitHeaders(initialResponse.headers);
+    const limit = rateLimitInfo.limit || DEFAULT_RATE_LIMIT;
     
     // Send remaining requests to exceed the limit
     // We already sent 1 request above, so send (limit) more
@@ -385,9 +463,8 @@ describe('Rate Limit Exceeded Behavior', () => {
       .set('Accept', 'application/json')
       .set('X-Forwarded-For', testIP);
     
-    const limitHeader = initialResponse.headers['ratelimit-limit'] || 
-                        initialResponse.headers['RateLimit-Limit'];
-    const limit = parseInt(limitHeader, 10) || DEFAULT_RATE_LIMIT;
+    const rateLimitInfo = parseRateLimitHeaders(initialResponse.headers);
+    const limit = rateLimitInfo.limit || DEFAULT_RATE_LIMIT;
     
     // Exceed the limit
     let errorResponse = null;
@@ -433,9 +510,8 @@ describe('Rate Limit Exceeded Behavior', () => {
       .set('Accept', 'application/json')
       .set('X-Forwarded-For', testIP);
     
-    const limitHeader = initialResponse.headers['ratelimit-limit'] || 
-                        initialResponse.headers['RateLimit-Limit'];
-    const limit = parseInt(limitHeader, 10) || DEFAULT_RATE_LIMIT;
+    const rateLimitInfo = parseRateLimitHeaders(initialResponse.headers);
+    const limit = rateLimitInfo.limit || DEFAULT_RATE_LIMIT;
     
     // Exceed the limit
     let rateLimitedResponse = null;
@@ -480,9 +556,8 @@ describe('Rate Limit Exceeded Behavior', () => {
       .set('Accept', 'application/json')
       .set('X-Forwarded-For', testIP);
     
-    const limitHeader = initialResponse.headers['ratelimit-limit'] || 
-                        initialResponse.headers['RateLimit-Limit'];
-    const limit = parseInt(limitHeader, 10) || DEFAULT_RATE_LIMIT;
+    const rateLimitInfo = parseRateLimitHeaders(initialResponse.headers);
+    const limit = rateLimitInfo.limit || DEFAULT_RATE_LIMIT;
     
     // Exceed the limit
     let rateLimitedResponse = null;
@@ -539,19 +614,16 @@ describe('Per-IP Rate Limiting', () => {
     expect(response1.status).toBe(200);
     expect(response2.status).toBe(200);
     
-    // Get remaining for both IPs
-    const remaining1 = response1.headers['ratelimit-remaining'] || 
-                       response1.headers['RateLimit-Remaining'];
-    const remaining2 = response2.headers['ratelimit-remaining'] || 
-                       response2.headers['RateLimit-Remaining'];
+    // Parse rate limit headers
+    const rateLimitInfo1 = parseRateLimitHeaders(response1.headers);
+    const rateLimitInfo2 = parseRateLimitHeaders(response2.headers);
     
-    // Both should have the same remaining (or close to same)
-    // since they're tracked independently
-    expect(remaining1).toBeDefined();
-    expect(remaining2).toBeDefined();
+    // Both should have rate limit headers present
+    expect(rateLimitInfo1.hasRateLimitHeaders).toBe(true);
+    expect(rateLimitInfo2.hasRateLimitHeaders).toBe(true);
     
     // Each IP should have similar remaining counts since tracked separately
-    const diff = Math.abs(parseInt(remaining1, 10) - parseInt(remaining2, 10));
+    const diff = Math.abs(rateLimitInfo1.remaining - rateLimitInfo2.remaining);
     expect(diff).toBeLessThanOrEqual(1);
   });
   
@@ -571,9 +643,8 @@ describe('Per-IP Rate Limiting', () => {
       .set('Accept', 'application/json')
       .set('X-Forwarded-For', blockedIP);
     
-    const limitHeader = initialResponse.headers['ratelimit-limit'] || 
-                        initialResponse.headers['RateLimit-Limit'];
-    const limit = parseInt(limitHeader, 10) || DEFAULT_RATE_LIMIT;
+    const rateLimitInfo = parseRateLimitHeaders(initialResponse.headers);
+    const limit = rateLimitInfo.limit || DEFAULT_RATE_LIMIT;
     
     // Exhaust rate limit for blockedIP
     for (let i = 0; i < limit; i++) {
@@ -617,10 +688,10 @@ describe('Per-IP Rate Limiting', () => {
     // Request should succeed
     expect(response.status).toBe(200);
     
-    // RateLimit headers should be present
-    const remaining = response.headers['ratelimit-remaining'] || 
-                      response.headers['RateLimit-Remaining'];
-    expect(remaining).toBeDefined();
+    // Parse rate limit headers and verify they're present
+    const rateLimitInfo = parseRateLimitHeaders(response.headers);
+    expect(rateLimitInfo.hasRateLimitHeaders).toBe(true);
+    expect(rateLimitInfo.remaining).toBeDefined();
   });
   
   /**
@@ -642,9 +713,9 @@ describe('Per-IP Rate Limiting', () => {
     // Request should succeed
     expect(response.status).toBe(200);
     
-    // RateLimit headers should be present
-    expect(response.headers['ratelimit-remaining'] || 
-           response.headers['RateLimit-Remaining']).toBeDefined();
+    // Parse rate limit headers and verify they're present
+    const rateLimitInfo = parseRateLimitHeaders(response.headers);
+    expect(rateLimitInfo.hasRateLimitHeaders).toBe(true);
   });
 });
 
@@ -670,9 +741,8 @@ describe('DoS Protection', () => {
       .set('Accept', 'application/json')
       .set('X-Forwarded-For', attackerIP);
     
-    const limitHeader = initialResponse.headers['ratelimit-limit'] || 
-                        initialResponse.headers['RateLimit-Limit'];
-    const limit = parseInt(limitHeader, 10) || DEFAULT_RATE_LIMIT;
+    const rateLimitInfo = parseRateLimitHeaders(initialResponse.headers);
+    const limit = rateLimitInfo.limit || DEFAULT_RATE_LIMIT;
     
     // Send rapid requests to exceed limit
     let blockedCount = 0;
@@ -718,9 +788,8 @@ describe('DoS Protection', () => {
       .set('Accept', 'application/json')
       .set('X-Forwarded-For', burstIP);
     
-    const limitHeader = initialResponse.headers['ratelimit-limit'] || 
-                        initialResponse.headers['RateLimit-Limit'];
-    const limit = parseInt(limitHeader, 10) || DEFAULT_RATE_LIMIT;
+    const rateLimitInfo = parseRateLimitHeaders(initialResponse.headers);
+    const limit = rateLimitInfo.limit || DEFAULT_RATE_LIMIT;
     
     // Create burst of concurrent requests (more than limit)
     const burstSize = limit + 5;
@@ -772,30 +841,20 @@ describe('DoS Protection', () => {
       .set('Accept', 'text/plain')
       .set('X-Forwarded-For', testIP);
     
+    // Parse rate limit headers for both responses
+    const rateLimitInfo1 = parseRateLimitHeaders(response1.headers);
+    const rateLimitInfo2 = parseRateLimitHeaders(response2.headers);
+    
     // Both should have RateLimit headers
-    expect(response1.headers['ratelimit-limit'] || 
-           response1.headers['RateLimit-Limit']).toBeDefined();
-    expect(response2.headers['ratelimit-limit'] || 
-           response2.headers['RateLimit-Limit']).toBeDefined();
+    expect(rateLimitInfo1.hasRateLimitHeaders).toBe(true);
+    expect(rateLimitInfo2.hasRateLimitHeaders).toBe(true);
     
     // Both should succeed (under limit)
     expect(response1.status).toBe(200);
     expect(response2.status).toBe(200);
     
-    // Get remaining counts - they should be decremented from the same pool
-    const remaining1 = parseInt(
-      response1.headers['ratelimit-remaining'] || 
-      response1.headers['RateLimit-Remaining'] || '0', 
-      10
-    );
-    const remaining2 = parseInt(
-      response2.headers['ratelimit-remaining'] || 
-      response2.headers['RateLimit-Remaining'] || '0', 
-      10
-    );
-    
-    // Second request should show one fewer remaining
-    expect(remaining2).toBe(remaining1 - 1);
+    // Second request should show one fewer remaining (from the same pool)
+    expect(rateLimitInfo2.remaining).toBe(rateLimitInfo1.remaining - 1);
   });
 });
 
@@ -817,10 +876,11 @@ describe('Rate Limiter Configuration', () => {
   });
   
   /**
-   * Test: Rate limiter should use draft-8 standard headers
+   * Test: Rate limiter should use draft-8 standard RateLimit headers
    * 
    * Verifies that headers follow the IETF RateLimit draft-8 standard
-   * format rather than legacy X-RateLimit-* format.
+   * format which uses combined 'ratelimit' and 'ratelimit-policy' headers
+   * rather than separate or legacy X-RateLimit-* headers.
    */
   it('should use draft-8 standard RateLimit headers', async () => {
     const response = await request(app)
@@ -828,14 +888,17 @@ describe('Rate Limiter Configuration', () => {
       .set('Accept', 'application/json')
       .set('X-Forwarded-For', '10.10.10.1');
     
-    // Draft-8 uses lowercase 'ratelimit-*' headers
-    // Should NOT have legacy x-ratelimit-* headers (legacyHeaders: false)
-    const hasStandardHeaders = 
-      response.headers['ratelimit-limit'] !== undefined ||
-      response.headers['ratelimit-remaining'] !== undefined ||
-      response.headers['ratelimit-reset'] !== undefined;
+    // Draft-8 uses combined 'ratelimit' and 'ratelimit-policy' headers
+    const hasRateLimitHeader = response.headers['ratelimit'] !== undefined;
+    const hasRateLimitPolicy = response.headers['ratelimit-policy'] !== undefined;
     
-    expect(hasStandardHeaders).toBe(true);
+    // Should have the combined headers
+    expect(hasRateLimitHeader).toBe(true);
+    expect(hasRateLimitPolicy).toBe(true);
+    
+    // Verify rate limit info can be parsed
+    const rateLimitInfo = parseRateLimitHeaders(response.headers);
+    expect(rateLimitInfo.hasRateLimitHeaders).toBe(true);
   });
   
   /**
@@ -849,21 +912,19 @@ describe('Rate Limiter Configuration', () => {
       .set('Accept', 'application/json')
       .set('X-Forwarded-For', '10.10.10.2');
     
-    const limitHeader = response.headers['ratelimit-limit'] || 
-                        response.headers['RateLimit-Limit'];
+    const rateLimitInfo = parseRateLimitHeaders(response.headers);
     
-    expect(limitHeader).toBeDefined();
-    
-    const limit = parseInt(limitHeader, 10);
-    expect(limit).toBeGreaterThan(0);
-    expect(Number.isInteger(limit)).toBe(true);
+    expect(rateLimitInfo.hasRateLimitHeaders).toBe(true);
+    expect(rateLimitInfo.limit).toBeDefined();
+    expect(rateLimitInfo.limit).toBeGreaterThan(0);
+    expect(Number.isInteger(rateLimitInfo.limit)).toBe(true);
   });
   
   /**
    * Test: Window reset time should be in the future
    * 
-   * Verifies that the rate limit window reset timestamp
-   * is set to a future time.
+   * Verifies that the rate limit window reset time
+   * is set to a positive value (seconds until reset).
    */
   it('should have window reset time in the future', async () => {
     const response = await request(app)
@@ -871,15 +932,13 @@ describe('Rate Limiter Configuration', () => {
       .set('Accept', 'application/json')
       .set('X-Forwarded-For', '10.10.10.3');
     
-    const resetHeader = response.headers['ratelimit-reset'] || 
-                        response.headers['RateLimit-Reset'];
+    const rateLimitInfo = parseRateLimitHeaders(response.headers);
     
-    expect(resetHeader).toBeDefined();
+    expect(rateLimitInfo.hasRateLimitHeaders).toBe(true);
+    expect(rateLimitInfo.reset).toBeDefined();
     
-    const resetValue = parseInt(resetHeader, 10);
-    
-    // Reset value should be positive (either Unix timestamp or seconds)
-    expect(resetValue).toBeGreaterThan(0);
+    // Reset value should be positive (seconds until reset)
+    expect(rateLimitInfo.reset).toBeGreaterThan(0);
   });
 });
 
@@ -905,8 +964,8 @@ describe('Rate Limiting Edge Cases', () => {
     expect(response.status).toBe(200);
     
     // RateLimit headers should still be present
-    expect(response.headers['ratelimit-limit'] || 
-           response.headers['RateLimit-Limit']).toBeDefined();
+    const rateLimitInfo = parseRateLimitHeaders(response.headers);
+    expect(rateLimitInfo.hasRateLimitHeaders).toBe(true);
   });
   
   /**
@@ -925,8 +984,8 @@ describe('Rate Limiting Edge Cases', () => {
     expect(response.status).toBe(200);
     
     // RateLimit headers should be present
-    expect(response.headers['ratelimit-limit'] || 
-           response.headers['RateLimit-Limit']).toBeDefined();
+    const rateLimitInfo = parseRateLimitHeaders(response.headers);
+    expect(rateLimitInfo.hasRateLimitHeaders).toBe(true);
   });
   
   /**
@@ -947,8 +1006,8 @@ describe('Rate Limiting Edge Cases', () => {
     expect(response.status).toBe(200);
     
     // RateLimit headers should be present
-    expect(response.headers['ratelimit-limit'] || 
-           response.headers['RateLimit-Limit']).toBeDefined();
+    const rateLimitInfo = parseRateLimitHeaders(response.headers);
+    expect(rateLimitInfo.hasRateLimitHeaders).toBe(true);
   });
   
   /**
@@ -969,8 +1028,8 @@ describe('Rate Limiting Edge Cases', () => {
     expect(response.status).toBe(404);
     
     // But RateLimit headers should still be present
-    expect(response.headers['ratelimit-limit'] || 
-           response.headers['RateLimit-Limit']).toBeDefined();
+    const rateLimitInfo = parseRateLimitHeaders(response.headers);
+    expect(rateLimitInfo.hasRateLimitHeaders).toBe(true);
   });
   
   /**
@@ -990,7 +1049,7 @@ describe('Rate Limiting Edge Cases', () => {
       .send({ test: 'data' });
     
     // RateLimit headers should be present regardless of route existence
-    expect(response.headers['ratelimit-limit'] || 
-           response.headers['RateLimit-Limit']).toBeDefined();
+    const rateLimitInfo = parseRateLimitHeaders(response.headers);
+    expect(rateLimitInfo.hasRateLimitHeaders).toBe(true);
   });
 });
