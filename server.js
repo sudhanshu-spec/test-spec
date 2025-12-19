@@ -360,14 +360,19 @@ app.use((err, req, res, next) => {
  * 
  * Binds to configured hostname and port.
  * Logs server URL and security status on successful start.
+ * 
+ * Only starts when this file is run directly (not when imported for testing).
+ * This prevents Jest from hanging due to open handles.
  */
-app.listen(port, hostname, () => {
-  console.log(`[HTTP] Server running at http://${hostname}:${port}/`);
-  console.log(`[SECURITY] Helmet security headers: ENABLED`);
-  console.log(`[SECURITY] CORS protection: ENABLED`);
-  console.log(`[SECURITY] Rate limiting: ENABLED`);
-  console.log(`[SECURITY] Body parsing with limits: ENABLED`);
-});
+if (require.main === module) {
+  app.listen(port, hostname, () => {
+    console.log(`[HTTP] Server running at http://${hostname}:${port}/`);
+    console.log(`[SECURITY] Helmet security headers: ENABLED`);
+    console.log(`[SECURITY] CORS protection: ENABLED`);
+    console.log(`[SECURITY] Rate limiting: ENABLED`);
+    console.log(`[SECURITY] Body parsing with limits: ENABLED`);
+  });
+}
 
 /**
  * Start the HTTPS server (conditional)
@@ -381,8 +386,10 @@ app.listen(port, hostname, () => {
  * 
  * Graceful degradation: If certificates cannot be loaded, logs warning
  * and continues with HTTP-only operation.
+ * 
+ * Only starts when this file is run directly (not when imported for testing).
  */
-if (HTTPS_ENABLED) {
+if (require.main === module && HTTPS_ENABLED) {
   try {
     // Resolve certificate paths relative to application root
     const keyPath = path.resolve(SSL_KEY_PATH);
