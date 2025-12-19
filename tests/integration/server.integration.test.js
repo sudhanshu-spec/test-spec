@@ -552,6 +552,8 @@ describe('Error Scenario Integration Tests', () => {
   /**
    * Test: 404 for various non-existent paths
    * Verifies that multiple different invalid paths all return 404.
+   * Note: Express 5 has case-insensitive routing by default, so case
+   * variations of valid routes (like /Evening, /EVENING) will return 200.
    */
   it('should return 404 for various non-existent paths', async () => {
     const invalidPaths = [
@@ -560,8 +562,8 @@ describe('Error Scenario Integration Tests', () => {
       '/home',
       '/about',
       '/contact',
-      '/Evening',
-      '/EVENING'
+      '/evenings',  // Similar but not the same as /evening
+      '/hello-world'
     ];
     
     for (const path of invalidPaths) {
@@ -603,17 +605,25 @@ describe('Error Scenario Integration Tests', () => {
   });
 
   /**
-   * Test: Path case sensitivity
-   * Verifies that routes are case-sensitive (Express default behavior).
+   * Test: Path case handling (Express 5 case-insensitive routing)
+   * Verifies that Express 5's default case-insensitive routing handles
+   * different case variations of route paths correctly.
+   * Note: Express 5 has case-insensitive routing enabled by default.
    */
-  it('should be case-sensitive for route paths', async () => {
+  it('should handle case variations due to Express 5 case-insensitive routing', async () => {
     const lowerResponse = await request(app).get('/evening');
     const upperResponse = await request(app).get('/Evening');
     const allUpperResponse = await request(app).get('/EVENING');
     
+    // Express 5 default behavior is case-insensitive routing
     expect(lowerResponse.status).toBe(200);
-    expect(upperResponse.status).toBe(404);
-    expect(allUpperResponse.status).toBe(404);
+    expect(upperResponse.status).toBe(200);
+    expect(allUpperResponse.status).toBe(200);
+    
+    // All case variations should return the same response body
+    expect(lowerResponse.text).toBe(EXPECTED_EVENING_RESPONSE);
+    expect(upperResponse.text).toBe(EXPECTED_EVENING_RESPONSE);
+    expect(allUpperResponse.text).toBe(EXPECTED_EVENING_RESPONSE);
   });
 
   /**
