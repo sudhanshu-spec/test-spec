@@ -95,10 +95,8 @@ app.use((err, req, res, next) => {
 // SERVER INITIALIZATION
 // =============================================================================
 
-// Start server and capture reference for graceful shutdown
-const server = app.listen(port, hostname, () => {
-  console.log(`Server running at http://${hostname}:${port}/`);
-});
+// Server instance variable - only initialized when run directly
+let server = null;
 
 // =============================================================================
 // GRACEFUL SHUTDOWN IMPLEMENTATION
@@ -118,6 +116,12 @@ const gracefulShutdown = (signal) => {
     return;
   }
   isShuttingDown = true;
+  
+  // If server is not running, just exit
+  if (!server) {
+    console.log('No server to close');
+    process.exit(0);
+  }
   
   // Close HTTP server and stop accepting new connections
   server.close((err) => {
@@ -167,14 +171,15 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 // =============================================================================
-// MODULE EXPORTS
+// MODULE EXPORTS AND SERVER STARTUP
 // =============================================================================
 
-// Export app and gracefulShutdown for testing purposes
-// When this file is run directly, server is already started above
-// When imported as a module, server instance is available for testing
+// Start server only when run directly (not when imported for testing)
 if (require.main === module) {
-  // Server already started above when run directly
+  server = app.listen(port, hostname, () => {
+    console.log(`Server running at http://${hostname}:${port}/`);
+  });
 }
 
+// Export app and gracefulShutdown for testing purposes
 module.exports = { app, gracefulShutdown };
