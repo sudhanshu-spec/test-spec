@@ -19,3 +19,10 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+# SSL Certificates (keep private keys secure)
+certs/*.pem
+certs/*.key
+certs/*.crt
+*.p12
+*.pfx
