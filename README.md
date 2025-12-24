@@ -131,14 +131,29 @@ hao-backprop-test/
 ├── package.json                 # npm manifest and dependencies
 ├── package-lock.json            # Dependency lockfile
 ├── README.md                    # Project documentation (this file)
+├── jest.config.js               # Jest test runner configuration
 ├── .gitignore                   # Git ignore patterns
-└── src/                         # Application source root
-    ├── app.js                   # Express application factory
-    ├── config/                  # Configuration module
-    │   └── index.js             # Environment variable management
-    └── routes/                  # Routing surface
-        ├── index.js             # Route aggregator (barrel pattern)
-        └── main.routes.js       # Route handlers implementation
+├── src/                         # Application source root
+│   ├── app.js                   # Express application factory
+│   ├── config/                  # Configuration module
+│   │   └── index.js             # Environment variable management
+│   └── routes/                  # Routing surface
+│       ├── index.js             # Route aggregator (barrel pattern)
+│       └── main.routes.js       # Route handlers implementation
+└── tests/                       # Test suite root
+    ├── setup.js                 # Global test setup configuration
+    ├── unit/                    # Unit tests (isolated component testing)
+    │   ├── config.test.js       # Configuration module tests
+    │   ├── app.test.js          # Express app factory tests
+    │   ├── routes.test.js       # Route handler unit tests
+    │   └── routes-barrel.test.js # Routes barrel export tests
+    ├── integration/             # Integration tests (HTTP endpoint testing)
+    │   ├── server.test.js       # Server lifecycle tests
+    │   ├── endpoints.test.js    # HTTP endpoint tests
+    │   └── error-handling.test.js # Error handling tests
+    └── fixtures/                # Test data fixtures
+        ├── config.fixtures.js   # Configuration test data
+        └── response.fixtures.js # Expected response fixtures
 ```
 
 ### File Descriptions
@@ -146,10 +161,15 @@ hao-backprop-test/
 | File | Purpose |
 |------|---------|
 | `server.js` | Entry point that imports the Express app and binds it to the configured host/port |
+| `jest.config.js` | Jest configuration file - test patterns, coverage settings, and module paths |
 | `src/app.js` | Express application factory - creates and exports configured Express app with mounted routes |
 | `src/config/index.js` | Configuration module - exports `{ host, port, env }` from environment variables |
 | `src/routes/index.js` | Route aggregator using barrel pattern - centralizes route exports |
 | `src/routes/main.routes.js` | Route handlers - implements GET `/` and GET `/evening` endpoints |
+| `tests/setup.js` | Global test setup - environment utilities and common test helpers |
+| `tests/unit/*.test.js` | Unit tests for isolated component testing |
+| `tests/integration/*.test.js` | Integration tests for HTTP endpoint and lifecycle testing |
+| `tests/fixtures/*.js` | Test fixture data for consistent test scenarios |
 
 ## Environment Variables
 
@@ -208,15 +228,26 @@ Client → server.js → Express App (src/app.js) → Router (src/routes/) → R
 |---------|---------|---------|
 | `express` | ^5.1.0 | Web framework providing HTTP handling, routing, and middleware |
 
+### Development Dependencies
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| `jest` | 29.7.0 | JavaScript testing framework with built-in assertions, mocking, and coverage |
+| `supertest` | 7.0.0 | HTTP assertions library for testing Express applications without starting server |
+
 ### Dependency Installation
 
 ```bash
-# Install all dependencies
+# Install all dependencies (including devDependencies)
 npm install
 
 # Verify express installation
 npm ls express
 # Expected: express@5.1.0
+
+# Verify test dependencies
+npm ls jest supertest
+# Expected: jest@29.7.0, supertest@7.0.0
 ```
 
 ## Scripts
@@ -224,6 +255,99 @@ npm ls express
 | Script | Command | Description |
 |--------|---------|-------------|
 | `start` | `node server.js` | Starts the HTTP server |
+| `test` | `jest` | Runs all tests using Jest test runner |
+| `test:coverage` | `jest --coverage` | Runs tests with code coverage report generation |
+| `test:watch` | `jest --watch` | Runs tests in watch mode for development |
+
+## Testing
+
+This project includes a comprehensive test suite using Jest and supertest for HTTP testing.
+
+### Testing Framework
+
+| Tool | Version | Purpose |
+|------|---------|---------|
+| Jest | 29.7.0 | JavaScript testing framework with built-in assertions, mocking, and coverage |
+| supertest | 7.0.0 | HTTP assertions library for testing Express applications without starting server |
+
+### Test Directory Structure
+
+```
+tests/
+├── setup.js                     # Global Jest setup and test utilities
+├── unit/                        # Unit tests (isolated component testing)
+│   ├── config.test.js           # Configuration module tests
+│   ├── app.test.js              # Express app factory tests
+│   ├── routes.test.js           # Route handler unit tests
+│   └── routes-barrel.test.js    # Routes barrel export tests
+├── integration/                 # Integration tests (HTTP endpoint testing)
+│   ├── server.test.js           # Server lifecycle tests
+│   ├── endpoints.test.js        # HTTP endpoint tests
+│   └── error-handling.test.js   # Error handling tests
+└── fixtures/                    # Test data fixtures
+    ├── config.fixtures.js       # Configuration test data
+    └── response.fixtures.js     # Expected response fixtures
+```
+
+### Running Tests
+
+**Run all tests:**
+```bash
+npm test
+```
+
+**Run tests with coverage report:**
+```bash
+npm run test:coverage
+```
+
+**Run tests in watch mode (development):**
+```bash
+npm run test:watch
+```
+
+**Run specific test file:**
+```bash
+npx jest tests/unit/config.test.js
+```
+
+**Run tests matching pattern:**
+```bash
+npx jest --testPathPattern="config"
+```
+
+### Coverage Targets
+
+This project maintains the following minimum coverage thresholds:
+
+| Metric | Target | Description |
+|--------|--------|-------------|
+| Line Coverage | ≥85% | Percentage of code lines executed by tests |
+| Branch Coverage | ≥80% | Percentage of conditional branches tested |
+| Function Coverage | ≥90% | Percentage of functions called by tests |
+| Statement Coverage | ≥85% | Percentage of statements executed by tests |
+
+Coverage reports are generated in the `coverage/` directory when running `npm run test:coverage`:
+- Console summary displayed after test run
+- HTML report available at `coverage/lcov-report/index.html`
+- LCOV report for CI/CD integration at `coverage/lcov.info`
+
+### Test Categories
+
+**Unit Tests** (`tests/unit/`):
+- Test isolated components without external dependencies
+- Mock dependencies to ensure pure unit testing
+- Focus on function behavior and return values
+
+**Integration Tests** (`tests/integration/`):
+- Test HTTP endpoints using supertest
+- Validate request/response cycles
+- Test error handling and edge cases
+
+**Test Fixtures** (`tests/fixtures/`):
+- Reusable test data for consistent test scenarios
+- Configuration variants for testing different environments
+- Expected response data for validation
 
 ## Troubleshooting
 
