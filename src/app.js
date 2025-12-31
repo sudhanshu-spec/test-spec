@@ -11,9 +11,17 @@
  * @module src/app
  */
 
+/**
+ * Express module import
+ * @type {import('express')}
+ */
 const express = require('express');
 const { mainRoutes } = require('./routes');
 
+/**
+ * Configured Express application instance
+ * @type {import('express').Application}
+ */
 const app = express();
 
 /**
@@ -24,4 +32,9 @@ const app = express();
  */
 app.use('/', mainRoutes);
 
+/**
+ * Export the configured Express application
+ * @exports src/app
+ * @type {import('express').Application}
+ */
 module.exports = app;
