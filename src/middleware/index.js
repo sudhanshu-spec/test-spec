@@ -48,6 +48,7 @@ const {
   sanitizeQuery,
   createQueryValidation,
   createBodyValidation,
+  createParamValidation,
   query,
   body,
   param,
@@ -66,11 +67,12 @@ module.exports = {
   validateRequest,
   sanitizeQuery,
   
-  // Validation chain builders
+  // Validation chain builders (configuration helpers)
   createQueryValidation,
   createBodyValidation,
+  createParamValidation,
   
-  // Re-exported express-validator functions
+  // Re-exported express-validator functions for convenience
   query,
   body,
   param,
