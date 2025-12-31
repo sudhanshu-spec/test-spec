@@ -13,7 +13,11 @@ const { app, server } = require('./server');
 
 // Close server after all tests complete
 afterAll((done) => {
-  server.close(done);
+  if (server && server.listening) {
+    server.close(done);
+  } else {
+    done();
+  }
 });
 
 describe('Server Tests', () => {
