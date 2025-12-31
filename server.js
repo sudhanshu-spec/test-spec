@@ -54,10 +54,23 @@ const config = require('./src/config');
  * Start the HTTP server.
  *
  * Binds the Express application to the configured host and port.
- * Logs a startup message upon successful binding.
+ * Upon successful port binding, the {@link ServerStartupCallback} is invoked
+ * to log the server URL for developer convenience.
  *
  * Default binding: http://127.0.0.1:3000/
  * Override via HOST and PORT environment variables.
+ *
+ * @see ServerStartupCallback
+ */
+
+/**
+ * Server startup callback executed upon successful port binding.
+ * Logs the server URL to console for developer convenience.
+ * This callback is invoked by Express when the server successfully
+ * starts listening on the configured host and port.
+ *
+ * @callback ServerStartupCallback
+ * @returns {void}
  */
 app.listen(config.port, config.host, () => {
   // Log server startup information
