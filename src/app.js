@@ -6,19 +6,17 @@
  * (which remains in server.js), enabling unit testing without starting
  * the actual server.
  * 
- * Design pattern: Factory pattern - creates configured Express app
- * 
- * Middleware Stack Order:
- * 1. helmet() - Security headers
- * 2. cors() - CORS handling
- * 3. compression() - Response compression
- * 4. express.json() - JSON body parsing
- * 5. express.urlencoded() - URL-encoded body parsing
+ * Middleware stack is configured in the following order:
+ * 1. helmet - Security headers
+ * 2. cors - Cross-Origin Resource Sharing
+ * 3. compression - Response body compression
+ * 4. express.json - JSON body parsing
+ * 5. express.urlencoded - URL-encoded body parsing
  * 6. morganMiddleware - HTTP request logging
- * 7. healthRoutes - Health check endpoints
- * 8. mainRoutes - Application routes
- * 9. notFoundHandler - 404 handler
- * 10. errorHandler - Centralized error handler
+ * 7. Routes (health, main)
+ * 8. Error handlers (404, centralized)
+ * 
+ * Design pattern: Factory pattern - creates configured Express app
  * 
  * @module src/app
  */
@@ -35,9 +33,9 @@ const { notFoundHandler, errorHandler } = require('./middleware/error.middleware
 
 const app = express();
 
-// ---------------------------------------------------------------------------
+// =============================================================================
 // Security Middleware
-// ---------------------------------------------------------------------------
+// =============================================================================
 
 /**
  * Helmet middleware - sets various HTTP headers to protect against
@@ -47,48 +45,56 @@ app.use(helmet());
 
 /**
  * CORS middleware - enables Cross-Origin Resource Sharing for all routes
- * Allows requests from any origin by default
+ * Allows requests from any origin in development; configure specific
+ * origins for production environments
  */
 app.use(cors());
 
-// ---------------------------------------------------------------------------
-// Compression and Body Parsing Middleware
-// ---------------------------------------------------------------------------
+// =============================================================================
+// Performance Middleware
+// =============================================================================
 
 /**
  * Compression middleware - compresses response bodies using gzip/deflate
- * for optimized transfer sizes
+ * for optimized transfer sizes. Automatically handles Accept-Encoding
+ * negotiation with clients
  */
 app.use(compression());
 
+// =============================================================================
+// Body Parsing Middleware
+// =============================================================================
+
 /**
- * JSON body parser middleware - parses incoming requests with JSON payloads
+ * JSON body parser - parses incoming requests with JSON payloads
+ * Makes req.body available for routes handling JSON data
  */
 app.use(express.json());
 
 /**
- * URL-encoded body parser middleware - parses incoming requests with
- * URL-encoded payloads (form data)
+ * URL-encoded body parser - parses incoming requests with URL-encoded payloads
+ * Extended mode allows for rich objects and arrays to be encoded
  */
 app.use(express.urlencoded({ extended: true }));
 
-// ---------------------------------------------------------------------------
-// HTTP Request Logging
-// ---------------------------------------------------------------------------
+// =============================================================================
+// Logging Middleware
+// =============================================================================
 
 /**
  * Morgan HTTP request logging middleware - logs all HTTP requests
- * Pipes output to Winston logger for centralized logging
+ * Piped to Winston logger for centralized logging to console and files
  */
 app.use(morganMiddleware);
 
-// ---------------------------------------------------------------------------
+// =============================================================================
 // Route Mounting
-// ---------------------------------------------------------------------------
+// =============================================================================
 
 /**
- * Mount health check routes at /health path
- * Used for load balancer probes and Kubernetes health checks
+ * Mount health check routes at /health
+ * Provides endpoints for load balancer probes and Kubernetes health checks:
+ * - GET /health -> Returns { status: 'ok', timestamp: '...' }
  */
 app.use('/health', healthRoutes);
 
@@ -100,19 +106,21 @@ app.use('/health', healthRoutes);
  */
 app.use('/', mainRoutes);
 
-// ---------------------------------------------------------------------------
+// =============================================================================
 // Error Handling Middleware
-// ---------------------------------------------------------------------------
+// =============================================================================
 
 /**
  * 404 Not Found handler - catches requests that don't match any route
- * Must be after all route handlers
+ * Must be mounted after all route handlers
  */
 app.use(notFoundHandler);
 
 /**
- * Centralized error handler - catches all errors and returns JSON response
- * Must be the last middleware
+ * Centralized error handler - catches all errors thrown in route handlers
+ * Logs errors via Winston and returns standardized JSON error responses
+ * Stack trace is suppressed in production for security
+ * Must be the last middleware in the chain
  */
 app.use(errorHandler);
 
