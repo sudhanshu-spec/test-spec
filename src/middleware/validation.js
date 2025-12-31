@@ -188,6 +188,37 @@ const createBodyValidation = (fieldName, options = {}) => {
   return chain;
 };
 
+/**
+ * Creates a validation chain for a URL parameter.
+ * Factory function for building common URL parameter validations.
+ * 
+ * @param {string} fieldName - Name of the URL parameter
+ * @param {Object} options - Validation options
+ * @param {boolean} [options.isInt=false] - Validate and convert as integer
+ * @param {boolean} [options.isUUID=false] - Validate as UUID
+ * @returns {import('express-validator').ValidationChain} Validation chain
+ * 
+ * @example
+ * const validateId = createParamValidation('id', { isInt: true });
+ * router.get('/users/:id', validateId, validateRequest, handler);
+ */
+const createParamValidation = (fieldName, options = {}) => {
+  let chain = param(fieldName);
+  
+  if (options.isInt) {
+    chain = chain.isInt().withMessage(`${fieldName} must be an integer`).toInt();
+  }
+  
+  if (options.isUUID) {
+    chain = chain.isUUID().withMessage(`${fieldName} must be a valid UUID`);
+  }
+  
+  // Always trim and escape for XSS prevention
+  chain = chain.trim().escape();
+  
+  return chain;
+};
+
 // ---------------------------------------------------------------------------
 // Module Exports
 // ---------------------------------------------------------------------------
@@ -200,6 +231,7 @@ module.exports = {
   // Validation chain builders
   createQueryValidation,
   createBodyValidation,
+  createParamValidation,
   
   // Re-export express-validator functions for convenience
   query,
