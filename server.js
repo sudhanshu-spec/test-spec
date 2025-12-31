@@ -16,8 +16,10 @@ const express = require('express');
 const hostname = '127.0.0.1';
 const port = 3000;
 
-// Initialize Express application
+// Initialize Express application with strict routing
+// strict: true means /evening and /evening/ are treated as different routes
 const app = express();
+app.set('strict routing', true);
 
 // =============================================================================
 // Route Handlers
