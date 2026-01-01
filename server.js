@@ -79,6 +79,14 @@ const server = app.listen(config.port, config.host, () => {
 // ---------------------------------------------------------------------------
 
 /**
+ * Shutdown timeout in milliseconds.
+ * If graceful shutdown doesn't complete within this time, force exit.
+ * This value should match kill_timeout in ecosystem.config.js for PM2 compatibility.
+ * @constant {number}
+ */
+const SHUTDOWN_TIMEOUT_MS = 10000;
+
+/**
  * Graceful shutdown handler for the HTTP server.
  *
  * This function handles graceful termination of the server when receiving
@@ -89,7 +97,7 @@ const server = app.listen(config.port, config.host, () => {
  * - Logs the received signal for debugging and monitoring
  * - Closes the HTTP server gracefully (stops accepting new connections)
  * - Waits for existing connections to complete
- * - Forces shutdown after 10 second timeout to prevent hanging
+ * - Forces shutdown after timeout to prevent hanging
  *
  * @param {string} signal - The signal that triggered the shutdown (e.g., 'SIGTERM', 'SIGINT')
  */
@@ -102,12 +110,12 @@ const gracefulShutdown = (signal) => {
     process.exit(0);
   });
 
-  // Force close after 10 seconds if graceful shutdown hangs
+  // Force close after timeout if graceful shutdown hangs
   // This prevents the process from running indefinitely if connections don't close
   setTimeout(() => {
     console.log('Forcing shutdown after timeout.');
     process.exit(1);
-  }, 10000);
+  }, SHUTDOWN_TIMEOUT_MS);
 };
 
 /**
