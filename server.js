@@ -58,24 +58,21 @@ const config = require('./src/config');
  * Start the HTTP server.
  *
  * Binds the Express application to the configured host and port.
- * Logs a startup message upon successful binding.
+ * Logs startup messages upon successful binding.
  *
  * Default binding: http://127.0.0.1:3000/
  * Override via HOST and PORT environment variables.
+ *
+ * @type {import('http').Server}
  */
 const server = app.listen(config.port, config.host, () => {
-  // Log server startup information
+  // Log server startup information with URL for easy access
   console.log(`Server running at http://${config.host}:${config.port}/`);
+  
+  // Log additional startup confirmation messages
+  console.log('Application module loaded successfully');
+  console.log('Express.js server initialization complete');
 });
-
-// Log application initialization complete
-console.log('Application module loaded successfully');
-
-// PR test log - added for testing purposes
-console.log('Express.js server initialization complete - PR validation log');
-
-// Additional PR validation log - added per user request for testing purposes
-console.log('PR update test: Server module fully initialized');
 
 // ---------------------------------------------------------------------------
 // Graceful Shutdown Handling
