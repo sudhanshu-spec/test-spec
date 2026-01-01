@@ -68,10 +68,7 @@ const config = require('./src/config');
 const server = app.listen(config.port, config.host, () => {
   // Log server startup information with URL for easy access
   console.log(`Server running at http://${config.host}:${config.port}/`);
-  
-  // Log additional startup confirmation messages
-  console.log('Application module loaded successfully');
-  console.log('Express.js server initialization complete');
+  console.log(`Environment: ${config.env} | Log level: ${config.logLevel}`);
 });
 
 // ---------------------------------------------------------------------------
