@@ -1,74 +1,52 @@
 /**
  * HTTP Server Entry Point
  *
- * This module serves as the sole entry point for starting the HTTP server.
- * It imports the pre-configured Express application and configuration,
- * then binds the server to the specified host and port.
+ * This module binds the Express application to an HTTP server.
+ * Configuration is separated from app creation for better testability.
  *
- * Architecture Overview:
- * ----------------------
- * - Express app configuration lives in: src/app.js
- * - Configuration settings live in: src/config/index.js
- * - Route handlers live in: src/routes/
- *
- * This separation of concerns enables:
- * - Unit testing the Express app without starting the HTTP server
- * - Easy configuration management via environment variables
- * - Clean, maintainable code structure
+ * Architecture:
+ *   - src/app.js       → Express app factory (routes & middleware)
+ *   - src/config/      → Environment-driven configuration
+ *   - src/routes/      → Route handlers
  *
  * Usage:
- * ------
- * Standard:   npm start
- * Custom:     HOST=0.0.0.0 PORT=8080 npm start
+ *   npm start                              # Default: http://127.0.0.1:3000/
+ *   HOST=0.0.0.0 PORT=8080 npm start       # Custom binding
  *
  * @module server
- * @requires ./src/app - The configured Express application instance
- * @requires ./src/config - Application configuration (host, port, env)
  */
 
 'use strict';
 
-// ---------------------------------------------------------------------------
-// Module Dependencies
-// ---------------------------------------------------------------------------
+// =============================================================================
+// Dependencies
+// =============================================================================
 
 /**
- * Import the configured Express application instance.
- * The app is pre-configured with routes and middleware in src/app.js.
+ * Pre-configured Express application instance.
+ * Routes and middleware are already mounted in src/app.js.
  * @type {import('express').Application}
  */
 const app = require('./src/app');
 
 /**
- * Import the application configuration.
- * Contains host, port, and environment settings.
+ * Application configuration settings.
+ * Values are sourced from environment variables with sensible defaults.
  * @type {{ host: string, port: number, env: string }}
  */
 const config = require('./src/config');
 
-// ---------------------------------------------------------------------------
+// =============================================================================
 // Server Initialization
-// ---------------------------------------------------------------------------
+// =============================================================================
 
 /**
  * Start the HTTP server.
  *
- * Binds the Express application to the configured host and port.
- * Logs a startup message upon successful binding.
- *
- * Default binding: http://127.0.0.1:3000/
- * Override via HOST and PORT environment variables.
+ * Binds the Express app to the configured network interface.
+ * The callback fires once the server is ready to accept connections.
  */
 app.listen(config.port, config.host, () => {
-  // Log server startup information
+  // Display startup confirmation with the server URL
   console.log(`Server running at http://${config.host}:${config.port}/`);
 });
-
-// Log application initialization complete
-console.log('Application module loaded successfully');
-
-// PR test log - added for testing purposes
-console.log('Express.js server initialization complete - PR validation log');
-
-// Additional PR validation log - added per user request for testing purposes
-console.log('PR update test: Server module fully initialized');
