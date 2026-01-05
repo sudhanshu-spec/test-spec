@@ -151,6 +151,34 @@ hao-backprop-test/
 | `src/routes/index.js` | Route aggregator using barrel pattern - centralizes route exports |
 | `src/routes/main.routes.js` | Route handlers - implements GET `/` and GET `/evening` endpoints |
 
+### Module Dependency Graph
+
+The following diagram illustrates the import relationships between modules:
+
+```mermaid
+graph TD
+    A[server.js] -->|requires| B[src/app.js]
+    A -->|requires| C[src/config/index.js]
+    B -->|requires| D[src/routes/index.js]
+    B -->|requires| E[express]
+    D -->|requires| F[src/routes/main.routes.js]
+    F -->|requires| E
+    
+    style A fill:#e1f5fe,stroke:#01579b
+    style B fill:#fff3e0,stroke:#e65100
+    style C fill:#e8f5e9,stroke:#2e7d32
+    style D fill:#fce4ec,stroke:#c2185b
+    style F fill:#fce4ec,stroke:#c2185b
+    style E fill:#f3e5f5,stroke:#7b1fa2
+```
+
+**Legend:**
+- **Blue**: Entry point (`server.js`)
+- **Orange**: Application factory (`src/app.js`)
+- **Green**: Configuration module (`src/config/`)
+- **Pink**: Route modules (`src/routes/`)
+- **Purple**: External dependency (`express`)
+
 ## Environment Variables
 
 The application supports the following environment variables for configuration:
@@ -200,6 +228,34 @@ Client → server.js → Express App (src/app.js) → Router (src/routes/) → R
 - **CommonJS Modules**: Uses `require`/`module.exports` for Node.js compatibility
 - **Twelve-Factor App**: Configuration externalized to environment variables
 
+### Request Flow Diagram
+
+The following sequence diagram shows how an HTTP request flows through the application:
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant server.js
+    participant src/app.js
+    participant src/routes/main.routes.js
+    participant src/config/index.js
+    
+    Note over server.js,src/config/index.js: Startup Phase
+    server.js->>src/config/index.js: require('./src/config')
+    src/config/index.js-->>server.js: { host, port, env }
+    server.js->>src/app.js: require('./src/app')
+    src/app.js->>src/routes/main.routes.js: require('./routes')
+    src/routes/main.routes.js-->>src/app.js: Router (mainRoutes)
+    src/app.js-->>server.js: Express Application
+    server.js->>server.js: app.listen(port, host)
+    
+    Note over Client,server.js: Request Phase
+    Client->>server.js: GET /
+    server.js->>src/app.js: Route to handler
+    src/app.js->>src/routes/main.routes.js: Execute route handler
+    src/routes/main.routes.js-->>Client: "Hello, World!\n"
+```
+
 ## Dependencies
 
 ### Runtime Dependencies
@@ -225,6 +281,239 @@ npm ls express
 |--------|---------|-------------|
 | `start` | `node server.js` | Starts the HTTP server |
 
+## Deployment Guide
+
+This section provides guidance for deploying the application in various environments.
+
+### Local Development
+
+For local development, the default configuration is optimized for developer experience:
+
+```bash
+# Start with default settings (localhost only)
+npm start
+
+# Enable hot-reload during development (requires nodemon)
+npm install --save-dev nodemon
+npx nodemon server.js
+```
+
+**Development Best Practices:**
+- Use `HOST=127.0.0.1` (default) to restrict access to localhost only
+- Keep `NODE_ENV=development` for verbose error messages
+- Use a port above 1024 to avoid permission issues
+
+### Production Configuration
+
+When deploying to production, configure the following environment variables:
+
+```bash
+# Production startup command
+HOST=0.0.0.0 PORT=80 NODE_ENV=production node server.js
+```
+
+**Production Environment Variables:**
+
+| Variable | Recommended Value | Reason |
+|----------|-------------------|--------|
+| `HOST` | `0.0.0.0` | Accept connections from all network interfaces |
+| `PORT` | `80` or `443` | Standard HTTP/HTTPS ports (or use reverse proxy) |
+| `NODE_ENV` | `production` | Enables Express.js production optimizations |
+
+**NODE_ENV=production Benefits:**
+- Express.js caches view templates
+- Less verbose error messages (security)
+- Optimized performance settings
+- Reduced memory footprint
+
+### Cloud Hosting Considerations
+
+#### Heroku
+
+```bash
+# Procfile content
+web: node server.js
+
+# Set environment variables
+heroku config:set NODE_ENV=production
+heroku config:set HOST=0.0.0.0
+
+# Deploy
+git push heroku main
+```
+
+> **Note:** Heroku automatically assigns the `PORT` environment variable.
+
+#### Railway
+
+```bash
+# railway.json (optional)
+{
+  "build": {
+    "builder": "NIXPACKS"
+  },
+  "deploy": {
+    "startCommand": "node server.js"
+  }
+}
+```
+
+> **Note:** Railway automatically sets `PORT`. Configure `HOST=0.0.0.0` in the dashboard.
+
+#### Vercel
+
+For serverless deployment, this application would require adaptation as it's designed as a long-running server. Consider using Vercel's serverless functions or a different hosting platform for traditional server deployments.
+
+### Docker Deployment
+
+While this project does not include a Dockerfile, here's a reference configuration for containerization:
+
+```dockerfile
+# Reference Dockerfile (not included in project)
+FROM node:20-alpine
+
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production
+COPY . .
+
+ENV HOST=0.0.0.0
+ENV PORT=3000
+ENV NODE_ENV=production
+
+EXPOSE 3000
+CMD ["node", "server.js"]
+```
+
+**Docker Commands:**
+```bash
+# Build image
+docker build -t hao-backprop-test .
+
+# Run container
+docker run -p 3000:3000 -e NODE_ENV=production hao-backprop-test
+```
+
+### Health Check Endpoint
+
+Use the root endpoint for health checks in load balancers and orchestration systems:
+
+```bash
+# Health check command
+curl -sf http://localhost:3000/ || exit 1
+```
+
+**Kubernetes Liveness Probe Example:**
+```yaml
+livenessProbe:
+  httpGet:
+    path: /
+    port: 3000
+  initialDelaySeconds: 5
+  periodSeconds: 10
+```
+
+## Security Considerations
+
+This section documents security-related information for the application.
+
+### Known Vulnerabilities
+
+The application's dependency tree includes a known vulnerability in the `qs` package:
+
+| Package | Affected Versions | Severity | Advisory |
+|---------|-------------------|----------|----------|
+| `qs` | < 6.14.1 | High | [GHSA-6rw7-vpxm-498p](https://github.com/advisories/GHSA-6rw7-vpxm-498p) |
+
+**Vulnerability Details:**
+- **Type:** Denial of Service (DoS) / Memory Exhaustion
+- **Impact:** Malicious query strings could cause excessive memory consumption
+- **Status:** Transitive dependency through Express.js
+
+### Remediation Steps
+
+To check for and resolve vulnerabilities:
+
+```bash
+# Check for vulnerabilities
+npm audit
+
+# Apply automatic fixes (when available)
+npm audit fix
+
+# Force fix (may include breaking changes)
+npm audit fix --force
+```
+
+> **Note:** Express.js 5.x is still in active development. Monitor for updates that resolve transitive dependency vulnerabilities.
+
+### Production Security Recommendations
+
+#### Environment Variable Protection
+
+```bash
+# Never commit sensitive values - use environment files
+echo ".env" >> .gitignore
+
+# Use a process manager to inject environment variables
+# Example with PM2:
+pm2 start server.js --env production
+```
+
+**Best Practices:**
+- Store secrets in environment variables, never in code
+- Use a secrets manager (AWS Secrets Manager, HashiCorp Vault) for sensitive data
+- Restrict access to production environment configurations
+
+#### HTTPS Configuration
+
+This server does not include built-in HTTPS support. For production deployments:
+
+1. **Use a Reverse Proxy** (Recommended)
+   ```bash
+   # Nginx configuration example
+   server {
+       listen 443 ssl;
+       ssl_certificate /path/to/cert.pem;
+       ssl_certificate_key /path/to/key.pem;
+       
+       location / {
+           proxy_pass http://127.0.0.1:3000;
+           proxy_set_header Host $host;
+           proxy_set_header X-Real-IP $remote_addr;
+       }
+   }
+   ```
+
+2. **Use a Cloud Load Balancer** - Most cloud providers offer managed SSL termination
+
+3. **Use a CDN** - Services like Cloudflare provide free SSL/TLS
+
+#### Additional Security Headers
+
+Consider adding security headers via middleware for production:
+
+```javascript
+// Example: helmet middleware (not included in project)
+// npm install helmet
+const helmet = require('helmet');
+app.use(helmet());
+```
+
+#### Rate Limiting
+
+For production deployments exposed to the internet, implement rate limiting:
+
+```javascript
+// Example: express-rate-limit (not included in project)
+// npm install express-rate-limit
+const rateLimit = require('express-rate-limit');
+app.use(rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100 // limit each IP to 100 requests per windowMs
+}));
+```
+
 ## Troubleshooting
 
 ### Common Issues
@@ -249,6 +538,53 @@ PORT=8080 npm start
 # Solution: Install dependencies
 npm install
 ```
+
+### Express.js 5 Specific Issues
+
+This project uses Express.js 5.x, which introduces several changes from Express 4.x:
+
+**Deprecated middleware warnings:**
+```bash
+# If you see: "express.json() is deprecated"
+# This is expected in Express 5 - use built-in body parsing:
+app.use(express.json());  # Still valid but syntax may change
+```
+
+**Router behavior differences:**
+```bash
+# Express 5 handles route parameter matching more strictly
+# Ensure route parameters follow the new patterns:
+# Express 4: router.get('/user/:id', ...)
+# Express 5: Same syntax, but stricter matching rules
+```
+
+**Promise rejection handling:**
+```javascript
+// Express 5 automatically catches rejected promises in route handlers
+// No need for explicit try-catch for async errors:
+router.get('/async', async (req, res) => {
+  const data = await someAsyncOperation(); // Errors auto-handled
+  res.json(data);
+});
+```
+
+**Path route matching changes:**
+```bash
+# Express 5 uses a new path-to-regexp version
+# Some regex patterns may behave differently
+# Test routes thoroughly when migrating from Express 4
+```
+
+**Query string parsing:**
+```bash
+# Express 5 uses updated qs library
+# Deep nested query parameters may parse differently
+# Test query parsing if your application uses complex queries
+```
+
+**Migration Resources:**
+- [Express.js 5.x Migration Guide](https://expressjs.com/en/guide/migrating-5.html)
+- [Express.js GitHub Releases](https://github.com/expressjs/express/releases)
 
 ## License
 
