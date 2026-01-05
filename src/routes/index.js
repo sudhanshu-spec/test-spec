@@ -14,6 +14,15 @@
 
 const mainRoutes = require('./main.routes');
 
+/**
+ * Route module exports object
+ * 
+ * Exports all route modules for centralized access from src/app.js.
+ * The mainRoutes export provides the Express Router instance containing
+ * all main application routes (GET /, GET /evening).
+ * 
+ * @type {{ mainRoutes: import('express').Router }}
+ */
 module.exports = {
   mainRoutes
 };

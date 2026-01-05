@@ -17,6 +17,18 @@
  * @module src/config
  */
 
+/**
+ * Application configuration object type definition
+ * @typedef {Object} AppConfig
+ * @property {string} host - Server binding address (default: '127.0.0.1')
+ * @property {number} port - Server port number (default: 3000)
+ * @property {string} env - Node environment (default: 'development')
+ */
+
+/**
+ * Application configuration with environment variable overrides
+ * @type {AppConfig}
+ */
 module.exports = {
   /**
    * Server host binding address
