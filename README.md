@@ -132,13 +132,22 @@ hao-backprop-test/
 ├── package-lock.json            # Dependency lockfile
 ├── README.md                    # Project documentation (this file)
 ├── .gitignore                   # Git ignore patterns
-└── src/                         # Application source root
-    ├── app.js                   # Express application factory
-    ├── config/                  # Configuration module
-    │   └── index.js             # Environment variable management
-    └── routes/                  # Routing surface
-        ├── index.js             # Route aggregator (barrel pattern)
-        └── main.routes.js       # Route handlers implementation
+├── jest.config.js               # Jest test framework configuration
+├── src/                         # Application source root
+│   ├── app.js                   # Express application factory
+│   ├── config/                  # Configuration module
+│   │   └── index.js             # Environment variable management
+│   └── routes/                  # Routing surface
+│       ├── index.js             # Route aggregator (barrel pattern)
+│       └── main.routes.js       # Route handlers implementation
+└── tests/                       # Test suite root
+    ├── unit/                    # Isolated module tests
+    │   ├── config.test.js       # Configuration module tests
+    │   └── routes.test.js       # Route handler tests
+    ├── integration/             # HTTP endpoint tests
+    │   └── endpoints.test.js    # API endpoint contract tests
+    └── lifecycle/               # Server lifecycle tests
+        └── server.test.js       # Startup/shutdown tests
 ```
 
 ### File Descriptions
@@ -224,6 +233,71 @@ npm ls express
 | Script | Command | Description |
 |--------|---------|-------------|
 | `start` | `node server.js` | Starts the HTTP server |
+| `test` | `jest` | Run the complete test suite |
+| `test:watch` | `jest --watch` | Run tests in watch mode for development |
+| `test:coverage` | `jest --coverage` | Run tests and generate coverage report |
+| `test:ci` | `jest --ci --coverage` | Run tests optimized for CI/CD environments |
+
+## Testing
+
+This project includes a comprehensive test suite built with **Jest 30.x** and **Supertest** for HTTP endpoint testing.
+
+### Test Execution Commands
+
+| Purpose | Command | Description |
+|---------|---------|-------------|
+| Run all tests | `npm test` | Execute the complete test suite |
+| Watch mode | `npm run test:watch` | Re-run tests automatically on file changes |
+| Coverage report | `npm run test:coverage` | Generate detailed code coverage metrics |
+| CI execution | `npm run test:ci` | Optimized execution for CI/CD pipelines |
+| Single file | `npx jest tests/unit/config.test.js` | Run a specific test file |
+| Pattern match | `npx jest --testPathPatterns="config"` | Run tests matching a pattern |
+
+### Test Structure
+
+The test suite is organized into three categories based on test scope:
+
+```
+tests/
+├── unit/                    # Isolated module tests
+│   ├── config.test.js       # Configuration defaults and parsing
+│   └── routes.test.js       # Route handler exports verification
+├── integration/             # HTTP endpoint tests
+│   └── endpoints.test.js    # API contract tests using Supertest
+└── lifecycle/               # Server lifecycle tests
+    └── server.test.js       # Startup and shutdown behavior
+```
+
+| Directory | Purpose | Test Approach |
+|-----------|---------|---------------|
+| `tests/unit/` | Test isolated modules without HTTP | Direct module imports with Jest assertions |
+| `tests/integration/` | Test HTTP endpoint responses | Supertest requests against the Express app |
+| `tests/lifecycle/` | Test server startup/shutdown | Mock-based lifecycle verification |
+
+### Coverage Targets
+
+The project enforces the following code coverage thresholds:
+
+| Coverage Metric | Target | Description |
+|-----------------|--------|-------------|
+| Line Coverage | ≥ 80% | Percentage of code lines executed by tests |
+| Branch Coverage | ≥ 75% | Percentage of conditional branches tested |
+| Function Coverage | ≥ 90% | Percentage of functions called by tests |
+| Statement Coverage | ≥ 80% | Percentage of statements executed by tests |
+
+**Generate and view coverage report:**
+```bash
+npm run test:coverage
+# Coverage report generated in ./coverage/
+# Open ./coverage/lcov-report/index.html for detailed HTML report
+```
+
+### Test Dependencies
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| `jest` | ^30.2.0 | JavaScript testing framework and test runner |
+| `supertest` | ^7.1.4 | HTTP assertion library for Express endpoint testing |
 
 ## Troubleshooting
 
