@@ -1,0 +1,55 @@
+<!--
+  Header Partial Template - Site Navigation Header
+  
+  This EJS partial provides the reusable navigation header component for the
+  Express.js Hello World application. It is included by layout.ejs using the
+  include('partials/header') directive.
+  
+  Features:
+  - HTML5 semantic <header> element for proper document structure
+  - Accessible <nav> element with aria-label for screen readers
+  - Site branding/title with link to home page
+  - Navigation links using unordered list pattern (ul/li)
+  - BEM-like CSS class naming matching public/css/styles.css
+  
+  CSS Dependencies (from public/css/styles.css):
+  - .site-header: Main header container with sticky positioning
+  - .site-header__container: Flexbox container for alignment
+  - .site-header__brand: Brand/title link styling
+  - .site-header__nav: Navigation wrapper
+  - .nav-links: Unordered list for navigation items
+  - .nav-links__item: Individual list item styling
+  - .nav-links__link: Navigation link styling with hover states
+  
+  Navigation Routes:
+  - Home: "/" - Displays the Hello, World! greeting page
+  - Evening: "/evening" - Displays the Good evening themed page
+  
+  @partial views/partials/header.ejs
+  @included_by views/layout.ejs
+  @styles public/css/styles.css
+-->
+<header class="site-header">
+  <div class="site-header__container">
+    <%# Site branding/title - links to home page -%>
+    <a href="/" class="site-header__brand" aria-label="Hello World App - Go to homepage">
+      Hello World App
+    </a>
+    
+    <%# Primary navigation with accessible labeling -%>
+    <nav class="site-header__nav" aria-label="Primary navigation">
+      <ul class="nav-links" role="list">
+        <li class="nav-links__item">
+          <a href="/" class="nav-links__link">
+            Home
+          </a>
+        </li>
+        <li class="nav-links__item">
+          <a href="/evening" class="nav-links__link">
+            Evening
+          </a>
+        </li>
+      </ul>
+    </nav>
+  </div>
+</header>

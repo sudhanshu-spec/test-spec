@@ -1,0 +1,90 @@
+<!--
+  Base Layout Template - Express.js UI Layer
+  
+  This EJS template provides the shared HTML structure for all pages in the
+  Express.js Hello World application. It implements the base layout pattern
+  with a consistent DOCTYPE, head section, body wrapper, and partial includes.
+  
+  Template Variables Supported:
+  - title (string): Page-specific title prefix. Defaults to no prefix.
+    Usage: Pass { title: 'Home' } for "Home | Hello World App"
+  - body (string): Main content to inject via EJS include or direct content
+  - theme (string): CSS class to apply to body for page-specific theming
+    Supported values: 'evening-theme', 'night-theme', or empty string
+  - isEvening (boolean): If true, loads the evening.css theme stylesheet
+  
+  Structure:
+  - HTML5 semantic document structure
+  - Responsive viewport configuration
+  - CSS stylesheets in head (styles.css + conditional evening.css)
+  - Header partial for navigation
+  - Main content area with injected body content
+  - Footer partial for page footer
+  - JavaScript loaded before closing body tag
+  
+  Dependencies:
+  - views/partials/header.ejs: Navigation header component
+  - views/partials/footer.ejs: Page footer component
+  - public/css/styles.css: Base stylesheet
+  - public/css/evening.css: Evening theme stylesheet (conditional)
+  - public/js/main.js: Client-side JavaScript
+  
+  Exports (members_exposed):
+  - body: Main content placeholder using <%- body %>
+  - title: Dynamic page title with fallback
+  - theme: Body element class for theming
+  - DOCTYPE: HTML5 doctype declaration
+  - html: Root HTML element with lang attribute
+  - head: Document head with meta tags and links
+  - meta-viewport: Responsive viewport configuration
+  - link-styles: Stylesheet references
+  - script-main: JavaScript reference
+  
+  @file views/layout.ejs
+  @requires views/partials/header.ejs
+  @requires views/partials/footer.ejs
+  @requires public/css/styles.css
+  @requires public/js/main.js
+  @author Blitzy Platform
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <%# Meta tags for character encoding and responsive viewport -%>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <%# Additional meta tags for SEO and compatibility -%>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="description" content="Express.js Hello World Application with UI Layer">
+  
+  <%# Dynamic page title with fallback to default -%>
+  <title><%= typeof title !== 'undefined' && title ? title + ' | ' : '' %>Hello World App</title>
+  
+  <%# Base stylesheet - always loaded for core styles -%>
+  <link rel="stylesheet" href="/css/styles.css">
+  
+  <%# Conditional evening theme stylesheet - loaded when isEvening is true -%>
+  <% if (typeof isEvening !== 'undefined' && isEvening) { %>
+  <link rel="stylesheet" href="/css/evening.css">
+  <% } %>
+</head>
+<body class="<%= typeof theme !== 'undefined' && theme ? theme : '' %>">
+  <%# Page wrapper for sticky footer layout pattern (see .page-wrapper in styles.css) -%>
+  <div class="page-wrapper">
+    <%# Navigation header partial - provides consistent site navigation -%>
+    <%- include('partials/header') %>
+    
+    <%# Main content area - receives content from child templates -%>
+    <main class="main-content">
+      <%- body %>
+    </main>
+    
+    <%# Footer partial - provides consistent page footer -%>
+    <%- include('partials/footer') %>
+  </div>
+  
+  <%# Client-side JavaScript - loaded at end of body for optimal performance -%>
+  <script src="/js/main.js"></script>
+</body>
+</html>

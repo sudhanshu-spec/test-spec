@@ -1,0 +1,107 @@
+<!--
+  Home Page Template - Express.js UI Layer
+  
+  This EJS template renders the home page displaying the "Hello, World!" greeting.
+  It extends the base layout template via EJS include directive, maintaining
+  consistent page structure with shared header, footer, and styling.
+  
+  Per Agent Action Plan Section 0.5.2:
+  - Displays "Hello, World!" greeting message
+  - Uses greeting-container class for centered layout
+  - Receives { greeting: 'Hello, World!' } data from UI route handler
+  
+  Template Variables:
+  - greeting (string): The greeting message to display. Passed from the UI route
+    handler via res.render('index', { greeting: 'Hello, World!' }).
+    Default: 'Hello, World!' if not provided.
+  
+  CSS Classes Used (from public/css/styles.css):
+  - .greeting-container: Centered content container with padding (text-align: center, padding: 2rem)
+  - .greeting-container__title: Large, bold heading for the greeting display
+  - .greeting-container__subtitle: Muted subtitle text for welcome message
+  - .greeting-container__emoji: Large emoji display styling
+  
+  Layout Integration:
+  - Includes views/layout.ejs via EJS include directive
+  - Layout provides DOCTYPE, head section, CSS links, header partial, footer partial
+  - Passes body content, title, theme settings, and isEvening flag to layout
+  - Header and footer partials are included indirectly through layout.ejs
+  
+  Semantic HTML5 Structure:
+  - Content wrapped in <section> element (layout provides <main>)
+  - <h1> for primary greeting heading
+  - <p> for subtitle and descriptive content
+  
+  Exports (members_exposed per schema):
+  - greeting: Dynamic greeting text variable from route handler
+  - main.greeting-container: Semantic section with centered greeting layout
+  - h1.greeting-container__title: Primary heading displaying the greeting
+  
+  Mobile-First Responsive:
+  - Centered text layout works on all screen sizes
+  - CSS handles responsive padding and typography via styles.css
+  
+  @file views/index.ejs
+  @requires views/layout.ejs (via include directive)
+  @requires views/partials/header.ejs (via layout.ejs)
+  @requires views/partials/footer.ejs (via layout.ejs)
+  @requires public/css/styles.css (via layout.ejs link tag)
+  @see Section 0.5.2 of Agent Action Plan
+  @author Blitzy Platform
+-->
+<%
+/**
+ * Build the page body content for the home page.
+ * 
+ * Structure follows semantic HTML5 with BEM-like CSS class naming.
+ * The greeting variable is provided by the UI route handler via res.render().
+ * Falls back to 'Hello, World!' if greeting is not provided.
+ * 
+ * HTML Structure:
+ * <section class="greeting-container">
+ *   <span class="greeting-container__emoji">👋</span>
+ *   <h1 class="greeting-container__title">{greeting}</h1>
+ *   <p class="greeting-container__subtitle">Welcome message</p>
+ *   <p class="greeting-container__content">Description</p>
+ * </section>
+ */
+
+// Get the greeting from route handler, with fallback default
+var displayGreeting = (typeof greeting !== 'undefined' && greeting) ? greeting : 'Hello, World!';
+
+// Build the body HTML content as an array for readability
+// Each element represents a line of HTML
+var bodyContent = [
+  '<!-- Home Page Content - Greeting Section -->',
+  '<section class="greeting-container" role="region" aria-label="Welcome greeting">',
+  '  <!-- Decorative wave emoji for visual appeal -->',
+  '  <span class="greeting-container__emoji" aria-hidden="true">👋</span>',
+  '  ',
+  '  <!-- Primary greeting heading - main content of the page -->',
+  '  <h1 class="greeting-container__title">' + displayGreeting + '</h1>',
+  '  ',
+  '  <!-- Welcome subtitle providing context -->',
+  '  <p class="greeting-container__subtitle">Welcome to the Express.js Hello World application</p>',
+  '  ',
+  '  <!-- Additional descriptive content -->',
+  '  <p class="greeting-container__content">',
+  '    This page demonstrates the UI layer built with EJS templates.',
+  '    Visit the <a href="/evening">Evening page</a> for a themed variant,',
+  '    or access the <a href="/api/">API endpoint</a> for plain text responses.',
+  '  </p>',
+  '</section>'
+].join('\n');
+%>
+<%# 
+  Include the base layout template with page-specific variables:
+  - title: Page title prefix (appears as "Home | Hello World App")
+  - theme: CSS class for body element (empty for default theme)
+  - isEvening: Boolean flag to load evening.css (false for home page)
+  - body: The rendered page content to inject into layout's main element
+-%>
+<%- include('layout', {
+  title: 'Home',
+  theme: '',
+  isEvening: false,
+  body: bodyContent
+}) %>

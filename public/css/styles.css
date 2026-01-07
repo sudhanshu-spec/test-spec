@@ -1,0 +1,687 @@
+/**
+ * Main Stylesheet - Express.js UI Layer
+ * 
+ * This stylesheet provides the foundational styles for the Express.js web UI.
+ * It includes:
+ * - CSS reset/normalize rules for consistent cross-browser rendering
+ * - CSS custom properties for theming and easy customization
+ * - System font stack for optimal performance
+ * - Mobile-first responsive approach
+ * - BEM-like naming conventions for components
+ * - Accessible color contrast ratios (WCAG 2.1 AA compliant)
+ * 
+ * @file public/css/styles.css
+ * @url /css/styles.css (served via express.static middleware)
+ * @author Blitzy Platform
+ */
+
+/* ==========================================================================
+   CSS Custom Properties (Theme Variables)
+   ========================================================================== */
+
+/**
+ * Root-level CSS custom properties for consistent theming.
+ * These variables are referenced throughout the stylesheet and can be
+ * easily overridden for theme variations.
+ * 
+ * Color scheme per Section 0.7.9:
+ * - Primary: Blue (#007bff) for interactive elements
+ * - Text: Dark gray (#333) for main content (WCAG AA contrast ratio 12.6:1)
+ * - Background: White (#fff) for clean, readable surfaces
+ */
+:root {
+  /* Primary Colors */
+  --primary-color: #007bff;
+  --primary-color-hover: #0056b3;
+  --primary-color-active: #004085;
+  
+  /* Text Colors */
+  --text-color: #333333;
+  --text-color-muted: #666666;
+  --text-color-light: #999999;
+  
+  /* Background Colors */
+  --bg-color: #ffffff;
+  --bg-color-secondary: #f8f9fa;
+  --bg-color-tertiary: #e9ecef;
+  
+  /* Border Colors */
+  --border-color: #dee2e6;
+  --border-color-light: #ced4da;
+  
+  /* Shadow Values */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  
+  /* Spacing Scale (8px base) */
+  --spacing-xs: 0.25rem;   /* 4px */
+  --spacing-sm: 0.5rem;    /* 8px */
+  --spacing-md: 1rem;      /* 16px */
+  --spacing-lg: 1.5rem;    /* 24px */
+  --spacing-xl: 2rem;      /* 32px */
+  --spacing-2xl: 3rem;     /* 48px */
+  
+  /* Typography */
+  --font-family-base: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, 
+    "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", 
+    "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-family-mono: SFMono-Regular, Menlo, Monaco, Consolas, 
+    "Liberation Mono", "Courier New", monospace;
+  
+  --font-size-xs: 0.75rem;   /* 12px */
+  --font-size-sm: 0.875rem;  /* 14px */
+  --font-size-base: 1rem;    /* 16px */
+  --font-size-lg: 1.125rem;  /* 18px */
+  --font-size-xl: 1.25rem;   /* 20px */
+  --font-size-2xl: 1.5rem;   /* 24px */
+  --font-size-3xl: 1.875rem; /* 30px */
+  --font-size-4xl: 2.25rem;  /* 36px */
+  
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  
+  --line-height-tight: 1.25;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.75;
+  
+  /* Transitions */
+  --transition-fast: 150ms ease-in-out;
+  --transition-normal: 250ms ease-in-out;
+  --transition-slow: 350ms ease-in-out;
+  
+  /* Border Radius */
+  --border-radius-sm: 0.25rem;
+  --border-radius-md: 0.375rem;
+  --border-radius-lg: 0.5rem;
+  --border-radius-full: 9999px;
+  
+  /* Layout */
+  --container-max-width: 1200px;
+  --header-height: 60px;
+  --footer-height: auto;
+}
+
+/* ==========================================================================
+   CSS Reset / Normalize
+   ========================================================================== */
+
+/**
+ * Modern CSS reset for consistent cross-browser rendering.
+ * Based on best practices from normalize.css and modern-normalize.
+ */
+
+/* Box sizing reset */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* Remove default margin and padding */
+* {
+  margin: 0;
+  padding: 0;
+}
+
+/* Prevent font size inflation on mobile */
+html {
+  -moz-text-size-adjust: none;
+  -webkit-text-size-adjust: none;
+  text-size-adjust: none;
+}
+
+/* Set core root defaults */
+html:focus-within {
+  scroll-behavior: smooth;
+}
+
+/* Set core body defaults */
+body {
+  min-height: 100vh;
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height-normal);
+  color: var(--text-color);
+  background-color: var(--bg-color);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Remove list styles on ul, ol elements with a list role */
+ul[role="list"],
+ol[role="list"] {
+  list-style: none;
+}
+
+/* A elements that don't have a class get default styles */
+a:not([class]) {
+  text-decoration-skip-ink: auto;
+  color: currentColor;
+}
+
+/* Make images easier to work with */
+img,
+picture,
+video,
+canvas,
+svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+/* Inherit fonts for inputs and buttons */
+input,
+button,
+textarea,
+select {
+  font: inherit;
+}
+
+/* Remove all animations for people who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  html:focus-within {
+    scroll-behavior: auto;
+  }
+  
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ==========================================================================
+   Base Typography
+   ========================================================================== */
+
+/**
+ * Typography styles using system font stack for optimal performance.
+ * System fonts provide native look and feel with zero download cost.
+ */
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-tight);
+  color: var(--text-color);
+  margin-bottom: var(--spacing-md);
+}
+
+h1 {
+  font-size: var(--font-size-4xl);
+}
+
+h2 {
+  font-size: var(--font-size-3xl);
+}
+
+h3 {
+  font-size: var(--font-size-2xl);
+}
+
+h4 {
+  font-size: var(--font-size-xl);
+}
+
+h5 {
+  font-size: var(--font-size-lg);
+}
+
+h6 {
+  font-size: var(--font-size-base);
+}
+
+p {
+  margin-bottom: var(--spacing-md);
+}
+
+p:last-child {
+  margin-bottom: 0;
+}
+
+a {
+  color: var(--primary-color);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+a:hover {
+  color: var(--primary-color-hover);
+  text-decoration: underline;
+}
+
+a:focus {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+a:active {
+  color: var(--primary-color-active);
+}
+
+strong, b {
+  font-weight: var(--font-weight-bold);
+}
+
+em, i {
+  font-style: italic;
+}
+
+small {
+  font-size: var(--font-size-sm);
+}
+
+code {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-sm);
+  background-color: var(--bg-color-secondary);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--border-radius-sm);
+}
+
+/* ==========================================================================
+   Layout Components
+   ========================================================================== */
+
+/**
+ * Page layout structure using CSS Flexbox for vertical distribution.
+ * Creates a sticky footer pattern with main content expansion.
+ */
+
+/* Page wrapper for sticky footer pattern */
+.page-wrapper {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* Main content area - expands to fill available space */
+main {
+  flex: 1 0 auto;
+  width: 100%;
+  padding: var(--spacing-lg);
+}
+
+/* Container for centered, max-width content */
+.container {
+  width: 100%;
+  max-width: var(--container-max-width);
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--spacing-md);
+  padding-right: var(--spacing-md);
+}
+
+/* ==========================================================================
+   Site Header
+   ========================================================================== */
+
+/**
+ * Site header component with navigation.
+ * Uses BEM-like naming convention: .site-header, .site-header__nav, etc.
+ */
+
+.site-header {
+  flex-shrink: 0;
+  background-color: var(--bg-color);
+  border-bottom: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.site-header__container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--header-height);
+  max-width: var(--container-max-width);
+  margin: 0 auto;
+  padding: 0 var(--spacing-md);
+}
+
+.site-header__brand {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-color);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.site-header__brand:hover {
+  color: var(--primary-color);
+  text-decoration: none;
+}
+
+.site-header__nav {
+  display: flex;
+  align-items: center;
+}
+
+/* ==========================================================================
+   Navigation Links
+   ========================================================================== */
+
+/**
+ * Navigation link styles for header menu.
+ * Provides consistent spacing, hover states, and accessibility focus styles.
+ */
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  gap: var(--spacing-sm);
+}
+
+.nav-links__item {
+  margin: 0;
+}
+
+.nav-links__link {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-color);
+  text-decoration: none;
+  border-radius: var(--border-radius-md);
+  transition: color var(--transition-fast), background-color var(--transition-fast);
+}
+
+.nav-links__link:hover {
+  color: var(--primary-color);
+  background-color: var(--bg-color-secondary);
+  text-decoration: none;
+}
+
+.nav-links__link:focus {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+.nav-links__link:active {
+  color: var(--primary-color-active);
+  background-color: var(--bg-color-tertiary);
+}
+
+/* Active navigation link state */
+.nav-links__link--active {
+  color: var(--primary-color);
+  background-color: var(--bg-color-secondary);
+}
+
+/* ==========================================================================
+   Greeting Container Component
+   ========================================================================== */
+
+/**
+ * Greeting container component for displaying welcome messages.
+ * Per Section 0.5.2: text-align: center; padding: 2rem;
+ * Uses BEM naming: .greeting-container, .greeting-container__title, etc.
+ */
+
+.greeting-container {
+  text-align: center;
+  padding: var(--spacing-xl);
+  margin: var(--spacing-xl) auto;
+  max-width: 800px;
+}
+
+.greeting-container__title {
+  font-size: var(--font-size-4xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-color);
+  margin-bottom: var(--spacing-md);
+  line-height: var(--line-height-tight);
+}
+
+.greeting-container__subtitle {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-normal);
+  color: var(--text-color-muted);
+  margin-bottom: var(--spacing-lg);
+}
+
+.greeting-container__content {
+  font-size: var(--font-size-base);
+  color: var(--text-color);
+  line-height: var(--line-height-relaxed);
+}
+
+.greeting-container__emoji {
+  font-size: var(--font-size-4xl);
+  margin-bottom: var(--spacing-md);
+  display: block;
+}
+
+/* Greeting container with card-like appearance */
+.greeting-container--card {
+  background-color: var(--bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-md);
+}
+
+/* ==========================================================================
+   Site Footer
+   ========================================================================== */
+
+/**
+ * Site footer component.
+ * Uses BEM naming: .site-footer, .site-footer__content, etc.
+ */
+
+.site-footer {
+  flex-shrink: 0;
+  background-color: var(--bg-color-secondary);
+  border-top: 1px solid var(--border-color);
+  padding: var(--spacing-lg) 0;
+  margin-top: auto;
+}
+
+.site-footer__container {
+  max-width: var(--container-max-width);
+  margin: 0 auto;
+  padding: 0 var(--spacing-md);
+}
+
+.site-footer__content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-sm);
+  text-align: center;
+}
+
+.site-footer__text {
+  font-size: var(--font-size-sm);
+  color: var(--text-color-muted);
+  margin: 0;
+}
+
+.site-footer__link {
+  color: var(--primary-color);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.site-footer__link:hover {
+  color: var(--primary-color-hover);
+  text-decoration: underline;
+}
+
+/* ==========================================================================
+   Utility Classes
+   ========================================================================== */
+
+/**
+ * Utility classes for common styling needs.
+ */
+
+/* Text alignment utilities */
+.text-center {
+  text-align: center;
+}
+
+.text-left {
+  text-align: left;
+}
+
+.text-right {
+  text-align: right;
+}
+
+/* Display utilities */
+.hidden {
+  display: none !important;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Spacing utilities */
+.mt-0 { margin-top: 0; }
+.mt-1 { margin-top: var(--spacing-sm); }
+.mt-2 { margin-top: var(--spacing-md); }
+.mt-3 { margin-top: var(--spacing-lg); }
+.mt-4 { margin-top: var(--spacing-xl); }
+
+.mb-0 { margin-bottom: 0; }
+.mb-1 { margin-bottom: var(--spacing-sm); }
+.mb-2 { margin-bottom: var(--spacing-md); }
+.mb-3 { margin-bottom: var(--spacing-lg); }
+.mb-4 { margin-bottom: var(--spacing-xl); }
+
+/* ==========================================================================
+   Responsive Breakpoints - Mobile First Approach
+   ========================================================================== */
+
+/**
+ * Mobile-first responsive design per Section 0.7.3.
+ * Base styles are for mobile, then enhanced for larger screens.
+ * 
+ * Breakpoints:
+ * - sm: 576px (small devices, landscape phones)
+ * - md: 768px (medium devices, tablets)
+ * - lg: 992px (large devices, desktops)
+ * - xl: 1200px (extra large devices, large desktops)
+ */
+
+/* Small devices (landscape phones, 576px and up) */
+@media (min-width: 576px) {
+  .greeting-container {
+    padding: var(--spacing-2xl);
+  }
+  
+  .greeting-container__title {
+    font-size: calc(var(--font-size-4xl) * 1.2);
+  }
+  
+  .site-footer__content {
+    flex-direction: row;
+    justify-content: space-between;
+  }
+}
+
+/* Medium devices (tablets, 768px and up) */
+@media (min-width: 768px) {
+  :root {
+    --header-height: 70px;
+  }
+  
+  main {
+    padding: var(--spacing-xl);
+  }
+  
+  .container {
+    padding-left: var(--spacing-lg);
+    padding-right: var(--spacing-lg);
+  }
+  
+  .greeting-container {
+    padding: var(--spacing-2xl) var(--spacing-xl);
+  }
+  
+  .nav-links {
+    gap: var(--spacing-md);
+  }
+}
+
+/* Large devices (desktops, 992px and up) */
+@media (min-width: 992px) {
+  .greeting-container__title {
+    font-size: calc(var(--font-size-4xl) * 1.5);
+  }
+  
+  .nav-links__link {
+    padding: var(--spacing-sm) var(--spacing-lg);
+  }
+}
+
+/* Extra large devices (large desktops, 1200px and up) */
+@media (min-width: 1200px) {
+  .container {
+    padding-left: var(--spacing-xl);
+    padding-right: var(--spacing-xl);
+  }
+}
+
+/* ==========================================================================
+   Print Styles
+   ========================================================================== */
+
+/**
+ * Print-specific styles for better printed output.
+ */
+
+@media print {
+  *,
+  *::before,
+  *::after {
+    background: transparent !important;
+    color: #000 !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+  
+  a,
+  a:visited {
+    text-decoration: underline;
+  }
+  
+  a[href]::after {
+    content: " (" attr(href) ")";
+  }
+  
+  .site-header,
+  .site-footer {
+    display: none;
+  }
+  
+  .greeting-container {
+    padding: 0;
+    margin: 0;
+  }
+}
