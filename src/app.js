@@ -6,6 +6,27 @@
  * (which remains in server.js), enabling unit testing without starting
  * the actual server.
  * 
+ * The application serves two types of routes:
+ * 
+ * UI Routes (root namespace) - Render EJS templates for HTML pages:
+ *   - GET /         -> Renders views/index.ejs with "Hello, World!" greeting
+ *   - GET /evening  -> Renders views/evening.ejs with themed "Good evening" greeting
+ * 
+ * API Routes (/api namespace) - Return plain text responses for backward compatibility:
+ *   - GET /api/         -> Returns "Hello, World!\n" (text/plain)
+ *   - GET /api/evening  -> Returns "Good evening" (text/plain)
+ * 
+ * Static assets (CSS, JS, images) are served from the public/ directory:
+ *   - /css/styles.css   -> public/css/styles.css
+ *   - /css/evening.css  -> public/css/evening.css
+ *   - /js/main.js       -> public/js/main.js
+ *   - /images/*         -> public/images/*
+ * 
+ * Middleware and route mounting order:
+ *   1. Static file middleware (serves assets from public/)
+ *   2. UI routes at root namespace (HTML page rendering)
+ *   3. API routes at /api namespace (plain text responses)
+ * 
  * Design pattern: Factory pattern - creates configured Express app
  * 
  * @module src/app
