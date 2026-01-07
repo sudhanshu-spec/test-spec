@@ -13,9 +13,13 @@
  * - HOST: Override default host binding
  * - PORT: Override default port number
  * - NODE_ENV: Set application environment (development, production, test)
+ * - VIEWS_DIR: Override default views directory
+ * - PUBLIC_DIR: Override default public assets directory
  * 
  * @module src/config
  */
+
+'use strict';
 
 module.exports = {
   /**
@@ -37,5 +41,19 @@ module.exports = {
    * @type {string}
    * @default 'development'
    */
-  env: process.env.NODE_ENV || 'development'
+  env: process.env.NODE_ENV || 'development',
+
+  /**
+   * Directory path for EJS view templates
+   * @type {string}
+   * @default './views'
+   */
+  viewsDir: process.env.VIEWS_DIR || './views',
+
+  /**
+   * Directory path for static public assets (CSS, JS, images)
+   * @type {string}
+   * @default './public'
+   */
+  publicDir: process.env.PUBLIC_DIR || './public'
 };
