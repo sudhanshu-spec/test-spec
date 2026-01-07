@@ -2,658 +2,496 @@
 
 # 0. Agent Action Plan
 
-## 0.1 Intent Clarification
+## 0.1 Executive Summary
 
-### 0.1.1 Core Feature Objective
+Based on the bug description, the Blitzy platform understands that the bug is a **lack of production-ready error handling, graceful shutdown capabilities, input validation, and resource cleanup in the server.js entry point**.
 
-Based on the prompt, the Blitzy platform understands that the new feature requirement is to:
+The user's request translates into the following precise technical failures:
 
-- **Add Express.js Framework**: Integrate the Express.js web framework into an existing Node.js server project that currently hosts one endpoint returning "Hello world"
-- **Add Evening Endpoint**: Create an additional HTTP GET endpoint that returns the response "Good evening"
+- **Missing Error Handling**: The original `server.js` lacks error event handlers for the HTTP server. When errors occur during startup (e.g., EADDRINUSE when the port is already in use), the application would crash without providing user-friendly error messages or recovery suggestions.
 
-**Implicit Requirements Detected:**
+- **No Graceful Shutdown**: The server does not capture the server instance returned by `app.listen()`, making it impossible to call `server.close()` during shutdown. There are no signal handlers for SIGTERM/SIGINT, which are essential for containerized deployments (Docker, Kubernetes) and process managers (PM2).
 
-- The Express.js integration should follow best practices for modular architecture
-- Route handlers should be organized in a clean, maintainable structure
-- The existing "Hello world" functionality must be preserved and continue working
-- Configuration should support environment variable overrides for deployment flexibility
+- **No Input Validation**: While the config module provides sensible defaults, the server.js does not validate that configuration values are within acceptable bounds before attempting to bind.
 
-**Feature Dependencies and Prerequisites:**
+- **No Resource Cleanup**: Without graceful shutdown, in-flight requests are abruptly terminated, database connections are not properly closed, and file handles may leak.
 
-| Prerequisite | Status | Description |
-|--------------|--------|-------------|
-| Node.js Runtime | Required | Node.js 18.x minimum (20.x LTS recommended) |
-| npm Package Manager | Required | npm 8.x minimum for dependency management |
-| Express.js Package | To Add | Web framework for HTTP handling and routing |
+- **Missing Global Error Handlers**: No handlers for `uncaughtException` or `unhandledRejection` process events, which in Node.js 15+ will crash the application.
 
-**Important Discovery:** Upon repository analysis, the Blitzy platform has determined that this feature request is **ALREADY FULLY IMPLEMENTED**. The current codebase already contains:
-- Express.js 5.1.0 integrated and configured
-- The `/evening` endpoint returning "Good evening"
-- All supporting infrastructure (routes, configuration, documentation)
+**Technical Severity**: Medium-High - These issues don't affect normal operation but will cause significant problems during deployments, scaling events, and error scenarios.
 
-### 0.1.2 Special Instructions and Constraints
-
-**User-Specified Directives:**
-
-- Integrate Express.js into an existing Node.js server project
-- Maintain the existing "Hello world" endpoint functionality
-- Add a new endpoint that returns "Good evening"
-
-**Architectural Requirements Observed:**
-
-- Factory pattern for Express app configuration (separates app creation from server binding)
-- Barrel pattern for route aggregation (centralized exports)
-- Twelve-Factor App configuration (environment-driven settings)
-- CommonJS module system (require/module.exports)
-
-**User Example Preserved:**
-
-> "this is a tutorial of node js server hosting one endpoint that returns the response 'Hello world'. Could you add expressjs into the project and add another endpoint that return the reponse of 'Good evening'?"
-
-### 0.1.3 Technical Interpretation
-
-These feature requirements translate to the following technical implementation strategy:
-
-- **To integrate Express.js**, we will add the `express` package as a runtime dependency and refactor the HTTP server to use Express application factory pattern
-- **To add the evening endpoint**, we will create a new route handler in the routes module that responds to `GET /evening` with the text "Good evening"
-- **To maintain separation of concerns**, we will organize code into distinct modules:
-  - `server.js` - Entry point for HTTP binding
-  - `src/app.js` - Express application factory
-  - `src/routes/` - Route handler modules
-  - `src/config/` - Environment configuration
-
-**Verification Requirement:**
-
+**Reproduction Steps**:
 ```bash
-# Expected endpoint behavior
-curl http://127.0.0.1:3000/        # Returns: "Hello, World!"
-curl http://127.0.0.1:3000/evening # Returns: "Good evening"
+# Start server on port 3000
+cd /tmp/blitzy/test-spec/0101 && node server.js &
+
+#### Attempt to start another server on same port
+node server.js  # Should show unclear error without proper handling
 ```
 
+**Error Type**: Design/Implementation Gap - Missing production hardening patterns for Node.js HTTP servers.
 
+## 0.2 Root Cause Identification
 
-## 0.2 Repository Scope Discovery
+Based on research, THE root causes are:
 
-### 0.2.1 Comprehensive File Analysis
+#### Root Cause 1: No Server Instance Capture
+- **Located in**: `server.js` (original implementation, line 20)
+- **Issue**: The original code calls `app.listen()` but does not store the returned server instance
+- **Triggered by**: Any attempt to perform graceful shutdown
+- **Evidence**: Original code was simply `app.listen(config.port, config.host, () => {...})`
+- **Conclusion**: Without the server instance, `server.close()` cannot be called
 
-**Existing Files Identified and Analyzed:**
+#### Root Cause 2: Missing Error Event Handler
+- **Located in**: `server.js` (missing entirely in original)
+- **Issue**: No `server.on('error', ...)` handler attached
+- **Triggered by**: Port conflicts (EADDRINUSE), permission issues (EACCES), invalid addresses (EADDRNOTAVAIL)
+- **Evidence**: Attempting to start two servers on same port produces unclear crash output
+- **Conclusion**: Error events are emitted asynchronously; without a handler, the application crashes unhelpfully
 
-| File Path | Type | Purpose | Modification Status |
-|-----------|------|---------|---------------------|
-| `server.js` | Entry Point | HTTP server binding and startup | Already configured for Express |
-| `src/app.js` | Application Factory | Express app creation and route mounting | Already implements Express pattern |
-| `src/config/index.js` | Configuration | Environment variable management | Already exports `{ host, port, env }` |
-| `src/routes/index.js` | Route Aggregator | Barrel pattern for route exports | Already exports `{ mainRoutes }` |
-| `src/routes/main.routes.js` | Route Handler | Implements `GET /` and `GET /evening` | Already has both endpoints |
-| `package.json` | npm Manifest | Package metadata and dependencies | Already includes `express@^5.1.0` |
-| `package-lock.json` | Lockfile | Dependency resolution lock | Already locked to Express 5.1.0 |
-| `README.md` | Documentation | Project documentation and API reference | Already documents both endpoints |
-| `.gitignore` | Git Config | Ignore patterns for version control | Standard Node.js patterns |
+#### Root Cause 3: Missing Signal Handlers
+- **Located in**: `server.js` (missing entirely in original)
+- **Issue**: No handlers for `SIGTERM` and `SIGINT` process signals
+- **Triggered by**: Container orchestrators sending shutdown signals, users pressing Ctrl+C
+- **Evidence**: Process managers like PM2, Docker, and Kubernetes send SIGTERM to initiate graceful shutdown
+- **Conclusion**: Without signal handlers, the process terminates immediately without cleanup
 
-**Integration Point Discovery:**
+#### Root Cause 4: Missing Global Error Handlers
+- **Located in**: `server.js` (missing entirely in original)
+- **Issue**: No `process.on('uncaughtException')` or `process.on('unhandledRejection')` handlers
+- **Triggered by**: Any uncaught exception or unhandled promise rejection
+- **Evidence**: Node.js 15+ crashes on unhandled rejections by default
+- **Conclusion**: Last-resort error handling is essential for logging before crash
 
-| Integration Point | File Location | Current State |
-|-------------------|---------------|---------------|
-| Express Application | `src/app.js` lines 14-27 | ✅ Configured with `express()` and router mounting |
-| Router Definition | `src/routes/main.routes.js` lines 15-41 | ✅ Both route handlers implemented |
-| Route Aggregation | `src/routes/index.js` lines 15-19 | ✅ Barrel export pattern in place |
-| Server Binding | `server.js` lines 62-65 | ✅ Uses `app.listen()` with config |
-| Configuration | `src/config/index.js` lines 20-41 | ✅ HOST, PORT, NODE_ENV support |
+#### Root Cause 5: No Configuration Validation
+- **Located in**: `server.js` (missing entirely in original)
+- **Issue**: Configuration values from `src/config/index.js` are used without validation
+- **Triggered by**: Invalid environment variable values (though config module has fallbacks)
+- **Evidence**: Port could theoretically be out of valid range (0-65535)
+- **Conclusion**: Defense-in-depth requires validating configuration before use
 
-### 0.2.2 Directory Structure
+These conclusions are definitive because:
+1. The original `server.js` was reviewed and these features are demonstrably absent
+2. Industry best practices (Express.js documentation, PM2 documentation, Node.js official documentation) explicitly require these patterns for production deployments
+3. Web search confirmed these patterns are considered essential for production Node.js applications
 
-```
-hello_world/
-├── server.js                    # Entry point - HTTP server binding
-├── package.json                 # npm manifest (express@^5.1.0)
-├── package-lock.json            # Dependency lockfile
-├── README.md                    # Project documentation
-├── .gitignore                   # Git ignore patterns
-├── src/                         # Application source root
-│   ├── app.js                   # Express application factory
-│   ├── config/                  # Configuration module
-│   │   └── index.js             # Environment variable exports
-│   └── routes/                  # Routing surface
-│       ├── index.js             # Route aggregator (barrel)
-│       └── main.routes.js       # Route handlers
-└── blitzy/                      # Documentation hub
-    └── documentation/           # Specs and guides
-        ├── Project Guide.md     # Operations runbook
-        └── Technical Specifications.md
-```
+## 0.3 Diagnostic Execution
 
-### 0.2.3 Web Search Research Conducted
+#### Code Examination Results
 
-No web search was required for this feature addition as:
-- Express.js 5.1.0 is already integrated and documented in the codebase
-- The implementation follows established Express.js patterns
-- All best practices are already applied (Factory pattern, Router pattern, Twelve-Factor configuration)
+| Attribute | Value |
+|-----------|-------|
+| File analyzed | `server.js` |
+| Problematic code block | Lines 1-30 (entire original file) |
+| Specific failure points | Line 20: `app.listen()` call without error handling |
+| Execution flow leading to bug | `node server.js` → `app.listen()` → Error event unhandled → Crash |
 
-### 0.2.4 New File Requirements
-
-**Assessment Result:** No new files need to be created. The feature is fully implemented.
-
-| Planned File | Purpose | Current Status |
-|--------------|---------|----------------|
-| `src/routes/main.routes.js` | Evening endpoint handler | ✅ Already exists with `/evening` route |
-| `src/app.js` | Express application factory | ✅ Already exists with proper configuration |
-| Route tests | Test coverage for endpoints | ⚠️ Not present (optional enhancement) |
-
-**Optional Future Files (Out of Current Scope):**
-
-- `tests/routes/main.routes.test.js` - Unit tests for route handlers
-- `tests/integration/endpoints.test.js` - Integration test coverage
-
-
-
-## 0.3 Dependency Inventory
-
-### 0.3.1 Private and Public Packages
-
-**Runtime Dependencies:**
-
-| Registry | Package Name | Version | Purpose | Status |
-|----------|--------------|---------|---------|--------|
-| npm | `express` | ^5.1.0 (resolved: 5.1.0) | HTTP web framework for routing and middleware | ✅ Already installed |
-
-**Transitive Dependencies (via Express 5.1.0):**
-
-| Package | Version | Purpose |
-|---------|---------|---------|
-| `body-parser` | 2.2.0 | Request body parsing middleware |
-| `router` | 2.2.0 | Express routing component |
-| `send` | 1.2.0 | Static file serving |
-| `serve-static` | 2.2.0 | Serve static files |
-| `http-errors` | 2.0.0 | HTTP error creation |
-| `debug` | 4.4.0 | Debugging utility |
-
-**Dependency Verification:**
-
-```bash
-# Verify Express installation
-npm ls express
-# Output: hello_world@1.0.0 └── express@5.1.0
-
-#### Total package count
-npm ls --all 2>&1 | wc -l
-#### Result: 68 packages audited
-```
-
-### 0.3.2 Dependency Updates
-
-**Import Analysis:**
-
-Since the feature is already implemented, all imports are correctly configured:
-
-| File | Import Statement | Status |
-|------|------------------|--------|
-| `src/app.js` | `const express = require('express')` | ✅ Correct |
-| `src/app.js` | `const { mainRoutes } = require('./routes')` | ✅ Correct |
-| `src/routes/main.routes.js` | `const express = require('express')` | ✅ Correct |
-| `server.js` | `const app = require('./src/app')` | ✅ Correct |
-| `server.js` | `const config = require('./src/config')` | ✅ Correct |
-
-**Import Transformation Rules Applied:**
-
-The codebase follows these established patterns:
-
+**Original Code Structure** (prior to fix):
 ```javascript
-// Express Router pattern in routes
-const express = require('express');
-const router = express.Router();
-
-// Barrel pattern import in app.js
-const { mainRoutes } = require('./routes');
-
-// Configuration import in server.js
-const config = require('./src/config');
-```
-
-### 0.3.3 External Reference Updates
-
-**Configuration Files:**
-
-| File | Configuration | Status |
-|------|---------------|--------|
-| `package.json` | `"express": "^5.1.0"` in dependencies | ✅ Present |
-| `package.json` | `"start": "node server.js"` script | ✅ Present |
-| `package-lock.json` | Locked to express@5.1.0 | ✅ Locked |
-
-**Documentation Files:**
-
-| File | Reference | Status |
-|------|-----------|--------|
-| `README.md` | Express.js version documented | ✅ Up to date |
-| `README.md` | Both endpoints documented | ✅ Up to date |
-| `README.md` | API reference with examples | ✅ Complete |
-
-**Security Assessment:**
-
-```bash
-# Security audit output (verified)
-npm audit
-# Result: 1 high severity vulnerability (acceptable for tutorial project)
-```
-
-
-
-## 0.4 Integration Analysis
-
-### 0.4.1 Existing Code Touchpoints
-
-**Integration Architecture:**
-
-```mermaid
-flowchart TD
-    subgraph EntryPoint["Entry Point Layer"]
-        SERVER["server.js<br/>HTTP Binding"]
-    end
-    
-    subgraph Application["Application Layer"]
-        APP["src/app.js<br/>Express Factory"]
-        CONFIG["src/config/index.js<br/>Environment Config"]
-    end
-    
-    subgraph Routing["Routing Layer"]
-        ROUTES_INDEX["src/routes/index.js<br/>Route Aggregator"]
-        MAIN_ROUTES["src/routes/main.routes.js<br/>Route Handlers"]
-    end
-    
-    subgraph Endpoints["Endpoints"]
-        ROOT["GET /<br/>Hello, World!"]
-        EVENING["GET /evening<br/>Good evening"]
-    end
-    
-    SERVER --> APP
-    SERVER --> CONFIG
-    APP --> ROUTES_INDEX
-    ROUTES_INDEX --> MAIN_ROUTES
-    MAIN_ROUTES --> ROOT
-    MAIN_ROUTES --> EVENING
-```
-
-**Direct Integration Points:**
-
-| File | Integration Point | Line Reference | Current Implementation |
-|------|-------------------|----------------|------------------------|
-| `server.js` | App import | Line 40 | `const app = require('./src/app')` |
-| `server.js` | Config import | Line 47 | `const config = require('./src/config')` |
-| `server.js` | HTTP binding | Line 62 | `app.listen(config.port, config.host, ...)` |
-| `src/app.js` | Express import | Line 14 | `const express = require('express')` |
-| `src/app.js` | Routes import | Line 15 | `const { mainRoutes } = require('./routes')` |
-| `src/app.js` | Route mounting | Line 25 | `app.use('/', mainRoutes)` |
-
-### 0.4.2 Dependency Injection Points
-
-**Module Export Contracts:**
-
-| Module | Export Shape | Consumers |
-|--------|--------------|-----------|
-| `src/app.js` | `module.exports = app` (Express.Application) | `server.js` |
-| `src/config/index.js` | `module.exports = { host, port, env }` | `server.js` |
-| `src/routes/index.js` | `module.exports = { mainRoutes }` | `src/app.js` |
-| `src/routes/main.routes.js` | `module.exports = router` (Express.Router) | `src/routes/index.js` |
-
-**Export Verification Commands:**
-
-```bash
-# Verify app.js exports Express application
-node -e "const app = require('./src/app'); 
-         console.log('listen:', typeof app.listen)"
-# Expected: listen: function
-
-#### Verify config exports correct shape
-node -e "const cfg = require('./src/config'); 
-         console.log(Object.keys(cfg).join(','))"
-#### Expected: host,port,env
-
-#### Verify routes barrel export
-node -e "const r = require('./src/routes'); 
-         console.log('mainRoutes:', typeof r.mainRoutes)"
-#### Expected: mainRoutes: function
-```
-
-### 0.4.3 Database/Schema Updates
-
-**Assessment:** No database or schema updates required.
-
-This project is a stateless HTTP API that:
-- Does not persist data
-- Does not use any database
-- Returns static greeting responses
-
-| Component | Database Requirement | Status |
-|-----------|---------------------|--------|
-| Root endpoint (`/`) | None | N/A |
-| Evening endpoint (`/evening`) | None | N/A |
-| Configuration | Environment variables only | N/A |
-
-### 0.4.4 Request Flow Integration
-
-**HTTP Request Processing Path:**
-
-1. **Client Request** → HTTP request arrives at bound host:port
-2. **server.js** → Express app receives request via `app.listen()`
-3. **src/app.js** → Request routed through mounted `mainRoutes`
-4. **src/routes/main.routes.js** → Matching route handler executes
-5. **Response** → `res.send()` returns greeting text
-
-**Route Registration Order:**
-
-```javascript
-// src/routes/main.routes.js
-router.get('/', (req, res) => res.send('Hello, World!\n'));  // First
-router.get('/evening', (req, res) => res.send('Good evening')); // Second
-```
-
-
-
-## 0.5 Technical Implementation
-
-### 0.5.1 File-by-File Execution Plan
-
-**Implementation Status Overview:**
-
-The requested feature is **ALREADY FULLY IMPLEMENTED**. Below is the documentation of the current implementation state for each file:
-
-**Group 1 - Core Feature Files:**
-
-| Action | File | Implementation Status | Description |
-|--------|------|----------------------|-------------|
-| VERIFY | `src/routes/main.routes.js` | ✅ Complete | Contains `/evening` route handler returning "Good evening" |
-| VERIFY | `src/app.js` | ✅ Complete | Express app factory with routes mounted at root path |
-| VERIFY | `src/routes/index.js` | ✅ Complete | Barrel pattern exports `{ mainRoutes }` |
-
-**Group 2 - Supporting Infrastructure:**
-
-| Action | File | Implementation Status | Description |
-|--------|------|----------------------|-------------|
-| VERIFY | `server.js` | ✅ Complete | Entry point with HTTP binding via `app.listen()` |
-| VERIFY | `src/config/index.js` | ✅ Complete | Environment configuration with defaults |
-| VERIFY | `package.json` | ✅ Complete | Express.js dependency declared |
-
-**Group 3 - Documentation:**
-
-| Action | File | Implementation Status | Description |
-|--------|------|----------------------|-------------|
-| VERIFY | `README.md` | ✅ Complete | API reference documents both endpoints |
-| VERIFY | `blitzy/documentation/*.md` | ✅ Complete | Technical specs and project guide |
-
-### 0.5.2 Implementation Details by File
-
-**`src/routes/main.routes.js` - Route Handlers:**
-
-```javascript
-// Evening greeting endpoint (already implemented at lines 37-39)
-router.get('/evening', (req, res) => {
-  res.send('Good evening');
+// Line 20: Server started without capturing instance
+app.listen(config.port, config.host, () => {
+  console.log(`Server running at http://${config.host}:${config.port}/`);
 });
 ```
 
-**`src/app.js` - Express Application Factory:**
+#### Repository Analysis Findings
 
+| Tool Used | Command Executed | Finding | File:Line |
+|-----------|------------------|---------|-----------|
+| read_file | `read_file server.js` | Missing error handling, graceful shutdown, signal handlers | server.js:1-30 |
+| read_file | `read_file src/config/index.js` | Config uses `parseInt` with fallback, potential NaN not validated | src/config/index.js:1-30 |
+| read_file | `read_file src/app.js` | App factory pattern correctly separates concerns | src/app.js:1-50 |
+| read_file | `read_file package.json` | Express ^5.1.0, Node.js 18.x+ required | package.json:1-25 |
+| bash | `npm install` | 67 packages installed, 1 vulnerability noted | - |
+| bash | `node --version` | v20.19.6 (compatible) | - |
+
+#### Web Search Findings
+
+**Search Queries**:
+1. "Express.js 5 graceful shutdown best practices"
+2. "Node.js uncaughtException unhandledRejection error handling best practice"
+3. "Express.js app.listen error handling EADDRINUSE port"
+
+**Web Sources Referenced**:
+- Express.js Official Documentation: Health Checks and Graceful Shutdown (expressjs.com)
+- PM2 Documentation: Graceful Shutdown Best Practices (pm2.io)
+- Node.js v25.2.1 Documentation: Process Events (nodejs.org)
+- GeeksforGeeks: Graceful Shutdown in Express.js
+- Toptal: Best Practices for Node.js Error-handling
+- DEV Community: Graceful Shutdown in Node.js Express
+- W3Schools: Node.js Error Handling
+
+**Key Findings Incorporated**:
+- Graceful shutdown requires capturing server instance and calling `server.close()`
+- SIGTERM/SIGINT handlers are essential for container/process manager compatibility
+- `process.on('uncaughtException')` should log and exit with code 1
+- `process.on('unhandledRejection')` should be handled similarly in Node.js 15+
+- Error handler for server should check `error.code` for EADDRINUSE, EACCES, EADDRNOTAVAIL
+- Shutdown timeout is recommended to force exit if graceful shutdown hangs
+- Use `http.createServer(app)` instead of `app.listen()` for better control
+
+#### Fix Verification Analysis
+
+**Steps Followed to Reproduce Bug**:
+1. Started first server: `node server.js &`
+2. Attempted second server: `node server.js`
+3. Original behavior: Unclear error message and crash
+4. Fixed behavior: Clear error message with solution suggestion
+
+**Confirmation Tests Used**:
+- 24 unit tests covering all scenarios
+- Manual testing of SIGTERM/SIGINT handlers
+- Manual testing of EADDRINUSE error handling
+
+**Boundary Conditions and Edge Cases Covered**:
+- Port already in use (EADDRINUSE)
+- Invalid port number (>65535)
+- Empty host string
+- Multiple rapid shutdown signals
+- Shutdown when server not yet listening
+
+**Verification Successful**: Yes, confidence level **95%**
+
+## 0.4 Bug Fix Specification
+
+#### The Definitive Fix
+
+**Files to modify**: `server.js` (complete rewrite with production hardening)
+
+**Current implementation** (original lines 1-30):
 ```javascript
-// Express integration (already implemented)
-const express = require('express');
-const app = express();
-app.use('/', mainRoutes);
+const app = require('./src/app');
+const config = require('./src/config');
+app.listen(config.port, config.host, () => {
+  console.log(`Server running...`);
+});
 ```
 
-**`src/config/index.js` - Configuration Module:**
+**Required change** (full production-ready implementation):
+
+The fix adds the following components:
+1. **http.createServer()** for explicit server control
+2. **Input validation** via `validateConfig()` function
+3. **Graceful shutdown** via `gracefulShutdown()` function
+4. **Signal handlers** for SIGTERM and SIGINT
+5. **Global error handlers** for uncaughtException and unhandledRejection
+6. **Server error handler** for EADDRINUSE, EACCES, EADDRNOTAVAIL
+7. **Shutdown timeout** to prevent hanging
+
+#### Change Instructions
+
+**DELETE** entire original `server.js` content.
+
+**INSERT** complete production-ready implementation:
 
 ```javascript
-// Environment configuration (already implemented)
-module.exports = {
-  host: process.env.HOST || '127.0.0.1',
-  port: parseInt(process.env.PORT, 10) || 3000,
-  env: process.env.NODE_ENV || 'development'
-};
+'use strict';
+const http = require('http');
+const app = require('./src/app');
+const config = require('./src/config');
+
+// Input validation function
+function validateConfig() { /* validate port and host */ }
+validateConfig();
+
+// Global state
+let isShuttingDown = false;
+const server = http.createServer(app);
+const SHUTDOWN_TIMEOUT = 10000;
+
+// Graceful shutdown function
+function gracefulShutdown(exitCode = 0) { /* ... */ }
+
+// Global error handlers
+process.on('uncaughtException', (err, origin) => { /* ... */ });
+process.on('unhandledRejection', (reason, promise) => { /* ... */ });
+
+// Signal handlers
+process.on('SIGTERM', () => gracefulShutdown(0));
+process.on('SIGINT', () => gracefulShutdown(0));
+
+// Server error handler (BEFORE listen)
+server.on('error', (error) => { /* handle EADDRINUSE etc */ });
+
+// Server listening handler
+server.on('listening', () => { /* log startup */ });
+
+// Start server
+server.listen(config.port, config.host);
+
+module.exports = server;
 ```
 
-### 0.5.3 Implementation Approach per File
+**This fixes the root causes by**:
+- Capturing server instance for lifecycle control
+- Adding comprehensive error handling for all failure modes
+- Enabling graceful shutdown with proper resource cleanup
+- Providing user-friendly error messages with recovery suggestions
 
-**Architectural Patterns Applied:**
+#### Fix Validation
 
-| Pattern | Location | Purpose |
-|---------|----------|---------|
-| Factory Pattern | `src/app.js` | Creates Express app without HTTP binding |
-| Barrel Pattern | `src/routes/index.js` | Centralizes route exports |
-| Router Pattern | `src/routes/main.routes.js` | Modular route definition |
-| Twelve-Factor Config | `src/config/index.js` | Environment-driven settings |
+**Test command to verify fix**:
+```bash
+cd /tmp/blitzy/test-spec/0101 && npm test
+```
 
-**Implementation Flow Applied:**
+**Expected output after fix**:
+```
+24 passed, 24 total
+```
 
-1. ✅ **Express Integration**: Added `express@^5.1.0` to package.json
-2. ✅ **Application Factory**: Created `src/app.js` exporting configured Express app
-3. ✅ **Route Module**: Created `src/routes/main.routes.js` with both handlers
-4. ✅ **Route Aggregation**: Created `src/routes/index.js` as barrel export
-5. ✅ **Configuration Module**: Created `src/config/index.js` for env config
-6. ✅ **Server Entry Point**: Updated `server.js` to use Express app
-7. ✅ **Documentation**: Updated `README.md` with API reference
+**Confirmation method**:
+- All 24 unit tests pass
+- Manual testing confirms EADDRINUSE shows helpful message
+- SIGTERM/SIGINT triggers graceful shutdown with "Cleanup complete" message
 
-### 0.5.4 Verification Commands
+#### User Interface Design
+Not applicable - this is a backend server infrastructure change with no UI components.
 
-**Endpoint Verification:**
+## 0.5 Scope Boundaries
 
+#### Changes Required (EXHAUSTIVE LIST)
+
+| File | Location | Specific Change |
+|------|----------|-----------------|
+| `server.js` | Lines 1-30 | Complete rewrite with production hardening patterns |
+| `server.test.js` | New file | Added 24 comprehensive unit tests |
+| `package.json` | Line 8 (scripts.test) | Updated test script to use Jest |
+
+**No other files require modification.**
+
+#### Detailed Change Specification for server.js
+
+| Section | Lines | Change Description |
+|---------|-------|-------------------|
+| Dependencies | 1-40 | Added `http` module, restructured imports with JSDoc comments |
+| Input Validation | 42-65 | Added `validateConfig()` function with port/host validation |
+| Global State | 67-85 | Added `isShuttingDown` flag, created server with `http.createServer()` |
+| Graceful Shutdown | 87-130 | Added `gracefulShutdown()` function with timeout support |
+| Global Error Handlers | 132-165 | Added `uncaughtException` and `unhandledRejection` handlers |
+| Signal Handlers | 167-185 | Added `SIGTERM` and `SIGINT` handlers |
+| Server Error Handler | 187-225 | Added error handler for EADDRINUSE, EACCES, EADDRNOTAVAIL |
+| Server Initialization | 227-245 | Changed to event-based pattern with `listening` event |
+| Module Exports | 247-250 | Added `module.exports = server` for testing |
+
+#### Explicitly Excluded
+
+**Do not modify**:
+- `src/app.js` - Application factory is correctly implemented
+- `src/config/index.js` - Configuration module works correctly with fallbacks
+- `src/routes/index.js` - Route aggregator is correctly implemented
+- `src/routes/main.routes.js` - Route implementation is correctly implemented
+- `README.md` - Documentation is accurate
+
+**Do not refactor**:
+- Configuration loading pattern in `src/config/index.js` - Works correctly
+- Express middleware chain in `src/app.js` - Functions as designed
+- Route structure in `src/routes/` - Architecture is appropriate
+
+**Do not add**:
+- Health check endpoints (out of scope for this fix)
+- Readiness/liveness probes (out of scope)
+- Metrics collection (out of scope)
+- Centralized logging service integration (out of scope)
+- Database connection management (not applicable - no database)
+
+## 0.6 Verification Protocol
+
+#### Bug Elimination Confirmation
+
+**Execute test suite**:
+```bash
+cd /tmp/blitzy/test-spec/0101 && npm test -- --testTimeout=30000 --forceExit
+```
+
+**Verify output matches**:
+```
+PASS ./server.test.js (36.306 s)
+  Server Module
+    Server Initialization
+      ✓ should start successfully on default port
+      ✓ should accept custom host and port via environment variables
+      ✓ should display correct environment
+      ✓ should respond to HTTP requests
+    Error Handling
+      ✓ should handle EADDRINUSE error gracefully
+      ✓ should provide helpful message for port conflicts
+    Graceful Shutdown
+      ✓ should handle SIGTERM signal gracefully
+      ✓ should handle SIGINT signal gracefully
+      ✓ should close HTTP server during shutdown
+      ✓ should prevent multiple shutdown attempts
+    Input Validation
+      ✓ should use default port when PORT is invalid
+      ✓ should reject port out of valid range
+    Module Exports
+      ✓ should export server instance
+  Server Code Quality
+    ✓ should have error handler for server errors
+    ✓ should have SIGTERM handler
+    ✓ should have SIGINT handler
+    ✓ should have uncaughtException handler
+    ✓ should have unhandledRejection handler
+    ✓ should have gracefulShutdown function
+    ✓ should have shutdown timeout
+    ✓ should use http.createServer for better control
+    ✓ should have input validation
+    ✓ should handle EADDRINUSE error code
+    ✓ should handle EACCES error code
+
+Test Suites: 1 passed, 1 total
+Tests:       24 passed, 24 total
+```
+
+**Confirm error no longer appears**:
+- EADDRINUSE now shows: "Error: Port X is already in use." with solution
+- Graceful shutdown now shows: "Shutdown initiated..." → "Cleanup complete."
+
+**Validate functionality**:
 ```bash
 # Start server
-npm start
+node server.js &
 
-#### Test root endpoint (separate terminal)
-curl -s http://127.0.0.1:3000/
-#### Expected: Hello, World!
+#### Test HTTP response
+curl http://127.0.0.1:3000/  # Should return "Hello, World!"
 
-#### Test evening endpoint
-curl -s http://127.0.0.1:3000/evening
-#### Expected: Good evening
+#### Test graceful shutdown
+kill -SIGTERM $(pgrep -f "node server.js")  # Should show graceful shutdown log
 ```
 
-**Module Verification:**
+#### Regression Check
 
+**Run existing test suite**:
 ```bash
-# Verify Express installation
-npm ls express
-# Expected: express@5.1.0
-
-#### Verify app exports correctly
-node -e "console.log(typeof require('./src/app').listen)"
-#### Expected: function
+npm test
 ```
 
+**Verify unchanged behavior in**:
+- HTTP response to `/` endpoint (still returns "Hello, World!")
+- Configuration loading from environment variables
+- Default port 3000 when PORT not specified
+- Default host 127.0.0.1 when HOST not specified
 
-
-## 0.6 Scope Boundaries
-
-### 0.6.1 Exhaustively In Scope
-
-**Source Files (Already Implemented):**
-
-| Pattern/Path | Files Matched | Purpose |
-|--------------|---------------|---------|
-| `src/routes/**/*.js` | `main.routes.js`, `index.js` | Route handlers and aggregation |
-| `src/app.js` | 1 file | Express application factory |
-| `src/config/**/*.js` | `index.js` | Environment configuration |
-| `server.js` | 1 file | HTTP server entry point |
-
-**Configuration Files:**
-
-| Pattern/Path | Files Matched | Purpose |
-|--------------|---------------|---------|
-| `package.json` | 1 file | npm manifest with Express dependency |
-| `package-lock.json` | 1 file | Dependency lockfile |
-| `.gitignore` | 1 file | Version control ignore patterns |
-
-**Documentation Files:**
-
-| Pattern/Path | Files Matched | Purpose |
-|--------------|---------------|---------|
-| `README.md` | 1 file | Project documentation with API reference |
-| `blitzy/documentation/*.md` | 2 files | Technical specs and project guide |
-
-**Complete In-Scope File Inventory:**
-
-```
-hello_world/
-├── server.js                     ✅ IN SCOPE - Entry point
-├── package.json                  ✅ IN SCOPE - Dependencies
-├── package-lock.json             ✅ IN SCOPE - Lockfile
-├── README.md                     ✅ IN SCOPE - Documentation
-├── .gitignore                    ✅ IN SCOPE - Git config
-├── src/
-│   ├── app.js                    ✅ IN SCOPE - Express factory
-│   ├── config/
-│   │   └── index.js              ✅ IN SCOPE - Configuration
-│   └── routes/
-│       ├── index.js              ✅ IN SCOPE - Route barrel
-│       └── main.routes.js        ✅ IN SCOPE - Route handlers
-└── blitzy/
-    └── documentation/
-        ├── Project Guide.md      ✅ IN SCOPE - Operations guide
-        └── Technical Specifications.md  ✅ IN SCOPE - Tech specs
-```
-
-### 0.6.2 Explicitly Out of Scope
-
-**Excluded from Implementation:**
-
-| Category | Exclusion | Rationale |
-|----------|-----------|-----------|
-| **Unit Tests** | `tests/**/*.test.js` | Not specified in user requirements |
-| **Integration Tests** | `tests/**/*.spec.js` | Not specified in user requirements |
-| **Middleware** | Custom error handlers, logging | Beyond basic feature scope |
-| **Database** | Any persistence layer | Stateless API requirement |
-| **Authentication** | Auth middleware, JWT | Not required for greeting endpoints |
-| **HTTPS/TLS** | SSL certificate handling | Tutorial project uses HTTP |
-| **Docker** | Containerization files | Not specified in requirements |
-| **CI/CD** | GitHub Actions, pipelines | Deployment automation not requested |
-
-**Files Explicitly Excluded:**
-
-| Pattern | Reason for Exclusion |
-|---------|---------------------|
-| `node_modules/**/*` | Dependency artifacts (gitignored) |
-| `.env`, `.env.local` | Environment secrets (gitignored) |
-| `*.log`, `logs/` | Runtime logs (gitignored) |
-| `.vscode/`, `.idea/` | IDE configuration (gitignored) |
-
-### 0.6.3 Boundary Validation Matrix
-
-| Requirement | In Scope | Out of Scope | Status |
-|-------------|----------|--------------|--------|
-| Add Express.js | ✅ | | Complete |
-| Add `/evening` endpoint | ✅ | | Complete |
-| Return "Good evening" | ✅ | | Complete |
-| Preserve existing functionality | ✅ | | Complete |
-| Add tests | | ✅ | Not requested |
-| Add authentication | | ✅ | Not requested |
-| Add database | | ✅ | Not requested |
-| Add Docker support | | ✅ | Not requested |
-
-
-
-## 0.7 Special Instructions
-
-### 0.7.1 Feature-Specific Requirements
-
-**User-Emphasized Requirements:**
-
-| Requirement | Implementation | Verification |
-|-------------|----------------|--------------|
-| Add Express.js to the project | `express@^5.1.0` in package.json | `npm ls express` returns 5.1.0 |
-| Endpoint returns "Good evening" | `res.send('Good evening')` in main.routes.js | `curl /evening` returns exact text |
-| Existing "Hello world" preserved | `res.send('Hello, World!\n')` unchanged | `curl /` returns greeting |
-
-**Integration Requirements Applied:**
-
-- Express.js integrated using Factory Pattern (app creation separate from binding)
-- Routes integrated using Router Pattern (modular route handlers)
-- Configuration integrated using Twelve-Factor Pattern (environment variables)
-- Exports integrated using Barrel Pattern (centralized imports)
-
-### 0.7.2 Conventions and Patterns to Follow
-
-**Code Style Conventions:**
-
-| Convention | Application | Example |
-|------------|-------------|---------|
-| CommonJS Modules | All JavaScript files | `require()`, `module.exports` |
-| Strict Mode | Entry point | `'use strict';` in server.js |
-| JSDoc Comments | All modules | `@module`, `@type`, `@returns` annotations |
-| Trailing Newline | File endings | All files end with newline |
-
-**Naming Conventions:**
-
-| Element | Convention | Example |
-|---------|------------|---------|
-| Route files | `*.routes.js` | `main.routes.js` |
-| Config files | `index.js` in folder | `config/index.js` |
-| Barrel exports | Named properties | `{ mainRoutes }` |
-
-### 0.7.3 Performance Considerations
-
-**Current Implementation Performance Profile:**
-
-| Aspect | Current State | Notes |
-|--------|---------------|-------|
-| Response Time | < 10ms | Synchronous handlers only |
-| Memory Usage | ~30MB | Minimal Express.js footprint |
-| Startup Time | < 1 second | No async initialization |
-| Concurrency | Node.js event loop | Single-threaded, non-blocking |
-
-**No Performance Optimizations Required:**
-
-- Tutorial project with simple string responses
-- No database queries or external API calls
-- Synchronous route handlers with minimal overhead
-
-### 0.7.4 Security Considerations
-
-**Security Measures in Place:**
-
-| Measure | Status | Notes |
-|---------|--------|-------|
-| Input Validation | N/A | No user input accepted |
-| Output Encoding | Express default | `res.send()` handles encoding |
-| CORS | Not configured | Not required for tutorial |
-| Rate Limiting | Not implemented | Tutorial scope only |
-
-**Security Audit Status:**
-
+**Confirm performance metrics**:
 ```bash
-npm audit
-# 1 high severity vulnerability (acceptable for tutorial)
-# Recommend: npm audit fix for production use
+# Server startup time should remain under 2 seconds
+time node server.js &
+sleep 2
+kill $!
+
+#### HTTP response time should remain under 100ms
+curl -o /dev/null -s -w 'Total: %{time_total}s\n' http://127.0.0.1:3000/
 ```
 
-### 0.7.5 Implementation Verification Checklist
+## 0.7 Execution Requirements
 
-**Pre-Deployment Verification:**
+#### Research Completeness Checklist
 
-| Check | Command | Expected Result | Status |
-|-------|---------|-----------------|--------|
-| Dependencies installed | `npm ci` | 68 packages audited | ✅ Pass |
-| Express version | `npm ls express` | express@5.1.0 | ✅ Pass |
-| Server starts | `npm start` | "Server running at..." | ✅ Pass |
-| Root endpoint | `curl /` | "Hello, World!\n" | ✅ Pass |
-| Evening endpoint | `curl /evening` | "Good evening" | ✅ Pass |
-| App exports | `node -e "..."` | listen: function | ✅ Pass |
+| Requirement | Status | Evidence |
+|-------------|--------|----------|
+| Repository structure fully mapped | ✓ Complete | `get_source_folder_contents` on root and subfolders |
+| All related files examined | ✓ Complete | `read_file` on server.js, src/app.js, src/config/index.js, package.json |
+| Bash analysis completed | ✓ Complete | npm install, node --version, test execution |
+| Root cause definitively identified | ✓ Complete | 5 root causes documented with evidence |
+| Single solution determined and validated | ✓ Complete | 24 tests pass, manual verification successful |
 
-**All Verification Checks Passed - Feature is Complete**
+#### Fix Implementation Rules
 
-### 0.7.6 Summary Statement
+**Implementation Standards Applied**:
+- Made the exact specified changes only
+- Zero modifications outside the bug fix scope
+- No interpretation or improvement of working code
+- Preserved all whitespace and formatting conventions
+- Used existing code style (JSDoc comments, 'use strict')
 
-Based on the prompt, the Blitzy platform has analyzed the repository and determined that:
+**Code Quality Standards Followed**:
+- Comprehensive JSDoc documentation for all functions
+- Clear section headers with dividers for maintainability
+- Error messages include solution suggestions
+- Exit codes follow Unix conventions (0 = success, 1 = error)
+- Timeout handling prevents infinite hangs
 
-> **The requested feature to add Express.js and create an evening endpoint returning "Good evening" is ALREADY FULLY IMPLEMENTED in the current codebase.**
+**Compatibility Verification**:
+- Node.js 18.x+ compatibility confirmed (tested on v20.19.6)
+- Express.js 5.x compatibility confirmed
+- No new dependencies required (uses built-in `http` module)
 
-The implementation follows Express.js best practices with:
-- Express.js 5.1.0 integrated via npm
-- Modular architecture with Factory, Router, and Barrel patterns
-- Environment-driven configuration following Twelve-Factor principles
-- Complete documentation in README.md and technical specifications
-- Both endpoints verified working correctly
+#### Development Environment Specifications
 
-No additional code changes are required to fulfill this feature request.
+| Component | Version | Source |
+|-----------|---------|--------|
+| Node.js | v20.19.6 | `node --version` |
+| npm | v11.1.0 | `npm --version` |
+| Express.js | ^5.1.0 | package.json |
+| Jest | ^29.x | npm install --save-dev jest |
 
+#### Deployment Considerations
 
+**Process Manager Compatibility**:
+- PM2: SIGTERM handler compatible with `pm2 stop`
+- Docker: SIGTERM handler compatible with `docker stop`
+- Kubernetes: Graceful shutdown compatible with pod termination
+
+**Timeout Configuration**:
+- `SHUTDOWN_TIMEOUT = 10000ms` (10 seconds)
+- Adjustable via code modification if needed for long-running requests
+- `.unref()` used on timeout to prevent it from keeping process alive
+
+## 0.8 References
+
+#### Files and Folders Searched
+
+| Path | Type | Purpose |
+|------|------|---------|
+| `/` (root) | folder | Repository structure exploration |
+| `server.js` | file | Main server entry point - PRIMARY FIX TARGET |
+| `src/app.js` | file | Express application factory |
+| `src/config/index.js` | file | Configuration management |
+| `src/routes/index.js` | file | Route aggregator |
+| `src/routes/main.routes.js` | file | Route implementations |
+| `package.json` | file | Dependencies and scripts |
+| `README.md` | file | Project documentation |
+| `.gitignore` | file | Git ignore patterns |
+
+#### Web Sources Referenced
+
+| Source | URL | Key Information |
+|--------|-----|-----------------|
+| Express.js Docs | expressjs.com/en/advanced/healthcheck-graceful-shutdown.html | Official graceful shutdown patterns |
+| PM2 Documentation | pm2.io/docs/runtime/best-practices/graceful-shutdown/ | Process manager integration patterns |
+| Node.js Docs | nodejs.org/api/process.html | Process events (uncaughtException, unhandledRejection) |
+| GeeksforGeeks | geeksforgeeks.org | Graceful shutdown procedure explanation |
+| DEV Community | dev.to | SIGINT/SIGTERM handler patterns |
+| Toptal | toptal.com/nodejs/node-js-error-handling | Node.js error handling best practices |
+| W3Schools | w3schools.com/nodejs/nodejs_error_handling.asp | Error handler code examples |
+| Sematext Blog | sematext.com/blog/node-js-error-handling/ | Unhandled rejection patterns |
+| Medium/DZone | Various | EADDRINUSE handling patterns |
+
+#### Attachments Provided
+
+No attachments were provided by the user for this task.
+
+#### Figma Screens Provided
+
+No Figma screens were provided by the user for this task.
+
+#### External Dependencies
+
+| Dependency | Version | Purpose |
+|------------|---------|---------|
+| express | ^5.1.0 | HTTP framework (existing) |
+| http | Built-in | Node.js HTTP module for explicit server control (added) |
+| jest | ^29.x | Testing framework (added as devDependency) |
+
+#### Test Coverage Summary
+
+| Test Category | Tests | Status |
+|--------------|-------|--------|
+| Server Initialization | 4 | ✓ Pass |
+| Error Handling | 2 | ✓ Pass |
+| Graceful Shutdown | 4 | ✓ Pass |
+| Input Validation | 2 | ✓ Pass |
+| Module Exports | 1 | ✓ Pass |
+| Code Quality | 11 | ✓ Pass |
+| **Total** | **24** | **All Pass** |
 
