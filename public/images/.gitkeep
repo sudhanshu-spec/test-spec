@@ -1,0 +1,14 @@
+# .gitkeep
+# This file preserves the empty public/images directory in Git version control.
+# 
+# Purpose:
+# - Git does not track empty directories, so this placeholder ensures the
+#   images directory exists in the repository for all developers.
+# - This directory will hold image assets for the UI layer (icons, logos,
+#   backgrounds, etc.) that are served via Express.js static file middleware.
+#
+# Static asset serving:
+# - Images placed in this directory are served at /images/* URLs
+# - Configuration: express.static('public') in src/app.js
+#
+# Feel free to delete this file once actual image assets are added.
