@@ -1,56 +1,44 @@
 /**
- * UI Routes Module
+ * UI Page Routes Module
  * 
- * This module handles routes for server-side rendered UI pages.
- * Uses EJS template engine to render HTML pages with dynamic data.
+ * This module defines the UI page route handlers using Express Router.
+ * Routes render EJS templates for server-side HTML page generation,
+ * providing a visual web interface alongside the existing API endpoints.
  * 
- * Routes:
- * - GET /       : Home page with greeting
- * - GET /evening: Evening themed page
+ * Route contracts:
+ * - GET '/' renders 'index.ejs' with { greeting: 'Hello, World!' }
+ * - GET '/evening' renders 'evening.ejs' with { greeting: 'Good evening' }
+ * 
+ * This module serves HTML pages at the root namespace while main.routes.js
+ * continues to serve plain text API responses under /api namespace.
  * 
  * @module src/routes/ui.routes
  */
 
-'use strict';
-
 const express = require('express');
 
-/**
- * Express Router instance for UI routes
- * @type {express.Router}
- */
 const router = express.Router();
 
 /**
  * Home page route handler
- * Renders the index template with a greeting message.
+ * Renders the index template with 'Hello, World!' greeting message
  * 
  * @route GET /
- * @param {express.Request} req - Express request object
- * @param {express.Response} res - Express response object
- * @returns {void}
+ * @returns {HTML} Rendered index.ejs template with greeting
  */
 router.get('/', (req, res) => {
-  res.render('index', { 
-    greeting: 'Hello, World!',
-    title: 'Home'
-  });
+  res.render('index', { greeting: 'Hello, World!' });
 });
 
 /**
  * Evening page route handler
- * Renders the evening template with a themed greeting.
+ * Renders the evening template with themed 'Good evening' greeting
  * 
  * @route GET /evening
- * @param {express.Request} req - Express request object
- * @param {express.Response} res - Express response object
- * @returns {void}
+ * @returns {HTML} Rendered evening.ejs template with themed greeting
  */
 router.get('/evening', (req, res) => {
-  res.render('evening', { 
-    greeting: 'Good evening',
-    title: 'Evening'
-  });
+  res.render('evening', { greeting: 'Good evening' });
 });
 
 module.exports = router;
