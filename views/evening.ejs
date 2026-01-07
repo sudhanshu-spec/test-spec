@@ -1,26 +1,172 @@
+<%#
+  Evening Page Template - Express.js UI Layer
+  
+  This EJS template renders the evening-themed greeting page with dark mode styling.
+  It displays the "Good evening" greeting with night-inspired visual aesthetics
+  including a dark background (#1a1a2e) and light text (#eee).
+  
+  Template Variables (received from UI route handler):
+  - greeting (string): The greeting message to display (default: 'Good evening')
+  - title (string): Page-specific title for the document head (default: 'Evening')
+  
+  Features:
+  - Dark theme styling via 'evening-theme' body class
+  - Night sky decorative elements (stars, moon icon)
+  - Semantic HTML5 structure with main element
+  - Responsive design via CSS variables
+  - WCAG 2.1 AA compliant color contrast
+  
+  CSS Dependencies (via link tags):
+  - public/css/styles.css: Base styles, layout, typography
+  - public/css/evening.css: Dark theme overrides, evening colors
+  
+  CSS Classes Used (from evening.css):
+  - body.evening-theme: Enables dark mode color scheme
+  - .greeting-container: Centered content layout
+  - .greeting-container__title: Main greeting text styling
+  - .greeting-container__subtitle: Secondary text styling
+  - --evening-bg (#1a1a2e): Dark background color
+  - --evening-text (#eee): Light text color
+  
+  Partials Included:
+  - views/partials/header.ejs: Site navigation header
+  - views/partials/footer.ejs: Page footer with copyright
+  
+  JavaScript:
+  - public/js/main.js: Client-side interactivity
+  
+  Route: GET /evening
+  Renders with: { greeting: 'Good evening', title: 'Evening' }
+  
+  @file views/evening.ejs
+  @requires views/partials/header.ejs
+  @requires views/partials/footer.ejs
+  @requires public/css/styles.css
+  @requires public/css/evening.css
+  @requires public/js/main.js
+  @author Blitzy Platform
+-%>
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <%# Meta tags for character encoding and responsive viewport -%>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= typeof title !== 'undefined' ? title + ' | ' : '' %>Hello World App</title>
+  
+  <%# Additional meta tags for SEO and compatibility -%>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="description" content="Good evening greeting page with night theme - Express.js Hello World Application">
+  <meta name="theme-color" content="#1a1a2e">
+  
+  <%# Dynamic page title with fallback to default -%>
+  <title><%= typeof title !== 'undefined' && title ? title + ' | ' : '' %>Hello World App</title>
+  
+  <%# Base stylesheet - provides core layout, typography, and components -%>
   <link rel="stylesheet" href="/css/styles.css">
+  
+  <%# Evening theme stylesheet - provides dark mode colors and effects -%>
   <link rel="stylesheet" href="/css/evening.css">
 </head>
+<%#
+  Body element with 'evening-theme' class to activate dark mode styling.
+  This class triggers CSS custom properties from evening.css:
+  - --evening-bg: #1a1a2e (dark navy background)
+  - --evening-text: #eee (light text)
+  - --evening-accent-primary: #7c4dff (purple accent)
+-%>
 <body class="evening-theme">
-  <%- include('partials/header') %>
-  <main class="main-content">
-    <div class="greeting-container">
-      <h1 class="greeting-text"><%= greeting %></h1>
-      <p class="greeting-subtitle">Enjoy the peaceful evening hours!</p>
-      <div class="stars-decoration" aria-hidden="true">
-        <span class="star">★</span>
-        <span class="star">★</span>
-        <span class="star">★</span>
-      </div>
-    </div>
-  </main>
-  <%- include('partials/footer') %>
+  <%# Page wrapper for sticky footer layout pattern -%>
+  <div class="page-wrapper">
+    <%# 
+      Navigation header partial - provides site-wide navigation.
+      Includes links to Home (/) and Evening (/evening) pages.
+      The evening theme CSS styles the header with dark colors.
+    -%>
+    <%- include('partials/header') %>
+    
+    <%# 
+      Main content area - semantic HTML5 element for primary page content.
+      The .main-content class provides responsive padding and layout.
+    -%>
+    <main class="main-content" role="main">
+      <%#
+        Greeting container - centered layout for the greeting message.
+        CSS from styles.css and evening.css provides:
+        - Centered flexbox layout
+        - Minimum height for vertical centering
+        - Evening-specific glow effects
+      -%>
+      <section class="greeting-container" aria-labelledby="greeting-title">
+        <%#
+          Main greeting heading - displays the dynamic greeting message.
+          The greeting variable is passed from the UI route handler.
+          Default value: 'Good evening'
+        -%>
+        <h1 id="greeting-title" class="greeting-container__title">
+          <%= typeof greeting !== 'undefined' && greeting ? greeting : 'Good evening' %>
+        </h1>
+        
+        <%# Subtitle with contextual message about the evening time -%>
+        <p class="greeting-container__subtitle">
+          Enjoy the peaceful evening hours. The night brings tranquility and rest.
+        </p>
+        
+        <%#
+          Decorative evening elements - visual enhancement for the theme.
+          These elements are hidden from screen readers (aria-hidden).
+          CSS from evening.css styles these with subtle animations.
+        -%>
+        <div class="evening-decoration" aria-hidden="true">
+          <%# Moon icon representation using Unicode -%>
+          <span class="evening-decoration__moon" title="Moon">🌙</span>
+          
+          <%# Star decorations -%>
+          <div class="evening-decoration__stars">
+            <span class="star star--small">✦</span>
+            <span class="star star--medium">★</span>
+            <span class="star star--small">✦</span>
+            <span class="star star--large">★</span>
+            <span class="star star--small">✦</span>
+          </div>
+        </div>
+        
+        <%# 
+          Time display section - shows contextual evening time info.
+          Enhanced by client-side JavaScript in main.js.
+        -%>
+        <div class="greeting-container__time" aria-live="polite">
+          <p class="time-message">
+            <span class="time-icon" aria-hidden="true">🌆</span>
+            <span class="time-text">Wishing you a wonderful evening</span>
+          </p>
+        </div>
+        
+        <%# Navigation hint to explore other pages -%>
+        <nav class="greeting-container__nav" aria-label="Page navigation">
+          <a href="/" class="greeting-link greeting-link--primary">
+            <span class="greeting-link__icon" aria-hidden="true">🏠</span>
+            <span class="greeting-link__text">Return to Home</span>
+          </a>
+          <a href="/api/evening" class="greeting-link greeting-link--secondary">
+            <span class="greeting-link__icon" aria-hidden="true">📡</span>
+            <span class="greeting-link__text">View API Response</span>
+          </a>
+        </nav>
+      </section>
+    </main>
+    
+    <%# 
+      Footer partial - provides consistent page footer across all templates.
+      Contains copyright information, project links, and API reference.
+      Evening theme CSS styles the footer with dark colors.
+    -%>
+    <%- include('partials/footer') %>
+  </div>
+  
+  <%# 
+    Client-side JavaScript - loaded at end of body for optimal performance.
+    Provides interactive functionality like time-based greeting updates.
+  -%>
   <script src="/js/main.js"></script>
 </body>
 </html>
