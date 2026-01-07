@@ -1,31 +1,77 @@
-# Project Guide: Express.js Integration - Node.js Tutorial Server
+# Production-Ready Server Hardening - Project Guide
 
 ## Executive Summary
 
-**Project Completion: 71% (10 hours completed out of 14 total hours)**
+**Project Completion: 88%** (14 hours completed out of 16 total hours)
 
-This project implements a Node.js Express.js tutorial server with two HTTP GET endpoints. The core feature requested—integrating Express.js and adding an `/evening` endpoint returning "Good evening"—is **FULLY IMPLEMENTED AND VERIFIED WORKING**.
-
-The Final Validator agent completed code quality improvements by refactoring `server.js` for better readability, removing test log statements, and streamlining documentation.
+This project implements comprehensive production hardening for the Node.js HTTP server entry point (`server.js`). The bug fix addresses missing error handling, graceful shutdown capabilities, input validation, and resource cleanup patterns that are essential for production deployments.
 
 ### Key Achievements
-- ✅ Express.js 5.1.0 framework fully integrated
-- ✅ GET `/` endpoint returns "Hello, World!" (preserved from original)
-- ✅ GET `/evening` endpoint returns "Good evening" (new feature)
-- ✅ Modular architecture with 5 specialized modules
-- ✅ Twelve-Factor App configuration management
-- ✅ All syntax validation passed
-- ✅ Both endpoints verified working in runtime tests
+- ✅ Complete server.js rewrite with production patterns (374 lines)
+- ✅ Comprehensive test suite with 24 passing tests (455 lines)
+- ✅ All validation gates passed (100% success rate)
+- ✅ Runtime verification confirmed (HTTP endpoints + graceful shutdown)
+- ✅ All changes committed to feature branch
 
-### Current Issues
-- ⚠️ 1 high severity vulnerability in transitive dependency (qs < 6.14.1)
-- ⚠️ No unit tests (explicitly out of scope per Agent Action Plan)
+### Hours Breakdown
+- **Completed Work**: 14 hours
+- **Remaining Work**: 2 hours (human review tasks)
+- **Total Project**: 16 hours
+- **Completion Percentage**: 14/16 = 87.5% ≈ **88%**
 
-### Hours Calculation
-- **Completed:** 10 hours of development work
-- **Remaining:** 4 hours of deployment/operational tasks
-- **Total Project:** 14 hours
-- **Completion:** 10 / 14 = **71.4% ≈ 71%**
+---
+
+## Validation Results Summary
+
+### Final Validator Results
+
+| Validation Gate | Status | Details |
+|----------------|--------|---------|
+| Dependencies Installation | ✅ PASSED | express@5.1.0, jest@29.7.0 installed |
+| Syntax/Compilation | ✅ PASSED | server.js, server.test.js syntax OK |
+| Test Execution | ✅ PASSED | 24/24 tests passing (100%) |
+| Runtime Validation | ✅ PASSED | HTTP endpoints verified |
+| Git Status | ✅ PASSED | Clean working tree, all committed |
+
+### Test Results Breakdown
+
+```
+PASS ./server.test.js (9.778 s)
+  Server Module
+    Server Initialization
+      ✓ should start successfully on default port
+      ✓ should accept custom host and port via environment variables
+      ✓ should display correct environment
+      ✓ should respond to HTTP requests
+    Error Handling
+      ✓ should handle EADDRINUSE error gracefully
+      ✓ should provide helpful message for port conflicts
+    Graceful Shutdown
+      ✓ should handle SIGTERM signal gracefully
+      ✓ should handle SIGINT signal gracefully
+      ✓ should close HTTP server during shutdown
+      ✓ should prevent multiple shutdown attempts
+    Input Validation
+      ✓ should use default port when PORT is invalid
+      ✓ should reject port out of valid range
+    Module Exports
+      ✓ should export server instance
+  Server Code Quality
+    ✓ should have error handler for server errors
+    ✓ should have SIGTERM handler
+    ✓ should have SIGINT handler
+    ✓ should have uncaughtException handler
+    ✓ should have unhandledRejection handler
+    ✓ should have gracefulShutdown function
+    ✓ should have shutdown timeout
+    ✓ should use http.createServer for better control
+    ✓ should have input validation
+    ✓ should handle EADDRINUSE error code
+    ✓ should handle EACCES error code
+
+Test Suites: 1 passed, 1 total
+Tests:       24 passed, 24 total
+```
 
 ---
 
@@ -33,113 +79,25 @@ The Final Validator agent completed code quality improvements by refactoring `se
 
 ```mermaid
 pie title Project Hours Breakdown
-    "Completed Work" : 10
-    "Remaining Work" : 4
+    "Completed Work" : 14
+    "Remaining Work" : 2
 ```
 
 ---
 
-## Validation Results Summary
+## Files Modified
 
-### Final Validator Actions
-The Final Validator agent performed the following:
-1. ✅ Verified all dependencies installed (68 packages)
-2. ✅ Validated syntax of all 5 JavaScript modules
-3. ✅ Tested runtime server startup
-4. ✅ Verified both HTTP endpoints return correct responses
-5. ✅ Refactored server.js for improved formatting and readability
+| File | Status | Lines | Description |
+|------|--------|-------|-------------|
+| server.js | UPDATED | 374 | Complete rewrite with production hardening |
+| server.test.js | CREATED | 455 | Comprehensive 24-test suite |
+| package.json | UPDATED | 18 | Added jest devDependency, test script |
 
-### Commit Summary
-| Commit | Message | Files Changed | Lines |
-|--------|---------|---------------|-------|
-| 0d64fd7 | refactor(server): improve formatting and readability | server.js | +20/-42 |
-
-### Production Readiness Gates
-
-| Gate | Status | Details |
-|------|--------|---------|
-| GATE 1: Dependencies | ✅ PASSED | 68 packages installed |
-| GATE 2: Syntax Validation | ✅ PASSED | All 5 modules pass `node --check` |
-| GATE 3: Runtime Validation | ✅ PASSED | Server starts at http://127.0.0.1:3000/ |
-| GATE 4: Endpoint Behavior | ✅ PASSED | Both endpoints return exact expected responses |
-| GATE 5: Security Audit | ⚠️ WARNING | 1 high severity vulnerability (transitive) |
-
-### Endpoint Response Validation
-
-| Endpoint | Expected Response | Actual Response | Status |
-|----------|-------------------|-----------------|--------|
-| GET `/` | `Hello, World!\n` | `Hello, World!\n` | ✅ PASS |
-| GET `/evening` | `Good evening` | `Good evening` | ✅ PASS |
-
-### Security Audit Results
-
-```
-npm audit summary:
-- Total vulnerabilities: 1
-- High severity: 1 (qs < 6.14.1 - DoS vulnerability)
-- Fix available: npm audit fix
-```
-
-| Severity | Count | Package | Description |
-|----------|-------|---------|-------------|
-| High | 1 | qs < 6.14.1 | arrayLimit bypass allows DoS via memory exhaustion |
-
----
-
-## Hours Breakdown
-
-### Completed Work (10 hours)
-
-| Component | Hours | Description |
-|-----------|-------|-------------|
-| Express.js Integration | 2.0h | Framework installation and server.js refactoring |
-| Application Factory | 1.5h | src/app.js - Express app creation with route mounting |
-| Configuration Module | 1.0h | src/config/index.js - Environment variable management |
-| Route Handlers | 1.0h | src/routes/main.routes.js - GET endpoint implementations |
-| Route Aggregation | 0.5h | src/routes/index.js - Barrel pattern exports |
-| Entry Point | 1.0h | server.js - HTTP binding and startup |
-| Documentation | 2.0h | README.md comprehensive API documentation |
-| Final Validation & Cleanup | 1.0h | Code formatting improvements by Final Validator |
-| **Total Completed** | **10.0h** | |
-
-### Remaining Work (4 hours)
-
-| Task | Hours | Priority | Description |
-|------|-------|----------|-------------|
-| Security Vulnerability Fix | 0.5h | High | Run `npm audit fix` to update qs dependency |
-| Code Review | 0.5h | High | Review and approve PR changes |
-| Production Environment Config | 0.5h | High | Configure HOST, PORT, NODE_ENV for production |
-| Production Deployment | 2.0h | Medium | Deploy to production server/cloud platform |
-| Post-Deployment Verification | 0.5h | Medium | Verify endpoints work in production |
-| **Total Remaining** | **4.0h** | | |
-
-### Calculation Verification
-- Completed: 10 hours
-- Remaining: 4 hours
-- Total Project: 14 hours
-- Completion Percentage: 10 / 14 = **71.4% ≈ 71%**
-
----
-
-## Detailed Human Task List
-
-### High Priority Tasks
-
-| # | Task | Description | Hours | Severity |
-|---|------|-------------|-------|----------|
-| 1 | Fix Security Vulnerability | Run `npm audit fix` to update qs dependency and eliminate high severity DoS vulnerability | 0.5h | High |
-| 2 | Code Review | Review PR changes, verify endpoint behavior, approve pull request | 0.5h | High |
-| 3 | Environment Configuration | Set appropriate values for HOST, PORT, NODE_ENV environment variables for production deployment | 0.5h | High |
-
-### Medium Priority Tasks
-
-| # | Task | Description | Hours | Severity |
-|---|------|-------------|-------|----------|
-| 4 | Production Deployment | Deploy application to production server or cloud platform (AWS, GCP, Azure, Heroku, etc.) | 2.0h | Medium |
-| 5 | Post-Deployment Verification | Verify both endpoints return correct responses in production environment | 0.5h | Medium |
-
-### Task Hours Verification
-**Total Human Task Hours: 4.0h** (matches "Remaining Work" in pie chart)
+### Git Statistics
+- **Commits**: 3 on feature branch
+- **Lines Added**: 4,651
+- **Lines Removed**: 307
+- **Net Change**: +4,344 lines
 
 ---
 
@@ -147,203 +105,247 @@ npm audit summary:
 
 ### System Prerequisites
 
-| Requirement | Minimum | Recommended | Purpose |
-|-------------|---------|-------------|---------|
-| Node.js | 18.x | 20.x LTS | JavaScript runtime |
-| npm | 8.x | 10.x | Package manager |
-| Operating System | Linux, macOS, Windows | Any | Development environment |
-
-**Verify Installation:**
-```bash
-node --version
-# Expected: v18.x.x or higher (v20.x.x recommended)
-
-npm --version
-# Expected: 8.x.x or higher
-```
+| Component | Version | Notes |
+|-----------|---------|-------|
+| Node.js | 18.x+ (20.x LTS recommended) | Required for Express 5.x |
+| npm | 8.x+ (10.x recommended) | Package manager |
+| Operating System | Linux, macOS, Windows | Cross-platform compatible |
 
 ### Environment Setup
 
-1. **Clone the Repository**
+1. **Clone and checkout the branch**:
 ```bash
 git clone <repository-url>
-cd hello_world
+cd <repository-name>
+git checkout blitzy-b7e4d762-e6c4-4973-99ec-8510ca263149
 ```
 
-2. **Configure Environment Variables** (Optional - defaults work for development)
+2. **Install dependencies**:
 ```bash
-# Option 1: Export in shell
-export HOST=127.0.0.1    # Default: 127.0.0.1
-export PORT=3000         # Default: 3000
-export NODE_ENV=development  # Default: development
-
-# Option 2: Inline with npm start
-HOST=0.0.0.0 PORT=8080 npm start
-```
-
-### Dependency Installation
-
-```bash
-# Install all dependencies (recommended for reproducible builds)
 npm ci
-
-# Expected output:
-# added 68 packages in Xs
-
-# Verify Express installation
-npm ls express
-# Expected: express@5.1.0
 ```
 
-### Application Startup
-
+3. **Configure environment variables (optional)**:
 ```bash
-# Start the server (default configuration)
+# Default values shown
+export HOST=127.0.0.1
+export PORT=3000
+export NODE_ENV=development
+```
+
+### Running the Application
+
+1. **Start the server**:
+```bash
 npm start
-
-# Expected output:
-# Server running at http://127.0.0.1:3000/
 ```
 
-**Custom Configuration:**
-```bash
-# Start with custom host and port
-HOST=0.0.0.0 PORT=8080 npm start
+**Expected Output**:
+```
+============================================================
+SERVER STARTED
+============================================================
+Server running at http://127.0.0.1:3000/
+Environment: development
+Process ID: <pid>
+============================================================
 
-# Production mode
-NODE_ENV=production npm start
+Press Ctrl+C to stop the server.
+```
+
+2. **Start with custom configuration**:
+```bash
+HOST=0.0.0.0 PORT=8080 npm start
 ```
 
 ### Verification Steps
 
-1. **Start the Server**
+1. **Test HTTP endpoints**:
 ```bash
-npm start
-# Wait for: "Server running at http://127.0.0.1:3000/"
+# GET / - Returns "Hello, World!"
+curl http://127.0.0.1:3000/
+
+# GET /evening - Returns "Good evening"
+curl http://127.0.0.1:3000/evening
 ```
 
-2. **Test Root Endpoint** (in separate terminal)
+2. **Test graceful shutdown**:
 ```bash
-curl -s http://127.0.0.1:3000/
-# Expected output: Hello, World!
+# Start server in background
+npm start &
+SERVER_PID=$!
+
+# Send SIGTERM signal
+kill -SIGTERM $SERVER_PID
+
+# Expected output: "Shutdown initiated..." → "Cleanup complete."
 ```
 
-3. **Test Evening Endpoint**
+3. **Run test suite**:
 ```bash
-curl -s http://127.0.0.1:3000/evening
-# Expected output: Good evening
+npm test -- --testTimeout=30000 --forceExit
 ```
 
-4. **Verify Both Endpoints**
-```bash
-curl -s http://127.0.0.1:3000/ && echo " ✓ Root OK"
-curl -s http://127.0.0.1:3000/evening && echo " ✓ Evening OK"
-# Expected:
-# Hello, World!
-#  ✓ Root OK
-# Good evening ✓ Evening OK
-```
+**Expected Output**: All 24 tests passing
 
-5. **Stop the Server**
+4. **Syntax validation**:
 ```bash
-# Press Ctrl+C in the terminal running npm start
-# Or: pkill -f "node server.js"
+node --check server.js
+node --check server.test.js
 ```
 
 ### Troubleshooting
 
-| Issue | Cause | Solution |
-|-------|-------|----------|
-| `EADDRINUSE` | Port already in use | Change PORT: `PORT=3001 npm start` |
-| `MODULE_NOT_FOUND` | Dependencies not installed | Run `npm ci` |
-| `EACCES` on port 80/443 | Permission denied | Use port > 1024 or run with sudo |
-| Server won't start | Syntax error in code | Run `node --check server.js` |
+| Issue | Solution |
+|-------|----------|
+| Port already in use | `lsof -i :3000 | grep LISTEN` then `kill -9 <PID>` or use `PORT=3001 npm start` |
+| Permission denied (port < 1024) | Use port above 1024: `PORT=3000 npm start` |
+| Tests hanging | Use `--forceExit` flag: `npm test -- --forceExit` |
+
+---
+
+## Human Tasks Remaining
+
+| Priority | Task | Description | Hours | Severity |
+|----------|------|-------------|-------|----------|
+| High | Code Review | Review server.js implementation for production patterns, error handling, and graceful shutdown logic | 1.0 | Medium |
+| Medium | Deployment Verification | Test deployment with PM2, Docker, or Kubernetes (if applicable) to verify graceful shutdown compatibility | 0.5 | Low |
+| Low | Documentation Review | Verify README.md accuracy and update if needed | 0.5 | Low |
+| **Total** | | | **2.0** | |
+
+### Task Details
+
+#### 1. Code Review (High Priority - 1 hour)
+**Objective**: Verify production-readiness of server.js implementation
+
+**Checklist**:
+- [ ] Review `validateConfig()` function for edge cases
+- [ ] Verify `gracefulShutdown()` timeout value (10 seconds) is appropriate
+- [ ] Review error messages for EADDRINUSE, EACCES, EADDRNOTAVAIL
+- [ ] Verify signal handlers (SIGTERM, SIGINT) work correctly
+- [ ] Review global error handlers (uncaughtException, unhandledRejection)
+- [ ] Verify module exports are appropriate for testing
+
+#### 2. Deployment Verification (Medium Priority - 0.5 hours)
+**Objective**: Confirm graceful shutdown works with process managers
+
+**Commands to test**:
+```bash
+# PM2 (if applicable)
+pm2 start server.js --name "hello-world"
+pm2 stop hello-world  # Should trigger graceful shutdown
+
+# Docker (if applicable)
+docker build -t hello-world .
+docker run -d --name hw hello-world
+docker stop hw  # Should trigger SIGTERM graceful shutdown
+```
+
+#### 3. Documentation Review (Low Priority - 0.5 hours)
+**Objective**: Ensure documentation accuracy
+
+**Checklist**:
+- [ ] Verify README.md startup instructions are accurate
+- [ ] Confirm environment variable documentation
+- [ ] Verify API endpoint documentation
 
 ---
 
 ## Risk Assessment
 
-### Technical Risks
+| Risk Category | Risk | Severity | Likelihood | Mitigation |
+|---------------|------|----------|------------|------------|
+| Technical | SHUTDOWN_TIMEOUT (10s) may be insufficient for long-running requests | Low | Low | Adjust timeout constant if needed for specific workloads |
+| Technical | Test suite requires `--forceExit` flag due to async operations | Low | High | Expected behavior for server testing; documented in guide |
+| Operational | No health check endpoint implemented | Low | Medium | Out of scope per Agent Action Plan; can be added separately |
+| Security | No rate limiting or security middleware | Low | Low | Out of scope; existing app.js handles middleware |
+| Integration | No database or external service dependencies | None | N/A | Application is stateless by design |
 
-| Risk | Severity | Likelihood | Mitigation |
-|------|----------|------------|------------|
-| Code syntax errors | Low | Low | All files pass `node --check` validation |
-| Express app initialization failure | Low | Low | Factory pattern verified working |
-| Route mounting failure | Low | Low | Both endpoints verified in runtime tests |
-
-### Security Risks
-
-| Risk | Severity | Likelihood | Mitigation |
-|------|----------|------------|------------|
-| qs DoS vulnerability (GHSA-6rw7-vpxm-498p) | High | Medium | Run `npm audit fix` to update to qs >= 6.14.1 |
-| Unvalidated input | Low | Low | Tutorial endpoints have no user input |
-| No authentication | N/A | N/A | Not required for tutorial project |
-
-### Operational Risks
-
-| Risk | Severity | Likelihood | Mitigation |
-|------|----------|------------|------------|
-| Missing production configuration | Medium | High | Document required environment variables |
-| No health check endpoint | Low | Medium | Consider adding `/health` endpoint for production |
-| No request logging | Low | Medium | Consider adding morgan or similar for production |
-
-### Integration Risks
-
-| Risk | Severity | Likelihood | Mitigation |
-|------|----------|------------|------------|
-| Module export changes | Low | Low | Maintain documented export contracts |
-| Express version upgrade | Low | Low | Lock express@^5.1.0 in package.json |
+### Risk Summary
+- **High Severity Risks**: None
+- **Medium Severity Risks**: None
+- **Low Severity Risks**: 4 (all mitigated or documented)
 
 ---
 
-## Project Architecture
+## Completed Work Details
+
+### server.js Implementation (7.5 hours)
+
+| Component | Lines | Hours | Description |
+|-----------|-------|-------|-------------|
+| Dependencies & Documentation | 1-53 | 1.0 | JSDoc module documentation, imports |
+| Input Validation | 54-93 | 0.5 | validateConfig() function |
+| Global State | 94-118 | 0.5 | isShuttingDown flag, server creation, timeout constant |
+| Graceful Shutdown | 119-164 | 1.5 | gracefulShutdown() with timeout |
+| Global Error Handlers | 165-212 | 1.0 | uncaughtException, unhandledRejection |
+| Signal Handlers | 213-238 | 0.5 | SIGTERM, SIGINT handlers |
+| Server Error Handler | 239-319 | 1.0 | EADDRINUSE, EACCES, EADDRNOTAVAIL |
+| Server Initialization | 320-374 | 0.5 | listening event, server.listen(), exports |
+| Debugging & Testing | - | 1.0 | Runtime verification, fixes |
+
+### server.test.js Implementation (6 hours)
+
+| Component | Tests | Hours | Description |
+|-----------|-------|-------|-------------|
+| Test Infrastructure | - | 1.0 | Helper functions, utilities |
+| Server Initialization | 4 | 1.0 | Startup, env vars, HTTP response |
+| Error Handling | 2 | 0.5 | EADDRINUSE handling |
+| Graceful Shutdown | 4 | 1.0 | SIGTERM, SIGINT, multiple signals |
+| Input Validation | 2 | 0.5 | Invalid port handling |
+| Module Exports | 1 | 0.25 | Export verification |
+| Code Quality | 11 | 1.0 | Static analysis tests |
+| Debugging | - | 0.75 | Test fixes and adjustments |
+
+### package.json Updates (0.5 hours)
+- Added `jest: ^29.7.0` as devDependency
+- Updated test script to `jest`
+
+---
+
+## Architecture Overview
 
 ```
-hello_world/
-├── server.js                    # Entry point - HTTP server binding
-├── package.json                 # npm manifest (express@^5.1.0)
-├── package-lock.json            # Dependency lockfile
-├── README.md                    # Project documentation
-├── .gitignore                   # Git ignore patterns
-├── src/                         # Application source root
-│   ├── app.js                   # Express application factory
-│   ├── config/                  # Configuration module
-│   │   └── index.js             # Environment variable exports
-│   └── routes/                  # Routing surface
-│       ├── index.js             # Route aggregator (barrel)
-│       └── main.routes.js       # Route handlers
-└── blitzy/                      # Documentation hub
-    └── documentation/           # Specs and guides
+Repository Structure (12 files):
+├── server.js           # Production-hardened server entry point (UPDATED)
+├── server.test.js      # Comprehensive test suite (CREATED)
+├── package.json        # Dependencies & scripts (UPDATED)
+├── package-lock.json   # Dependency lock file
+├── README.md           # Project documentation
+├── .gitignore          # Git ignore rules
+├── src/
+│   ├── app.js          # Express application factory
+│   ├── config/
+│   │   └── index.js    # Environment configuration
+│   └── routes/
+│       ├── index.js    # Route aggregator
+│       └── main.routes.js  # Route handlers
+└── blitzy/
+    └── documentation/  # Blitzy project documentation
 ```
 
-### Module Responsibilities
+### Production Features Implemented
 
-| Module | Lines | Responsibility |
-|--------|-------|----------------|
-| server.js | 53 | HTTP binding, startup logging |
-| src/app.js | 27 | Express app creation, route mounting |
-| src/config/index.js | 41 | Environment configuration management |
-| src/routes/index.js | 19 | Route aggregation (barrel exports) |
-| src/routes/main.routes.js | 41 | GET `/` and GET `/evening` handlers |
-
-### Design Patterns Applied
-
-- **Factory Pattern**: `src/app.js` exports configured Express app without HTTP binding
-- **Barrel Pattern**: `src/routes/index.js` centralizes route exports
-- **Router Pattern**: `src/routes/main.routes.js` uses Express Router for modular routes
-- **Twelve-Factor Config**: `src/config/index.js` manages environment-driven settings
+1. **http.createServer()** - Explicit server lifecycle control
+2. **Input Validation** - Port range (1-65535), host string validation
+3. **Graceful Shutdown** - Proper server.close() with timeout
+4. **Signal Handlers** - SIGTERM (process managers), SIGINT (Ctrl+C)
+5. **Global Error Handlers** - uncaughtException, unhandledRejection
+6. **Server Error Handler** - EADDRINUSE, EACCES, EADDRNOTAVAIL with solutions
+7. **Shutdown Timeout** - 10-second forced exit if graceful shutdown hangs
+8. **Module Exports** - Server instance exported for testing
 
 ---
 
 ## Conclusion
 
-The Express.js integration feature is **FULLY COMPLETE AND WORKING**. Both HTTP endpoints (`GET /` and `GET /evening`) return the correct responses as specified in the requirements. The codebase follows Express.js best practices with a clean, modular architecture.
+This project successfully implements production hardening for the Node.js HTTP server. All specified requirements from the Agent Action Plan have been implemented:
 
-**Immediate Action Required:**
-1. Run `npm audit fix` to address the high severity security vulnerability
-2. Review and merge the PR
+✅ Complete server.js rewrite with production patterns
+✅ Comprehensive test suite (24 tests, 100% passing)
+✅ Package.json updates for Jest testing
+✅ All validation gates passed
 
-**For Production Deployment:**
-1. Configure appropriate environment variables (HOST, PORT, NODE_ENV)
-2. Deploy to production infrastructure
-3. Verify endpoints in production environment
+The remaining 2 hours of work consists solely of human review tasks (code review, deployment verification, documentation review) with no additional code changes expected.
+
+**Recommendation**: Proceed with code review and merge after verification of production deployment compatibility.
