@@ -1,6 +1,47 @@
-<footer class="site-footer">
-  <div class="footer-content">
-    <p>&copy; <%= new Date().getFullYear() %> Hello World App. All rights reserved.</p>
-    <p>Built with Express.js and EJS</p>
+<%#
+  Footer Partial Template - Express.js UI Layer
+  
+  Reusable EJS footer partial containing page footer with copyright information
+  and project details. Included by layout.ejs using <%- include('partials/footer') %>
+  directive to maintain consistent footer across all page templates.
+  
+  CSS Dependencies:
+  - public/css/styles.css provides .site-footer class rules for layout,
+    typography, and visual appearance (BEM naming convention)
+  
+  Structure:
+  - site-footer: Main semantic footer element
+  - site-footer__container: Max-width centered container
+  - site-footer__content: Flexbox content wrapper
+  - site-footer__text: Typography styling for footer text
+  - site-footer__link: Link styling with hover states
+  
+  Accessibility:
+  - Uses semantic HTML5 <footer> element
+  - Proper text contrast via CSS custom properties
+  - Meaningful link text for screen readers
+  
+  @file views/partials/footer.ejs
+  @requires public/css/styles.css
+  @author Blitzy Platform
+-%>
+<footer class="site-footer" role="contentinfo">
+  <div class="site-footer__container">
+    <div class="site-footer__content">
+      <%# Copyright notice with dynamic year using EJS expression %>
+      <p class="site-footer__text copyright">
+        &copy; <%= new Date().getFullYear() %> Hello World App. All rights reserved.
+      </p>
+      
+      <%# Project information and technology stack %>
+      <p class="site-footer__text">
+        Built with <a href="https://expressjs.com/" class="site-footer__link" target="_blank" rel="noopener noreferrer">Express.js</a> and <a href="https://ejs.co/" class="site-footer__link" target="_blank" rel="noopener noreferrer">EJS</a>
+      </p>
+      
+      <%# API reference link for developers %>
+      <p class="site-footer__text">
+        <a href="/api/" class="site-footer__link">API Endpoint</a>
+      </p>
+    </div>
   </div>
 </footer>
