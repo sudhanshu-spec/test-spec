@@ -24,77 +24,51 @@
 'use strict';
 
 // =============================================================================
-// Dependencies
+// DEPENDENCIES
 // =============================================================================
 
-/**
- * Pre-configured Express application instance.
- * Routes and middleware are already mounted in src/app.js.
- * @type {import('express').Application}
- */
+// Express application factory - routes and middleware pre-configured
 const app = require('./src/app');
 
-/**
- * Application configuration settings.
- * Values are sourced from environment variables with sensible defaults.
- * @type {{ host: string, port: number, env: string }}
- */
+// Environment-driven configuration (host, port, env)
 const config = require('./src/config');
 
-/**
- * Structured logger instance for operational logging.
- * Replaces console.log per Rule R-023 for production-grade logging.
- * @type {{ info: Function, error: Function, warn: Function, debug: Function }}
- */
+// Structured logger for production-grade logging (replaces console.log)
 const { logger } = require('./src/utils/logger');
 
 // =============================================================================
-// Server Initialization
+// SERVER INITIALIZATION
 // =============================================================================
 
-/**
- * HTTP server instance.
- * Captured for graceful shutdown handling.
- * @type {import('http').Server}
- */
+// Start HTTP server and capture instance for graceful shutdown
 const server = app.listen(config.port, config.host, () => {
-  // Display startup confirmation with the server URL
+  // Log startup confirmation with server URL and current environment
   logger.info(`Server running at http://${config.host}:${config.port}/`);
   logger.info(`Environment: ${config.env}`);
 });
 
 // =============================================================================
-// Graceful Shutdown Handling
+// GRACEFUL SHUTDOWN HANDLING
 // =============================================================================
 
-/**
- * Shutdown timeout in milliseconds.
- * Per section 0.5.5: 30-second timeout for connection draining.
- * @type {number}
- */
-const SHUTDOWN_TIMEOUT = 30000;
+// Maximum time (ms) to wait for connections to drain before forced exit
+const SHUTDOWN_TIMEOUT_MS = 30000;
 
-/**
- * Flag to prevent multiple shutdown attempts.
- * @type {boolean}
- */
+// Prevents multiple concurrent shutdown attempts
 let isShuttingDown = false;
 
 /**
- * Graceful shutdown function.
+ * Initiates graceful server shutdown.
  *
- * Handles server shutdown by:
- * 1. Stopping acceptance of new connections
- * 2. Allowing existing connections to drain within timeout
- * 3. Logging shutdown progress
- * 4. Exiting process with appropriate code
+ * Shutdown sequence:
+ *   1. Stop accepting new connections
+ *   2. Wait for existing connections to complete (up to timeout)
+ *   3. Exit with appropriate status code
  *
- * Per Rule R-051: Supports PM2 graceful reload and restart.
- *
- * @param {string} signal - The signal that triggered shutdown (e.g., 'SIGTERM', 'SIGINT')
+ * @param {string} signal - Signal that triggered shutdown (e.g., 'SIGTERM')
  */
-const shutdown = (signal) => {
-  // Prevent multiple shutdown attempts
+function shutdown(signal) {
+  // Guard: Prevent duplicate shutdown attempts
   if (isShuttingDown) {
     logger.warn('Shutdown already in progress, ignoring duplicate signal');
     return;
@@ -103,63 +77,55 @@ const shutdown = (signal) => {
 
   logger.info(`Received ${signal}, initiating graceful shutdown...`);
 
-  // Set timeout for forced shutdown
+  // Safety net: Force exit if graceful shutdown takes too long
   const forceShutdownTimer = setTimeout(() => {
     logger.error('Graceful shutdown timeout exceeded, forcing exit');
     process.exit(1);
-  }, SHUTDOWN_TIMEOUT);
+  }, SHUTDOWN_TIMEOUT_MS);
 
-  // Prevent timeout from keeping process alive
+  // Allow process to exit even if timer is still pending
   forceShutdownTimer.unref();
 
-  // Stop accepting new connections and drain existing ones
-  server.close((err) => {
-    if (err) {
-      logger.error('Error during server close', { error: err.message });
-      clearTimeout(forceShutdownTimer);
+  // Close server: Stop new connections, drain existing ones
+  server.close((closeError) => {
+    clearTimeout(forceShutdownTimer);
+
+    if (closeError) {
+      logger.error('Error during server close', { error: closeError.message });
       process.exit(1);
     }
 
     logger.info('Server closed successfully, all connections drained');
-    clearTimeout(forceShutdownTimer);
     process.exit(0);
   });
-};
+}
 
-/**
- * SIGTERM signal handler.
- * Triggered by PM2 for graceful reload/restart operations.
- * Per Rule R-051: Supports PM2 kill_timeout configuration.
- */
+// =============================================================================
+// PROCESS SIGNAL HANDLERS
+// =============================================================================
+
+// SIGTERM: Sent by PM2 for graceful reload/restart
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 
-/**
- * SIGINT signal handler.
- * Triggered by Ctrl+C during development.
- * Provides consistent shutdown behavior across environments.
- */
+// SIGINT: Sent by Ctrl+C during development
 process.on('SIGINT', () => shutdown('SIGINT'));
 
-/**
- * Uncaught exception handler.
- * Logs the error and initiates graceful shutdown.
- * Prevents silent crashes and ensures proper cleanup.
- */
-process.on('uncaughtException', (err) => {
-  logger.error('Uncaught exception', { error: err.message, stack: err.stack });
+// Uncaught exceptions: Log and shutdown to prevent undefined state
+process.on('uncaughtException', (error) => {
+  logger.error('Uncaught exception', {
+    error: error.message,
+    stack: error.stack
+  });
   shutdown('uncaughtException');
 });
 
-/**
- * Unhandled promise rejection handler.
- * Logs the rejection reason and initiates graceful shutdown.
- * Catches unhandled async errors for proper logging and cleanup.
- */
+// Unhandled promise rejections: Log and shutdown for async error safety
 process.on('unhandledRejection', (reason) => {
-  // Extract error details consistently whether reason is Error or string
-  const errorMessage = reason instanceof Error ? reason.message : String(reason);
-  const errorStack = reason instanceof Error ? reason.stack : undefined;
-
-  logger.error('Unhandled promise rejection', { reason: errorMessage, stack: errorStack });
+  // Normalize reason to extract message and stack consistently
+  const isError = reason instanceof Error;
+  logger.error('Unhandled promise rejection', {
+    reason: isError ? reason.message : String(reason),
+    stack: isError ? reason.stack : undefined
+  });
   shutdown('unhandledRejection');
 });
