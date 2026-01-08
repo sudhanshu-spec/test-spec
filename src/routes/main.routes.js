@@ -14,6 +14,10 @@
 
 const express = require('express');
 
+/**
+ * Express Router instance for main application routes
+ * @type {import('express').Router}
+ */
 const router = express.Router();
 
 /**
@@ -22,6 +26,10 @@ const router = express.Router();
  * 
  * @route GET /
  * @returns {string} 'Hello, World!\n'
+ * @example
+ * // Request the root endpoint
+ * // curl http://127.0.0.1:3000/
+ * // Returns: "Hello, World!\n"
  */
 router.get('/', (req, res) => {
   res.send('Hello, World!\n');
@@ -33,6 +41,10 @@ router.get('/', (req, res) => {
  * 
  * @route GET /evening
  * @returns {string} 'Good evening'
+ * @example
+ * // Request the evening endpoint
+ * // curl http://127.0.0.1:3000/evening
+ * // Returns: "Good evening"
  */
 router.get('/evening', (req, res) => {
   res.send('Good evening');

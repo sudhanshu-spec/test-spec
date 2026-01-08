@@ -12,6 +12,7 @@
  * @module src/routes
  */
 
+/** @type {import('express').Router} */
 const mainRoutes = require('./main.routes');
 
 module.exports = {
