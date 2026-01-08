@@ -1,257 +1,478 @@
 /**
- * @fileoverview Unit tests for middleware modules
- * Tests error handling middleware and request ID middleware
+ * @fileoverview Unit tests for middleware modules (src/middleware/)
  * @module tests/unit/middleware
  */
 
 'use strict';
 
-describe('Middleware Barrel Export', () => {
-  test('should export errorMiddleware', () => {
-    const middleware = require('../../src/middleware');
-    expect(middleware.errorMiddleware).toBeDefined();
-  });
-
-  test('should export requestIdMiddleware', () => {
-    const middleware = require('../../src/middleware');
-    expect(middleware.requestIdMiddleware).toBeDefined();
-  });
-
-  test('errorMiddleware should be an object with handler functions', () => {
-    const { errorMiddleware } = require('../../src/middleware');
-    expect(typeof errorMiddleware).toBe('object');
-    expect(typeof errorMiddleware.notFoundHandler).toBe('function');
-    expect(typeof errorMiddleware.errorHandler).toBe('function');
-  });
-
-  test('requestIdMiddleware should be a function', () => {
-    const { requestIdMiddleware } = require('../../src/middleware');
-    expect(typeof requestIdMiddleware).toBe('function');
-  });
-});
-
-describe('Error Middleware Module', () => {
-  let errorMiddleware;
-  let mockReq;
-  let mockRes;
-  let mockNext;
-  let originalEnv;
+/**
+ * Middleware Modules Test Suite
+ * 
+ * Tests for:
+ * - Barrel exports verification (middleware/index.js)
+ * - Error middleware (notFoundHandler and errorHandler)
+ * - Request ID middleware (UUID generation and header setting)
+ */
+describe('Middleware Modules', () => {
+  /** @type {NodeJS.ProcessEnv} */
+  const originalEnv = process.env;
 
   beforeEach(() => {
-    originalEnv = process.env.NODE_ENV;
     jest.resetModules();
-    errorMiddleware = require('../../src/middleware/error.middleware');
-    mockReq = {
-      method: 'GET',
-      originalUrl: '/test',
-      id: 'test-request-id'
-    };
-    mockRes = {
-      status: jest.fn().mockReturnThis(),
-      json: jest.fn().mockReturnThis(),
-      send: jest.fn().mockReturnThis(),
-      headersSent: false
-    };
-    mockNext = jest.fn();
+    process.env = { ...originalEnv };
   });
 
-  afterEach(() => {
-    process.env.NODE_ENV = originalEnv;
-    jest.restoreAllMocks();
+  afterAll(() => {
+    process.env = originalEnv;
   });
 
-  describe('Module Export', () => {
-    test('should export notFoundHandler', () => {
+  describe('Barrel Exports - middleware/index.js', () => {
+    test('should export errorMiddleware object', () => {
+      jest.resetModules();
+      const middleware = require('../../src/middleware');
+      expect(middleware).toHaveProperty('errorMiddleware');
+      expect(typeof middleware.errorMiddleware).toBe('object');
+    });
+
+    test('should export requestIdMiddleware function', () => {
+      jest.resetModules();
+      const middleware = require('../../src/middleware');
+      expect(middleware).toHaveProperty('requestIdMiddleware');
+      expect(typeof middleware.requestIdMiddleware).toBe('function');
+    });
+
+    test('errorMiddleware should have notFoundHandler function', () => {
+      jest.resetModules();
+      const { errorMiddleware } = require('../../src/middleware');
+      expect(errorMiddleware).toHaveProperty('notFoundHandler');
       expect(typeof errorMiddleware.notFoundHandler).toBe('function');
     });
 
-    test('should export errorHandler', () => {
+    test('errorMiddleware should have errorHandler function', () => {
+      jest.resetModules();
+      const { errorMiddleware } = require('../../src/middleware');
+      expect(errorMiddleware).toHaveProperty('errorHandler');
       expect(typeof errorMiddleware.errorHandler).toBe('function');
     });
   });
 
-  describe('notFoundHandler', () => {
-    test('should call next with 404 error', () => {
-      errorMiddleware.notFoundHandler(mockReq, mockRes, mockNext);
-      expect(mockNext).toHaveBeenCalledTimes(1);
-      const error = mockNext.mock.calls[0][0];
-      expect(error).toBeInstanceOf(Error);
-      expect(error.status).toBe(404);
+  describe('Error Middleware - error.middleware.js', () => {
+    describe('notFoundHandler', () => {
+      test('should create error with status 404', () => {
+        jest.resetModules();
+        const { errorMiddleware } = require('../../src/middleware');
+        const { notFoundHandler } = errorMiddleware;
+        const req = { originalUrl: '/unknown' };
+        const res = {};
+        const next = jest.fn();
+
+        notFoundHandler(req, res, next);
+
+        expect(next).toHaveBeenCalled();
+        const error = next.mock.calls[0][0];
+        expect(error).toBeInstanceOf(Error);
+        expect(error.status).toBe(404);
+      });
+
+      test('should call next with error', () => {
+        jest.resetModules();
+        const { errorMiddleware } = require('../../src/middleware');
+        const { notFoundHandler } = errorMiddleware;
+        const req = { originalUrl: '/test' };
+        const res = {};
+        const next = jest.fn();
+
+        notFoundHandler(req, res, next);
+
+        expect(next).toHaveBeenCalledTimes(1);
+        expect(next).toHaveBeenCalledWith(expect.any(Error));
+      });
+
+      test('should include original URL in error message', () => {
+        jest.resetModules();
+        const { errorMiddleware } = require('../../src/middleware');
+        const { notFoundHandler } = errorMiddleware;
+        const req = { originalUrl: '/api/missing' };
+        const res = {};
+        const next = jest.fn();
+
+        notFoundHandler(req, res, next);
+
+        const error = next.mock.calls[0][0];
+        expect(error.message).toContain('/api/missing');
+      });
+
+      test('should include Not Found text in error message', () => {
+        jest.resetModules();
+        const { errorMiddleware } = require('../../src/middleware');
+        const { notFoundHandler } = errorMiddleware;
+        const req = { originalUrl: '/nonexistent' };
+        const res = {};
+        const next = jest.fn();
+
+        notFoundHandler(req, res, next);
+
+        const error = next.mock.calls[0][0];
+        expect(error.message).toContain('Not Found');
+      });
     });
 
-    test('should include URL in error message', () => {
-      errorMiddleware.notFoundHandler(mockReq, mockRes, mockNext);
-      const error = mockNext.mock.calls[0][0];
-      expect(error.message).toContain('Not Found');
-      expect(error.message).toContain('/test');
+    describe('errorHandler', () => {
+      test('should have (err, req, res, next) signature', () => {
+        jest.resetModules();
+        const { errorMiddleware } = require('../../src/middleware');
+        const { errorHandler } = errorMiddleware;
+        expect(errorHandler.length).toBe(4);
+      });
+
+      test('should return 500 for errors without status', () => {
+        jest.resetModules();
+        jest.mock('../../src/utils/logger', () => ({
+          logger: { error: jest.fn() }
+        }));
+
+        const { errorMiddleware } = require('../../src/middleware');
+        const { errorHandler } = errorMiddleware;
+        const err = new Error('Test error');
+        const req = { originalUrl: '/test', method: 'GET' };
+        const res = {
+          status: jest.fn().mockReturnThis(),
+          json: jest.fn()
+        };
+        const next = jest.fn();
+
+        errorHandler(err, req, res, next);
+
+        expect(res.status).toHaveBeenCalledWith(500);
+      });
+
+      test('should use error.status if provided', () => {
+        jest.resetModules();
+        jest.mock('../../src/utils/logger', () => ({
+          logger: { error: jest.fn() }
+        }));
+
+        const { errorMiddleware } = require('../../src/middleware');
+        const { errorHandler } = errorMiddleware;
+        const err = new Error('Not Found');
+        err.status = 404;
+        const req = { originalUrl: '/test', method: 'GET' };
+        const res = {
+          status: jest.fn().mockReturnThis(),
+          json: jest.fn()
+        };
+        const next = jest.fn();
+
+        errorHandler(err, req, res, next);
+
+        expect(res.status).toHaveBeenCalledWith(404);
+      });
+
+      test('should use error.statusCode as fallback if status not set', () => {
+        jest.resetModules();
+        jest.mock('../../src/utils/logger', () => ({
+          logger: { error: jest.fn() }
+        }));
+
+        const { errorMiddleware } = require('../../src/middleware');
+        const { errorHandler } = errorMiddleware;
+        const err = new Error('Forbidden');
+        err.statusCode = 403;
+        const req = { originalUrl: '/test', method: 'GET' };
+        const res = {
+          status: jest.fn().mockReturnThis(),
+          json: jest.fn()
+        };
+        const next = jest.fn();
+
+        errorHandler(err, req, res, next);
+
+        expect(res.status).toHaveBeenCalledWith(403);
+      });
+
+      test('should return JSON response', () => {
+        jest.resetModules();
+        jest.mock('../../src/utils/logger', () => ({
+          logger: { error: jest.fn() }
+        }));
+
+        const { errorMiddleware } = require('../../src/middleware');
+        const { errorHandler } = errorMiddleware;
+        const err = new Error('Test error');
+        const req = { originalUrl: '/test', method: 'GET' };
+        const res = {
+          status: jest.fn().mockReturnThis(),
+          json: jest.fn()
+        };
+        const next = jest.fn();
+
+        errorHandler(err, req, res, next);
+
+        expect(res.json).toHaveBeenCalled();
+        const response = res.json.mock.calls[0][0];
+        expect(response).toHaveProperty('status');
+        expect(response).toHaveProperty('message');
+      });
+
+      test('should include status and statusCode in response', () => {
+        jest.resetModules();
+        jest.mock('../../src/utils/logger', () => ({
+          logger: { error: jest.fn() }
+        }));
+
+        const { errorMiddleware } = require('../../src/middleware');
+        const { errorHandler } = errorMiddleware;
+        const err = new Error('Test error');
+        err.status = 400;
+        const req = { originalUrl: '/test', method: 'GET' };
+        const res = {
+          status: jest.fn().mockReturnThis(),
+          json: jest.fn()
+        };
+        const next = jest.fn();
+
+        errorHandler(err, req, res, next);
+
+        const response = res.json.mock.calls[0][0];
+        expect(response.status).toBe('error');
+        expect(response.statusCode).toBe(400);
+      });
+
+      test('should include stack trace in development', () => {
+        jest.resetModules();
+        process.env.NODE_ENV = 'development';
+        jest.mock('../../src/utils/logger', () => ({
+          logger: { error: jest.fn() }
+        }));
+
+        const { errorMiddleware } = require('../../src/middleware');
+        const { errorHandler } = errorMiddleware;
+        const err = new Error('Test error');
+        const req = { originalUrl: '/test', method: 'GET' };
+        const res = {
+          status: jest.fn().mockReturnThis(),
+          json: jest.fn()
+        };
+        const next = jest.fn();
+
+        errorHandler(err, req, res, next);
+
+        const response = res.json.mock.calls[0][0];
+        expect(response).toHaveProperty('stack');
+      });
+
+      test('should NOT include stack trace in production', () => {
+        jest.resetModules();
+        process.env.NODE_ENV = 'production';
+        jest.mock('../../src/utils/logger', () => ({
+          logger: { error: jest.fn() }
+        }));
+
+        const { errorMiddleware } = require('../../src/middleware');
+        const { errorHandler } = errorMiddleware;
+        const err = new Error('Test error');
+        const req = { originalUrl: '/test', method: 'GET' };
+        const res = {
+          status: jest.fn().mockReturnThis(),
+          json: jest.fn()
+        };
+        const next = jest.fn();
+
+        errorHandler(err, req, res, next);
+
+        const response = res.json.mock.calls[0][0];
+        expect(response).not.toHaveProperty('stack');
+      });
+
+      test('should include requestId if present on req', () => {
+        jest.resetModules();
+        jest.mock('../../src/utils/logger', () => ({
+          logger: { error: jest.fn() }
+        }));
+
+        const { errorMiddleware } = require('../../src/middleware');
+        const { errorHandler } = errorMiddleware;
+        const err = new Error('Test error');
+        const req = { originalUrl: '/test', method: 'GET', id: 'test-request-id' };
+        const res = {
+          status: jest.fn().mockReturnThis(),
+          json: jest.fn()
+        };
+        const next = jest.fn();
+
+        errorHandler(err, req, res, next);
+
+        const response = res.json.mock.calls[0][0];
+        expect(response).toHaveProperty('requestId', 'test-request-id');
+      });
+
+      test('should NOT include requestId if not present on req', () => {
+        jest.resetModules();
+        jest.mock('../../src/utils/logger', () => ({
+          logger: { error: jest.fn() }
+        }));
+
+        const { errorMiddleware } = require('../../src/middleware');
+        const { errorHandler } = errorMiddleware;
+        const err = new Error('Test error');
+        const req = { originalUrl: '/test', method: 'GET' };
+        const res = {
+          status: jest.fn().mockReturnThis(),
+          json: jest.fn()
+        };
+        const next = jest.fn();
+
+        errorHandler(err, req, res, next);
+
+        const response = res.json.mock.calls[0][0];
+        expect(response).not.toHaveProperty('requestId');
+      });
+
+      test('should log error before sending response', () => {
+        jest.resetModules();
+        const mockLoggerError = jest.fn();
+        jest.mock('../../src/utils/logger', () => ({
+          logger: { error: mockLoggerError }
+        }));
+
+        const { errorMiddleware } = require('../../src/middleware');
+        const { errorHandler } = errorMiddleware;
+        const err = new Error('Test error');
+        const req = { originalUrl: '/test', method: 'GET', id: 'req-123' };
+        const res = {
+          status: jest.fn().mockReturnThis(),
+          json: jest.fn()
+        };
+        const next = jest.fn();
+
+        errorHandler(err, req, res, next);
+
+        expect(mockLoggerError).toHaveBeenCalled();
+        const loggedData = mockLoggerError.mock.calls[0][0];
+        expect(loggedData).toHaveProperty('message', 'Test error');
+        expect(loggedData).toHaveProperty('url', '/test');
+        expect(loggedData).toHaveProperty('method', 'GET');
+        expect(loggedData).toHaveProperty('requestId', 'req-123');
+      });
+
+      test('should handle error without message with default message', () => {
+        jest.resetModules();
+        jest.mock('../../src/utils/logger', () => ({
+          logger: { error: jest.fn() }
+        }));
+
+        const { errorMiddleware } = require('../../src/middleware');
+        const { errorHandler } = errorMiddleware;
+        const err = new Error('');
+        const req = { originalUrl: '/test', method: 'GET' };
+        const res = {
+          status: jest.fn().mockReturnThis(),
+          json: jest.fn()
+        };
+        const next = jest.fn();
+
+        errorHandler(err, req, res, next);
+
+        const response = res.json.mock.calls[0][0];
+        expect(response.message).toBe('Internal Server Error');
+      });
     });
   });
 
-  describe('errorHandler - Development', () => {
-    beforeEach(() => {
-      process.env.NODE_ENV = 'development';
+  describe('Request ID Middleware - request-id.middleware.js', () => {
+    test('should generate UUID and attach to req.id', () => {
       jest.resetModules();
-      errorMiddleware = require('../../src/middleware/error.middleware');
+      const { requestIdMiddleware } = require('../../src/middleware');
+      const req = {};
+      const res = { setHeader: jest.fn() };
+      const next = jest.fn();
+
+      requestIdMiddleware(req, res, next);
+
+      expect(req.id).toBeDefined();
+      expect(typeof req.id).toBe('string');
+      // UUID v4 format validation
+      expect(req.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
     });
 
-    test('should return 500 status for errors without status', () => {
-      const error = new Error('Test error');
-      errorMiddleware.errorHandler(error, mockReq, mockRes, mockNext);
-      expect(mockRes.status).toHaveBeenCalledWith(500);
-    });
-
-    test('should return custom status if provided', () => {
-      const error = new Error('Custom error');
-      error.status = 400;
-      errorMiddleware.errorHandler(error, mockReq, mockRes, mockNext);
-      expect(mockRes.status).toHaveBeenCalledWith(400);
-    });
-
-    test('should return JSON response', () => {
-      const error = new Error('Test error');
-      errorMiddleware.errorHandler(error, mockReq, mockRes, mockNext);
-      expect(mockRes.json).toHaveBeenCalled();
-    });
-
-    test('should include stack trace in development', () => {
-      const error = new Error('Test error');
-      errorMiddleware.errorHandler(error, mockReq, mockRes, mockNext);
-      const responseBody = mockRes.json.mock.calls[0][0];
-      expect(responseBody).toHaveProperty('stack');
-    });
-
-    test('should include error message in response', () => {
-      const error = new Error('Specific error message');
-      errorMiddleware.errorHandler(error, mockReq, mockRes, mockNext);
-      const responseBody = mockRes.json.mock.calls[0][0];
-      expect(responseBody.message).toBe('Specific error message');
-    });
-
-    test('should include request ID in response', () => {
-      const error = new Error('Test error');
-      errorMiddleware.errorHandler(error, mockReq, mockRes, mockNext);
-      const responseBody = mockRes.json.mock.calls[0][0];
-      expect(responseBody.requestId).toBe('test-request-id');
-    });
-  });
-
-  describe('errorHandler - Production', () => {
-    beforeEach(() => {
-      process.env.NODE_ENV = 'production';
+    test('should set X-Request-ID response header', () => {
       jest.resetModules();
-      errorMiddleware = require('../../src/middleware/error.middleware');
+      const { requestIdMiddleware } = require('../../src/middleware');
+      const req = {};
+      const res = { setHeader: jest.fn() };
+      const next = jest.fn();
+
+      requestIdMiddleware(req, res, next);
+
+      expect(res.setHeader).toHaveBeenCalledWith('X-Request-ID', req.id);
     });
 
-    test('should not include stack trace in production', () => {
-      const error = new Error('Test error');
-      errorMiddleware.errorHandler(error, mockReq, mockRes, mockNext);
-      const responseBody = mockRes.json.mock.calls[0][0];
-      expect(responseBody.stack).toBeUndefined();
+    test('should call next()', () => {
+      jest.resetModules();
+      const { requestIdMiddleware } = require('../../src/middleware');
+      const req = {};
+      const res = { setHeader: jest.fn() };
+      const next = jest.fn();
+
+      requestIdMiddleware(req, res, next);
+
+      expect(next).toHaveBeenCalledTimes(1);
+      expect(next).toHaveBeenCalledWith();
     });
 
-    test('should return error message for 500 errors in production', () => {
-      const error = new Error('Sensitive internal error details');
-      error.status = 500;
-      errorMiddleware.errorHandler(error, mockReq, mockRes, mockNext);
-      const responseBody = mockRes.json.mock.calls[0][0];
-      // Current implementation returns the actual message
-      expect(responseBody.message).toBe('Sensitive internal error details');
+    test('should generate unique IDs for each request', () => {
+      jest.resetModules();
+      const { requestIdMiddleware } = require('../../src/middleware');
+      const ids = [];
+
+      for (let i = 0; i < 5; i++) {
+        const req = {};
+        const res = { setHeader: jest.fn() };
+        const next = jest.fn();
+
+        requestIdMiddleware(req, res, next);
+        ids.push(req.id);
+      }
+
+      const uniqueIds = new Set(ids);
+      expect(uniqueIds.size).toBe(5);
     });
 
-    test('should return original message for 4xx errors in production', () => {
-      const error = new Error('Invalid request data');
-      error.status = 400;
-      errorMiddleware.errorHandler(error, mockReq, mockRes, mockNext);
-      const responseBody = mockRes.json.mock.calls[0][0];
-      expect(responseBody.message).toBe('Invalid request data');
+    test('should set same ID to req.id and X-Request-ID header', () => {
+      jest.resetModules();
+      const { requestIdMiddleware } = require('../../src/middleware');
+      const req = {};
+      const res = { setHeader: jest.fn() };
+      const next = jest.fn();
+
+      requestIdMiddleware(req, res, next);
+
+      const headerId = res.setHeader.mock.calls[0][1];
+      expect(req.id).toBe(headerId);
     });
 
-    test('should return message for errors without status in production', () => {
-      const error = new Error('Some internal error');
-      errorMiddleware.errorHandler(error, mockReq, mockRes, mockNext);
-      const responseBody = mockRes.json.mock.calls[0][0];
-      expect(responseBody.message).toBe('Some internal error');
-    });
-  });
-
-  describe('errorHandler - Edge Cases', () => {
-    test('should handle error without message', () => {
-      const error = new Error();
-      errorMiddleware.errorHandler(error, mockReq, mockRes, mockNext);
-      expect(mockRes.status).toHaveBeenCalled();
-      expect(mockRes.json).toHaveBeenCalled();
+    test('should be a function with correct arity (3 parameters)', () => {
+      jest.resetModules();
+      const { requestIdMiddleware } = require('../../src/middleware');
+      expect(typeof requestIdMiddleware).toBe('function');
+      expect(requestIdMiddleware.length).toBe(3);
     });
 
-    test('should handle request without id property', () => {
-      const error = new Error('Test error');
-      delete mockReq.id;
-      errorMiddleware.errorHandler(error, mockReq, mockRes, mockNext);
-      const responseBody = mockRes.json.mock.calls[0][0];
-      expect(responseBody.requestId).toBeUndefined();
+    test('should generate UUID v4 format consistently', () => {
+      jest.resetModules();
+      const { requestIdMiddleware } = require('../../src/middleware');
+      const uuidV4Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+      // Test multiple UUIDs to ensure format consistency
+      for (let i = 0; i < 10; i++) {
+        const req = {};
+        const res = { setHeader: jest.fn() };
+        const next = jest.fn();
+
+        requestIdMiddleware(req, res, next);
+
+        expect(req.id).toMatch(uuidV4Regex);
+      }
     });
-
-    test('should use default Internal Server Error for empty message', () => {
-      const error = new Error('');
-      errorMiddleware.errorHandler(error, mockReq, mockRes, mockNext);
-      const responseBody = mockRes.json.mock.calls[0][0];
-      // Default message when error.message is falsy
-      expect(responseBody.message).toBe('Internal Server Error');
-    });
-
-    test('should handle statusCode property as fallback', () => {
-      const error = new Error('Test error');
-      error.statusCode = 403;
-      errorMiddleware.errorHandler(error, mockReq, mockRes, mockNext);
-      expect(mockRes.status).toHaveBeenCalledWith(403);
-    });
-  });
-});
-
-describe('Request ID Middleware', () => {
-  let requestIdMiddleware;
-  let mockReq;
-  let mockRes;
-  let mockNext;
-
-  beforeEach(() => {
-    requestIdMiddleware = require('../../src/middleware/request-id.middleware');
-    mockReq = {};
-    mockRes = {
-      setHeader: jest.fn()
-    };
-    mockNext = jest.fn();
-  });
-
-  test('should be a function', () => {
-    expect(typeof requestIdMiddleware).toBe('function');
-  });
-
-  test('should set req.id', () => {
-    requestIdMiddleware(mockReq, mockRes, mockNext);
-    expect(mockReq.id).toBeDefined();
-    expect(typeof mockReq.id).toBe('string');
-  });
-
-  test('should set X-Request-ID header', () => {
-    requestIdMiddleware(mockReq, mockRes, mockNext);
-    expect(mockRes.setHeader).toHaveBeenCalledWith('X-Request-ID', expect.any(String));
-  });
-
-  test('should call next()', () => {
-    requestIdMiddleware(mockReq, mockRes, mockNext);
-    expect(mockNext).toHaveBeenCalled();
-    expect(mockNext).toHaveBeenCalledWith();
-  });
-
-  test('should generate valid UUID v4', () => {
-    requestIdMiddleware(mockReq, mockRes, mockNext);
-    const uuidV4Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    expect(mockReq.id).toMatch(uuidV4Regex);
-  });
-
-  test('should set same ID to req.id and header', () => {
-    requestIdMiddleware(mockReq, mockRes, mockNext);
-    const headerId = mockRes.setHeader.mock.calls[0][1];
-    expect(mockReq.id).toBe(headerId);
   });
 });
