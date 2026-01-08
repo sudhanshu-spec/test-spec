@@ -247,5 +247,30 @@ describe('Logger Utility', () => {
       // Winston logger should have exitOnError set to false for graceful handling
       expect(logger.exitOnError).toBe(false);
     });
+
+    test('should use devFormat printf callback in development environment', () => {
+      jest.resetModules();
+      process.env.NODE_ENV = 'development';
+      
+      const { logger } = require('../../src/utils/logger');
+      
+      // Actually log something to trigger the printf callback
+      // The devFormat printf callback is invoked when logging occurs in dev mode
+      expect(() => logger.info('Test message for printf')).not.toThrow();
+      
+      // Verify logger transports exist and are configured
+      expect(logger.transports).toBeDefined();
+      expect(logger.transports.length).toBeGreaterThan(0);
+    });
+
+    test('should format log with metadata using devFormat in development', () => {
+      jest.resetModules();
+      process.env.NODE_ENV = 'development';
+      
+      const { logger } = require('../../src/utils/logger');
+      
+      // Log with metadata to trigger the metaStr branch in printf
+      expect(() => logger.info('Test message', { key: 'value', count: 42 })).not.toThrow();
+    });
   });
 });
