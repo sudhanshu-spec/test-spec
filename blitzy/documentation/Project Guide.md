@@ -1,140 +1,72 @@
-# Express.js Security Hardening - Project Guide
+# Project Guide: Express.js Production Enhancements
 
 ## Executive Summary
 
-**Project Status: 81% Complete**
+**Project Completion: 87% (107 hours completed out of 123 total hours)**
 
-This security hardening initiative has successfully implemented comprehensive security features for the Express.js application. Based on our analysis, **72 hours of development work have been completed** out of an estimated **89 total hours required**, representing **81% project completion**.
+This project successfully enhances an existing security-hardened Express.js server with production-ready operational capabilities. All core features from the Agent Action Plan have been implemented and validated:
 
-### Key Achievements
-- ✅ All 5 security middleware components implemented and tested
-- ✅ 191 tests passing across 5 test suites
-- ✅ Zero npm audit vulnerabilities
-- ✅ Application runs successfully with all security features enabled
-- ✅ Backward compatibility maintained for existing endpoints
+| Feature | Status | Details |
+|---------|--------|---------|
+| Structured Logging (Pino) | ✅ Complete | High-performance JSON logging with request correlation |
+| PM2 Deployment | ✅ Complete | Cluster mode, environment configs, graceful shutdown |
+| Health Endpoints | ✅ Complete | /health (liveness) and /ready (readiness) probes |
+| Modular Routing | ✅ Complete | routes/ directory with centralized aggregation |
+| Environment Config | ✅ Complete | config/env.js with type-safe variable management |
+| Request Logging | ✅ Complete | UUID correlation, response time, status-based log levels |
+| Graceful Shutdown | ✅ Complete | SIGTERM/SIGINT handlers with configurable timeout |
+| Test Coverage | ✅ Complete | 305 tests passing (100% pass rate) |
 
-### Critical Remaining Work
-- SSL certificate generation for HTTPS (human configuration required)
-- Production environment variables configuration
-- Deployment and integration testing
+### Validation Results Summary
+- **Test Suites:** 7 passed, 7 total
+- **Tests:** 305 passed, 12 skipped (HTTPS tests - expected when HTTPS_ENABLED=false)
+- **Runtime Verification:** All endpoints responding correctly
+- **PM2 Integration:** v6.0.14 installed and operational
+- **Git Status:** Clean working tree, all changes committed
 
----
-
-## Validation Results Summary
-
-### Dependency Status
-| Package | Version | Status |
-|---------|---------|--------|
-| helmet | ^8.1.0 | ✅ Installed |
-| cors | ^2.8.5 | ✅ Installed |
-| express-rate-limit | ^8.2.1 | ✅ Installed |
-| joi | ^17.13.3 | ✅ Installed |
-| jest | ^30.2.0 | ✅ Installed (dev) |
-| supertest | ^7.1.4 | ✅ Installed (dev) |
-
-**npm audit result:** 0 vulnerabilities
-
-### Compilation Results
-| File | Status |
-|------|--------|
-| server.js | ✅ Passes syntax validation |
-| config/helmet.js | ✅ Passes syntax validation |
-| config/cors.js | ✅ Passes syntax validation |
-| middleware/rateLimiter.js | ✅ Passes syntax validation |
-| middleware/validation.js | ✅ Passes syntax validation |
-| middleware/security.js | ✅ Passes syntax validation |
-| All test files (5) | ✅ Pass syntax validation |
-
-### Test Execution Results
-```
-Test Suites: 5 passed, 5 total
-Tests:       191 passed, 12 skipped, 203 total
-Time:        ~7 seconds
-```
-
-| Test Suite | Tests | Status |
-|------------|-------|--------|
-| headers.test.js | 56+ | ✅ PASS |
-| rateLimit.test.js | 40+ | ✅ PASS |
-| cors.test.js | 35+ | ✅ PASS |
-| https.test.js | 30+ | ✅ PASS (12 skipped - no certs) |
-| validation.test.js | 30+ | ✅ PASS |
-
-### Runtime Validation
-Server startup confirmed with all security features:
-```
-[HTTP] Server running at http://127.0.0.1:3000/
-[SECURITY] Helmet security headers: ENABLED
-[SECURITY] CORS protection: ENABLED
-[SECURITY] Rate limiting: ENABLED
-[SECURITY] Body parsing with limits: ENABLED
-```
-
-**Verified Security Headers:**
-- Content-Security-Policy ✅
-- Strict-Transport-Security ✅
-- X-Frame-Options: DENY ✅
-- X-Content-Type-Options: nosniff ✅
-- Referrer-Policy ✅
-- Cross-Origin-Opener-Policy ✅
-- RateLimit headers ✅
-- X-Powered-By: REMOVED ✅
+### Critical Bug Fixed During Validation
+A bug was discovered and fixed in `middleware/requestLogger.js` where the `getCustomLogLevel` function had an incorrect parameter signature. The pino-http v10 library passes `(req, res, err)` but the function was expecting `(res, err)`, causing all responses to log at ERROR level. This was corrected and tests updated accordingly.
 
 ---
 
-## Project Hours Breakdown
+## Hours Breakdown
 
-### Calculation Formula
-```
-Completion % = (Hours Completed / (Hours Completed + Hours Remaining)) × 100
-Completion % = (72 / (72 + 17)) × 100 = 72/89 = 80.9% ≈ 81%
-```
+### Completed Work: 107 hours
 
-### Completed Work: 72 Hours
+| Component | Files | Estimated Hours |
+|-----------|-------|-----------------|
+| Logger Configuration | config/logger.js (542 lines) | 10h |
+| Environment Management | config/env.js (757 lines) | 12h |
+| Request Logger Middleware | middleware/requestLogger.js (706 lines) | 12h |
+| Route Index | routes/index.js (238 lines) | 5h |
+| Health Routes | routes/health.js (545 lines) | 8h |
+| API Routes | routes/api.js (313 lines) | 5h |
+| PM2 Ecosystem Config | ecosystem.config.js (462 lines) | 8h |
+| Server Integration | server.js updates | 10h |
+| Security Middleware Integration | middleware/security.js updates | 4h |
+| Environment Template | .env.example updates | 2h |
+| Documentation | README.md updates | 4h |
+| Package Configuration | package.json updates | 1h |
+| Request Logger Tests | tests/logging/requestLogger.test.js (1548 lines) | 16h |
+| Health Endpoint Tests | tests/health/health.test.js (719 lines) | 10h |
 
-| Component | Lines | Hours |
-|-----------|-------|-------|
-| server.js (full security implementation) | 449 | 16 |
-| config/helmet.js (CSP, HSTS config) | 487 | 6 |
-| config/cors.js (CORS policy) | 199 | 3 |
-| middleware/rateLimiter.js | 226 | 3 |
-| middleware/validation.js | 316 | 5 |
-| middleware/security.js | 289 | 4 |
-| Test suite (5 files) | 4,800+ | 20 |
-| .env.example | 164 | 1.5 |
-| certs/README.md | 516 | 3 |
-| .gitignore updates | - | 0.5 |
-| package.json updates | - | 1 |
-| Dependency management | - | 2 |
-| Bug fixes and debugging | - | 4 |
-| Integration testing | - | 3 |
-| **TOTAL COMPLETED** | **~7,800** | **72** |
+### Remaining Work: 16 hours
 
-### Remaining Work: 17 Hours
-
-| Task | Base Hours | With Multipliers |
-|------|------------|------------------|
-| SSL certificate generation (dev) | 0.5 | 0.7 |
-| SSL certificate setup (prod) | 2 | 2.9 |
-| Production environment config | 1.5 | 2.2 |
-| CI/CD pipeline setup | 2 | 2.9 |
-| Production deployment | 2 | 2.9 |
-| Smoke testing | 1 | 1.4 |
-| Performance testing | 2 | 2.9 |
-| Security audit review | 1 | 1.4 |
-| **TOTAL REMAINING** | **12** | **17.3 ≈ 17** |
-
-*Enterprise multipliers applied: 1.15 (compliance) × 1.25 (uncertainty) = 1.44x*
-
----
-
-## Visual Representation
+| Task | Priority | Hours | Notes |
+|------|----------|-------|-------|
+| Production Environment Setup | High | 4h | Configure .env for production, set API keys/secrets |
+| Security Audit | Medium | 2h | Review deployed configuration, penetration testing |
+| CI/CD Pipeline Setup | Medium | 6h | GitHub Actions or similar for automated deployment |
+| Load Testing | Medium | 3h | Verify PM2 cluster performance under load |
+| Documentation Review | Low | 1h | Final review of README and inline docs |
 
 ```mermaid
 pie title Project Hours Breakdown
-    "Completed Work" : 72
-    "Remaining Work" : 17
+    "Completed Work" : 107
+    "Remaining Work" : 16
 ```
+
+**Completion Calculation:** 107 hours completed / (107 completed + 16 remaining) = 107 / 123 = **87% complete**
 
 ---
 
@@ -144,159 +76,166 @@ pie title Project Hours Breakdown
 
 | Requirement | Version | Purpose |
 |-------------|---------|---------|
-| Node.js | 20.x+ | Runtime environment |
-| npm | 11.x+ | Package manager |
-| OpenSSL | Any | SSL certificate generation (optional) |
+| Node.js | ≥18.0.0 (v20.x LTS recommended) | JavaScript runtime |
+| npm | ≥8.0.0 | Package manager |
+| PM2 | ≥6.0.14 (global) | Production process manager |
 
-### Environment Setup
+### Installation Steps
 
-1. **Clone and navigate to repository:**
 ```bash
-cd /path/to/repository
-```
+# 1. Clone the repository
+git clone <repository-url>
+cd <repository-directory>
 
-2. **Create environment file:**
-```bash
+# 2. Install dependencies
+npm install
+
+# 3. Install PM2 globally (if not already installed)
+npm install -g pm2
+
+# 4. Create environment configuration
 cp .env.example .env
+# Edit .env with your specific configuration
 ```
 
-3. **Configure environment variables:**
-```bash
-# Edit .env file with your values
-# Required for production:
-ALLOWED_ORIGINS=https://yourdomain.com
-NODE_ENV=production
+### Environment Configuration
 
-# Optional (defaults shown):
+Create a `.env` file with the following variables:
+
+```env
+# Server Configuration
+NODE_ENV=development
+PORT=3000
+HOST=0.0.0.0
+
+# Logging Configuration
+LOG_LEVEL=info              # trace, debug, info, warn, error, fatal
+LOG_FORMAT=pretty           # json (production) or pretty (development)
+
+# PM2 Configuration
+PM2_INSTANCES=max           # Number of cluster workers or 'max'
+PM2_EXEC_MODE=cluster       # cluster or fork
+
+# Security Configuration (adjust for your environment)
+ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8080
 RATE_LIMIT_WINDOW_MS=900000
 RATE_LIMIT_MAX=100
-HTTPS_ENABLED=false
-HTTPS_PORT=3443
-SSL_KEY_PATH=./certs/key.pem
-SSL_CERT_PATH=./certs/cert.pem
+
+# Graceful Shutdown
+SHUTDOWN_TIMEOUT=10000
 ```
 
-### Dependency Installation
+### Running the Application
+
+#### Development Mode (with pretty logs)
+```bash
+npm run start:dev
+```
+Expected output:
+```
+[INFO] (express-server): HTTP server running at http://127.0.0.1:3000/
+[INFO] (express-server): Security middleware stack initialized
+```
+
+#### Production Mode (JSON logs)
+```bash
+npm run start:prod
+```
+
+#### PM2 Cluster Mode (Recommended for Production)
+```bash
+# Start with PM2
+npm run pm2:start
+
+# View logs
+npm run pm2:logs
+
+# Monitor processes
+npm run pm2:monit
+
+# Zero-downtime reload
+npm run pm2:reload
+
+# Stop all processes
+npm run pm2:stop
+```
+
+### Running Tests
 
 ```bash
-# Clean install (recommended for CI/CD)
-npm ci
+# Run all tests
+npm test
 
-# Or standard install
-npm install
+# Expected output:
+# Test Suites: 7 passed, 7 total
+# Tests:       12 skipped, 305 passed, 317 total
 ```
 
-**Expected Output:**
-```
-added 393 packages, and audited 394 packages in Xs
-found 0 vulnerabilities
-```
+### Verifying the Installation
 
-### Application Startup
-
-**Development mode (HTTP only):**
 ```bash
-npm start
-```
+# Start the server
+npm run start:dev &
 
-**Expected Output:**
-```
-[HTTP] Server running at http://127.0.0.1:3000/
-[SECURITY] Helmet security headers: ENABLED
-[SECURITY] CORS protection: ENABLED
-[SECURITY] Rate limiting: ENABLED
-[SECURITY] Body parsing with limits: ENABLED
-```
+# Wait for startup
+sleep 3
 
-**With HTTPS (requires certificates):**
-```bash
-# First, generate certificates (development only)
-openssl req -x509 -newkey rsa:4096 -keyout certs/key.pem \
-  -out certs/cert.pem -days 365 -nodes -subj "/CN=localhost"
+# Test health endpoint
+curl http://localhost:3000/health
+# Expected: {"status":"healthy","timestamp":"...","uptime":...}
 
-# Enable HTTPS
-export HTTPS_ENABLED=true
-npm start
-```
+# Test readiness endpoint
+curl http://localhost:3000/ready
+# Expected: {"status":"ready","timestamp":"...","checks":{...}}
 
-### Verification Steps
-
-1. **Verify server is running:**
-```bash
+# Test main endpoint
 curl http://localhost:3000/
 # Expected: Hello, World!
+
+# Test data endpoint
+curl http://localhost:3000/data
+# Expected: {"success":true,"data":{...},"meta":{...}}
+
+# Stop server
+pkill -f "node server.js"
 ```
 
-2. **Verify security headers:**
-```bash
-curl -sI http://localhost:3000/ | grep -E "(Security-Policy|Transport-Security|Frame-Options)"
-```
+### Available Endpoints
 
-3. **Run test suite:**
-```bash
-npm test
-# Expected: 5 passed, 191 tests
-```
-
-4. **Security audit:**
-```bash
-npm audit
-# Expected: found 0 vulnerabilities
-```
-
-### Example Usage
-
-**Test root endpoint:**
-```bash
-curl http://localhost:3000/
-# Response: Hello, World!
-```
-
-**Test evening endpoint:**
-```bash
-curl http://localhost:3000/evening
-# Response: Good evening
-```
-
-**Test rate limiting (send 105 requests):**
-```bash
-for i in {1..105}; do 
-  curl -s -o /dev/null -w "%{http_code}\n" http://localhost:3000/
-done | tail -5
-# Last few should show 429 (rate limited)
-```
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/` | GET | Home route, returns "Hello, World!" |
+| `/evening` | GET | Evening greeting |
+| `/data` | GET | Sample paginated data endpoint |
+| `/health` | GET | Liveness probe (status, timestamp, uptime) |
+| `/ready` | GET | Readiness probe (includes dependency checks) |
 
 ---
 
-## Human Tasks Required
+## Detailed Human Task List
 
-### High Priority (Immediate)
+### High Priority Tasks
 
-| Task | Description | Hours | Severity |
-|------|-------------|-------|----------|
-| Generate SSL Certificates (Production) | Obtain SSL certificates from Let's Encrypt or commercial CA for production HTTPS | 2.9 | High |
-| Configure ALLOWED_ORIGINS | Set production CORS whitelist in environment | 0.7 | High |
-| Set NODE_ENV=production | Configure production environment mode | 0.3 | High |
+| # | Task | Action Steps | Hours | Severity |
+|---|------|--------------|-------|----------|
+| 1 | Production Environment Configuration | Create production .env file; Configure LOG_LEVEL=info, LOG_FORMAT=json; Set appropriate ALLOWED_ORIGINS; Configure HTTPS if needed | 2h | Critical |
+| 2 | Secrets Management | Set up secure storage for API keys and credentials; Configure environment variables in production server; Ensure .env is not committed | 2h | Critical |
 
-### Medium Priority (Configuration & Integration)
+### Medium Priority Tasks
 
-| Task | Description | Hours | Severity |
-|------|-------------|-------|----------|
-| CI/CD Pipeline Setup | Configure automated testing and deployment pipeline | 2.9 | Medium |
-| Production Deployment | Deploy application to production infrastructure | 2.9 | Medium |
-| Rate Limit Tuning | Adjust RATE_LIMIT_MAX based on expected traffic patterns | 0.7 | Medium |
-| Smoke Testing | Verify all endpoints work correctly in production | 1.4 | Medium |
+| # | Task | Action Steps | Hours | Severity |
+|---|------|--------------|-------|----------|
+| 3 | Security Review | Audit environment configuration; Review CORS whitelist; Verify rate limiting settings; Check for exposed sensitive data in logs | 2h | High |
+| 4 | CI/CD Pipeline Setup | Create GitHub Actions workflow or equivalent; Configure automated testing on PR; Set up production deployment pipeline | 6h | Medium |
+| 5 | Load Testing | Run performance tests with tools like Artillery or k6; Verify PM2 cluster mode handles expected load; Document performance baselines | 3h | Medium |
 
-### Low Priority (Optimization)
+### Low Priority Tasks
 
-| Task | Description | Hours | Severity |
-|------|-------------|-------|----------|
-| Performance Testing | Load test to verify rate limiting and server capacity | 2.9 | Low |
-| Security Audit Review | Third-party security assessment (optional) | 1.4 | Low |
-| Documentation Review | Review and update operational documentation | 0.7 | Low |
-| CSP Policy Refinement | Adjust Content-Security-Policy for application needs | 0.7 | Low |
+| # | Task | Action Steps | Hours | Severity |
+|---|------|--------------|-------|----------|
+| 6 | Documentation Review | Review README.md for accuracy; Verify all environment variables documented; Update any outdated examples | 1h | Low |
 
-**Total Remaining Hours: 17**
+**Total Remaining Hours: 16h**
 
 ---
 
@@ -304,117 +243,98 @@ done | tail -5
 
 ### Technical Risks
 
-| Risk | Severity | Mitigation |
-|------|----------|------------|
-| Self-signed certificates in production | High | Use Let's Encrypt or commercial CA certificates |
-| Rate limiting bypassed by distributed attack | Medium | Consider Redis-based rate limiter for distributed deployments |
-| CSP too restrictive for application needs | Low | Adjust CSP directives in config/helmet.js as needed |
+| Risk | Severity | Likelihood | Mitigation |
+|------|----------|------------|------------|
+| Memory pressure on readiness endpoint | Low | Low | Threshold is configurable; /health endpoint unaffected |
+| Log file disk space | Medium | Medium | Configure PM2 log rotation; Use external log aggregation |
+| Cluster worker crashes | Low | Low | PM2 auto-restart enabled; exponential backoff configured |
 
 ### Security Risks
 
-| Risk | Severity | Mitigation |
-|------|----------|------------|
-| Missing SSL certificates blocks HTTPS | High | Generate/obtain certificates before enabling HTTPS |
-| CORS misconfiguration allows unauthorized origins | Medium | Carefully configure ALLOWED_ORIGINS for production |
-| Private keys committed to version control | High | Verify .gitignore includes certs/*.pem patterns |
+| Risk | Severity | Likelihood | Mitigation |
+|------|----------|------------|------------|
+| Sensitive data in logs | Low | Low | Redaction paths configured for authorization headers, passwords, tokens |
+| Health endpoint information disclosure | Low | Very Low | Endpoints return minimal operational data, no secrets |
+| Rate limit bypass in cluster mode | Low | Low | Per-IP rate limiting with X-Forwarded-For support |
 
 ### Operational Risks
 
-| Risk | Severity | Mitigation |
-|------|----------|------------|
-| Environment variables not set | Medium | Use .env.example as template; validate on startup |
-| Rate limit values inappropriate for traffic | Low | Monitor and adjust based on actual usage patterns |
-| No health check endpoint | Low | Add /health endpoint for load balancer integration |
+| Risk | Severity | Likelihood | Mitigation |
+|------|----------|------------|------------|
+| PM2 not installed in production | Medium | Low | Document global PM2 installation requirement; Add to deployment checklist |
+| Environment misconfiguration | Medium | Medium | Validate required variables at startup; Comprehensive .env.example |
+| Graceful shutdown timeout | Low | Low | Configurable via SHUTDOWN_TIMEOUT; Default 10s is reasonable |
 
 ### Integration Risks
 
-| Risk | Severity | Mitigation |
-|------|----------|------------|
-| CORS blocks legitimate frontend clients | Medium | Add all frontend origins to ALLOWED_ORIGINS |
-| Rate limiting affects legitimate high-traffic users | Low | Increase limits or implement user-based limits |
-| Reverse proxy conflicts with security headers | Low | Coordinate header settings with infrastructure team |
+| Risk | Severity | Likelihood | Mitigation |
+|------|----------|------------|------------|
+| Load balancer health check compatibility | Low | Low | Standard /health and /ready endpoints follow industry conventions |
+| Log aggregation integration | Low | Medium | JSON format in production is compatible with ELK, CloudWatch, Datadog |
 
 ---
 
-## Files Created/Modified Summary
+## Files Created/Modified
 
-### Modified Files (2)
-| File | Description |
-|------|-------------|
-| package.json | Added security dependencies and test script |
-| server.js | Complete security middleware chain implementation |
+### New Files (9 files)
 
-### Created Files (16)
-| File | Lines | Description |
-|------|-------|-------------|
-| .gitignore | 7+ | SSL certificate ignore patterns |
-| .env.example | 164 | Environment variable template |
-| config/helmet.js | 487 | Helmet security configuration |
-| config/cors.js | 199 | CORS policy configuration |
-| middleware/rateLimiter.js | 226 | Rate limiter middleware |
-| middleware/validation.js | 316 | Input validation middleware |
-| middleware/security.js | 289 | Centralized security exports |
-| certs/.gitkeep | 1 | Directory placeholder |
-| certs/README.md | 516 | Certificate documentation |
-| tests/security/headers.test.js | 886 | Security header tests |
-| tests/security/rateLimit.test.js | 1055 | Rate limiting tests |
-| tests/security/cors.test.js | 730 | CORS policy tests |
-| tests/security/https.test.js | 810 | HTTPS/TLS tests |
-| tests/security/validation.test.js | 1319 | Input validation tests |
+| File | Purpose | Lines |
+|------|---------|-------|
+| `ecosystem.config.js` | PM2 process manager configuration | 462 |
+| `config/logger.js` | Pino logger configuration | 542 |
+| `config/env.js` | Environment variable management | 757 |
+| `middleware/requestLogger.js` | HTTP request logging middleware | 706 |
+| `routes/index.js` | Central route aggregator | 238 |
+| `routes/health.js` | Health check endpoints | 545 |
+| `routes/api.js` | API routes module | 313 |
+| `tests/logging/requestLogger.test.js` | Request logging tests | 1548 |
+| `tests/health/health.test.js` | Health endpoint tests | 719 |
+
+### Modified Files (5 files)
+
+| File | Changes |
+|------|---------|
+| `server.js` | Integrated logging, modular routing, graceful shutdown handlers |
+| `middleware/security.js` | Added request logger to middleware chain |
+| `.env.example` | Added logging, PM2, health check environment variables |
+| `package.json` | Added pino, pino-http, uuid dependencies; PM2 scripts |
+| `README.md` | Added logging, PM2, health endpoint documentation |
 
 ---
 
 ## Git Statistics
 
-- **Total Commits:** 26
-- **Files Changed:** 17
-- **Lines Added:** 12,636
-- **Lines Removed:** 481
-- **Net Change:** +12,155 lines
+- **Total Commits:** 42 commits on feature branch
+- **Files Changed:** 29 files
+- **Lines Added:** 14,399 (excluding documentation and lock files)
+- **Branch:** blitzy-a8500cbe-529e-4107-92d1-347d491c62cf
+- **Working Tree:** Clean (all changes committed)
 
 ---
 
-## Security Implementation Summary
+## Validation Evidence
 
-### Defense-in-Depth Layers Implemented
+### Test Execution
+```
+Test Suites: 7 passed, 7 total
+Tests:       12 skipped, 305 passed, 317 total
+Snapshots:   0 total
+Time:        11.167 s
+```
 
-1. **Layer 1 - HTTP Security Headers (helmet)**
-   - Content-Security-Policy: Prevents XSS and injection attacks
-   - HSTS: Enforces HTTPS connections
-   - X-Frame-Options: Prevents clickjacking
-   - X-Content-Type-Options: Prevents MIME sniffing
-   - 10+ additional security headers configured
+### Runtime Verification
+- `GET /` → 200 OK, "Hello, World!"
+- `GET /health` → 200 OK, JSON with status, timestamp, uptime
+- `GET /ready` → 200 OK, JSON with dependency checks
+- `GET /data` → 200 OK, paginated JSON data
 
-2. **Layer 2 - CORS Policy**
-   - Environment-based origin whitelisting
-   - Explicit method and header restrictions
-   - Credential handling configured
-   - Secure defaults (blocks all if not configured)
-
-3. **Layer 3 - Rate Limiting**
-   - Default: 100 requests per 15 minutes per IP
-   - Configurable via environment variables
-   - Standard draft-8 RateLimit headers
-   - Returns 429 with structured error response
-
-4. **Layer 4 - Input Validation**
-   - Joi-based schema validation middleware
-   - Validates body, query, and params
-   - Returns detailed validation errors
-   - Common schemas provided for reuse
-
-5. **Layer 5 - HTTPS Support**
-   - Conditional HTTPS server
-   - TLS 1.2 minimum, TLS 1.3 maximum
-   - Certificate paths via environment variables
-   - Graceful degradation if certs unavailable
+### PM2 Integration
+- PM2 v6.0.14 installed globally
+- ecosystem.config.js validated
+- Cluster mode operational
 
 ---
 
 ## Conclusion
 
-The Express.js Security Hardening project has successfully implemented all core security requirements from the Agent Action Plan. The application is **production-ready from a code perspective**, with all security middleware properly configured and tested.
-
-**Remaining work** consists primarily of **human configuration tasks** (SSL certificates, environment variables) and **deployment activities** that require infrastructure access and organizational decisions.
-
-**Recommendation:** Proceed with SSL certificate generation and production environment configuration to achieve full production readiness.
+The Express.js production enhancement project is **87% complete** with all core features implemented and validated. The remaining 16 hours of work consists primarily of production deployment preparation tasks that require human intervention (environment configuration, secrets management, CI/CD setup). The application is fully functional and ready for production deployment after completing the documented human tasks.
