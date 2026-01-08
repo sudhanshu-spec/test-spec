@@ -13,9 +13,18 @@
  * - HOST: Override default host binding
  * - PORT: Override default port number
  * - NODE_ENV: Set application environment (development, production, test)
+ * - LOG_LEVEL: Log level for winston logger (error, warn, info, http, debug)
+ * - LOG_FORMAT: Morgan log format (combined, common, dev, short, tiny)
+ * - CORS_ORIGIN: CORS allowed origins
+ * - PM2_INSTANCES: PM2 cluster instance count (0 = auto based on CPU cores)
  * 
  * @module src/config
  */
+
+'use strict';
+
+// Load environment variables from .env file
+require('dotenv').config();
 
 module.exports = {
   /**
@@ -37,5 +46,37 @@ module.exports = {
    * @type {string}
    * @default 'development'
    */
-  env: process.env.NODE_ENV || 'development'
+  env: process.env.NODE_ENV || 'development',
+
+  /**
+   * Logging level for winston
+   * Levels: error, warn, info, http, verbose, debug, silly
+   * @type {string}
+   * @default 'info'
+   */
+  logLevel: process.env.LOG_LEVEL || 'info',
+
+  /**
+   * HTTP request log format for morgan
+   * Formats: combined, common, dev, short, tiny
+   * @type {string}
+   * @default 'combined'
+   */
+  logFormat: process.env.LOG_FORMAT || 'combined',
+
+  /**
+   * CORS allowed origins
+   * Use '*' to allow all origins (not recommended for production)
+   * @type {string}
+   * @default '*'
+   */
+  corsOrigin: process.env.CORS_ORIGIN || '*',
+
+  /**
+   * PM2 cluster instance count
+   * 0 = auto based on CPU cores (uses 'max')
+   * @type {number}
+   * @default 0
+   */
+  pm2Instances: parseInt(process.env.PM2_INSTANCES, 10) || 0
 };
