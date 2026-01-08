@@ -4,1234 +4,1333 @@
 
 ## 0.1 Intent Clarification
 
-Based on the provided requirements, the Blitzy platform understands that the testing objective is to **create comprehensive unit tests for `server.js`** using Jest or Mocha as the testing framework. This request transforms a currently untested Express.js 5 tutorial application into a test-covered, production-quality codebase.
+### 0.1.1 Core Documentation Objective
 
-### 0.1.1 Core Testing Objective
+Based on the provided requirements, the Blitzy platform understands that the documentation objective is to **enhance and expand documentation** for a Node.js Express.js tutorial server project, specifically focusing on:
 
-**Request Category:** Add new tests (greenfield test implementation)
+- **JSDoc comment enhancement** for `server.js` and related source files
+- **Comprehensive README creation/enhancement** with structured content
+- **API documentation** with complete endpoint references
+- **Deployment guide** for production environments
+- **Inline code explanations** that clarify implementation decisions
 
-The user has requested comprehensive unit test coverage for the `server.js` entry point of a minimal Express.js application. The specific testing requirements include:
+**Documentation Type Classification:**
 
-| Requirement | Technical Interpretation | Test Category |
-|------------|-------------------------|---------------|
-| HTTP responses | Verify response bodies match expected content | Endpoint contract tests |
-| Status codes | Assert 200 OK for valid routes, 404 for invalid | HTTP status validation |
-| Headers | Validate Content-Type and other response headers | Header assertion tests |
-| Server startup/shutdown | Test server binding and graceful termination | Lifecycle tests |
-| Error handling | Verify behavior on invalid routes and methods | Error scenario tests |
-| Edge cases | Test boundary conditions and unexpected inputs | Edge case coverage |
+| Category | Classification | Rationale |
+|----------|---------------|-----------|
+| Request Type | Update existing documentation + Create new documentation | Project has existing docs requiring enhancement |
+| Documentation Scope | API docs, User guides, Technical specs, README, Deployment guide | Multiple documentation artifacts requested |
+| Primary Audience | Developers, DevOps engineers, learners | Tutorial-grade project with professional patterns |
 
-### 0.1.2 Implicit Testing Needs
+**Requirement Breakdown:**
 
-Beyond the explicit requirements, the Blitzy platform identifies the following implicit testing needs:
+| Requirement | Interpretation | Documentation Artifact |
+|-------------|---------------|----------------------|
+| "Add JSDoc comments to server.js functions" | Enhance existing JSDoc annotations in `server.js` and related modules with comprehensive parameter, return type, and example documentation | `server.js`, `src/app.js`, `src/config/index.js`, `src/routes/*.js` |
+| "Create comprehensive README" | Enhance existing `README.md` with additional sections and improved structure | `README.md` |
+| "Setup instructions" | Document installation, prerequisites, and environment configuration | `README.md` (Installation section) |
+| "API documentation" | Complete reference for GET `/` and GET `/evening` endpoints | `README.md` (API Reference section), inline JSDoc |
+| "Deployment guide" | Add production deployment instructions (Docker, cloud providers, environment configuration) | `README.md` (new Deployment section) |
+| "Inline code explanations" | Add clarifying comments explaining implementation decisions and patterns | Source files with inline comments |
 
-- **Configuration Module Testing:** The `src/config/index.js` module provides environment-driven configuration that directly impacts `server.js` behavior and requires verification of default fallbacks
-- **Route Handler Testing:** The endpoint responses in `src/routes/main.routes.js` define the actual HTTP behaviors that `server.js` exposes
-- **App Factory Testing:** The `src/app.js` factory pattern is the testable unit that `server.js` consumes
-- **Express 5 Compatibility:** Tests must be compatible with Express.js 5.1.0, which has specific async error handling behaviors
-- **Node.js 18+ Compatibility:** Tests must run on Node.js 18+ (current environment: Node.js 20.19.6)
+### 0.1.2 Special Instructions and Constraints
 
-### 0.1.3 Special Instructions and Constraints
+**Detected Constraints:**
 
-**Framework Selection:** The user specified "Jest or Mocha" - Based on compatibility research, **Jest 30.x** is recommended as the primary framework because:
-- Native async/await support without additional configuration
-- Built-in assertion library eliminates need for Chai
-- Superior mocking capabilities for environment variable testing
-- <cite index="14-1,14-2">Jest 30 drops support for Node 14, 16, 19, and 21. The minimum supported Node versions are now 18.x.</cite>
-- Excellent integration with Supertest for HTTP testing
+- **Preserve existing behavior**: Documentation changes must not alter runtime functionality
+- **No source code modifications**: Only comments and documentation can be modified (JSDoc counts as documentation)
+- **Follow existing patterns**: Current JSDoc style uses `@module`, `@type`, `@route`, `@returns` conventions
+- **Maintain CommonJS compatibility**: Documentation must reference CommonJS module patterns
 
-**No User Examples Provided:** The user did not provide specific test examples to follow.
+**Documentation Style Requirements (Inferred from Repository Analysis):**
 
-**Web Search Research Completed:**
-- Jest 30.2.0 confirmed compatible with Node.js 20.x
-- Supertest 7.1.4 confirmed as latest stable version for HTTP assertions
-- <cite index="5-10,5-11,5-12">The standard pattern separates app.js (exports express app) from server.js (binds to port), enabling tests to import app.js directly.</cite>
+| Style Element | Current Pattern | Enforcement |
+|--------------|-----------------|-------------|
+| JSDoc module declaration | `@module src/[path]` | Required for all modules |
+| Type annotations | `@type {import('express').Application}` | TypeScript-style JSDoc types |
+| Route documentation | `@route GET /path` | Used in route handlers |
+| File descriptions | `@fileoverview` | Used in configuration and test files |
+| Parameter documentation | `@param {Type} name - description` | Standard JSDoc format |
+| Return documentation | `@returns {Type} description` | Standard JSDoc format |
 
-### 0.1.4 Technical Interpretation
+**Template Requirements:**
 
-These testing requirements translate to the following technical test implementation strategy:
+No explicit templates were provided by the user. Documentation will follow existing repository patterns:
 
-| Requirement | Implementation Approach |
-|-------------|------------------------|
-| To test HTTP responses | Create Supertest assertions against the `app` module, verifying `.expect('Hello, World!\n')` and `.expect('Good evening')` for the two endpoints |
-| To test status codes | Use Supertest's `.expect(200)` and `.expect(404)` chainable assertions |
-| To test headers | Assert `Content-Type` headers using `.expect('Content-Type', /text\/html/)` |
-| To test server startup | Verify the `app.listen()` callback executes and logs startup message |
-| To test shutdown | Test graceful server closure using `server.close()` method |
-| To test error handling | Verify 404 responses for undefined routes and unsupported HTTP methods |
-| To test edge cases | Test empty paths, trailing slashes, query parameters on static routes |
+```javascript
+/**
+ * @fileoverview [Description]
+ * @module [path/to/module]
+ */
+```
 
-### 0.1.5 Coverage Requirements Interpretation
+### 0.1.3 Technical Interpretation
 
-**Explicit Coverage Target:** None specified by user
+These documentation requirements translate to the following technical documentation strategy:
 
-**Implicit Coverage Expectations:**
+| Action | Target Files | Documentation Type | Outcome |
+|--------|-------------|-------------------|---------|
+| Enhance JSDoc | `server.js` | Module-level and inline JSDoc | Complete function documentation with types, parameters, returns, and examples |
+| Enhance JSDoc | `src/app.js` | Module and factory documentation | Document Express app factory pattern |
+| Review JSDoc | `src/config/index.js` | Configuration documentation | Verify completeness, add examples |
+| Review JSDoc | `src/routes/*.js` | Route handler documentation | Verify OpenAPI-style route annotations |
+| Update README | `README.md` | Project documentation | Add deployment guide, enhance existing sections |
+| Add inline comments | All source files | Code explanations | Clarify implementation decisions |
 
-Based on industry standards for Express.js applications and the existing codebase structure, comprehensive testing should achieve:
+**Technical Approach:**
 
-| Coverage Metric | Target | Rationale |
-|-----------------|--------|-----------|
-| Line Coverage | ≥ 80% | Industry standard minimum for production code |
-| Branch Coverage | ≥ 75% | Cover conditional logic in configuration parsing |
-| Function Coverage | ≥ 90% | All exported functions should be tested |
-| Statement Coverage | ≥ 80% | Comprehensive execution path coverage |
+- To document server initialization, we will enhance `server.js` JSDoc with `@example` blocks demonstrating usage
+- To document the Express factory pattern, we will update `src/app.js` with middleware chain documentation
+- To create deployment documentation, we will add a new "Deployment" section to `README.md` covering Docker, PM2, and cloud deployment patterns
+- To document API endpoints, we will enhance existing route JSDoc with OpenAPI-compatible annotations
 
-**Critical Path Analysis:**
+### 0.1.4 Inferred Documentation Needs
 
-To achieve comprehensive testing, coverage should include:
+Based on code analysis, the following documentation gaps were identified:
 
-- 100% of route handler functions (`/` and `/evening` endpoints)
-- 100% of configuration export properties (`host`, `port`, `env`)
-- Server startup success path
-- Server startup failure scenarios (port already in use)
-- 404 error path for undefined routes
-- Configuration default fallback paths
+| Gap Category | Finding | Recommendation |
+|--------------|---------|---------------|
+| Server startup lifecycle | `server.js` callback function undocumented | Add JSDoc for startup callback |
+| Express app middleware | `src/app.js` middleware mounting could use more context | Add inline comments explaining `app.use()` |
+| Configuration parsing | Port parsing edge cases documented in tests but not in source | Add JSDoc examples for configuration |
+| Route response contracts | Response format documented but could include HTTP header details | Enhance @route documentation |
+| Deployment instructions | No production deployment guidance | Create deployment section in README |
+| Docker containerization | No Docker configuration present | Document Docker deployment pattern |
+| Process management | No PM2/systemd guidance | Document production process management |
+| Environment examples | No `.env.example` file | Create environment template file |
 
+**Based on User Journey Analysis:**
 
-## 0.2 Test Discovery and Analysis
+New users of this codebase require:
+- Clear setup guide (exists, adequate)
+- Usage examples (exists, adequate)  
+- API contract documentation (exists, could be enhanced)
+- Troubleshooting guide (exists, adequate)
+- Deployment guide (missing, needs creation)
+- Production configuration examples (missing, needs creation)
 
-### 0.2.1 Existing Test Infrastructure Assessment
+## 0.2 Documentation Discovery and Analysis
 
-Repository analysis reveals **no existing test infrastructure** in the `hello_world` project. The codebase is a greenfield testing scenario requiring complete test setup from scratch.
+### 0.2.1 Existing Documentation Infrastructure Assessment
+
+Repository analysis reveals a **well-documented tutorial-grade project** with comprehensive existing documentation infrastructure:
 
 **Search Patterns Employed:**
 
-| Pattern | Files Found | Result |
-|---------|-------------|--------|
-| `*test*` | 0 | No test files exist |
-| `*spec*` | 0 | No spec files exist |
-| `test_*` | 0 | No Python-style test files |
-| `*.test.js` | 0 | No Jest test files |
-| `*.spec.js` | 0 | No Mocha/Jasmine spec files |
-| `jest.config.*` | 0 | No Jest configuration |
-| `mocha*` | 0 | No Mocha configuration |
-| `.nycrc*` | 0 | No coverage configuration |
+| Pattern | Files Found | Status |
+|---------|------------|--------|
+| `README*` | `README.md` | 338 lines of comprehensive documentation |
+| `docs/**` | None | No dedicated documentation folder |
+| `*.md, *.mdx` | `README.md`, `blitzy/documentation/*.md` | Project and technical documentation |
+| `blitzy/**` | `blitzy/documentation/` | Technical specifications and project guides |
 
-**Package.json Analysis:**
+**Documentation Framework Assessment:**
 
-```json
-{
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "devDependencies": {}
-}
-```
+| Component | Current State | Details |
+|-----------|--------------|---------|
+| Primary documentation | `README.md` | Comprehensive project documentation |
+| Technical specifications | `blitzy/documentation/Technical Specifications.md` | Agent Action Plan and testing strategy |
+| Project guide | `blitzy/documentation/Project Guide.md` | Implementation completion and verification guide |
+| JSDoc in source files | All `.js` files | Module-level and function-level documentation |
+| Documentation generator | Not configured | No mkdocs, docusaurus, or jsdoc generator |
+| API documentation tools | Not configured | JSDoc annotations present but no generator |
+| Diagram tools | Mermaid (in Markdown) | Used in Technical Specifications |
 
-Repository analysis reveals a **placeholder test script** with no testing setup. The project has **zero devDependencies** and no test automation framework installed.
-
-### 0.2.2 Current Testing Framework Detection
-
-| Component | Status | Evidence |
-|-----------|--------|----------|
-| Testing Framework | ❌ Not Installed | No jest/mocha in package.json |
-| Test Runner Configuration | ❌ Not Present | No config files found |
-| Coverage Tools | ❌ Not Installed | No istanbul/nyc/c8 |
-| Mock/Stub Libraries | ❌ Not Installed | No sinon/jest-mock |
-| HTTP Test Library | ❌ Not Installed | No supertest/axios-mock |
-| Test Data Fixtures | ❌ Not Present | No fixtures directory |
-
-### 0.2.3 Testability Design Evidence
-
-Despite the absence of tests, the codebase is **intentionally designed for testability** through architectural patterns:
-
-| Pattern | Location | Testability Benefit |
-|---------|----------|---------------------|
-| Factory Pattern | `src/app.js` | Creates Express app without HTTP binding, enabling Supertest usage |
-| Configuration Separation | `src/config/index.js` | Environment variables are mockable in isolation |
-| Route Modularization | `src/routes/*.js` | Routes testable independently from server |
-| Server Separation | `server.js` vs `src/app.js` | App testable without starting HTTP server |
-
-From `src/app.js` documentation: *"Design pattern: Factory pattern - creates configured Express app enabling unit testing without starting the actual server"*
-
-### 0.2.4 Source Code Structure for Testing
+**Documentation Infrastructure Findings:**
 
 ```
-hello_world/
-├── server.js              # Entry point - imports app, binds to port
-├── src/
-│   ├── app.js             # Express app factory (primary test target)
-│   ├── config/
-│   │   └── index.js       # Configuration with defaults (testable)
-│   └── routes/
-│       ├── index.js       # Route aggregator (barrel export)
-│       └── main.routes.js # Route handlers (testable endpoints)
-├── package.json           # No test dependencies
-└── README.md              # Manual verification commands
+Repository Documentation Structure:
+├── README.md                                    # Primary user-facing documentation (338 lines)
+├── blitzy/
+│   └── documentation/
+│       ├── Project Guide.md                     # Implementation completion guide
+│       └── Technical Specifications.md          # Technical specification document
+├── server.js                                    # JSDoc: @module server, inline comments
+├── jest.config.js                               # JSDoc: @fileoverview, @type
+└── src/
+    ├── app.js                                   # JSDoc: @module src/app
+    ├── config/
+    │   └── index.js                             # JSDoc: @module src/config, @type annotations
+    └── routes/
+        ├── index.js                             # JSDoc: @module src/routes
+        └── main.routes.js                       # JSDoc: @module, @route annotations
 ```
 
-### 0.2.5 Web Search Research Conducted
+### 0.2.2 Repository Code Analysis for Documentation
 
-| Research Topic | Finding | Source |
-|----------------|---------|--------|
-| Jest + Express 5 patterns | Supertest with app factory is the standard approach | Jest official docs |
-| Jest 30 Node.js support | Minimum Node 18.x required, Node 20.x fully supported | jestjs.io |
-| Supertest best practices | Import app module directly, not running server | dennisokeeffe.com |
-| Test environment setup | Set `testEnvironment: 'node'` for server-side testing | Jest documentation |
+**Source Files Requiring JSDoc Enhancement:**
 
-### 0.2.6 Module Dependency Map for Testing
+| File Path | Lines | Current JSDoc | Enhancement Needed |
+|-----------|-------|---------------|-------------------|
+| `server.js` | 53 | Comprehensive module-level, type annotations | Add `@example` blocks |
+| `src/app.js` | 28 | Module-level, middleware comments | Add middleware documentation |
+| `src/config/index.js` | 42 | Complete with @type, @default | Add configuration examples |
+| `src/routes/index.js` | 20 | Module-level barrel pattern docs | Adequate, minor enhancements |
+| `src/routes/main.routes.js` | 42 | @route annotations, return docs | Add @example blocks |
+| `jest.config.js` | 28 | @fileoverview, @type annotation | Adequate, no changes needed |
 
-```mermaid
-flowchart TB
-    subgraph TestTargets["Modules to Test"]
-        ServerJS["server.js<br/>Entry point"]
-        AppJS["src/app.js<br/>Express factory"]
-        ConfigJS["src/config/index.js<br/>Configuration"]
-        MainRoutes["src/routes/main.routes.js<br/>Endpoint handlers"]
-        RouteIndex["src/routes/index.js<br/>Route barrel"]
-    end
-    
-    subgraph Dependencies["External Dependencies"]
-        Express["express@5.1.0"]
-        ProcessEnv["process.env<br/>Environment"]
-    end
-    
-    ServerJS --> AppJS
-    ServerJS --> ConfigJS
-    AppJS --> MainRoutes
-    AppJS --> RouteIndex
-    RouteIndex --> MainRoutes
-    AppJS --> Express
-    ConfigJS --> ProcessEnv
-```
+**Test Files with Exemplary JSDoc (Reference for Consistency):**
 
-### 0.2.7 Identified Test Categories
+| File Path | JSDoc Features | Pattern to Follow |
+|-----------|---------------|-------------------|
+| `tests/unit/config.test.js` | @fileoverview, @module, helper @param/@returns, @typedef | Comprehensive helper function documentation |
+| `tests/unit/routes.test.js` | @fileoverview, @module, @typedef for RouteLayer | Custom type definitions |
+| `tests/integration/endpoints.test.js` | @fileoverview, @typedef, helper documentation | Test helper pattern |
+| `tests/lifecycle/server.test.js` | @fileoverview, @typedef for MockServer/TestConfig, factory @param/@returns | Mock factory documentation |
 
-Based on the codebase analysis, the following test categories are required:
+### 0.2.3 Current Documentation Coverage Analysis
 
-| Category | Module | Test Count (Est.) | Priority |
-|----------|--------|-------------------|----------|
-| HTTP Endpoint Tests | `src/app.js` + routes | 8-10 | High |
-| Configuration Unit Tests | `src/config/index.js` | 6-8 | High |
-| Server Lifecycle Tests | `server.js` | 3-4 | Medium |
-| Error Handling Tests | `src/app.js` | 4-5 | High |
-| Edge Case Tests | Multiple | 5-6 | Medium |
+**README.md Section Analysis (338 lines):**
 
-**Total Estimated Test Cases:** 26-33 tests
+| Section | Line Range | Status | Enhancement Opportunity |
+|---------|-----------|--------|------------------------|
+| Title/Description | 1-5 | Complete | None |
+| Prerequisites | 7-24 | Complete | None |
+| Installation | 26-41 | Complete | Add npm ci for CI environments |
+| Usage | 43-71 | Complete | None |
+| API Reference | 73-125 | Complete | Add response schema examples |
+| Project Structure | 127-161 | Complete | None |
+| Environment Variables | 163-191 | Complete | Add `.env.example` reference |
+| Architecture | 193-210 | Complete | Add Mermaid diagram |
+| Dependencies | 212-230 | Complete | None |
+| Scripts | 232-240 | Complete | None |
+| Testing | 242-301 | Complete | None |
+| Troubleshooting | 303-325 | Complete | None |
+| License/Author | 327-338 | Complete | None |
+| **Deployment Guide** | N/A | **Missing** | **Create new section** |
+| **Docker Support** | N/A | **Missing** | **Create new section** |
+| **Production Configuration** | N/A | **Missing** | **Add to Deployment section** |
 
+### 0.2.4 Web Search Research Conducted
 
-## 0.3 Testing Scope Analysis
+Research conducted for documentation best practices:
 
-### 0.3.1 Test Target Identification
+| Topic | Key Findings |
+|-------|-------------|
+| JSDoc best practices for Node.js Express | <cite index="1-1">"How to add JSDoc comments to CommonJS and Node.js modules"</cite> - Official JSDoc documentation provides guidance on module documentation |
+| JSDoc templates | <cite index="2-1,2-2">"The default JSDoc template is a bit lackluster... I would suggest using a template like docdash"</cite> - Enhanced templates available for better readability |
+| Express API documentation | <cite index="4-1,4-2">"In this post we are going to explain how to easily create docs and validation in a Node.js API using express-jsdoc-swagger. If you ever worked with REST APIs you might notice the importance of having a good documentation"</cite> - Libraries available for Swagger generation from JSDoc |
+| JSDoc with Swagger | <cite index="5-1,5-2">"In this tutorial, you will set up a Swagger UI documentation web page for an Express API. You can then write JSDoc comments in your API's source code"</cite> - JSDoc can generate OpenAPI definitions |
+| OpenAPI annotation style | <cite index="6-3,6-4">"With this library, you can document your express endpoints using swagger OpenAPI 3 Specification without writing YAML or JSON. You can write comments similar to jsdoc on each endpoint"</cite> - JSDoc-style annotations for OpenAPI |
 
-**Primary Code to Be Tested:**
+**Recommended Documentation Patterns (from research):**
 
-| Module/Class | Path | Test Types Required |
-|--------------|------|---------------------|
-| Server Entry Point | `server.js` | Lifecycle tests, startup/shutdown |
-| Express App Factory | `src/app.js` | Integration tests via Supertest |
-| Configuration Module | `src/config/index.js` | Unit tests for defaults and parsing |
-| Main Route Handlers | `src/routes/main.routes.js` | Endpoint response contract tests |
-| Route Aggregator | `src/routes/index.js` | Export verification (minimal) |
+- Use `@typedef` for reusable type definitions
+- Use `@memberOf` for namespace organization
+- Include `@example` blocks for usage demonstrations
+- Use `@route` or OpenAPI-style annotations for endpoints
+- Follow existing module documentation patterns for consistency
 
-**Existing Test File Mapping:**
+## 0.3 Documentation Scope Analysis
 
-| Source File | Existing Test File | Test Categories Present |
-|-------------|-------------------|------------------------|
-| `server.js` | None | None |
-| `src/app.js` | None | None |
-| `src/config/index.js` | None | None |
-| `src/routes/index.js` | None | None |
-| `src/routes/main.routes.js` | None | None |
+### 0.3.1 Code-to-Documentation Mapping
 
-### 0.3.2 Dependencies Requiring Mocking
+**Modules Requiring Documentation Enhancement:**
 
-Given the minimal architecture, mocking requirements are limited:
+#### Module: `server.js` (Entry Point)
 
-| Dependency | Mock Required | Mocking Approach | Rationale |
-|------------|---------------|------------------|-----------|
-| Express.js | No | N/A | Supertest handles Express internally |
-| `process.env` | Yes | Jest environment manipulation | Test configuration defaults |
-| `console.log` | Optional | `jest.spyOn()` | Verify startup logging |
-| HTTP Server | Yes | Jest mock | Test server lifecycle without binding |
+| Aspect | Current State | Documentation Action |
+|--------|--------------|---------------------|
+| Module description | Complete (`@module server`) | Verify completeness |
+| Dependency imports | Type annotations present | Add `@see` references |
+| `app.listen()` callback | Inline comment only | Add `@callback` documentation |
+| Startup logging | Undocumented | Add inline explanation |
 
-### 0.3.3 Version Compatibility Research
-
-Based on web search results, the recommended testing stack with verified compatibility:
-
-| Tool | Version | Node.js 20.x Compatible | Rationale |
-|------|---------|-------------------------|-----------|
-| Jest | 30.2.0 | ✅ Yes | Latest major release, Node 18+ supported |
-| Supertest | 7.1.4 | ✅ Yes | Latest stable, works with Express 5 |
-
-**Compatibility Verification:**
-
-- <cite index="12-1">Jest latest version: 30.2.0, last published 3 months ago.</cite>
-- <cite index="21-1,21-2">Supertest is a SuperAgent driven library for testing HTTP servers. Latest version: 7.1.4, last published 5 months ago.</cite>
-- Express.js 5.1.0 is fully compatible with both testing libraries
-- Node.js 20.19.6 exceeds the minimum requirement (Node 18.x) for Jest 30
-
-### 0.3.4 Test File Structure Design
-
-```
-hello_world/
-├── src/
-│   ├── app.js
-│   ├── config/
-│   │   └── index.js
-│   └── routes/
-│       ├── index.js
-│       └── main.routes.js
-├── tests/
-│   ├── unit/
-│   │   ├── config.test.js       # Configuration module tests
-│   │   └── routes.test.js       # Route handler tests
-│   ├── integration/
-│   │   └── endpoints.test.js    # HTTP endpoint tests
-│   └── lifecycle/
-│       └── server.test.js       # Server startup/shutdown tests
-├── server.js
-├── package.json
-└── jest.config.js
-```
-
-### 0.3.5 Test Surface Analysis
-
-| Module | Lines of Code | Testable Functions | Complexity | Test Effort |
-|--------|---------------|-------------------|------------|-------------|
-| `server.js` | 53 | 1 (HTTP listener) | Low | Medium |
-| `src/app.js` | 27 | 1 (app factory) | Low | Low |
-| `src/config/index.js` | 41 | 3 (config exports) | Low | Low |
-| `src/routes/index.js` | 19 | 1 (barrel export) | Trivial | Minimal |
-| `src/routes/main.routes.js` | 41 | 2 (route handlers) | Low | Low |
-| **Total** | **181** | **8** | **Low** | **Low-Medium** |
-
-### 0.3.6 Endpoint Contract Specification
-
-| Endpoint | Method | Expected Status | Expected Body | Content-Type |
-|----------|--------|-----------------|---------------|--------------|
-| `/` | GET | 200 | `Hello, World!\n` | `text/html; charset=utf-8` |
-| `/evening` | GET | 200 | `Good evening` | `text/html; charset=utf-8` |
-| `/invalid` | GET | 404 | HTML error page | `text/html; charset=utf-8` |
-| `/` | POST | 404 | HTML error page | `text/html; charset=utf-8` |
-| `/` | PUT | 404 | HTML error page | `text/html; charset=utf-8` |
-
-### 0.3.7 Configuration Test Scenarios
-
-| Environment Variable | Test Scenario | Input | Expected Output |
-|---------------------|---------------|-------|-----------------|
-| `HOST` | Default value | Not set | `'127.0.0.1'` |
-| `HOST` | Custom value | `HOST='0.0.0.0'` | `'0.0.0.0'` |
-| `PORT` | Default value | Not set | `3000` (number) |
-| `PORT` | Custom value | `PORT='8080'` | `8080` (number) |
-| `PORT` | Invalid value | `PORT='abc'` | `NaN` → fallback behavior |
-| `NODE_ENV` | Default value | Not set | `'development'` |
-| `NODE_ENV` | Production | `NODE_ENV='production'` | `'production'` |
-
-
-## 0.4 Test Implementation Design
-
-### 0.4.1 Test Strategy Selection
-
-**Test Types to Implement:**
-
-| Test Type | Focus Area | Primary Tool | Scope |
-|-----------|------------|--------------|-------|
-| Unit Tests | Configuration parsing, isolated functions | Jest assertions | `src/config/index.js` |
-| Integration Tests | HTTP endpoint responses | Supertest + Jest | `src/app.js`, routes |
-| Edge Case Tests | Boundary conditions, invalid inputs | Jest + Supertest | All modules |
-| Error Handling Tests | 404 responses, invalid methods | Supertest | Route handlers |
-| Lifecycle Tests | Server startup and shutdown | Jest mocks | `server.js` |
-
-### 0.4.2 Test Case Blueprints
-
-**Component: Configuration Module (`src/config/index.js`)**
-
-```
-Component: Configuration Module
-Test Categories:
-- Happy path: Default values returned when env vars not set
-- Happy path: Custom values returned when env vars are set
-- Edge cases: PORT parsing with invalid string input
-- Edge cases: Empty string environment variables
-```
-
-**Component: Express App Factory (`src/app.js`)**
-
-```
-Component: Express App Factory
-Test Categories:
-- Happy path: App instance created with Express
-- Happy path: Routes mounted correctly
-- Integration: Middleware chain functions properly
-```
-
-**Component: Route Handlers (`src/routes/main.routes.js`)**
-
-```
-Component: Route Handlers
-Test Categories:
-- Happy path: GET / returns "Hello, World!\n" with 200
-- Happy path: GET /evening returns "Good evening" with 200
-- Error cases: GET /undefined returns 404
-- Error cases: POST / returns 404 (method not allowed equivalent)
-- Edge cases: Trailing slashes handling
-- Edge cases: Query parameters on static routes
-```
-
-**Component: Server Entry Point (`server.js`)**
-
-```
-Component: Server Entry Point
-Test Categories:
-- Happy path: Server starts and logs message
-- Happy path: Server binds to configured host:port
-- Error cases: Server handles port-in-use error
-- Lifecycle: Server closes gracefully
-```
-
-### 0.4.3 Existing Test Extension Strategy
-
-Not applicable - no existing tests to extend. All tests are new implementations.
-
-### 0.4.4 Test Data and Fixtures Design
-
-**Required Test Data Structures:**
-
-| Fixture Type | Purpose | Location |
-|--------------|---------|----------|
-| Environment variables | Test configuration defaults | Inline in test files |
-| Expected responses | Endpoint response verification | Test constants |
-| Invalid inputs | Edge case testing | Test constants |
-
-**Fixture Organization Strategy:**
-
-For this minimal codebase, fixtures will be defined inline within test files rather than in separate fixture files. This approach reduces complexity while maintaining readability.
-
-**Mock Object Specifications:**
-
-| Mock Target | Jest Method | Purpose |
-|-------------|-------------|---------|
-| `process.env` | Direct assignment | Test configuration variations |
-| `console.log` | `jest.spyOn(console, 'log')` | Verify startup logging |
-| `server.listen` | `jest.fn()` | Test server lifecycle without binding |
-| `server.close` | `jest.fn()` | Test graceful shutdown |
-
-**Test Database/State Management:**
-
-Not applicable - the application has no database. State management limited to:
-- Resetting `process.env` before/after config tests
-- Ensuring server instances are closed after lifecycle tests
-
-### 0.4.5 Jest Configuration Design
-
+**Current JSDoc (lines 1-17):**
 ```javascript
-// jest.config.js - Recommended configuration
-module.exports = {
-  testEnvironment: 'node',
-  testMatch: ['**/tests/**/*.test.js'],
-  collectCoverageFrom: [
-    'server.js',
-    'src/**/*.js',
-    '!node_modules/**'
-  ],
-  coverageThreshold: {
-    global: {
-      branches: 75,
-      functions: 90,
-      lines: 80,
-      statements: 80
-    }
-  },
-  verbose: true,
-  testTimeout: 10000
-};
+/**
+ * HTTP Server Entry Point
+ * @module server
+ */
 ```
 
-### 0.4.6 Test Execution Flow
+**Enhanced JSDoc Target:**
+- Add `@requires` tags for dependencies
+- Add `@example` showing startup with environment variables
+- Document the startup callback behavior
+
+#### Module: `src/app.js` (Express Factory)
+
+| Aspect | Current State | Documentation Action |
+|--------|--------------|---------------------|
+| Module description | Complete (`@module src/app`) | Add pattern explanation |
+| Factory pattern | Mentioned in description | Add `@see` reference |
+| Route mounting | Inline comment exists | Enhance with `@example` |
+| Export | Undocumented | Add `@exports` annotation |
+
+**Public APIs:**
+- `module.exports = app` (Express.Application instance)
+
+**Documentation Needed:**
+- Factory pattern explanation in module description
+- Middleware chain explanation
+- Example of importing and using the app
+
+#### Module: `src/config/index.js` (Configuration)
+
+| Aspect | Current State | Documentation Action |
+|--------|--------------|---------------------|
+| Module description | Complete with Twelve-Factor reference | None needed |
+| `host` property | `@type {string}`, `@default '127.0.0.1'` | Add `@example` |
+| `port` property | `@type {number}`, `@default 3000` | Add parsing behavior note |
+| `env` property | `@type {string}`, `@default 'development'` | Add valid values list |
+
+**Configuration Options Documented: 3/3 (100%)**
+
+| Option | Type | Default | Documented |
+|--------|------|---------|-----------|
+| `host` | string | `'127.0.0.1'` | ✅ Yes |
+| `port` | number | `3000` | ✅ Yes |
+| `env` | string | `'development'` | ✅ Yes |
+
+#### Module: `src/routes/index.js` (Route Aggregator)
+
+| Aspect | Current State | Documentation Action |
+|--------|--------------|---------------------|
+| Module description | Complete with barrel pattern explanation | None needed |
+| `mainRoutes` export | Undocumented | Add `@type` annotation |
+
+#### Module: `src/routes/main.routes.js` (Route Handlers)
+
+| Aspect | Current State | Documentation Action |
+|--------|--------------|---------------------|
+| Module description | Complete with contract documentation | None needed |
+| `router` instance | Undocumented | Add `@type` annotation |
+| GET `/` handler | `@route GET /`, `@returns` documented | Add `@example` with curl |
+| GET `/evening` handler | `@route GET /evening`, `@returns` documented | Add `@example` with curl |
+
+**Endpoints Documented: 2/2 (100%)**
+
+| Endpoint | Method | Response | Documented |
+|----------|--------|----------|-----------|
+| `/` | GET | `Hello, World!\n` | ✅ Complete |
+| `/evening` | GET | `Good evening` | ✅ Complete |
+
+### 0.3.2 Documentation Gap Analysis
+
+Given the requirements and repository analysis, documentation gaps include:
+
+**Critical Gaps (Must Address):**
+
+| Gap | Severity | Location | Resolution |
+|-----|----------|----------|-----------|
+| Deployment guide | High | `README.md` | Create new Deployment section |
+| Production configuration | High | `README.md` | Add production config examples |
+| Docker documentation | Medium | `README.md` | Add Docker deployment instructions |
+| Environment template | Medium | Root directory | Create `.env.example` file |
+
+**Enhancement Opportunities (Should Address):**
+
+| Opportunity | Priority | Location | Action |
+|-------------|----------|----------|--------|
+| JSDoc `@example` blocks | Medium | All source files | Add usage examples |
+| API response schema | Low | `README.md` | Add JSON schema examples |
+| Architecture diagram | Low | `README.md` | Add Mermaid flowchart |
+| Contributing guide | Low | `CONTRIBUTING.md` | Create if not exists |
+
+### 0.3.3 Features Requiring User Guides
+
+| Feature | Current Coverage | Documentation Gap |
+|---------|-----------------|-------------------|
+| Server startup | README Installation/Usage | None |
+| Environment configuration | README Environment Variables | Production examples needed |
+| API endpoints | README API Reference | None |
+| Testing | README Testing section | None |
+| Development workflow | README Scripts | None |
+| Production deployment | **Not covered** | **Deployment guide needed** |
+| Docker containerization | **Not covered** | **Docker section needed** |
+| Process management | **Not covered** | **PM2/systemd section needed** |
+
+### 0.3.4 Inline Code Documentation Assessment
+
+**Current Inline Comment Coverage:**
+
+| File | Lines | Comments | Coverage |
+|------|-------|----------|----------|
+| `server.js` | 53 | 12 | Adequate |
+| `src/app.js` | 28 | 7 | Adequate |
+| `src/config/index.js` | 42 | 14 | Excellent |
+| `src/routes/index.js` | 20 | 6 | Adequate |
+| `src/routes/main.routes.js` | 42 | 14 | Excellent |
+| `jest.config.js` | 28 | 1 | Minimal (config file) |
+
+**Inline Comment Enhancement Targets:**
+
+| Location | Current | Enhancement |
+|----------|---------|-------------|
+| `server.js:49-52` | `// Display startup confirmation` | Explain callback execution timing |
+| `src/app.js:25` | `// Mount main routes at root path` | Explain Express middleware chain |
+| `src/routes/main.routes.js:17` | None | Add router instance explanation |
+
+## 0.4 Documentation Implementation Design
+
+### 0.4.1 Documentation Structure Planning
+
+**Target Documentation Architecture:**
+
+```
+hao-backprop-test/
+├── README.md                        # Primary documentation (ENHANCED)
+│   ├── Overview                     # [exists]
+│   ├── Prerequisites                # [exists]
+│   ├── Installation                 # [exists]
+│   ├── Usage                        # [exists]
+│   ├── API Reference                # [exists, enhance]
+│   ├── Project Structure            # [exists]
+│   ├── Environment Variables        # [exists]
+│   ├── Architecture                 # [exists, add diagram]
+│   ├── Dependencies                 # [exists]
+│   ├── Scripts                      # [exists]
+│   ├── Testing                      # [exists]
+│   ├── Deployment                   # [CREATE - new section]
+│   │   ├── Production Configuration
+│   │   ├── Docker Deployment
+│   │   └── Process Management
+│   ├── Troubleshooting              # [exists]
+│   └── License                      # [exists]
+├── .env.example                     # [CREATE - environment template]
+├── server.js                        # [ENHANCE JSDoc]
+├── src/
+│   ├── app.js                       # [ENHANCE JSDoc]
+│   ├── config/
+│   │   └── index.js                 # [ENHANCE JSDoc]
+│   └── routes/
+│       ├── index.js                 # [ENHANCE JSDoc]
+│       └── main.routes.js           # [ENHANCE JSDoc]
+└── blitzy/
+    └── documentation/               # [no changes needed]
+```
+
+### 0.4.2 Content Generation Strategy
+
+**Information Extraction Approach:**
+
+| Source | Extraction Method | Target Documentation |
+|--------|------------------|---------------------|
+| `server.js` | Parse module exports and callback | JSDoc @example, inline comments |
+| `src/app.js` | Analyze middleware chain | JSDoc module description |
+| `src/config/index.js` | Extract env var defaults | JSDoc @example, .env.example |
+| `src/routes/main.routes.js` | Extract route definitions | JSDoc @example with curl commands |
+| `tests/integration/endpoints.test.js` | Extract HTTP contract assertions | API Reference examples |
+| `package.json` | Extract scripts and dependencies | README verification |
+
+**Example Generation Strategy:**
+
+| Example Type | Source | Target |
+|--------------|--------|--------|
+| Server startup | `server.js` startup pattern | JSDoc @example block |
+| Environment configuration | `src/config/index.js` | .env.example file |
+| API requests | `tests/integration/endpoints.test.js` | README API Reference |
+| Docker deployment | Best practices | README Deployment section |
+
+### 0.4.3 Documentation Standards
+
+**Markdown Formatting Standards:**
+
+| Element | Format | Example |
+|---------|--------|---------|
+| Headers | # ## ### hierarchy | ## Installation |
+| Code blocks | Triple backticks with language | bash, javascript |
+| Tables | Pipe-delimited | Column Value |
+| Links | Markdown syntax | [text](url) |
+| Emphasis | Bold for important terms | **important** |
+
+**JSDoc Documentation Standards:**
+
+| Tag | Usage | Example |
+|-----|-------|---------|
+| @module | Module identification | @module src/app |
+| @fileoverview | File description | @fileoverview Configuration module |
+| @type | Type annotation | @type {import('express').Application} |
+| @param | Function parameters | @param {number} port - Server port |
+| @returns | Return values | @returns {string} Greeting message |
+| @example | Usage examples | @example // Start server |
+| @see | Cross-references | @see src/config |
+| @route | HTTP endpoints | @route GET / |
+| @default | Default values | @default 3000 |
+
+**Source Citation Format:**
+
+All technical claims in documentation must reference source files using the format: `Source: /path/to/file.js:LineNumber`
+
+### 0.4.4 Diagram and Visual Strategy
+
+**Mermaid Diagrams to Create/Verify:**
+
+| Diagram | Type | Location | Purpose |
+|---------|------|----------|---------|
+| Request flow | Flowchart | README Architecture | Visualize request processing |
+| Module dependencies | Graph | README Project Structure (optional) | Show component relationships |
+
+**Architecture Diagram (for README):**
 
 ```mermaid
-flowchart TD
-    Start((Start Tests)) --> LoadJest["Load Jest Configuration"]
-    LoadJest --> SetEnv["Set NODE_ENV=test"]
-    
-    subgraph UnitTests["Unit Test Suite"]
-        ConfigTests["Config Tests<br/>Reset env vars"]
-        RouteTests["Route Tests<br/>Isolated handlers"]
+flowchart LR
+    subgraph Client["HTTP Client"]
+        Request[Request]
     end
     
-    subgraph IntegrationTests["Integration Test Suite"]
-        EndpointTests["Endpoint Tests<br/>Import app.js"]
-        SupertestReq["Create Supertest<br/>Request"]
-        AssertResponse["Assert Response<br/>Status, Body, Headers"]
+    subgraph Server["server.js"]
+        Listen[app.listen]
     end
     
-    subgraph LifecycleTests["Lifecycle Test Suite"]
-        StartupTests["Server Startup<br/>Mock listen()"]
-        ShutdownTests["Server Shutdown<br/>Mock close()"]
+    subgraph App["src/app.js"]
+        Express[Express App]
+        Router[Router Middleware]
     end
     
-    SetEnv --> UnitTests
-    UnitTests --> IntegrationTests
-    IntegrationTests --> LifecycleTests
+    subgraph Config["src/config"]
+        Env[Environment Config]
+    end
     
-    LifecycleTests --> Coverage["Generate Coverage Report"]
-    Coverage --> Report["Output Results"]
-    Report --> End((End))
+    subgraph Routes["src/routes"]
+        Main[mainRoutes]
+        Root["GET /"]
+        Evening["GET /evening"]
+    end
+    
+    Request --> Listen
+    Listen --> Express
+    Express --> Env
+    Express --> Router
+    Router --> Main
+    Main --> Root
+    Main --> Evening
+    Root --> Response1["Hello, World!"]
+    Evening --> Response2["Good evening"]
 ```
 
-### 0.4.7 Test Isolation Strategy
+### 0.4.5 JSDoc Enhancement Specifications
 
-| Isolation Concern | Strategy | Implementation |
-|-------------------|----------|----------------|
-| Environment variables | Save/restore in beforeEach/afterEach | `const originalEnv = process.env` |
-| Express app instances | Create fresh app per test suite | Import `app.js` in describe block |
-| Server connections | Close all connections after tests | `afterAll(() => server.close())` |
-| Console output | Restore mocks after tests | `jest.restoreAllMocks()` |
+**server.js Enhancement Target:**
 
+The server.js module should include:
+- @module tag with module name
+- @requires tags for dependencies
+- @example blocks demonstrating startup with defaults and custom configuration
+- Inline comments explaining callback execution timing
 
-## 0.5 Test File Transformation Mapping
+**src/app.js Enhancement Target:**
 
-### 0.5.1 File-by-File Test Plan
+The app.js module should include:
+- @module tag
+- @exports annotation
+- @example showing how to import for testing
+- Middleware chain explanation comments
 
-**Test Transformation Modes:**
-- **CREATE** - Create a new test file
-- **UPDATE** - Update an existing test file
-- **DELETE** - Remove an obsolete test file
-- **REFERENCE** - Use as an example for test patterns and styles
+**Route Handler Enhancement Target:**
 
-| Target Test File | Transformation | Source File/Reference | Purpose/Changes |
-|-----------------|----------------|----------------------|-----------------|
-| `tests/unit/config.test.js` | CREATE | `src/config/index.js` | Unit tests for configuration module: default values, custom values, edge cases |
-| `tests/unit/routes.test.js` | CREATE | `src/routes/main.routes.js` | Unit tests for route handler functions in isolation |
-| `tests/integration/endpoints.test.js` | CREATE | `src/app.js` | HTTP endpoint integration tests using Supertest |
-| `tests/lifecycle/server.test.js` | CREATE | `server.js` | Server startup, shutdown, and lifecycle tests |
-| `jest.config.js` | CREATE | N/A | Jest framework configuration |
-| `package.json` | UPDATE | `package.json` | Add test scripts and devDependencies |
+Each route handler should include:
+- @route tag with HTTP method and path
+- @returns tag with response type and value
+- @example with curl command demonstrating usage
 
-### 0.5.2 New Test Files Detail
+**Configuration Module Enhancement Target:**
 
-**`tests/unit/config.test.js`** - Configuration module unit tests
+The config module should include:
+- @module tag
+- @type annotations for each property
+- @default values
+- @example showing environment variable usage
 
-| Test Category | Test Cases | Assertions |
-|---------------|------------|------------|
-| Default Values | `host` defaults to `'127.0.0.1'` | `expect(config.host).toBe('127.0.0.1')` |
-| Default Values | `port` defaults to `3000` | `expect(config.port).toBe(3000)` |
-| Default Values | `env` defaults to `'development'` | `expect(config.env).toBe('development')` |
-| Custom Values | `HOST` env var sets `host` | `expect(config.host).toBe('0.0.0.0')` |
-| Custom Values | `PORT` env var sets `port` | `expect(config.port).toBe(8080)` |
-| Edge Cases | Invalid PORT string handling | `expect(config.port).toBeNaN()` or fallback |
-| Type Checking | `port` is a number | `expect(typeof config.port).toBe('number')` |
+## 0.5 Documentation File Transformation Mapping
 
-Mock dependencies: `process.env` direct manipulation
+### 0.5.1 File-by-File Documentation Plan
 
----
+**Documentation Transformation Summary:**
 
-**`tests/unit/routes.test.js`** - Route handler unit tests
+| Transformation | Count | Files |
+|----------------|-------|-------|
+| CREATE | 1 | `.env.example` |
+| UPDATE | 6 | `README.md`, `server.js`, `src/app.js`, `src/config/index.js`, `src/routes/index.js`, `src/routes/main.routes.js` |
+| DELETE | 0 | None |
+| REFERENCE | 4 | Test files (for JSDoc style consistency) |
 
-| Test Category | Test Cases | Assertions |
-|---------------|------------|------------|
-| Route Export | `mainRoutes` is an Express Router | `expect(mainRoutes).toBeDefined()` |
-| Handler Count | Router has expected routes | Route introspection |
+**Complete Transformation Table:**
 
-Mock dependencies: None (routes are pure Express Router objects)
+| Target Documentation File | Transformation | Source Code/Docs | Content/Changes |
+|---------------------------|----------------|------------------|-----------------|
+| `README.md` | UPDATE | `README.md`, `src/**/*.js` | Add Deployment section with Docker, PM2, production config; enhance Architecture with Mermaid diagram |
+| `.env.example` | CREATE | `src/config/index.js` | Create environment template with HOST, PORT, NODE_ENV with documented defaults |
+| `server.js` | UPDATE | `server.js` | Enhance JSDoc with @requires tags, @example blocks for startup patterns, inline comments |
+| `src/app.js` | UPDATE | `src/app.js` | Enhance JSDoc with @exports annotation, @example for testing, middleware explanations |
+| `src/config/index.js` | UPDATE | `src/config/index.js` | Add @example blocks demonstrating configuration usage |
+| `src/routes/index.js` | UPDATE | `src/routes/index.js` | Add @type annotation for mainRoutes export |
+| `src/routes/main.routes.js` | UPDATE | `src/routes/main.routes.js` | Add @example blocks with curl commands, @type for router |
+| `tests/unit/config.test.js` | REFERENCE | N/A | Use as JSDoc style reference for helper documentation |
+| `tests/unit/routes.test.js` | REFERENCE | N/A | Use as @typedef pattern reference |
+| `tests/integration/endpoints.test.js` | REFERENCE | N/A | Use as test helper documentation reference |
+| `tests/lifecycle/server.test.js` | REFERENCE | N/A | Use as mock factory documentation reference |
 
----
+### 0.5.2 New Documentation Files Detail
 
-**`tests/integration/endpoints.test.js`** - HTTP endpoint integration tests
+**File: `.env.example`**
 
-| Test Category | Test Cases | Assertions |
-|---------------|------------|------------|
-| GET / | Returns 200 status | `.expect(200)` |
-| GET / | Returns "Hello, World!\n" body | `.expect('Hello, World!\n')` |
-| GET / | Returns text/html content-type | `.expect('Content-Type', /text\/html/)` |
-| GET /evening | Returns 200 status | `.expect(200)` |
-| GET /evening | Returns "Good evening" body | `.expect('Good evening')` |
-| GET /evening | Returns text/html content-type | `.expect('Content-Type', /text\/html/)` |
-| GET /invalid | Returns 404 status | `.expect(404)` |
-| POST / | Returns 404 status (no POST handler) | `.expect(404)` |
-| PUT /evening | Returns 404 status (no PUT handler) | `.expect(404)` |
-| Edge: trailing slash | GET // handling | Verify behavior |
-| Edge: query params | GET /?param=value | 200 with unchanged body |
+| Attribute | Value |
+|-----------|-------|
+| Type | Environment Configuration Template |
+| Source Code | `src/config/index.js` |
+| Purpose | Document available environment variables with defaults |
 
-Mock dependencies: None (Supertest handles Express internally)
+**Sections:**
+- Comment header explaining purpose
+- HOST variable with default and description
+- PORT variable with default and description
+- NODE_ENV variable with valid values
 
----
-
-**`tests/lifecycle/server.test.js`** - Server lifecycle tests
-
-| Test Category | Test Cases | Assertions |
-|---------------|------------|------------|
-| Startup | Server binds to host:port | Mock `app.listen` called |
-| Startup | Logs startup message | `console.log` spy called |
-| Startup | Uses config values | Correct host/port passed |
-| Shutdown | Server closes gracefully | `server.close` executes |
-| Error | Handles EADDRINUSE error | Error callback triggered |
-
-Mock dependencies: `console.log`, `app.listen`, `server.close`
-
-### 0.5.3 Test Configuration Files
-
-**`jest.config.js`** - Create new Jest configuration
-
-| Configuration Key | Value | Purpose |
-|-------------------|-------|---------|
-| `testEnvironment` | `'node'` | Server-side testing without DOM |
-| `testMatch` | `['**/tests/**/*.test.js']` | Test file discovery pattern |
-| `collectCoverage` | `true` | Enable coverage reporting |
-| `coverageDirectory` | `'coverage'` | Coverage output location |
-| `coveragePathIgnorePatterns` | `['/node_modules/']` | Exclude dependencies |
-| `verbose` | `true` | Detailed test output |
-| `testTimeout` | `10000` | 10 second timeout for lifecycle tests |
-
----
-
-**`package.json`** - Update scripts and dependencies
-
-| Update Type | Key | Value |
-|-------------|-----|-------|
-| Script | `test` | `"jest"` |
-| Script | `test:watch` | `"jest --watch"` |
-| Script | `test:coverage` | `"jest --coverage"` |
-| Script | `test:ci` | `"jest --ci --coverage"` |
-| devDependency | `jest` | `^30.2.0` |
-| devDependency | `supertest` | `^7.1.4` |
-
-### 0.5.4 Cross-File Test Dependencies
-
-| Shared Resource | Location | Used By |
-|-----------------|----------|---------|
-| App instance | `src/app.js` | `endpoints.test.js`, `server.test.js` |
-| Config module | `src/config/index.js` | `config.test.js`, `server.test.js` |
-| Routes | `src/routes/main.routes.js` | `routes.test.js`, `endpoints.test.js` |
-
-**Import Updates Required:**
-
-| Test File | Required Imports |
-|-----------|------------------|
-| `config.test.js` | `require('../../src/config')` |
-| `routes.test.js` | `require('../../src/routes/main.routes')` |
-| `endpoints.test.js` | `require('../../src/app')`, `require('supertest')` |
-| `server.test.js` | `require('../../src/app')`, `require('../../src/config')` |
-
-### 0.5.5 Complete Test File Inventory
-
-| File Path | Status | Lines (Est.) | Test Count (Est.) |
-|-----------|--------|--------------|-------------------|
-| `tests/unit/config.test.js` | CREATE | 60-80 | 7-8 |
-| `tests/unit/routes.test.js` | CREATE | 30-40 | 2-3 |
-| `tests/integration/endpoints.test.js` | CREATE | 80-100 | 10-12 |
-| `tests/lifecycle/server.test.js` | CREATE | 60-80 | 4-5 |
-| `jest.config.js` | CREATE | 15-20 | N/A |
-| `package.json` | UPDATE | +8 lines | N/A |
-
-**Total New Test Files:** 4
-**Total Configuration Files:** 1
-**Total Files Modified:** 1
-
-### 0.5.6 Directory Structure After Implementation
-
+**Content Template:**
 ```
-hello_world/
-├── src/
-│   ├── app.js
-│   ├── config/
-│   │   └── index.js
-│   └── routes/
-│       ├── index.js
-│       └── main.routes.js
-├── tests/
-│   ├── unit/
-│   │   ├── config.test.js       # NEW: 7-8 tests
-│   │   └── routes.test.js       # NEW: 2-3 tests
-│   ├── integration/
-│   │   └── endpoints.test.js    # NEW: 10-12 tests
-│   └── lifecycle/
-│       └── server.test.js       # NEW: 4-5 tests
-├── server.js
-├── package.json                  # MODIFIED: scripts + devDeps
-├── jest.config.js               # NEW: Jest configuration
-└── README.md
+# Server Configuration
+# Copy to .env and modify as needed
+
+#### Server host binding address
+#### Default: 127.0.0.1 (localhost only)
+#### Use 0.0.0.0 to accept external connections
+HOST=127.0.0.1
+
+#### Server port number
+#### Default: 3000
+PORT=3000
+
+#### Application environment
+#### Valid values: development, production, test
+#### Default: development
+NODE_ENV=development
 ```
 
+### 0.5.3 Documentation Files to Update Detail
+
+**README.md Updates:**
+
+| Section | Update Type | Content |
+|---------|-------------|---------|
+| Architecture | Enhance | Add Mermaid request flow diagram |
+| Environment Variables | Enhance | Add reference to .env.example |
+| Deployment (NEW) | Create | Production configuration, Docker deployment, PM2 process management |
+
+**New Deployment Section Structure:**
+- Production Configuration
+  - Environment variable setup
+  - Security considerations (binding address)
+  - NODE_ENV=production implications
+- Docker Deployment
+  - Dockerfile example
+  - docker-compose example
+  - Container best practices
+- Process Management
+  - PM2 configuration
+  - systemd service example
+  - Health checks
+
+**server.js JSDoc Updates:**
+
+| Current | Enhanced |
+|---------|----------|
+| Module description | Add @requires tags |
+| No @example | Add startup examples |
+| Basic inline comment | Enhanced callback explanation |
+
+**Specific Changes:**
+- Add `@requires ./src/app` documentation
+- Add `@requires ./src/config` documentation
+- Add `@example` block for default startup
+- Add `@example` block for custom configuration
+- Enhance callback inline comment
+
+**src/app.js JSDoc Updates:**
+
+| Current | Enhanced |
+|---------|----------|
+| Module description | Add factory pattern details |
+| No @exports | Add @exports annotation |
+| No @example | Add import/test example |
+
+**Specific Changes:**
+- Add `@exports {import('express').Application}` annotation
+- Add `@example` block for importing in tests
+- Add inline comment for middleware chain
+
+**src/config/index.js JSDoc Updates:**
+
+| Current | Enhanced |
+|---------|----------|
+| Complete @type/@default | Add @example blocks |
+| Good property docs | Add environment example |
+
+**Specific Changes:**
+- Add `@example` block showing environment variable override
+- Add comment about integer parsing behavior
+
+**src/routes/index.js JSDoc Updates:**
+
+| Current | Enhanced |
+|---------|----------|
+| Good module docs | Adequate |
+| No @type for export | Add @type annotation |
+
+**Specific Changes:**
+- Add `@type {import('express').Router}` for mainRoutes
+
+**src/routes/main.routes.js JSDoc Updates:**
+
+| Current | Enhanced |
+|---------|----------|
+| Good @route tags | Add @example blocks |
+| Good @returns | Add curl examples |
+
+**Specific Changes:**
+- Add `@type {import('express').Router}` for router instance
+- Add `@example` block for GET `/` with curl
+- Add `@example` block for GET `/evening` with curl
+
+### 0.5.4 Cross-Documentation Dependencies
+
+**Internal Documentation Links:**
+
+| From | To | Link Type |
+|------|-----|----------|
+| `README.md` Environment Variables | `.env.example` | Reference link |
+| `README.md` API Reference | `src/routes/main.routes.js` | Source reference |
+| `README.md` Project Structure | All source files | File tree |
+| JSDoc `@see` tags | Related modules | Cross-reference |
+
+**Navigation Updates Required:**
+
+| File | Update | Action |
+|------|--------|--------|
+| `README.md` | Table of Contents | Add Deployment section link |
+| `README.md` | Environment Variables | Add .env.example reference |
+
+**Configuration Updates:**
+
+No documentation generator configuration updates needed as project does not use mkdocs, docusaurus, or jsdoc generator.
 
 ## 0.6 Dependency Inventory
 
-### 0.6.1 Testing Dependencies
+### 0.6.1 Documentation Dependencies
 
-All key testing packages required for this testing exercise:
+**Runtime Dependencies (from `package.json`):**
 
 | Registry | Package Name | Version | Purpose |
 |----------|--------------|---------|---------|
-| npm | jest | 30.2.0 | JavaScript testing framework and test runner |
-| npm | supertest | 7.1.4 | HTTP assertion library for Express testing |
+| npm | express | ^5.1.0 | Web framework - primary documentation target |
 
-**Version Verification:**
+**Development Dependencies (from `package.json`):**
 
-- **Jest 30.2.0**: Verified via npm registry search. <cite index="12-1">Jest latest version: 30.2.0, last published 3 months ago.</cite>
-- **Supertest 7.1.4**: Verified via npm registry search. <cite index="21-2">Supertest latest version: 7.1.4, last published 5 months ago.</cite>
+| Registry | Package Name | Version | Purpose |
+|----------|--------------|---------|---------|
+| npm | jest | ^30.2.0 | Test framework with JSDoc examples |
+| npm | supertest | ^7.1.4 | HTTP testing - API documentation examples |
 
-### 0.6.2 Existing Production Dependencies
+**Documentation Tool Dependencies (Not Currently Installed):**
 
-| Registry | Package Name | Version | Test Impact |
-|----------|--------------|---------|-------------|
-| npm | express | 5.1.0 | Tested application framework |
+The project does not currently use dedicated documentation generation tools. The following are recommended but optional:
 
-### 0.6.3 Dependency Installation Commands
+| Registry | Package Name | Version | Purpose | Status |
+|----------|--------------|---------|---------|--------|
+| npm | jsdoc | 4.0.4 | JSDoc HTML generation | Optional - not installed |
+| npm | docdash | 2.0.2 | JSDoc template theme | Optional - not installed |
+| npm | express-jsdoc-swagger | 1.8.0 | Swagger from JSDoc | Optional - not installed |
+| npm | swagger-jsdoc | 6.2.8 | OpenAPI from JSDoc | Optional - not installed |
+| npm | swagger-ui-express | 5.0.1 | Swagger UI hosting | Optional - not installed |
 
-```bash
-# Install testing dependencies as devDependencies
-npm install --save-dev jest@30.2.0 supertest@7.1.4
-```
+**Runtime Requirements:**
 
-### 0.6.4 Package.json Updates Required
+| Requirement | Version | Purpose | Source |
+|-------------|---------|---------|--------|
+| Node.js | >=18.x | Runtime environment | Express.js 5.x requirement |
+| npm | >=8.x | Package manager | README.md specification |
 
-**Current State:**
+### 0.6.2 Documentation Reference Updates
 
-```json
-{
-  "devDependencies": {}
-}
-```
+**Files Requiring Internal Link Updates:**
 
-**Target State:**
+| File | Section | Update Required |
+|------|---------|-----------------|
+| `README.md` | Environment Variables | Add reference to new `.env.example` |
+| `README.md` | Table of Contents (implied) | Add Deployment section anchor |
 
-```json
-{
-  "devDependencies": {
-    "jest": "^30.2.0",
-    "supertest": "^7.1.4"
-  }
-}
-```
+**Link Transformation Rules:**
 
-### 0.6.5 No Additional Dependencies Required
+No external link transformations required. New internal links:
 
-The following commonly-used testing tools are **NOT required** for this implementation:
+| New Link | Target | Location |
+|----------|--------|----------|
+| `.env.example` reference | `.env.example` file | README.md Environment Variables section |
 
-| Package | Reason Not Required |
-|---------|---------------------|
-| `@types/jest` | Project uses CommonJS JavaScript, not TypeScript |
-| `@types/supertest` | Project uses CommonJS JavaScript, not TypeScript |
-| `chai` | Jest includes built-in assertion library |
-| `sinon` | Jest includes built-in mocking capabilities |
-| `mocha` | Jest selected as testing framework |
-| `nyc`/`istanbul` | Jest includes built-in coverage reporting |
-| `ts-jest` | Project uses JavaScript, not TypeScript |
-| `babel-jest` | Node.js 20 natively supports ES2022+ features |
+### 0.6.3 Version Compatibility Matrix
 
-### 0.6.6 Compatibility Matrix
+**Verified Compatible Versions:**
 
-| Dependency | Node.js 20.x | Express 5.1.0 | Status |
-|------------|--------------|---------------|--------|
-| jest@30.2.0 | ✅ Compatible | ✅ Compatible | Ready |
-| supertest@7.1.4 | ✅ Compatible | ✅ Compatible | Ready |
+| Component | Minimum | Recommended | Maximum Tested |
+|-----------|---------|-------------|----------------|
+| Node.js | 18.0.0 | 20.19.x LTS | 20.19.6 |
+| npm | 8.0.0 | 10.8.x | 11.1.0 |
+| Express.js | 5.0.0 | 5.1.0 | 5.1.0 |
+| Jest | 30.0.0 | 30.2.0 | 30.2.0 |
+| Supertest | 7.0.0 | 7.1.4 | 7.1.4 |
 
-### 0.6.7 Import Patterns for Test Files
+**Source:** `package.json` (lines 15-20), `README.md` (lines 11-14)
 
-**Configuration Test File:**
+### 0.6.4 Documentation-Specific Configuration
 
-```javascript
-// tests/unit/config.test.js
-// No external test dependencies needed
-```
+**No Additional Configuration Required:**
 
-**Endpoint Test File:**
+This project uses inline JSDoc comments within source files and Markdown documentation. No documentation generator configuration files need to be created or modified.
 
-```javascript
-// tests/integration/endpoints.test.js
-const request = require('supertest');
-const app = require('../../src/app');
-```
+**Existing Configuration Files:**
 
-**Server Lifecycle Test File:**
+| File | Purpose | Documentation Impact |
+|------|---------|---------------------|
+| `package.json` | npm manifest | Documents scripts, dependencies |
+| `jest.config.js` | Test configuration | Contains JSDoc (@type) |
+| `.gitignore` | Git ignore patterns | No documentation impact |
 
-```javascript
-// tests/lifecycle/server.test.js
-const app = require('../../src/app');
-const config = require('../../src/config');
-```
+**Recommended Future Additions (Out of Scope):**
 
+| File | Purpose | Recommendation |
+|------|---------|---------------|
+| `jsdoc.json` | JSDoc generator config | Add if HTML docs generation needed |
+| `.markdownlint.json` | Markdown linting | Add for documentation quality checks |
+| `CONTRIBUTING.md` | Contribution guidelines | Add for open-source best practices |
 
 ## 0.7 Coverage and Quality Targets
 
-### 0.7.1 Coverage Metrics
+### 0.7.1 Documentation Coverage Metrics
 
-**Current Coverage:** 0% (no existing tests)
+**Current Coverage Analysis:**
 
-**Target Coverage:** Based on user requirement for "comprehensive" tests and industry best practices:
+| Category | Documented | Total | Coverage | Target |
+|----------|-----------|-------|----------|--------|
+| Public APIs (endpoints) | 2 | 2 | 100% | 100% |
+| Configuration options | 3 | 3 | 100% | 100% |
+| Source modules | 5 | 5 | 100% | 100% |
+| User guides (README sections) | 12 | 14 | 86% | 100% |
+| JSDoc @example blocks | 0 | 6 | 0% | 100% |
 
-| Coverage Metric | Current | Target | Gap |
-|-----------------|---------|--------|-----|
-| Line Coverage | 0% | ≥ 80% | 80% |
-| Branch Coverage | 0% | ≥ 75% | 75% |
-| Function Coverage | 0% | ≥ 90% | 90% |
-| Statement Coverage | 0% | ≥ 80% | 80% |
+**Coverage Gaps to Address:**
 
-### 0.7.2 Per-File Coverage Targets
+| Module/Section | Current | Target | Gap Description |
+|---------------|---------|--------|-----------------|
+| `server.js` | @module only | Full JSDoc | Missing @requires, @example |
+| `src/app.js` | Basic | Full JSDoc | Missing @exports, @example |
+| `src/routes/main.routes.js` | @route tags | With examples | Missing @example blocks |
+| README.md | 12/14 sections | 14/14 | Missing Deployment, Production Config |
 
-| Source File | Target Line Coverage | Critical Paths |
-|-------------|---------------------|----------------|
-| `server.js` | ≥ 80% | Startup path, error handler |
-| `src/app.js` | ≥ 90% | App factory, middleware setup |
-| `src/config/index.js` | ≥ 90% | All export properties |
-| `src/routes/index.js` | ≥ 100% | Barrel export (trivial) |
-| `src/routes/main.routes.js` | ≥ 90% | Both route handlers |
+**JSDoc Tag Coverage:**
 
-### 0.7.3 Coverage Gaps to Address
+| JSDoc Tag | Current Usage | Target Usage | Files Affected |
+|-----------|--------------|--------------|----------------|
+| @module | 5/5 files | 5/5 files | All source files |
+| @fileoverview | 2 files | 2 files | jest.config.js, (test files) |
+| @type | 6 usages | 8 usages | Add to routes exports |
+| @param | Test files | Test files | No change needed |
+| @returns | 2 routes | 2 routes | No change needed |
+| @example | 0 usages | 6 usages | All source files |
+| @requires | 0 usages | 2 usages | server.js |
+| @exports | 0 usages | 1 usage | src/app.js |
+| @route | 2 usages | 2 usages | No change needed |
+| @default | 3 usages | 3 usages | No change needed |
+| @see | 0 usages | 3 usages | Cross-references |
 
-| Component | Gap Description | Test Strategy |
-|-----------|-----------------|---------------|
-| `server.js` | Server startup callback | Mock `app.listen` and verify callback |
-| `server.js` | Console logging | Spy on `console.log` |
-| `src/config/index.js` | Default value paths | Test with unset env vars |
-| `src/config/index.js` | Custom value paths | Test with set env vars |
-| `src/config/index.js` | PORT parseInt branch | Test with non-numeric string |
-| `src/routes/main.routes.js` | `/` handler | Supertest GET request |
-| `src/routes/main.routes.js` | `/evening` handler | Supertest GET request |
+### 0.7.2 Documentation Quality Criteria
 
-### 0.7.4 Test Quality Criteria
+**Completeness Requirements:**
 
-| Quality Metric | Target | Measurement |
-|----------------|--------|-------------|
-| Assertion Density | ≥ 2 assertions per test | Manual review |
-| Test Isolation | 100% independent tests | Tests run in any order |
-| Test Naming | Descriptive `should` pattern | Code review |
-| Setup/Teardown | Proper beforeEach/afterEach | No test pollution |
-| Async Handling | All promises awaited | No unhandled rejections |
+| Requirement | Validation Method | Status |
+|-------------|------------------|--------|
+| All public APIs have descriptions | Manual review | ✅ Complete |
+| All APIs have parameter documentation | N/A (no params) | N/A |
+| All APIs have return type documentation | JSDoc @returns | ✅ Complete |
+| All APIs have usage examples | JSDoc @example | ❌ Missing |
+| All user guides include setup | README review | ✅ Complete |
+| All user guides include usage | README review | ✅ Complete |
+| All user guides include troubleshooting | README review | ✅ Complete |
+| Deployment guide present | README review | ❌ Missing |
 
-### 0.7.5 Performance Constraints
+**Accuracy Validation:**
 
-| Metric | Target | Rationale |
-|--------|--------|-----------|
-| Total Test Suite Time | < 10 seconds | Fast feedback loop |
-| Individual Test Time | < 1 second | Identify slow tests |
-| Coverage Generation | < 5 seconds | CI/CD efficiency |
+| Validation | Method | Acceptance Criteria |
+|------------|--------|-------------------|
+| Code examples tested | npm test | All tests pass |
+| API signatures match code | Visual inspection | JSDoc matches implementation |
+| Response contracts accurate | Integration tests | Tests verify exact responses |
+| Configuration defaults accurate | Unit tests | Tests verify defaults |
 
-### 0.7.6 Maintainability Standards
+**Clarity Standards:**
 
-| Standard | Requirement | Implementation |
-|----------|-------------|----------------|
-| Test Organization | Group by test type | `tests/unit/`, `tests/integration/`, `tests/lifecycle/` |
-| Naming Convention | `*.test.js` pattern | Jest default discovery |
-| Documentation | Clear describe/it blocks | Self-documenting tests |
-| DRY Principle | Shared setup in beforeEach | Avoid code duplication |
+| Standard | Implementation |
+|----------|---------------|
+| Technical accuracy | JSDoc tags match actual types |
+| Accessible language | Plain English descriptions |
+| Progressive disclosure | README ordered simple→complex |
+| Consistent terminology | Use established terms (host, port, route) |
 
-### 0.7.7 Test Coverage Configuration
+**Maintainability:**
 
-```javascript
-// In jest.config.js
-module.exports = {
-  collectCoverage: true,
-  coverageDirectory: 'coverage',
-  coverageReporters: ['text', 'lcov', 'html'],
-  coverageThreshold: {
-    global: {
-      branches: 75,
-      functions: 90,
-      lines: 80,
-      statements: 80
-    }
-  },
-  collectCoverageFrom: [
-    'server.js',
-    'src/**/*.js',
-    '!node_modules/**'
-  ]
-};
-```
+| Aspect | Implementation |
+|--------|---------------|
+| Source citations | JSDoc @see tags, inline references |
+| Update traceability | Git history |
+| Template consistency | Follow existing JSDoc patterns |
 
-### 0.7.8 Quality Gates
+### 0.7.3 Example and Diagram Requirements
 
-| Gate | Metric | Threshold | Action on Failure |
-|------|--------|-----------|-------------------|
-| Test Pass Rate | All tests pass | 100% | Block merge/deploy |
-| Line Coverage | Coverage percentage | ≥ 80% | Warning (soft gate) |
-| Branch Coverage | Coverage percentage | ≥ 75% | Warning (soft gate) |
-| Function Coverage | Coverage percentage | ≥ 90% | Warning (soft gate) |
-| Test Timeout | Individual test duration | < 10 seconds | Fail test |
+**Minimum Example Requirements:**
 
+| API/Feature | Required Examples | Current | Target |
+|-------------|------------------|---------|--------|
+| Server startup | 2 (default, custom) | 0 | 2 |
+| GET `/` endpoint | 1 (curl) | 0 | 1 |
+| GET `/evening` endpoint | 1 (curl) | 0 | 1 |
+| Configuration | 1 (env vars) | 0 | 1 |
+| App import | 1 (testing) | 0 | 1 |
+
+**Diagram Requirements:**
+
+| Diagram | Type | Status | Target |
+|---------|------|--------|--------|
+| Request flow | Mermaid flowchart | Exists in tech spec | Add to README |
+| Component architecture | Mermaid graph | Exists in tech spec | Reference only |
+
+**Code Example Testing:**
+
+| Method | Command | Purpose |
+|--------|---------|---------|
+| Integration tests | `npm test` | Verify API contracts |
+| Manual verification | `npm start` | Verify startup examples |
+| CI validation | `npm run test:ci` | Automated verification |
+
+### 0.7.4 Quality Gates
+
+**Documentation Must Pass:**
+
+| Gate | Criteria | Verification |
+|------|----------|--------------|
+| JSDoc completeness | All modules have @module | Visual inspection |
+| Example coverage | All public APIs have @example | Visual inspection |
+| README completeness | All planned sections present | Checklist verification |
+| Test suite passes | 100% test pass rate | `npm test` |
+| No broken links | Internal links valid | Manual verification |
+
+**Post-Implementation Checklist:**
+
+- [ ] All source files have @module JSDoc
+- [ ] server.js has @requires and @example
+- [ ] src/app.js has @exports and @example
+- [ ] src/routes/main.routes.js has @example for each route
+- [ ] README.md has Deployment section
+- [ ] .env.example file created
+- [ ] All existing tests still pass
+- [ ] No runtime behavior changes
 
 ## 0.8 Scope Boundaries
 
 ### 0.8.1 Exhaustively In Scope
 
-**New Test Files:**
+**Documentation Files to Create:**
 
-| Pattern | Description | Files |
-|---------|-------------|-------|
-| `tests/unit/**/*.test.js` | Unit tests for isolated modules | `config.test.js`, `routes.test.js` |
-| `tests/integration/**/*.test.js` | HTTP endpoint integration tests | `endpoints.test.js` |
-| `tests/lifecycle/**/*.test.js` | Server lifecycle tests | `server.test.js` |
+| File Pattern | Description |
+|-------------|-------------|
+| `.env.example` | Environment variable template with documented defaults |
 
-**Test Configuration:**
+**Documentation Files to Update:**
 
-| File | Purpose | Status |
-|------|---------|--------|
-| `jest.config.js` | Jest framework configuration | CREATE |
-| `package.json` | Test scripts and devDependencies | UPDATE |
+| File Pattern | Description |
+|-------------|-------------|
+| `README.md` | Primary project documentation - add Deployment section, enhance Architecture |
+| `server.js` | Entry point JSDoc - add @requires, @example |
+| `src/app.js` | Express factory JSDoc - add @exports, @example |
+| `src/config/index.js` | Configuration JSDoc - add @example blocks |
+| `src/routes/index.js` | Route aggregator JSDoc - add @type annotation |
+| `src/routes/main.routes.js` | Route handlers JSDoc - add @example blocks |
 
-**Test Utilities and Helpers:**
+**Documentation Content Categories:**
 
-Not required for this minimal implementation. All test utilities will be inline.
+| Category | Files | Changes |
+|----------|-------|---------|
+| JSDoc comments | `server.js`, `src/**/*.js` | Enhance with @example, @requires, @exports, @type, @see |
+| Inline comments | `server.js`, `src/**/*.js` | Add explanatory comments where beneficial |
+| README sections | `README.md` | Add Deployment, enhance Architecture |
+| Configuration templates | `.env.example` | Create new file |
 
-**Documentation Updates:**
+**Specific JSDoc Enhancements:**
 
-| File | Section | Update |
-|------|---------|--------|
-| `README.md` | Testing section | Add test execution instructions |
+| Tag | Target Files | Action |
+|-----|-------------|--------|
+| @requires | `server.js` | Add for ./src/app and ./src/config |
+| @example | `server.js`, `src/app.js`, `src/routes/main.routes.js` | Add usage examples |
+| @exports | `src/app.js` | Document exported Express app |
+| @type | `src/routes/index.js`, `src/routes/main.routes.js` | Add type for router exports |
+| @see | `server.js` | Add cross-references |
 
-### 0.8.2 Source Files Being Tested
+**README Enhancement Scope:**
 
-| Source File | Test Type | Test File |
-|-------------|-----------|-----------|
-| `server.js` | Lifecycle tests | `tests/lifecycle/server.test.js` |
-| `src/app.js` | Integration tests | `tests/integration/endpoints.test.js` |
-| `src/config/index.js` | Unit tests | `tests/unit/config.test.js` |
-| `src/routes/index.js` | N/A (barrel) | Indirect via endpoints |
-| `src/routes/main.routes.js` | Unit + Integration | `tests/unit/routes.test.js`, `tests/integration/endpoints.test.js` |
+| Section | Action | Content |
+|---------|--------|---------|
+| Architecture | Enhance | Add Mermaid request flow diagram |
+| Environment Variables | Enhance | Add .env.example reference |
+| Deployment | Create | Production config, Docker, PM2 |
+| Table of Contents | Update | Add Deployment link |
 
-### 0.8.3 Explicitly Out of Scope
+### 0.8.2 Explicitly Out of Scope
 
-**Source Code Modifications:**
+**Source Code Modifications (Excluded):**
 
-| Item | Reason |
+| Category | Reason |
+|----------|--------|
+| Application logic changes | Documentation task only |
+| New endpoint additions | Beyond documentation scope |
+| Configuration behavior changes | Documentation task only |
+| Test logic modifications | Documentation task only |
+| Dependency additions | Not required for documentation |
+
+**Files Explicitly Excluded:**
+
+| File Pattern | Reason |
+|-------------|--------|
+| `tests/**/*.js` | Test files - reference only, no modifications |
+| `node_modules/**` | External dependencies |
+| `package.json` | No script/dependency changes needed |
+| `package-lock.json` | No dependency changes |
+| `jest.config.js` | Adequate JSDoc already present |
+| `.gitignore` | Not documentation-related |
+| `blitzy/documentation/**` | Technical specifications - separate concern |
+
+**Excluded Documentation Types:**
+
+| Type | Reason |
 |------|--------|
-| `server.js` source changes | Tests should verify existing behavior, not modify it |
-| `src/app.js` source changes | Tests should verify existing behavior, not modify it |
-| `src/config/index.js` source changes | Tests should verify existing behavior, not modify it |
-| `src/routes/*.js` source changes | Tests should verify existing behavior, not modify it |
+| CONTRIBUTING.md | Not explicitly requested |
+| CHANGELOG.md | Not explicitly requested |
+| API documentation generator setup | Not explicitly requested |
+| Swagger/OpenAPI configuration | Not explicitly requested |
+| GitHub Wiki pages | Not explicitly requested |
+| External documentation site | Not explicitly requested |
 
-**Refactoring:**
+**Excluded Actions:**
 
-| Item | Reason |
-|------|--------|
-| Code refactoring for testability | Architecture already supports testing via factory pattern |
-| Dependency injection changes | Current module structure is sufficient |
-| Configuration restructuring | Current config module is testable as-is |
+| Action | Reason |
+|--------|--------|
+| Installing jsdoc generator | Beyond minimal documentation scope |
+| Creating docs/ folder structure | Not requested |
+| Setting up documentation CI/CD | Beyond scope |
+| Creating TypeScript definitions | Not requested |
+| Modifying test assertions | Documentation only |
 
-**Feature Additions:**
+### 0.8.3 Boundary Clarifications
 
-| Item | Reason |
-|------|--------|
-| New endpoints | Out of scope - test existing functionality only |
-| New middleware | Out of scope - test existing functionality only |
-| Logging enhancements | Out of scope - test existing functionality only |
+**JSDoc vs Source Code:**
 
-**Unrelated Test Files:**
+JSDoc comments are **in scope** because they:
+- Are documentation, not executable code
+- Do not change runtime behavior
+- Are explicitly requested ("Add JSDoc comments")
 
-| Item | Reason |
-|------|--------|
-| E2E browser tests | Application has no UI |
-| Performance/load tests | Not specified in user requirements |
-| Security penetration tests | Not specified in user requirements |
-| Stress tests | Not specified in user requirements |
+**Inline Comments:**
 
-**Performance Optimizations:**
+Inline code explanations are **in scope** because:
+- They are explicitly requested
+- They do not change runtime behavior
+- They help developers understand implementation
 
-| Item | Reason |
-|------|--------|
-| Code optimizations | Focus is on testing, not performance |
-| Bundle size optimizations | Not applicable to Node.js server |
+**README Structure:**
 
-### 0.8.4 Boundary Decision Matrix
+The README.md enhancement is **in scope** because:
+- "Create comprehensive README" was requested
+- "Setup instructions" was requested
+- "API documentation" was requested
+- "Deployment guide" was requested
 
-| Item | In Scope | Out of Scope | Rationale |
-|------|----------|--------------|-----------|
-| Unit tests for config | ✅ | | User requested comprehensive tests |
-| Integration tests for endpoints | ✅ | | User requested HTTP response tests |
-| Server lifecycle tests | ✅ | | User requested startup/shutdown tests |
-| Error handling tests | ✅ | | User requested error handling tests |
-| Edge case tests | ✅ | | User requested edge case coverage |
-| Jest configuration | ✅ | | Required for test execution |
-| Source code modification | | ✅ | Focus on testing only |
-| New feature development | | ✅ | Testing existing behavior |
-| CI/CD pipeline setup | | ✅ | Not specified in requirements |
-| TypeScript conversion | | ✅ | Project uses JavaScript |
+**.env.example Creation:**
 
-### 0.8.5 Test Scope Summary
+Creating `.env.example` is **in scope** because:
+- It supports deployment guide documentation
+- It is a documentation artifact, not executable code
+- It helps users understand configuration options
 
-```mermaid
-flowchart LR
-    subgraph InScope["✅ In Scope"]
-        UnitTests["Unit Tests<br/>config, routes"]
-        IntegrationTests["Integration Tests<br/>HTTP endpoints"]
-        LifecycleTests["Lifecycle Tests<br/>startup/shutdown"]
-        JestConfig["Jest Configuration"]
-        PackageUpdate["package.json updates"]
-    end
-    
-    subgraph OutOfScope["❌ Out of Scope"]
-        SourceChanges["Source Code Changes"]
-        NewFeatures["New Features"]
-        CICDSetup["CI/CD Pipeline"]
-        E2ETests["E2E Browser Tests"]
-        PerfTests["Performance Tests"]
-    end
-```
+**Test File Modifications:**
 
+Test files are **out of scope** for modifications because:
+- They are not documentation files
+- They contain executable test code
+- No test changes were requested
+
+However, test files are **in scope** as reference material for:
+- JSDoc style patterns
+- API contract verification
+- Example extraction
 
 ## 0.9 Execution Parameters
 
-### 0.9.1 Testing-Specific Instructions
+### 0.9.1 Documentation-Specific Instructions
 
-**Test Execution Commands:**
+**Documentation Build/Validation Commands:**
 
-| Purpose | Command | Description |
-|---------|---------|-------------|
-| Run all tests | `npm test` | Execute full test suite |
-| Watch mode | `npm run test:watch` | Re-run tests on file changes |
-| Coverage report | `npm run test:coverage` | Generate coverage metrics |
-| CI execution | `npm run test:ci` | Optimized for CI environments |
-| Single file | `npx jest tests/unit/config.test.js` | Run specific test file |
-| Pattern match | `npx jest --testPathPatterns="config"` | Run tests matching pattern |
+| Command | Purpose | Usage |
+|---------|---------|-------|
+| `npm test` | Verify no runtime changes | Run after documentation changes |
+| `npm run test:ci` | CI validation | Automated verification |
+| `node server.js` | Manual startup verification | Test example accuracy |
 
-**Coverage Measurement Command:**
+**Documentation Preview Commands:**
 
-```bash
-npm run test:coverage
-# Equivalent to: jest --coverage
-```
-
-**Debug Mode Execution:**
-
-```bash
-# Run with verbose output
-npx jest --verbose
-
-#### Run with debug logging
-DEBUG=jest npx jest
-
-#### Run single test with inspector
-node --inspect-brk node_modules/.bin/jest --runInBand tests/unit/config.test.js
-```
-
-### 0.9.2 Package.json Script Definitions
-
-```json
-{
-  "scripts": {
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
-    "test:ci": "jest --ci --coverage --reporters=default"
-  }
-}
-```
-
-### 0.9.3 Environment Setup Requirements
-
-| Requirement | Value | Purpose |
-|-------------|-------|---------|
-| `NODE_ENV` | `test` | Identify test execution environment |
-| `CI` | `true` (in CI only) | Optimize for CI execution |
-
-**Pre-test Setup:**
-
-```bash
-# Install dependencies (if not installed)
-npm install
-
-#### Install test dependencies
-npm install --save-dev jest@30.2.0 supertest@7.1.4
-```
-
-### 0.9.4 Test Patterns in Repository
-
-| Pattern | Location | Usage |
-|---------|----------|-------|
-| Factory pattern | `src/app.js` | Import app directly without starting server |
-| Configuration separation | `src/config/index.js` | Mock environment variables for config tests |
-| Route modularization | `src/routes/*.js` | Test routes in isolation via Supertest |
-
-### 0.9.5 Test Execution Flow
-
-```mermaid
-sequenceDiagram
-    participant Dev as Developer
-    participant NPM as npm CLI
-    participant Jest as Jest Runner
-    participant Tests as Test Files
-    participant App as Express App
-    
-    Dev->>NPM: npm test
-    NPM->>Jest: Execute jest
-    Jest->>Tests: Load test files
-    Tests->>App: Import app module
-    App-->>Tests: App instance (no server)
-    Tests->>Tests: Execute test cases
-    Tests->>Jest: Report results
-    Jest->>NPM: Exit code
-    NPM->>Dev: Pass/Fail status
-```
-
-### 0.9.6 Jest CLI Options Reference
-
-| Option | Purpose | Usage |
+| Action | Command | Notes |
 |--------|---------|-------|
-| `--watch` | Watch mode | Development |
-| `--coverage` | Generate coverage | CI/verification |
-| `--ci` | CI optimizations | CI pipelines |
-| `--verbose` | Detailed output | Debugging |
-| `--runInBand` | Sequential execution | Debugging |
-| `--detectOpenHandles` | Detect leaks | Troubleshooting |
-| `--testPathPatterns` | Filter tests | Selective runs |
-| `--bail` | Stop on first failure | Quick feedback |
+| Start server | `npm start` | Verify startup documentation |
+| Run tests | `npm test` | Verify test documentation |
+| View coverage | `npm run test:coverage` | Verify coverage claims |
 
-### 0.9.7 Test Timeout Configuration
+**No Documentation Generator Commands:**
 
-| Context | Timeout | Rationale |
-|---------|---------|-----------|
-| Default test | 5,000ms | Standard Jest default |
-| Lifecycle tests | 10,000ms | Server operations need buffer |
-| HTTP tests | 5,000ms | Supertest is fast |
+This project does not use a documentation generator. JSDoc comments remain inline in source files and are read directly by developers.
 
-**Per-test timeout override:**
+**Default Documentation Format:**
 
-```javascript
-test('server starts successfully', async () => {
-  // Test implementation
-}, 10000); // 10 second timeout
+| Format | Usage |
+|--------|-------|
+| Markdown | README.md, .env.example comments |
+| JSDoc | Source file documentation |
+| Inline comments | Code explanations |
+
+**Citation Requirement:**
+
+Every technical claim in documentation must be verifiable:
+- JSDoc references actual code behavior
+- README claims verified by tests
+- Examples tested manually or via test suite
+
+**Style Guide:**
+
+| Element | Pattern | Example |
+|---------|---------|---------|
+| JSDoc block | `/** ... */` | Standard JSDoc syntax |
+| Inline comment | `// ...` | Single-line explanation |
+| Module tag | `@module path/to/module` | `@module src/app` |
+| Type import | `@type {import('pkg').Type}` | TypeScript-style |
+
+### 0.9.2 Validation Commands
+
+**Pre-Commit Validation:**
+
+```bash
+# Verify no runtime changes
+npm test
+
+#### Verify server still starts
+timeout 5 node server.js &
+sleep 2
+curl -s http://127.0.0.1:3000/
+curl -s http://127.0.0.1:3000/evening
+kill %1
 ```
 
-### 0.9.8 Parallel Execution
+**CI Validation:**
 
-| Setting | Value | Rationale |
-|---------|-------|-----------|
-| Worker threads | Auto (default) | Jest determines optimal |
-| `--runInBand` | For debugging only | Sequential for isolation |
-| `--maxWorkers` | 50% (CI) | Prevent resource exhaustion |
+```bash
+# Full CI test suite
+npm run test:ci
 
-
-## 0.10 Special Instructions for Testing
-
-### 0.10.1 Testing-Specific Requirements
-
-The following special instructions apply to this testing implementation:
-
-| Instruction | Description | Rationale |
-|-------------|-------------|-----------|
-| **Minimal source changes** | DO NOT modify source code unless absolutely necessary for testability | Source code is already designed for testing via factory pattern |
-| **Follow existing patterns** | Match the codebase's CommonJS module style | Maintain consistency with `require()`/`module.exports` |
-| **Maintain test isolation** | Ensure tests can run independently and in parallel | Jest runs tests concurrently by default |
-| **Use Supertest for HTTP** | Do not start actual HTTP server for endpoint tests | <cite index="5-9">Supertest handles Express internally without binding to ports.</cite> |
-| **Reset environment** | Restore `process.env` after config tests | Prevent test pollution |
-| **Match naming conventions** | Use `*.test.js` suffix | Jest default discovery pattern |
-
-### 0.10.2 Architecture Preservation
-
-The existing codebase architecture MUST be preserved:
-
-```
-server.js → imports → src/app.js (factory)
-                      └── src/routes/ (handlers)
-                      └── src/config/ (configuration)
+#### Expected: 41 tests passing, 100% coverage
 ```
 
-**DO:**
-- Import `src/app.js` for Supertest endpoint testing
-- Import `src/config/index.js` for configuration testing
-- Mock `process.env` for environment variable testing
-- Use Jest's built-in mocking for `console.log`
+### 0.9.3 Rules for Documentation
 
-**DO NOT:**
-- Modify the factory pattern in `src/app.js`
-- Add dependency injection just for testing
-- Change module export patterns
-- Refactor route handlers
+**User-Specified Rules:**
 
-### 0.10.3 Express 5 Compatibility Notes
+The user did not specify explicit documentation rules. The following rules are inferred from the request and repository context:
 
-Express 5.1.0 has specific behaviors that tests must account for:
+**Inferred Rules:**
 
-| Behavior | Express 5 Implementation | Test Approach |
-|----------|------------------------|---------------|
-| Async error handling | Promises rejected in handlers are caught | Test error scenarios with async handlers |
-| Path matching | Stricter route matching | Test exact paths |
-| Router behavior | New router features | Use standard Router testing patterns |
+| Rule | Rationale |
+|------|-----------|
+| Preserve existing behavior | Documentation changes must not alter runtime |
+| Follow existing JSDoc style | Consistency with current patterns |
+| Maintain CommonJS compatibility | Project uses require/exports |
+| Keep documentation co-located | JSDoc in source files, not separate |
+| Test accuracy of examples | All examples should work as documented |
 
-### 0.10.4 Environment Variable Testing Protocol
+**JSDoc Style Rules (from repository analysis):**
 
-When testing `src/config/index.js`:
+| Rule | Implementation |
+|------|---------------|
+| Use @module for all source files | Required at file top |
+| Use @type for imported types | `@type {import('...').Type}` |
+| Use @route for endpoints | `@route METHOD /path` |
+| Use @returns for return values | Include type and description |
+| Use @example for usage | Include practical examples |
+| Use @default for default values | Document configuration defaults |
 
-```javascript
-describe('Configuration Module', () => {
-  const originalEnv = process.env;
-  
-  beforeEach(() => {
-    jest.resetModules();
-    process.env = { ...originalEnv };
-  });
-  
-  afterAll(() => {
-    process.env = originalEnv;
-  });
-  
-  // Tests go here
-});
-```
+**README Style Rules:**
 
-**Critical:** Use `jest.resetModules()` to ensure the config module is re-evaluated with new environment variables.
+| Rule | Implementation |
+|------|---------------|
+| Use ## for major sections | Consistent header hierarchy |
+| Use tables for structured data | Dependencies, environment vars |
+| Use code blocks with language | ```bash, ```javascript |
+| Include examples for all features | Practical, copy-paste ready |
 
-### 0.10.5 Supertest Usage Pattern
+**Comment Style Rules:**
 
-Standard pattern for endpoint testing:
+| Rule | Implementation |
+|------|---------------|
+| Explain "why" not "what" | Focus on decisions, not obvious facts |
+| Keep inline comments brief | Single line when possible |
+| Use section dividers | `// ===` for major sections |
+| Document non-obvious behavior | Callback timing, parsing behavior |
 
-```javascript
-const request = require('supertest');
-const app = require('../../src/app');
+### 0.9.4 Documentation Quality Standards
 
-describe('GET /', () => {
-  test('returns Hello World', async () => {
-    const response = await request(app)
-      .get('/')
-      .expect(200);
-    expect(response.text).toBe('Hello, World!\n');
-  });
-});
-```
+**Accuracy Standards:**
 
-### 0.10.6 Server Lifecycle Testing Protocol
+| Standard | Verification |
+|----------|--------------|
+| JSDoc types match actual types | Visual inspection |
+| Examples produce documented output | Manual testing |
+| Configuration defaults match code | Unit test verification |
+| Response bodies match endpoints | Integration test verification |
 
-Testing server startup requires mocking to avoid port conflicts:
+**Completeness Standards:**
 
-| Aspect | Approach |
-|--------|----------|
-| `app.listen()` | Mock to capture callback |
-| `console.log()` | Spy to verify logging |
-| Port binding | Do not actually bind in tests |
-| Graceful shutdown | Mock `server.close()` |
+| Standard | Metric |
+|----------|--------|
+| All modules have @module | 100% |
+| All public functions have @example | 100% |
+| README covers all features | 100% |
+| Deployment guide complete | New section |
 
-### 0.10.7 Test File Organization Standards
+**Maintainability Standards:**
 
-| Directory | Purpose | Naming |
-|-----------|---------|--------|
-| `tests/unit/` | Isolated module tests | `{module}.test.js` |
-| `tests/integration/` | HTTP endpoint tests | `{feature}.test.js` |
-| `tests/lifecycle/` | Server lifecycle tests | `server.test.js` |
+| Standard | Implementation |
+|----------|---------------|
+| Documentation near code | JSDoc in source files |
+| No external dependencies | No doc generator required |
+| Version-controlled | Git tracked |
+| Testable examples | Verified by test suite |
 
-### 0.10.8 Quality Assurance Checklist
+## 0.10 References
 
-Before considering tests complete, verify:
+### 0.10.1 Repository Files Searched
 
-- [ ] All test files use `*.test.js` naming convention
-- [ ] Tests can run in any order (isolated)
-- [ ] No hardcoded port numbers in tests
-- [ ] Environment variables restored after config tests
-- [ ] All async operations properly awaited
-- [ ] No `console.log` statements in test files (except spies)
-- [ ] Coverage meets or exceeds targets
-- [ ] All tests pass in CI mode (`npm run test:ci`)
+**Source Files Analyzed:**
 
-### 0.10.9 Backward Compatibility
+| File Path | Lines | Purpose | Key Findings |
+|-----------|-------|---------|--------------|
+| `server.js` | 53 | Entry point | Has @module, needs @requires, @example |
+| `src/app.js` | 28 | Express factory | Has @module, needs @exports, @example |
+| `src/config/index.js` | 42 | Configuration | Has complete @type/@default, needs @example |
+| `src/routes/index.js` | 20 | Route aggregator | Has @module, needs @type for export |
+| `src/routes/main.routes.js` | 42 | Route handlers | Has @route/@returns, needs @example |
+| `jest.config.js` | 28 | Test config | Has @fileoverview/@type, adequate |
+| `package.json` | 23 | npm manifest | Dependencies: express ^5.1.0, jest ^30.2.0, supertest ^7.1.4 |
 
-Tests must maintain backward compatibility with:
+**Test Files Analyzed (Reference Only):**
 
-| Component | Version | Compatibility Note |
-|-----------|---------|-------------------|
-| Node.js | 18.x+ | Use CommonJS syntax |
-| Express | 5.1.0 | Account for Express 5 behavior |
-| Jest | 30.x | Use current assertion syntax |
+| File Path | Lines | JSDoc Patterns Found |
+|-----------|-------|---------------------|
+| `tests/unit/config.test.js` | 141 | @fileoverview, @module, @param/@returns for helpers |
+| `tests/unit/routes.test.js` | 95 | @fileoverview, @module, @typedef for RouteLayer |
+| `tests/integration/endpoints.test.js` | 126 | @fileoverview, @typedef, helper documentation |
+| `tests/lifecycle/server.test.js` | 205 | @fileoverview, @typedef for MockServer/TestConfig |
 
-### 0.10.10 Documentation Requirements
+**Documentation Files Analyzed:**
 
-Each test file should include:
+| File Path | Lines | Purpose | Key Findings |
+|-----------|-------|---------|--------------|
+| `README.md` | 338 | Primary documentation | Comprehensive, missing Deployment section |
+| `blitzy/documentation/Project Guide.md` | N/A | Implementation guide | Test results, coverage evidence |
+| `blitzy/documentation/Technical Specifications.md` | N/A | Technical spec | Agent Action Plan, testing strategy |
 
-| Element | Requirement |
-|---------|-------------|
-| File header comment | Describe what module is being tested |
-| `describe` block naming | Module or feature name |
-| `test` naming | `should [expected behavior]` pattern |
-| Inline comments | Only for non-obvious test logic |
+**Configuration Files Analyzed:**
 
+| File Path | Purpose | Documentation Relevance |
+|-----------|---------|------------------------|
+| `package.json` | npm manifest | Dependency versions, scripts |
+| `jest.config.js` | Jest configuration | Coverage thresholds |
+| `.gitignore` | Git ignore patterns | No doc relevance |
+
+### 0.10.2 Folders Searched
+
+| Folder Path | Contents | Documentation Findings |
+|-------------|----------|----------------------|
+| `/` (root) | Project root | README.md, server.js, configs |
+| `src/` | Application source | app.js, config/, routes/ |
+| `src/config/` | Configuration module | index.js with env var handling |
+| `src/routes/` | Route definitions | index.js barrel, main.routes.js handlers |
+| `tests/` | Test suites | unit/, integration/, lifecycle/ |
+| `tests/unit/` | Unit tests | config.test.js, routes.test.js |
+| `tests/integration/` | Integration tests | endpoints.test.js |
+| `tests/lifecycle/` | Lifecycle tests | server.test.js |
+| `blitzy/` | Documentation area | documentation/ folder |
+| `blitzy/documentation/` | Tech specs | Project Guide.md, Technical Specifications.md |
+
+### 0.10.3 External Resources Referenced
+
+**Web Search Results:**
+
+| Source | Topic | Relevance |
+|--------|-------|-----------|
+| jsdoc.app | JSDoc official documentation | JSDoc tag reference |
+| medium.com/swlh | JSDoc best practices | Template recommendations |
+| github.com/goldbergyoni/nodebestpractices | Node.js best practices | Testing and documentation patterns |
+| kevinmartinez.dev | Express JSDoc Swagger | API documentation patterns |
+| dev.to/kabartolo | Express Swagger documentation | OpenAPI from JSDoc tutorial |
+| npmjs.com/express-jsdoc-swagger | express-jsdoc-swagger | Swagger generation from JSDoc |
+| github.com/BRIKEV/express-jsdoc-swagger | express-jsdoc-swagger GitHub | Implementation examples |
+
+### 0.10.4 User-Provided Attachments
+
+**Attachments Provided:**
+
+| Type | Filename | Contents |
+|------|----------|----------|
+| None | N/A | No attachments were provided |
+
+### 0.10.5 Figma Resources
+
+**Figma URLs Provided:**
+
+| Frame Name | URL | Description |
+|------------|-----|-------------|
+| None | N/A | No Figma resources were provided |
+
+### 0.10.6 Environment Variables Provided
+
+**Environment Variables Available:**
+
+| Variable | Value | Purpose |
+|----------|-------|---------|
+| `DB_HOST` | (provided) | Database host (not used by this application) |
+| `DB_HOST1` | (provided) | Database host alternate (not used by this application) |
+
+**Note:** These environment variables are not relevant to this documentation task as the application uses `HOST`, `PORT`, and `NODE_ENV` for configuration.
+
+### 0.10.7 Technical Specification Sections Referenced
+
+| Section | Relevance |
+|---------|-----------|
+| 1.2 System Overview | Project context, architecture, success criteria |
+| 3.2 PROGRAMMING LANGUAGES | Node.js version requirements, module system |
+
+### 0.10.8 Summary of Evidence
+
+**Documentation Decisions Based On:**
+
+| Decision | Evidence Source |
+|----------|-----------------|
+| JSDoc style | Existing patterns in test files |
+| Module naming | Current @module conventions |
+| README structure | Existing README.md organization |
+| TypeScript-style JSDoc | Existing @type import syntax |
+| Route documentation | Existing @route tags |
+| Configuration documentation | Existing @type/@default patterns |
+
+**Verification Commands Used:**
+
+| Command | Result |
+|---------|--------|
+| `node --version` | v20.19.6 |
+| `npm --version` | 11.1.0 |
+| `npm install` | 381 packages installed |
+| `npm test` | 41 tests passing, 100% coverage |
 
