@@ -1,28 +1,30 @@
 /**
  * Express Application Configuration Module
  *
- * This module initializes and exports the configured Express app instance.
- * It separates application configuration from HTTP server initialization
- * (which remains in server.js), enabling unit testing without starting
- * the actual server.
+ * This module initializes and exports the configured Express app instance
+ * with comprehensive security middleware integration. It separates application
+ * configuration from HTTP server initialization (which remains in server.js),
+ * enabling unit testing without starting the actual server.
  *
- * Security Middleware Chain (per Agent Action Plan Section 0.5.4):
- * Security middleware is applied in a specific order for maximum effectiveness:
- * 1. app.disable('x-powered-by') - Remove Express fingerprint (must be first)
- * 2. Rate limiter - Block excess requests early (SEC-003)
- * 3. CORS - Validate origin before processing (SEC-005)
- * 4. Helmet - Apply 13 security headers (SEC-001)
+ * Security Middleware Chain (order is critical per Section 0.5.4):
+ * 1. x-powered-by disabled - Remove Express fingerprint for security
+ * 2. Rate Limiter - Block excess requests early (SEC-003)
+ * 3. CORS - Validate cross-origin requests (SEC-005)
+ * 4. Helmet - Apply 13 HTTP security headers (SEC-001)
  * 5. Routes - Application logic protected by security chain
  *
- * Security Requirements Implemented:
- * - SEC-001: Security Headers Protection via helmet.js
- * - SEC-003: Rate Limiting via express-rate-limit
- * - SEC-005: CORS Policy via cors middleware
+ * Security Features Implemented:
+ * - HTTP Security Headers (Content-Security-Policy, HSTS, X-Frame-Options, etc.)
+ * - Rate Limiting (IP-based request throttling to prevent DoS/brute force)
+ * - CORS Policy (Cross-origin access control with configurable origins)
+ * - Server Fingerprint Removal (X-Powered-By header removed)
  *
  * Design pattern: Factory pattern - creates configured Express app
  *
  * @module src/app
- * @see {@link https://expressjs.com/en/advanced/best-practice-security.html} Express Security Best Practices
+ * @see src/middleware/index.js - Security middleware exports
+ * @see src/middleware/rateLimiter.js - Rate limiting configuration
+ * @see src/middleware/corsConfig.js - CORS configuration
  */
 
 'use strict';
@@ -30,72 +32,63 @@
 const express = require('express');
 const helmet = require('helmet');
 const { rateLimiter, corsConfig } = require('./middleware');
-const config = require('./config');
 const { mainRoutes } = require('./routes');
 
 /**
- * Express application instance
- * @type {import('express').Application}
+ * Express application instance with security middleware chain configured.
+ * @type {Express.Application}
  */
 const app = express();
 
-// =============================================================================
-// Security Middleware Chain (order matters per Section 0.5.4)
-// =============================================================================
-
 /**
- * Step 1: Remove X-Powered-By header to prevent server fingerprinting
- * This prevents attackers from easily identifying the server technology.
- * Must be first in the middleware chain.
+ * Security Middleware Chain
+ *
+ * CRITICAL: Middleware order matters for security effectiveness.
+ * The chain is configured per Section 0.5.4 specifications:
+ *
+ * 1. Remove X-Powered-By header (prevents Express server fingerprinting)
+ * 2. Rate Limiter (blocks abusive requests before processing)
+ * 3. CORS (validates origin before allowing request processing)
+ * 4. Helmet (applies 13 HTTP security headers to all responses)
+ *
+ * This ordering ensures:
+ * - Rate limits are applied before any request processing
+ * - CORS validation happens before security headers are applied
+ * - All responses include security headers regardless of route
  */
+
+// Step 1: Remove Express fingerprint (must be first security measure)
+// Removes X-Powered-By header that could reveal server technology stack
 app.disable('x-powered-by');
 
-/**
- * Step 2: Trust proxy configuration for correct IP resolution
- * Enable when running behind a reverse proxy (nginx, load balancer, cloud provider).
- * Required for accurate rate limiting when behind proxy.
- */
-if (config.trustProxy) {
-  app.set('trust proxy', 1);
-}
-
-/**
- * Step 3: Rate limiting middleware (SEC-003)
- * Blocks excess requests early to prevent abuse and DoS attacks.
- * Configuration: RATE_LIMIT_WINDOW_MS (default: 15 min), RATE_LIMIT_MAX (default: 100)
- */
+// Step 2: Rate Limiting middleware - Block excess requests early
+// Configured via RATE_LIMIT_WINDOW_MS and RATE_LIMIT_MAX env variables
+// Returns 429 Too Many Requests when limit exceeded
 app.use(rateLimiter);
 
-/**
- * Step 4: CORS middleware (SEC-005)
- * Validates origin before processing cross-origin requests.
- * Configuration: CORS_ORIGIN environment variable
- */
+// Step 3: CORS middleware - Validate cross-origin requests
+// Configured via CORS_ORIGIN env variable
+// Allows configurable origin whitelist for cross-origin access control
 app.use(corsConfig);
 
-/**
- * Step 5: Helmet security headers middleware (SEC-001)
- * Applies 13 HTTP security headers including:
- * - Content-Security-Policy: Prevents XSS and data injection
- * - Strict-Transport-Security: Enforces HTTPS
- * - X-Content-Type-Options: Prevents MIME sniffing
- * - X-Frame-Options: Prevents clickjacking
- * - Referrer-Policy: Controls referrer information
- * And 8 additional security headers.
- */
+// Step 4: Helmet middleware - Apply 13 HTTP security headers
+// Includes: Content-Security-Policy, Strict-Transport-Security,
+// X-Content-Type-Options, X-Frame-Options, Referrer-Policy,
+// X-Download-Options, X-DNS-Prefetch-Control, and more
 app.use(helmet());
 
-// =============================================================================
-// Application Routes (protected by security middleware)
-// =============================================================================
-
 /**
- * Mount main routes at root path
- * This preserves the original route paths:
- * - GET '/' -> mainRoutes handles this (Hello, World!)
- * - GET '/evening' -> mainRoutes handles this (Good evening)
+ * Route Mounting
  *
- * All routes are now protected by the security middleware chain above.
+ * Mount main routes at root path AFTER security middleware chain.
+ * This ensures all route handlers are protected by:
+ * - Rate limiting (prevents DoS attacks)
+ * - CORS validation (prevents unauthorized cross-origin access)
+ * - Security headers (prevents XSS, clickjacking, etc.)
+ *
+ * Routes served:
+ * - GET '/' -> Hello World response
+ * - GET '/evening' -> Good evening response
  */
 app.use('/', mainRoutes);
 
