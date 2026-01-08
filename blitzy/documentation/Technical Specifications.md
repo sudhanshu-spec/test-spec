@@ -4,1075 +4,1224 @@
 
 ## 0.1 Intent Clarification
 
-### 0.1.1 Core Security Objective
+Based on the provided requirements, the Blitzy platform understands that the objective is to **enhance an existing HTTP server with Express.js framework capabilities, implement comprehensive routing, add middleware layers, establish environment configuration management, integrate a production-grade logging system, and prepare the application for production deployment using PM2 process manager**.
 
-Based on the security concern described, the Blitzy platform understands that the security vulnerability to resolve is the **complete absence of security hardening** in the current Express.js application. This represents a comprehensive security implementation initiative rather than a single vulnerability fix.
+### 0.1.1 Core Objective
 
-**Vulnerability Category:** Multiple vulnerabilities (Configuration weakness, Missing security controls, Dependency security)
+The user seeks to transform the current security-hardened Express.js server into a fully production-ready application by adding the following capabilities:
 
-**Severity Level:** High - The application currently operates without any security middleware, headers, rate limiting, input validation, or transport-layer security, making it vulnerable to common web attacks including XSS, clickjacking, MIME sniffing, CORS-based attacks, and denial-of-service.
+| Requirement | Current State | Target State | Priority |
+|-------------|---------------|--------------|----------|
+| Express.js Framework | ✅ Implemented (v5.1.0) | Maintained | Foundation |
+| Routing Architecture | Partial (2 demo routes) | Modular route structure | High |
+| Middleware Stack | ✅ Security middleware complete | Enhanced with logging middleware | High |
+| Environment Configuration | Partial (.env.example exists) | Comprehensive config management | High |
+| Logging System | ❌ Not implemented | Production-grade structured logging | Critical |
+| PM2 Production Deployment | ❌ Not implemented | Complete ecosystem configuration | Critical |
 
-**Security Requirements with Enhanced Clarity:**
+**Key Insight**: The existing codebase is a well-architected security-hardened Express.js server with 5-layer defense-in-depth security (Helmet → CORS → Rate Limiting → Body Parsing → Validation). The enhancement effort focuses on operational readiness through logging and PM2 integration rather than architectural changes.
 
-- **Security Headers Implementation:** Deploy HTTP security headers to protect against XSS, clickjacking, MIME-type sniffing, and other client-side attacks
-- **Input Validation:** Implement request validation to prevent injection attacks and malformed data processing
-- **Rate Limiting:** Add request throttling to protect against brute-force attacks and DoS attempts
-- **HTTPS Support:** Enable TLS/SSL support for encrypted communications and data confidentiality
-- **Dependency Security:** Update and add security-focused dependencies following current best practices
-- **helmet.js Integration:** Specifically implement helmet.js as the primary security middleware as requested
-- **CORS Policy Configuration:** Implement proper Cross-Origin Resource Sharing policies to control resource access
+### 0.1.2 Implicit Requirements Detected
 
-**Implicit Security Needs Surfaced:**
+Based on the explicit request, the Blitzy platform has identified the following implicit requirements that must be addressed:
 
-- Environment-specific configuration (development vs. production security levels)
-- Backward compatibility with existing `/` and `/evening` endpoints
-- Zero downtime requirement during implementation (additive changes only)
-- Certificate management strategy for HTTPS implementation
+- **Structured JSON Logging**: Production environments require machine-parseable logs for aggregation tools (ELK, CloudWatch, Datadog)
+- **Request Context Correlation**: HTTP request logging must include request IDs for distributed tracing
+- **Environment-Aware Configuration**: Logging verbosity and format must adapt to NODE_ENV (development vs production)
+- **Zero-Downtime Deployments**: PM2 cluster mode configuration for graceful reloads
+- **Process Persistence**: Startup scripts for automatic application recovery after server restarts
+- **Health Check Endpoints**: Required for PM2 and container orchestration readiness probes
+- **Graceful Shutdown Handling**: SIGTERM/SIGINT handling for clean process termination
 
-### 0.1.2 Special Instructions and Constraints
+### 0.1.3 Task Categorization
 
-**Critical User Directives:**
+| Attribute | Classification |
+|-----------|----------------|
+| Primary Task Type | Feature Enhancement |
+| Secondary Aspects | Configuration, Infrastructure, Operational Tooling |
+| Scope Classification | Cross-cutting change |
+| Complexity | Medium |
+| Estimated Impact | High (production readiness enablement) |
 
-- The user explicitly requested implementation of specific security features: security headers, input validation, rate limiting, and HTTPS support
-- helmet.js is specifically named as the security middleware of choice
-- CORS policies must be "properly configured" indicating need for secure defaults
-- Dependency updates are expected alongside new security packages
+### 0.1.4 Special Instructions and Constraints
 
-**Security Requirements:**
+**Captured Directives:**
+- Maintain backward compatibility with existing security middleware chain
+- Preserve the existing defense-in-depth middleware ordering (Helmet → CORS → Rate Limiter)
+- Use existing patterns established in `middleware/` and `config/` directories
+- Logging middleware must integrate without disrupting security middleware sequence
+- PM2 ecosystem file must support both development and production environments
 
-- Follow OWASP security header guidelines
-- Implement defense-in-depth through multiple security layers
-- Maintain Express 5.x compatibility for all new middleware
+**Methodological Requirements:**
+- Follow CommonJS module pattern (as per existing codebase convention)
+- Maintain 'use strict' directive in all new files
+- Include comprehensive JSDoc documentation (matching existing code style)
+- Configuration should be environment-variable driven (extending .env.example pattern)
 
-**User Examples Preserved:**
+### 0.1.5 Technical Interpretation
 
-User Example: "Implement security headers, input validation, rate limiting, and HTTPS support. Update dependencies, add helmet.js for security middleware, and configure proper CORS policies."
+These requirements translate to the following technical implementation strategy:
 
-**Web Search Requirements Completed:**
+- **To achieve structured logging**, we will create a new `config/logger.js` configuration module and `middleware/requestLogger.js` middleware using Pino logger (chosen for performance alignment with the existing high-performance architecture)
 
-- helmet.js latest version and Express 5 compatibility ✓
-- express-rate-limit package configuration ✓
-- cors npm package for CORS middleware ✓
-- Node.js native HTTPS module for TLS support ✓
-- Input validation approaches (Joi, express-validator) ✓
+- **To implement modular routing**, we will create a `routes/` directory structure with `routes/index.js` as the central router aggregator, enabling scalable route organization
 
-**Change Scope Preference:** Comprehensive - Full security hardening implementation
+- **To establish environment configuration**, we will enhance `.env.example` with logging and PM2 variables, and create a `config/env.js` centralized environment loader
 
-### 0.1.3 Technical Interpretation
+- **To prepare for PM2 production deployment**, we will create `ecosystem.config.js` at the project root with cluster mode configuration, environment-specific settings, and deployment configurations
 
-This security enhancement initiative translates to the following technical fix strategy:
+- **To enable zero-downtime deployments**, we will implement graceful shutdown handlers in `server.js` and configure PM2 reload strategies
 
-**To implement security headers**, we will add helmet.js middleware (version 8.1.0) which sets 15+ HTTP security headers including Content-Security-Policy, Strict-Transport-Security, X-Frame-Options, X-Content-Type-Options, and removes the X-Powered-By header.
+- **To support operational monitoring**, we will add `/health` and `/ready` endpoints for load balancer and orchestration integration
 
-**To implement input validation**, we will add joi (version 17.x) or express-validator for request body, query parameter, and route parameter validation before processing requests.
+## 0.2 Repository Scope Discovery
 
-**To implement rate limiting**, we will add express-rate-limit middleware (version 8.2.1) with configurable windows and request limits to protect against abuse.
+### 0.2.1 Comprehensive File Analysis
 
-**To implement HTTPS support**, we will use Node.js native `https` module with `fs` for certificate loading, creating an HTTPS server alongside or replacing the HTTP server.
+The repository was systematically analyzed to identify all files that will be created, modified, or referenced during this enhancement.
 
-**To configure CORS policies**, we will add the cors middleware (version 2.8.5) with explicit origin whitelisting, allowed methods, and credential handling rules.
-
-**User Understanding Level:** Explicit security feature request - User has clearly identified specific security mechanisms and tools (helmet.js) to implement.
-
-## 0.2 Vulnerability Research and Analysis
-
-### 0.2.1 Initial Assessment
-
-**Security-Related Information Extracted:**
-
-- **CVE Numbers Mentioned:** None explicitly mentioned; this is a proactive security hardening request
-- **Vulnerability Names:** Missing security headers, no rate limiting, no input validation, no HTTPS, no CORS policy
-- **Affected Packages:** express (current sole dependency)
-- **Symptoms Described:** Lack of security controls in current implementation
-- **Security Advisories Referenced:** None specific; general Express.js security best practices apply
-
-### 0.2.2 Required Web Research Summary
-
-**Official Security Advisory Research Conducted:**
-
-- **OWASP Security Headers Project:** Recommends Content-Security-Policy, Strict-Transport-Security, X-Frame-Options, X-Content-Type-Options as essential headers
-- **Express.js Security Best Practices:** Official Express documentation explicitly recommends helmet.js for production deployments
-- **npm Security Advisories:** No known vulnerabilities in helmet@8.1.0, express-rate-limit@8.2.1, cors@2.8.5
-
-**Research Findings:**
-
-Research reveals that Express.js applications without security middleware are vulnerable to:
-- **XSS Attacks** - Mitigated by Content-Security-Policy header (CVSS varies by exploit)
-- **Clickjacking** - Mitigated by X-Frame-Options header
-- **MIME Sniffing** - Mitigated by X-Content-Type-Options header
-- **Information Disclosure** - X-Powered-By header reveals Express usage
-- **DoS/Brute Force** - Mitigated by rate limiting middleware
-- **CORS Exploits** - Mitigated by explicit CORS policy configuration
-
-### 0.2.3 Vulnerability Classification
-
-| Vulnerability Type | Attack Vector | Exploitability | Impact | Root Cause |
-|-------------------|---------------|----------------|--------|------------|
-| Missing Security Headers | Network | High | Confidentiality, Integrity | No helmet.js middleware configured |
-| No Rate Limiting | Network | High | Availability | No request throttling mechanism |
-| No Input Validation | Network | Medium | Integrity | No validation middleware on routes |
-| No HTTPS Support | Network | High | Confidentiality | Server only listens on HTTP |
-| No CORS Policy | Network | Medium | Confidentiality | No CORS middleware configured |
-| Information Leakage | Network | Low | Confidentiality | X-Powered-By header exposes Express |
-
-### 0.2.4 Web Search Research Conducted
-
-**Official Security Advisories Reviewed:**
-
-- Express.js Security Best Practices: https://expressjs.com/en/advanced/best-practice-security.html
-- helmet.js Documentation: https://helmetjs.github.io/
-- OWASP Secure Headers Project: https://owasp.org/www-project-secure-headers/
-- Node.js TLS Documentation: https://nodejs.org/api/tls.html
-
-**Recommended Mitigation Strategies:**
-
-1. **Immediate:** Add helmet.js middleware as first middleware in chain
-2. **Immediate:** Configure express-rate-limit for request throttling
-3. **Immediate:** Add cors middleware with restrictive defaults
-4. **Short-term:** Implement HTTPS server with TLS 1.2+ support
-5. **Short-term:** Add input validation middleware for all routes accepting user input
-
-**Alternative Solutions Considered:**
-
-| Alternative | Trade-offs | Decision |
-|-------------|-----------|----------|
-| Manual header setting | More control but error-prone, misses updates | Rejected - helmet.js preferred |
-| Custom rate limiter | Full control but requires maintenance | Rejected - express-rate-limit mature |
-| Built-in CORS handling | Tedious, inconsistent | Rejected - cors middleware standardized |
-| Reverse proxy for HTTPS | Adds complexity, deployment dependency | Document as alternative |
-
-## 0.3 Security Scope Analysis
-
-### 0.3.1 Affected Component Discovery
-
-**Repository Search Results:**
-
-A comprehensive search of the repository reveals a minimal Express.js application with the following structure:
+**Repository Structure Discovered:**
 
 ```
 /
-├── server.js              # Main application file - AFFECTED
-├── package.json           # Dependency manifest - AFFECTED
-├── package-lock.json      # Lock file - WILL BE REGENERATED
-└── blitzy/
-    └── documentation/
-        ├── Project Guide.md
-        └── Technical Specifications.md
+├── blitzy/                  # Blitzy platform configuration
+├── certs/                   # TLS certificates for HTTPS
+│   ├── cert.pem
+│   ├── key.pem
+│   └── README.md
+├── config/                  # Configuration modules
+│   ├── cors.js              # CORS configuration (reference)
+│   ├── helmet.js            # Security headers config (reference)
+│   └── https.js             # HTTPS configuration (reference)
+├── middleware/              # Express middleware modules
+│   ├── rateLimiter.js       # Rate limiting middleware (reference)
+│   ├── security.js          # Centralized security middleware (modify)
+│   └── validation.js        # Joi validation middleware (reference)
+├── tests/
+│   └── security/            # Security integration tests
+│       ├── cors.test.js
+│       ├── helmet.test.js
+│       ├── https.test.js
+│       ├── rateLimiter.test.js
+│       └── validation.test.js
+├── .env.example             # Environment variable template (modify)
+├── package.json             # Package manifest (modify)
+├── README.md                # Project documentation (modify)
+└── server.js                # Main application entry (modify)
 ```
 
-**Vulnerability Impact Assessment:**
+**Search Patterns Applied:**
 
-The security implementation affects **2 primary files** across **1 directory** (root):
+| Category | Pattern | Files Found |
+|----------|---------|-------------|
+| Configuration | `config/**/*.js` | cors.js, helmet.js, https.js |
+| Middleware | `middleware/**/*.js` | rateLimiter.js, security.js, validation.js |
+| Tests | `tests/**/*.test.js` | 5 security test files |
+| Build/Deploy | `*.config.js`, `Dockerfile*` | None (to be created) |
+| Documentation | `*.md` | README.md |
+| Environment | `.env*` | .env.example |
 
-- `server.js` - Currently has no security middleware, no HTTPS, no validation
-- `package.json` - Missing all security dependencies
+### 0.2.2 Related File Discovery
 
-**Search Patterns Employed:**
+**Files Requiring Modification Due to New Features:**
 
-| Pattern | Target | Findings |
-|---------|--------|----------|
-| `require('helmet')` | Security header middleware | Not found - needs addition |
-| `require('cors')` | CORS middleware | Not found - needs addition |
-| `rateLimit` | Rate limiting | Not found - needs addition |
-| `https.createServer` | HTTPS server | Not found - needs addition |
-| `app.use()` | Middleware registration | Not found - no middleware |
-| `express.json()` | Body parser | Not found - needs addition for validation |
-
-### 0.3.2 Root Cause Identification
-
-**Identified Vulnerability Source:**
-
-The identified vulnerability exists in `server.js` due to the intentional minimal implementation approach. The current architecture was designed as a "Hello World" demonstration without security considerations.
-
-**Investigation Reveals:**
-
-The vulnerability stems from `server.js` where:
-- No middleware chain is established before route handlers
-- Server listens only on HTTP (port 3000)
-- No request validation occurs on incoming requests
-- The `X-Powered-By: Express` header is sent by default (information disclosure)
-
-**Vulnerability Propagation Trace:**
-
-| Category | Files Affected | Impact |
-|----------|---------------|--------|
-| Direct Usage | `server.js` | All requests pass through without security checks |
-| Configuration | `package.json` | No security packages available for use |
-| Indirect Dependencies | None | No transitive vulnerabilities identified |
-| Configuration Enablers | N/A | No config files exist; defaults are insecure |
-
-### 0.3.3 Current State Assessment
-
-**Current Application State Analysis:**
-
-| Aspect | Current State | Risk Level |
-|--------|---------------|------------|
-| **Express Version** | `^5.1.0` | Low - Latest stable |
-| **Security Middleware** | None installed | Critical |
-| **HTTP Headers** | Express defaults only | High |
-| **Rate Limiting** | None | High |
-| **Input Validation** | None | Medium |
-| **CORS Policy** | None (blocked by browser defaults) | Medium |
-| **Transport Security** | HTTP only (port 3000) | High |
-| **Server Binding** | `127.0.0.1` (localhost only) | Mitigating factor |
-
-**Scope of Exposure:**
-
-- **Internal Only (Current):** Server bound to `127.0.0.1` limits network exposure
-- **API Endpoints Exposed:** 2 routes (`/` and `/evening`)
-- **Data Sensitivity:** Low (static responses only)
-- **Future Risk:** If binding changes to `0.0.0.0` or deployed publicly, all identified vulnerabilities become exploitable
-
-**Current server.js Analysis:**
-
-```javascript
-// Lines 1-17 of current server.js - No security middleware present
-const express = require('express');
-const app = express();
-// No helmet, cors, rate-limit, or validation middleware
-```
-
-## 0.4 Version Compatibility Research
-
-### 0.4.1 Secure Version Identification
-
-**Web Search Results for Patched/Recommended Versions:**
-
-| Package | Current Version | Recommended Version | Rationale |
-|---------|----------------|---------------------|-----------|
-| `helmet` | Not installed | `^8.1.0` | Latest stable; Express 5 compatible; Node 16+ required |
-| `cors` | Not installed | `^2.8.5` | Latest stable; widely adopted; Express 4/5 compatible |
-| `express-rate-limit` | Not installed | `^8.2.1` | Latest stable; modern API; Express 4/5 compatible |
-| `joi` | Not installed | `^17.13.3` | Latest stable; powerful schema validation |
-| `express` | `^5.1.0` | `^5.1.0` | Already latest - no update needed |
-
-**Security Package Details:**
-
-**helmet@8.1.0:**
-- Sets 15+ security HTTP headers by default
-- Removes X-Powered-By header automatically
-- Configures Content-Security-Policy, HSTS, X-Frame-Options
-- Requires Node.js 16+ (satisfied by Node 20.19.6)
-- Breaking changes from v7: Cross-Origin-Embedder-Policy disabled by default
-
-**express-rate-limit@8.2.1:**
-- Modern rate limiting with standard headers support
-- Built-in memory store for simple deployments
-- Supports `draft-8` RateLimit headers standard
-- IPv6 subnet support for distributed client handling
-
-**cors@2.8.5:**
-- Mature CORS middleware (21,000+ dependents)
-- Supports dynamic origin validation
-- Configurable methods, headers, and credentials
-- Last published 7 years ago but actively maintained under expressjs org
-
-### 0.4.2 Compatibility Verification
-
-**Runtime Compatibility Matrix:**
-
-| Requirement | Current Environment | Status |
-|-------------|---------------------|--------|
-| Node.js 16+ (helmet) | Node 20.19.6 | ✅ Compatible |
-| Node.js 18+ (Express 5) | Node 20.19.6 | ✅ Compatible |
-| npm 7+ (package-lock v3) | npm 11.1.0 | ✅ Compatible |
-
-**Dependency Compatibility Analysis:**
-
-| New Package | Express 5.1.0 | Node 20.x | Conflicts |
-|-------------|---------------|-----------|-----------|
-| helmet@8.1.0 | ✅ Compatible | ✅ Compatible | None |
-| cors@2.8.5 | ✅ Compatible | ✅ Compatible | None |
-| express-rate-limit@8.2.1 | ✅ Compatible | ✅ Compatible | None |
-| joi@17.13.3 | ✅ Compatible | ✅ Compatible | None |
-
-**Version Conflicts Identified:** None - all packages are compatible with the current stack.
-
-### 0.4.3 HTTPS Implementation Requirements
-
-**For HTTPS/TLS Support:**
-
-The implementation will use Node.js native modules:
-- `https` - Built-in HTTPS server module
-- `fs` - File system for certificate loading
-- `path` - Path resolution for certificate files
-
-**TLS Configuration Best Practices:**
-
-| Setting | Recommended Value | Purpose |
-|---------|------------------|---------|
-| `minVersion` | `TLSv1.2` | Disable deprecated TLS 1.0/1.1 |
-| `maxVersion` | `TLSv1.3` | Enable latest TLS protocol |
-| Certificate | PEM format | Standard certificate format |
-| Key | RSA 2048-bit or ECDSA P-256 | Strong key algorithm |
-
-**Certificate Approach:**
-
-For development: Self-signed certificates via OpenSSL
-For production: Let's Encrypt or commercial CA certificates
-
-No package replacement is needed for HTTPS - Node.js native modules are sufficient and preferred for security-critical operations.
-
-## 0.5 Security Fix Design
-
-### 0.5.1 Minimal Fix Strategy
-
-**Principle:** Apply the smallest possible changes that completely address all security requirements while maintaining existing functionality.
-
-**Fix Approach:** Combination - Dependency additions + Code modifications + Configuration changes
-
-**Security Implementation Order:**
-
-1. **Add security dependencies** to `package.json`
-2. **Implement helmet.js** for HTTP security headers (first middleware)
-3. **Implement CORS** middleware with secure defaults
-4. **Implement rate limiting** with reasonable thresholds
-5. **Add body parsing** middleware for JSON/URL-encoded data
-6. **Implement input validation** middleware
-7. **Add HTTPS server** capability with certificate loading
-
-### 0.5.2 Dependency Updates
-
-**For security header vulnerability:**
-
-- Upgrade: N/A (new addition)
-- Add: `helmet@^8.1.0`
-- Justification: Express.js official security recommendation; sets 15+ security headers automatically
-- Side effects: None expected; additive middleware
-
-**For rate limiting vulnerability:**
-
-- Add: `express-rate-limit@^8.2.1`
-- Justification: Most popular rate limiting solution for Express with 10M+ weekly downloads
-- Side effects: Requests exceeding limit will receive 429 responses
-
-**For CORS vulnerability:**
-
-- Add: `cors@^2.8.5`
-- Justification: Official Express.js CORS middleware; mature and widely adopted
-- Side effects: Cross-origin requests will be controlled by configured policy
-
-**For input validation vulnerability:**
-
-- Add: `joi@^17.13.3`
-- Justification: Most powerful schema validation library; rich API for complex validation rules
-- Side effects: Invalid requests will receive 400/422 responses
-
-### 0.5.3 Code Change Specifications
-
-**File: server.js**
-
-**Before State (vulnerable):**
-```javascript
-const express = require('express');
-const app = express();
-// No security middleware
-app.get('/', (req, res) => { ... });
-```
-
-**After State (secured):**
-```javascript
-const express = require('express');
-const helmet = require('helmet');
-const cors = require('cors');
-const rateLimit = require('express-rate-limit');
-// ... additional imports
-
-const app = express();
-app.use(helmet()); // Security headers first
-app.use(cors(corsOptions));
-app.use(limiter);
-// ... routes with validation
-```
-
-**Security Improvements per Change:**
-
-| Change | Vulnerability Eliminated |
-|--------|-------------------------|
-| `app.use(helmet())` | Missing security headers, X-Powered-By disclosure |
-| `app.use(cors(options))` | Uncontrolled cross-origin access |
-| `app.use(limiter)` | DoS/brute-force susceptibility |
-| `https.createServer()` | Unencrypted transport |
-| Validation middleware | Injection attacks, malformed input |
-
-### 0.5.4 Configuration Specifications
-
-**Helmet Configuration (Recommended Defaults):**
-
-```javascript
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-    }
-  },
-  hsts: { maxAge: 31536000, includeSubDomains: true }
-}));
-```
-
-**Rate Limiter Configuration:**
-
-```javascript
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  limit: 100, // 100 requests per window
-  standardHeaders: 'draft-8',
-  legacyHeaders: false
-});
-```
-
-**CORS Configuration:**
-
-```javascript
-const corsOptions = {
-  origin: process.env.ALLOWED_ORIGINS?.split(',') || false,
-  methods: ['GET', 'POST'],
-  optionsSuccessStatus: 200
-};
-```
-
-### 0.5.5 Security Improvement Validation
-
-**How Each Fix Eliminates Vulnerabilities:**
-
-| Fix | Technical Explanation | Verification Method |
-|-----|----------------------|---------------------|
-| helmet.js | Sets CSP, HSTS, X-Frame-Options, etc. headers on all responses | Inspect response headers in browser DevTools |
-| CORS | Adds Access-Control-* headers controlling cross-origin access | Test cross-origin request from different origin |
-| Rate limiting | Tracks request count per IP; blocks after threshold | Send 101+ requests in 15 min; expect 429 |
-| HTTPS | Encrypts all traffic using TLS 1.2+ | Verify certificate in browser; test with SSL Labs |
-| Input validation | Rejects requests not matching schema | Send malformed JSON; expect 400 response |
-
-**Rollback Plan:**
-
-If issues arise, revert to previous `server.js` and `package.json` by:
-1. `git checkout HEAD~1 -- server.js package.json`
-2. `npm install` to restore original dependencies
-3. `npm start` to verify rollback successful
-
-## 0.6 File Transformation Mapping
-
-### 0.6.1 File-by-File Security Fix Plan
-
-**Security Fix Transformation Modes:**
-- **UPDATE** - Modify existing file to add security features
-- **CREATE** - Create new file for security configuration or utilities
-- **DELETE** - Remove file that introduces vulnerability (not applicable)
-- **REFERENCE** - Use as pattern reference for implementation
-
-| Target File | Transformation | Source/Reference | Security Changes |
-|-------------|----------------|------------------|------------------|
-| `package.json` | UPDATE | `package.json` | Add helmet@^8.1.0, cors@^2.8.5, express-rate-limit@^8.2.1, joi@^17.13.3 to dependencies |
-| `server.js` | UPDATE | `server.js` | Add security middleware imports, configure helmet/cors/rate-limit, implement HTTPS server |
-| `middleware/security.js` | CREATE | N/A | Create centralized security configuration module |
-| `middleware/validation.js` | CREATE | N/A | Create input validation middleware using Joi schemas |
-| `middleware/rateLimiter.js` | CREATE | N/A | Create rate limiter configuration module |
-| `config/cors.js` | CREATE | N/A | Create CORS policy configuration |
-| `config/helmet.js` | CREATE | N/A | Create helmet security headers configuration |
-| `certs/.gitkeep` | CREATE | N/A | Create directory for SSL certificates (gitignored) |
-| `.env.example` | CREATE | N/A | Create example environment variables for security config |
-| `.gitignore` | CREATE | N/A | Add patterns for certificates and environment files |
-| `package-lock.json` | UPDATE | Auto-generated | Will be regenerated by npm after dependency updates |
-
-### 0.6.2 Code Change Specifications
-
-**File: package.json**
-
-| Aspect | Details |
-|--------|---------|
-| Lines affected | dependencies section |
-| Before state | Only express dependency present |
-| After state | helmet, cors, express-rate-limit, joi added |
-| Security improvement | Security packages available for application use |
-
-**File: server.js**
-
-| Aspect | Details |
-|--------|---------|
-| Lines affected | Lines 1-19 (entire file restructured) |
-| Before state | No middleware, HTTP only, no validation |
-| After state | Full middleware chain, HTTPS support, input validation |
-| Security improvement | All identified vulnerabilities addressed |
-
-**Detailed server.js Changes:**
-
-| Section | Current Code | Required Changes |
-|---------|--------------|------------------|
-| Imports (L1) | `const express = require('express')` | Add helmet, cors, rateLimit, https, fs, path imports |
-| Middleware (N/A) | None | Add helmet(), cors(), rateLimit() middleware chain |
-| Body parsing (N/A) | None | Add express.json() for POST validation |
-| Routes (L8-14) | Basic GET handlers | Wrap with validation middleware |
-| Server (L16-18) | HTTP on 127.0.0.1:3000 | Add HTTPS server on port 3443 |
-
-### 0.6.3 New File Specifications
-
-**middleware/security.js**
-
-```javascript
-// Centralized security middleware configuration
-module.exports = { helmet, cors, rateLimiter };
-```
-
-Purpose: Consolidate security middleware exports for clean imports.
-
-**middleware/validation.js**
-
-```javascript
-// Joi-based validation middleware factory
-const Joi = require('joi');
-const validate = (schema) => (req, res, next) => { ... };
-```
-
-Purpose: Reusable validation middleware for route protection.
-
-**config/cors.js**
-
-```javascript
-// CORS configuration with environment-based origins
-const corsOptions = {
-  origin: process.env.ALLOWED_ORIGINS?.split(',') || false,
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
-};
-```
-
-Purpose: Externalize CORS policy for environment-specific configuration.
-
-**config/helmet.js**
-
-```javascript
-// Helmet security headers configuration
-const helmetConfig = {
-  contentSecurityPolicy: { ... },
-  hsts: { maxAge: 31536000 }
-};
-```
-
-Purpose: Externalize security header configuration for customization.
-
-### 0.6.4 Directory Structure After Changes
-
-```
-/
-├── server.js                    # UPDATED - Security-hardened entry point
-├── package.json                 # UPDATED - Security dependencies added
-├── package-lock.json            # UPDATED - Regenerated
-├── .env.example                 # CREATED - Environment template
-├── .gitignore                   # CREATED - Ignore patterns
-├── middleware/
-│   ├── security.js              # CREATED - Security middleware exports
-│   ├── validation.js            # CREATED - Input validation middleware
-│   └── rateLimiter.js           # CREATED - Rate limiter config
-├── config/
-│   ├── cors.js                  # CREATED - CORS configuration
-│   └── helmet.js                # CREATED - Helmet configuration
-├── certs/
-│   ├── .gitkeep                 # CREATED - Placeholder
-│   └── README.md                # CREATED - Certificate instructions
-└── blitzy/
-    └── documentation/           # UNCHANGED
-```
-
-## 0.7 Dependency Inventory
-
-### 0.7.1 Security Patches and Updates
-
-**All Security-Critical Package Updates:**
-
-| Registry | Package Name | Current | Target Version | Security Improvement | Advisory Link |
-|----------|--------------|---------|----------------|---------------------|---------------|
-| npm | helmet | Not installed | ^8.1.0 | HTTP security headers (15+ headers) | https://helmetjs.github.io/ |
-| npm | cors | Not installed | ^2.8.5 | CORS policy middleware | https://github.com/expressjs/cors |
-| npm | express-rate-limit | Not installed | ^8.2.1 | Request rate limiting | https://www.npmjs.com/package/express-rate-limit |
-| npm | joi | Not installed | ^17.13.3 | Schema validation | https://joi.dev/ |
-| npm | express | ^5.1.0 | ^5.1.0 | No update needed | Current is latest |
-
-**Package.json Dependencies Section (After Update):**
-
-```json
-{
-  "dependencies": {
-    "express": "^5.1.0",
-    "helmet": "^8.1.0",
-    "cors": "^2.8.5",
-    "express-rate-limit": "^8.2.1",
-    "joi": "^17.13.3"
-  }
-}
-```
-
-### 0.7.2 Dependency Chain Analysis
-
-**Direct Dependencies (New):**
-
-| Package | Purpose | Size Impact |
-|---------|---------|-------------|
-| helmet | Security headers | ~50KB unpacked |
-| cors | CORS middleware | ~15KB unpacked |
-| express-rate-limit | Rate limiting | ~120KB unpacked |
-| joi | Schema validation | ~600KB unpacked |
-
-**Transitive Dependencies Analysis:**
-
-| Direct Package | Key Transitive Dependencies | Security Considerations |
-|----------------|----------------------------|------------------------|
-| helmet@8.1.0 | None (zero dependencies) | ✅ Minimal attack surface |
-| cors@2.8.5 | object-assign, vary | ✅ Mature, audited |
-| express-rate-limit@8.2.1 | None (zero dependencies) | ✅ Minimal attack surface |
-| joi@17.13.3 | @hapi/hoek, @hapi/tods, @sideway/address, @sideway/formula, @sideway/pinpoint | ⚠️ Larger footprint; all @hapi packages well-maintained |
-
-**Peer Dependencies:** None of the new packages have peer dependency requirements.
-
-**Development Dependencies (Optional):**
-
-| Package | Purpose | Recommendation |
-|---------|---------|----------------|
-| @types/cors | TypeScript types | Optional for TS projects |
-| @types/express | TypeScript types | Optional for TS projects |
-
-### 0.7.3 Import and Reference Updates
-
-**Source Files Requiring Import Updates:**
-
-| File | Import Changes Required |
+| File | Reason for Modification |
 |------|------------------------|
-| `server.js` | Add: helmet, cors, express-rate-limit, joi, https, fs, path |
-| `middleware/security.js` | Import helmet, cors from node_modules |
-| `middleware/validation.js` | Import joi from node_modules |
-| `middleware/rateLimiter.js` | Import express-rate-limit from node_modules |
+| `server.js` | Add logging middleware, health endpoints, graceful shutdown |
+| `middleware/security.js` | Integrate request logging into middleware chain |
+| `.env.example` | Add logging and PM2 configuration variables |
+| `package.json` | Add pino, pino-http dependencies; add PM2 scripts |
+| `README.md` | Document logging, PM2 deployment, new endpoints |
 
-**Import Transformation Rules:**
+**Files to Reference for Pattern Consistency:**
 
-```javascript
-// Before (server.js)
-const express = require('express');
+| Reference File | Pattern to Follow |
+|---------------|-------------------|
+| `config/cors.js` | Environment-driven config with Object.freeze() |
+| `config/helmet.js` | JSDoc documentation style, OWASP reference comments |
+| `middleware/rateLimiter.js` | Middleware factory pattern |
+| `middleware/validation.js` | Request processing middleware pattern |
 
-// After (server.js)
-const express = require('express');
-const helmet = require('helmet');
-const cors = require('cors');
-const { rateLimit } = require('express-rate-limit');
-const Joi = require('joi');
-const https = require('https');
-const fs = require('fs');
-const path = require('path');
-```
+### 0.2.3 Web Search Research Conducted
 
-**Apply Import Changes To:**
-- `server.js` - Main application entry point
-- All new middleware files in `middleware/` directory
-- All new config files in `config/` directory
+**Research Areas and Findings:**
 
-### 0.7.4 Environment Variable Configuration
+| Topic | Key Finding | Application |
+|-------|-------------|-------------|
+| PM2 Latest Version | v6.0.14 (current stable) | Use for ecosystem.config.js |
+| PM2 Cluster Mode | Built-in load balancer, -i max for CPU cores | Configure cluster instances |
+| PM2 Graceful Reload | Zero-downtime via pm2 reload command | Deployment strategy |
+| Pino Logger | Fastest Node.js logger, JSON output | Production logging choice |
+| Express Request Logging | pino-http middleware integration | HTTP request logging |
 
-**New Environment Variables Required:**
+### 0.2.4 Existing Infrastructure Assessment
 
-| Variable | Purpose | Example Value | Required |
-|----------|---------|---------------|----------|
-| `ALLOWED_ORIGINS` | CORS whitelist | `http://localhost:3000,https://myapp.com` | Optional |
-| `RATE_LIMIT_WINDOW_MS` | Rate limit window | `900000` (15 min) | Optional |
-| `RATE_LIMIT_MAX` | Max requests per window | `100` | Optional |
-| `HTTPS_ENABLED` | Enable/disable HTTPS | `true` | Optional |
-| `HTTPS_PORT` | HTTPS server port | `3443` | Optional |
-| `SSL_KEY_PATH` | Path to private key | `./certs/key.pem` | If HTTPS enabled |
-| `SSL_CERT_PATH` | Path to certificate | `./certs/cert.pem` | If HTTPS enabled |
-| `NODE_ENV` | Environment mode | `development` | Recommended |
+**Current Project Structure:**
 
-**Example .env.example File:**
+| Aspect | Current State | Assessment |
+|--------|---------------|------------|
+| Architecture | Modular CommonJS | ✅ Maintain pattern |
+| Security Stack | 5-layer defense-in-depth | ✅ Do not modify |
+| Configuration | Environment-driven | ✅ Extend pattern |
+| Middleware | Factory functions | ✅ Follow for new middleware |
+| Testing | Jest with Supertest | ✅ Add tests for new features |
+| Documentation | JSDoc + README | ✅ Follow conventions |
 
-```env
-# CORS Configuration
-ALLOWED_ORIGINS=http://localhost:3000
+**Build and Deployment (Current):**
 
-#### Rate Limiting
-RATE_LIMIT_WINDOW_MS=900000
-RATE_LIMIT_MAX=100
+| Component | Status | Action Required |
+|-----------|--------|-----------------|
+| CI/CD Pipeline | Not implemented | Define npm scripts for PM2 |
+| Container Config | Not present | Optional: Create Dockerfile |
+| Process Manager | Not configured | Create ecosystem.config.js |
+| Health Checks | Not implemented | Add /health and /ready endpoints |
 
-#### HTTPS Configuration
-HTTPS_ENABLED=false
-HTTPS_PORT=3443
-SSL_KEY_PATH=./certs/key.pem
-SSL_CERT_PATH=./certs/cert.pem
+**Testing Infrastructure:**
 
-#### Environment
-NODE_ENV=development
-```
+| Test Type | Status | Files |
+|-----------|--------|-------|
+| Security Tests | ✅ Complete | 5 test suites in tests/security/ |
+| Logging Tests | ❌ Not present | Create tests/logging/ |
+| Integration Tests | Partial | Extend for health endpoints |
 
-## 0.8 Impact Analysis and Testing Strategy
+**Documentation System:**
 
-### 0.8.1 Security Testing Requirements
+| Document | Status | Update Required |
+|----------|--------|-----------------|
+| README.md | Present | Add PM2, logging sections |
+| .env.example | Present | Add new variables |
+| API Documentation | Not present | Document new endpoints |
 
-**Vulnerability Regression Tests:**
+## 0.3 File Transformation Mapping
 
-| Test Case | Purpose | Expected Result |
-|-----------|---------|-----------------|
-| Security headers present | Verify helmet middleware active | Response includes CSP, HSTS, X-Frame-Options headers |
-| X-Powered-By removed | Verify information disclosure fixed | Response does NOT include X-Powered-By header |
-| Rate limiting enforced | Verify DoS protection active | 429 status after exceeding limit |
-| CORS policy enforced | Verify cross-origin control | Access-Control-* headers present; unauthorized origins blocked |
-| HTTPS functional | Verify encrypted transport | Connection established over TLS 1.2+ |
-| Invalid input rejected | Verify validation middleware | 400/422 status for malformed requests |
+### 0.3.1 File-by-File Execution Plan
 
-**Specific Attack Scenarios to Test:**
+| Target File | Transformation | Source File/Reference | Purpose/Changes |
+|-------------|----------------|----------------------|-----------------|
+| `ecosystem.config.js` | CREATE | PM2 documentation | PM2 process manager configuration with cluster mode, environment settings |
+| `config/logger.js` | CREATE | `config/cors.js` | Pino logger configuration with environment-aware settings |
+| `config/env.js` | CREATE | `config/cors.js` | Centralized environment variable loader and validator |
+| `middleware/requestLogger.js` | CREATE | `middleware/rateLimiter.js` | HTTP request logging middleware using pino-http |
+| `routes/index.js` | CREATE | `server.js` | Central route aggregator for modular routing |
+| `routes/health.js` | CREATE | `middleware/validation.js` | Health check and readiness probe endpoints |
+| `routes/api.js` | CREATE | `server.js` | API routes extracted from server.js |
+| `tests/logging/requestLogger.test.js` | CREATE | `tests/security/cors.test.js` | Unit tests for request logging middleware |
+| `tests/health/health.test.js` | CREATE | `tests/security/cors.test.js` | Integration tests for health endpoints |
+| `server.js` | UPDATE | `server.js` | Add logging, modular routing, graceful shutdown handlers |
+| `middleware/security.js` | UPDATE | `middleware/security.js` | Integrate request logger into security middleware chain |
+| `.env.example` | UPDATE | `.env.example` | Add logging level, PM2, health check configuration variables |
+| `package.json` | UPDATE | `package.json` | Add pino, pino-http, pino-pretty dependencies; PM2 scripts |
+| `README.md` | UPDATE | `README.md` | Document logging configuration, PM2 deployment, health endpoints |
+| `config/cors.js` | REFERENCE | N/A | Pattern for Object.freeze() configuration modules |
+| `config/helmet.js` | REFERENCE | N/A | Pattern for JSDoc documentation, OWASP references |
+| `middleware/rateLimiter.js` | REFERENCE | N/A | Pattern for middleware factory functions |
+| `middleware/validation.js` | REFERENCE | N/A | Pattern for request processing middleware |
 
-1. **XSS Prevention:** Attempt to inject script tags; verify CSP blocks execution
-2. **Clickjacking Prevention:** Attempt to iframe the application; verify X-Frame-Options blocks
-3. **Rate Limit Bypass:** Send requests from multiple IPs; verify per-IP limiting works
-4. **CORS Bypass:** Send request from unauthorized origin; verify rejection
-5. **Certificate Validation:** Connect with curl; verify certificate is valid
+### 0.3.2 New Files Detail
 
-### 0.8.2 Security-Specific Test Cases
+**ecosystem.config.js** - PM2 Process Manager Configuration
+- Content type: Configuration
+- Based on: PM2 ecosystem file specification
+- Key sections/functions:
+  - `apps[]` array with application definitions
+  - Cluster mode configuration with instance count
+  - Environment-specific settings (development, staging, production)
+  - Log file paths and rotation settings
+  - Graceful restart configuration
+  - Watch mode for development
 
-**New Test Files to Create:**
+**config/logger.js** - Pino Logger Configuration
+- Content type: Configuration
+- Based on: `config/cors.js` pattern
+- Key sections/functions:
+  - `createLogger()` factory function
+  - Environment-aware log level configuration
+  - Transport configuration (stdout for production, pretty-print for development)
+  - Redaction paths for sensitive data (passwords, tokens)
+  - Request serializers for consistent output
 
-| Test File | Purpose | Test Coverage |
-|-----------|---------|---------------|
-| `tests/security/headers.test.js` | Verify security headers | helmet middleware functionality |
-| `tests/security/rateLimit.test.js` | Verify rate limiting | express-rate-limit threshold enforcement |
-| `tests/security/cors.test.js` | Verify CORS policy | Origin validation, methods restriction |
-| `tests/security/https.test.js` | Verify TLS configuration | Certificate validity, TLS version |
-| `tests/security/validation.test.js` | Verify input validation | Schema enforcement, error responses |
+**config/env.js** - Environment Variable Manager
+- Content type: Configuration
+- Based on: `config/cors.js` pattern
+- Key sections/functions:
+  - `loadEnv()` function for dotenv initialization
+  - `getEnv(key, defaultValue)` helper function
+  - `validateEnv()` for required variable checks
+  - Environment variable documentation via JSDoc
 
-**Example Test Structure:**
+**middleware/requestLogger.js** - HTTP Request Logging Middleware
+- Content type: Middleware
+- Based on: `middleware/rateLimiter.js` pattern
+- Key sections/functions:
+  - `createRequestLogger()` factory function
+  - pino-http integration with custom serializers
+  - Request ID generation (uuid v4)
+  - Response time tracking
+  - Log level based on status code (error for 5xx, warn for 4xx)
 
-```javascript
-// tests/security/headers.test.js
-describe('Security Headers', () => {
-  it('should include Content-Security-Policy', async () => {
-    const res = await request(app).get('/');
-    expect(res.headers['content-security-policy']).toBeDefined();
-  });
-  
-  it('should NOT include X-Powered-By', async () => {
-    const res = await request(app).get('/');
-    expect(res.headers['x-powered-by']).toBeUndefined();
-  });
-});
-```
+**routes/index.js** - Central Route Aggregator
+- Content type: Router
+- Based on: Express Router pattern
+- Key sections/functions:
+  - Router factory function
+  - Route mounting with path prefixes
+  - 404 handler for undefined routes
+  - Route documentation via JSDoc
 
-### 0.8.3 Existing Tests to Verify
+**routes/health.js** - Health Check Endpoints
+- Content type: Router
+- Based on: `middleware/validation.js` pattern
+- Key sections/functions:
+  - `GET /health` - Basic liveness probe
+  - `GET /ready` - Readiness probe with dependency checks
+  - Response format: `{ status: 'healthy', timestamp, uptime }`
 
-**Test Suite Validation:**
+**routes/api.js** - API Routes Module
+- Content type: Router
+- Based on: Routes extracted from `server.js`
+- Key sections/functions:
+  - `GET /api/data` - Demo data endpoint
+  - Existing validation middleware integration
+  - Room for future API expansion
 
-The current application has no test suite (`"test": "echo \"Error: no test specified\" && exit 1"`). Implementation should include:
+**tests/logging/requestLogger.test.js** - Logging Tests
+- Content type: Test
+- Based on: `tests/security/cors.test.js` pattern
+- Key sections/functions:
+  - Request ID presence verification
+  - Log format validation
+  - Response time tracking tests
 
-| Test Category | Scope | Priority |
-|---------------|-------|----------|
-| Unit tests | Individual middleware functions | High |
-| Integration tests | Middleware chain execution | High |
-| E2E tests | Full request lifecycle with security | Medium |
+**tests/health/health.test.js** - Health Endpoint Tests
+- Content type: Test
+- Based on: `tests/security/cors.test.js` pattern
+- Key sections/functions:
+  - Health endpoint response format tests
+  - Readiness probe behavior tests
+  - HTTP status code verification
 
-### 0.8.4 Verification Methods
+### 0.3.3 Files to Modify Detail
 
-**Automated Security Scanning:**
+**server.js** - Main Application Entry Point
+- Sections to update:
+  - Import section: Add logger, routes imports
+  - Middleware chain: Add request logger before security middleware
+  - Route mounting: Replace inline routes with modular router
+  - Server startup: Add graceful shutdown handlers
+- New content to add:
+  - `process.on('SIGTERM')` graceful shutdown handler
+  - `process.on('SIGINT')` interrupt handler
+  - Logger instance initialization
+  - Route module integration
+- Content to remove:
+  - Inline route definitions (move to routes/api.js)
+- Refactoring needed:
+  - Extract route definitions to separate module
+  - Add structured logging for server events
 
-| Tool | Command | Expected Result |
-|------|---------|-----------------|
-| npm audit | `npm audit` | 0 vulnerabilities |
-| helmet check | Inspect response headers | All security headers present |
-| SSL Labs (production) | Online test | A+ rating |
+**middleware/security.js** - Security Middleware Module
+- Sections to update:
+  - Import section: Add requestLogger import
+  - `createSecurityMiddleware()` function: Add logger integration
+- New content to add:
+  - Request logger in middleware chain (before Helmet)
+- Content to remove:
+  - None
+- Refactoring needed:
+  - Middleware order: Logger → Helmet → CORS → Rate Limiter
 
-**Manual Verification Steps:**
+**.env.example** - Environment Template
+- Sections to update:
+  - Add new variables section for logging
+  - Add new variables section for PM2
+- New content to add:
+  - `LOG_LEVEL=info` (debug, info, warn, error)
+  - `LOG_FORMAT=json` (json, pretty)
+  - `LOG_REDACT_PATHS=["req.headers.authorization"]`
+  - `PM2_INSTANCES=max` (number or 'max')
+  - `PM2_EXEC_MODE=cluster` (cluster, fork)
+  - `HEALTH_CHECK_PATH=/health`
+  - `READY_CHECK_PATH=/ready`
+- Content to remove:
+  - None
 
-1. **Start server:** `npm start`
-2. **Check headers:** `curl -I http://localhost:3000/`
-3. **Verify CSP:** Look for `Content-Security-Policy` header
-4. **Verify HSTS:** Look for `Strict-Transport-Security` header (HTTPS only)
-5. **Verify no X-Powered-By:** Confirm header absent
-6. **Test rate limit:** Send 101 requests; verify 429 on 101st
-7. **Test CORS:** Make cross-origin request; verify behavior
+**package.json** - Package Manifest
+- Sections to update:
+  - `dependencies`: Add logging packages
+  - `devDependencies`: Add pino-pretty
+  - `scripts`: Add PM2 management scripts
+- New content to add:
+  - Dependencies: `pino`, `pino-http`, `uuid`
+  - Dev dependencies: `pino-pretty`
+  - Scripts: `start:prod`, `start:dev`, `pm2:start`, `pm2:stop`, `pm2:restart`, `pm2:logs`
+- Content to remove:
+  - None
 
-### 0.8.5 Impact Assessment
+**README.md** - Project Documentation
+- Sections to update:
+  - Add "Logging" section
+  - Add "Production Deployment" section
+  - Update "Environment Variables" section
+  - Add "Health Endpoints" section
+- New content to add:
+  - Logging configuration documentation
+  - PM2 deployment instructions
+  - Health endpoint API documentation
+  - Environment variable reference updates
+- Content to remove:
+  - None
 
-**Direct Security Improvements Achieved:**
+### 0.3.4 Configuration and Documentation Updates
 
-| Improvement | Impact |
-|-------------|--------|
-| HTTP Security Headers | Protects against XSS, clickjacking, MIME sniffing |
-| Rate Limiting | Protects against DoS, brute force attacks |
-| CORS Policy | Prevents unauthorized cross-origin data access |
-| HTTPS Support | Encrypts data in transit, prevents MITM attacks |
-| Input Validation | Prevents injection attacks, data corruption |
-| X-Powered-By Removal | Reduces attack surface information disclosure |
+**Configuration Changes:**
 
-**Minimal Side Effects on Existing Functionality:**
-
-| Change | Impact on Existing Behavior |
-|--------|----------------------------|
-| helmet middleware | None - adds headers to existing responses |
-| CORS middleware | Cross-origin requests now require whitelisting |
-| Rate limiting | Excessive requests will be rejected (429) |
-| HTTPS server | HTTP still available; HTTPS is additive |
-| Input validation | Routes without validation unchanged |
-
-**Potential Impacts to Address:**
-
-| Impact | Mitigation |
-|--------|-----------|
-| CORS may block legitimate clients | Configure ALLOWED_ORIGINS env variable |
-| Rate limit may affect legitimate high-traffic | Adjust RATE_LIMIT_MAX as needed |
-| CSP may block inline scripts | Configure CSP directives for app requirements |
-| HTTPS requires certificates | Provide certificate generation instructions |
-
-## 0.9 Scope Boundaries
-
-### 0.9.1 Exhaustively In Scope
-
-**Dependency Manifests:**
-
-- `package.json` - Add helmet, cors, express-rate-limit, joi dependencies
-- `package-lock.json` - Regenerated automatically after npm install
-
-**Source Files with Security Implementation:**
-
-- `server.js` - Main application file requiring security middleware integration
-- `middleware/security.js` - New centralized security middleware exports
-- `middleware/validation.js` - New input validation middleware
-- `middleware/rateLimiter.js` - New rate limiter configuration
-
-**Configuration Files:**
-
-- `config/cors.js` - CORS policy configuration
-- `config/helmet.js` - Security headers configuration
-- `.env.example` - Environment variable template
-- `.gitignore` - Ignore patterns for certificates and .env files
-
-**Infrastructure and Deployment:**
-
-- `certs/` - Directory for SSL/TLS certificates
-- `certs/README.md` - Certificate generation instructions
-- `certs/.gitkeep` - Placeholder for empty directory tracking
-
-**Security Test Files:**
-
-- `tests/security/headers.test.js` - Security header verification tests
-- `tests/security/rateLimit.test.js` - Rate limiting verification tests
-- `tests/security/cors.test.js` - CORS policy verification tests
-- `tests/security/https.test.js` - HTTPS/TLS verification tests
-- `tests/security/validation.test.js` - Input validation verification tests
+| Config File | Settings to Update | System Behavior Impact |
+|-------------|-------------------|----------------------|
+| `.env.example` | LOG_LEVEL, LOG_FORMAT | Controls logging verbosity and output format |
+| `.env.example` | PM2_INSTANCES, PM2_EXEC_MODE | Determines process scaling strategy |
+| `ecosystem.config.js` | instances, exec_mode | PM2 cluster mode and load balancing |
+| `config/logger.js` | level, transport | Log output destination and filtering |
 
 **Documentation Updates:**
 
-- `README.md` - Add security configuration section (if exists, else create)
-- `blitzy/documentation/Technical Specifications.md` - Reference only (do not modify)
+| Document | Sections to Add/Update | Cross-references |
+|----------|----------------------|------------------|
+| `README.md` | Logging Configuration | Link to config/logger.js |
+| `README.md` | Production Deployment | Link to ecosystem.config.js |
+| `README.md` | Health Endpoints | Document /health and /ready |
+| `README.md` | Environment Variables | Update with new variables |
 
-### 0.9.2 Explicitly Out of Scope
+### 0.3.5 Cross-File Dependencies
 
-**The following items are NOT included in this security implementation:**
+**Import/Reference Updates Required:**
 
-| Category | Exclusion | Rationale |
-|----------|-----------|-----------|
-| **Feature Additions** | New API endpoints | Security fix only; no functional changes |
-| **Feature Additions** | Database integration | Not part of security hardening |
-| **Feature Additions** | User authentication/sessions | Can be added separately; not in original request |
-| **Performance** | Caching mechanisms | Not security-related |
-| **Performance** | Compression middleware | Not security-related |
-| **Code Refactoring** | ES6 module syntax conversion | Beyond security scope |
-| **Code Refactoring** | TypeScript migration | Beyond security scope |
-| **Dependencies** | Updating express version | Already at latest (5.1.0) |
-| **Dependencies** | Adding logging frameworks | Not security-critical |
-| **Styling** | Code formatting changes | Not security-related |
-| **Styling** | Linter configuration | Not security-related |
-| **Tests** | Non-security test coverage | Focus on security validation only |
-| **Documentation** | Full API documentation | Not security-related |
+| Source File | Target Import | Reason |
+|-------------|---------------|--------|
+| `server.js` | `config/logger.js` | Initialize logger instance |
+| `server.js` | `routes/index.js` | Mount modular routes |
+| `middleware/security.js` | `middleware/requestLogger.js` | Add to middleware chain |
+| `routes/index.js` | `routes/health.js` | Mount health routes |
+| `routes/index.js` | `routes/api.js` | Mount API routes |
+| `routes/api.js` | `middleware/validation.js` | Apply validation to routes |
 
-**Items Explicitly Excluded by User:**
+**Configuration Sync Requirements:**
 
-- No items explicitly excluded by user in the original request
+| Primary Config | Dependent Files | Sync Requirement |
+|----------------|-----------------|------------------|
+| `.env` | `config/logger.js` | LOG_LEVEL must be valid pino level |
+| `.env` | `ecosystem.config.js` | PM2_INSTANCES affects cluster config |
+| `config/logger.js` | `middleware/requestLogger.js` | Shared logger instance |
 
-### 0.9.3 Scope Boundaries Summary
+**Documentation Consistency Needs:**
 
+| Change | Affected Docs | Update Type |
+|--------|---------------|-------------|
+| New endpoints | README.md | Add endpoint documentation |
+| New env vars | README.md, .env.example | Sync variable descriptions |
+| PM2 deployment | README.md | Add deployment section |
+
+## 0.4 Dependency Inventory
+
+### 0.4.1 Key Private and Public Packages
+
+**Current Dependencies (from package.json):**
+
+| Registry | Package Name | Version | Purpose |
+|----------|--------------|---------|---------|
+| npm | express | ^5.1.0 | HTTP server framework |
+| npm | helmet | ^8.1.0 | Security headers middleware |
+| npm | cors | ^2.8.5 | CORS middleware |
+| npm | express-rate-limit | ^7.5.0 | Rate limiting middleware |
+| npm | joi | ^17.13.3 | Input validation |
+| npm | dotenv | ^16.5.0 | Environment variable loading |
+
+**Current Dev Dependencies:**
+
+| Registry | Package Name | Version | Purpose |
+|----------|--------------|---------|---------|
+| npm | jest | ^29.7.0 | Testing framework |
+| npm | supertest | ^7.1.0 | HTTP assertions for testing |
+
+### 0.4.2 Dependency Updates
+
+**New Dependencies to Add:**
+
+| Registry | Package Name | Version | Reason for Addition |
+|----------|--------------|---------|---------------------|
+| npm | pino | ^9.6.0 | High-performance JSON logger for Node.js production environments |
+| npm | pino-http | ^10.4.0 | HTTP request logging middleware for Express with pino integration |
+| npm | uuid | ^11.0.5 | Generate unique request IDs for request correlation and tracing |
+
+**New Dev Dependencies to Add:**
+
+| Registry | Package Name | Version | Reason for Addition |
+|----------|--------------|---------|---------------------|
+| npm | pino-pretty | ^13.0.0 | Human-readable log formatting for development environment |
+
+**Global Dependencies (Production Server):**
+
+| Registry | Package Name | Version | Reason for Addition |
+|----------|--------------|---------|---------------------|
+| npm (global) | pm2 | ^6.0.14 | Production process manager with clustering and monitoring |
+
+**Dependencies to Update:**
+- None required - all existing dependencies are at current stable versions
+
+**Dependencies to Remove:**
+- None required - all current dependencies remain necessary
+
+### 0.4.3 Import/Reference Updates
+
+**Files Requiring Import Updates:**
+
+| File Pattern | Import Type | Reason |
+|--------------|-------------|--------|
+| `server.js` | Add imports | Logger, routes, uuid imports |
+| `middleware/security.js` | Add import | Request logger middleware |
+| `routes/*.js` | New files | Express Router imports |
+| `config/logger.js` | New file | Pino import |
+| `config/env.js` | New file | dotenv import |
+| `middleware/requestLogger.js` | New file | pino-http, uuid imports |
+
+**Import Transformation Rules:**
+
+**server.js transformations:**
+
+```javascript
+// OLD: No logger import
+// NEW:
+const { createLogger } = require('./config/logger');
+const routes = require('./routes');
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                        IN SCOPE                                  │
-├─────────────────────────────────────────────────────────────────┤
-│ ✓ Security headers (helmet.js)                                  │
-│ ✓ Input validation (Joi)                                        │
-│ ✓ Rate limiting (express-rate-limit)                           │
-│ ✓ HTTPS support (Node.js https module)                         │
-│ ✓ CORS configuration (cors middleware)                         │
-│ ✓ Dependency additions for security                            │
-│ ✓ Security-focused test cases                                  │
-│ ✓ Environment configuration for security                       │
-│ ✓ Certificate directory setup                                  │
-└─────────────────────────────────────────────────────────────────┘
 
-┌─────────────────────────────────────────────────────────────────┐
-│                       OUT OF SCOPE                               │
-├─────────────────────────────────────────────────────────────────┤
-│ ✗ Authentication/authorization systems                          │
-│ ✗ Database security (no database in current app)               │
-│ ✗ API versioning                                                │
-│ ✗ Performance optimizations                                     │
-│ ✗ Code style/formatting changes                                │
-│ ✗ Framework migration (staying on Express 5)                   │
-│ ✗ Container security (no Docker in current app)                │
-│ ✗ CI/CD pipeline changes                                       │
-└─────────────────────────────────────────────────────────────────┘
+**middleware/security.js transformations:**
+
+```javascript
+// OLD: Only security middleware imports
+// NEW:
+const { createRequestLogger } = require('./requestLogger');
 ```
 
-### 0.9.4 Execution Parameters
+**Apply to:**
+- `server.js` - Add logger and routes imports
+- `middleware/security.js` - Add requestLogger import
 
-**Security Verification Commands:**
+### 0.4.4 Package.json Script Updates
 
-| Purpose | Command |
-|---------|---------|
-| Dependency vulnerability scan | `npm audit` |
-| Security test execution | `npm test` (after test setup) |
-| Full test suite validation | `npm run test:security` |
-| Manual header inspection | `curl -I http://localhost:3000/` |
-| Rate limit test | `for i in {1..105}; do curl -s -o /dev/null -w "%{http_code}\n" http://localhost:3000/; done` |
-| HTTPS certificate test | `openssl s_client -connect localhost:3443` |
+**New npm Scripts to Add:**
 
-**Implementation Constraints:**
+| Script Name | Command | Purpose |
+|-------------|---------|---------|
+| `start:prod` | `node server.js` | Production start (without PM2 for containers) |
+| `start:dev` | `node server.js \| pino-pretty` | Development with pretty logs |
+| `pm2:start` | `pm2 start ecosystem.config.js` | Start with PM2 process manager |
+| `pm2:stop` | `pm2 stop ecosystem.config.js` | Stop PM2 managed processes |
+| `pm2:restart` | `pm2 restart ecosystem.config.js` | Restart PM2 managed processes |
+| `pm2:reload` | `pm2 reload ecosystem.config.js` | Zero-downtime reload |
+| `pm2:logs` | `pm2 logs` | View PM2 managed process logs |
+| `pm2:monit` | `pm2 monit` | Monitor PM2 processes |
 
-| Constraint | Value |
-|------------|-------|
-| Priority | Security fix implementation first |
-| Backward Compatibility | Must maintain existing route behavior |
-| Breaking Changes | Acceptable only for security (rate limiting returns 429) |
-| Deployment | Can be deployed immediately after testing |
+### 0.4.5 Version Compatibility Matrix
 
-## 0.10 Special Instructions
+| Package | Minimum Node.js | Express Compatibility | Notes |
+|---------|-----------------|----------------------|-------|
+| pino@9.6.0 | 18.x | 5.x ✅ | Native ESM optional |
+| pino-http@10.4.0 | 18.x | 5.x ✅ | Works with Express async handlers |
+| uuid@11.0.5 | 18.x | N/A | Pure utility, no framework dependency |
+| pino-pretty@13.0.0 | 18.x | N/A | Dev only, CLI transport |
+| pm2@6.0.14 | 12.x+ | N/A | Process manager, version independent |
 
-### 0.10.1 Security-Specific Requirements
+**Node.js Version Requirement:**
+- Current: Node.js >=18.0.0 (as specified in package.json engines)
+- All new dependencies are compatible with Node.js 18.x and above
 
-**Implementation Priorities:**
+## 0.5 Implementation Design
 
-1. **helmet.js First:** Must be the first middleware in the chain to ensure all responses include security headers
-2. **Defense in Depth:** Multiple security layers (headers + rate limiting + validation + HTTPS)
-3. **Environment-Aware Configuration:** Security settings should adapt to development vs. production
-4. **Minimal Disruption:** Existing endpoints (`/` and `/evening`) must continue functioning
+### 0.5.1 Technical Approach
 
-**Mandatory Security Practices:**
+**Primary Objectives with Implementation Approach:**
 
-| Practice | Implementation |
-|----------|---------------|
-| Principle of Least Privilege | CORS origins explicitly whitelisted, not wildcard |
-| Fail Secure | Invalid requests rejected with appropriate error codes |
-| Audit Trail | Rate limit hits logged for security monitoring |
-| Secure Defaults | All security features enabled by default |
+- **Achieve production-grade logging** by creating `config/logger.js` and `middleware/requestLogger.js` to implement Pino-based structured JSON logging with request correlation IDs
 
-### 0.10.2 Certificate Management Guidelines
+- **Achieve modular routing architecture** by creating `routes/` directory structure to organize application endpoints and enable scalable route management
 
-**For Development (Self-Signed):**
+- **Achieve environment-aware configuration** by creating `config/env.js` to centralize environment variable management with validation and defaults
 
-```bash
-# Generate self-signed certificate for development
-openssl req -x509 -newkey rsa:4096 -keyout certs/key.pem \
-  -out certs/cert.pem -days 365 -nodes \
-  -subj "/CN=localhost"
+- **Achieve PM2 production deployment** by creating `ecosystem.config.js` to configure cluster mode, environment settings, and deployment strategies
+
+- **Achieve operational monitoring** by creating `routes/health.js` to implement health check endpoints for load balancer and orchestration integration
+
+- **Achieve graceful shutdown** by modifying `server.js` to handle SIGTERM/SIGINT signals for clean process termination
+
+**Logical Implementation Flow:**
+
+- **First**, establish the logging foundation by creating `config/logger.js` with Pino configuration and `middleware/requestLogger.js` for HTTP request logging
+
+- **Second**, implement the route architecture by creating `routes/` directory with `index.js` aggregator, `health.js` for health endpoints, and `api.js` for application routes
+
+- **Third**, integrate logging into the middleware chain by modifying `middleware/security.js` to include request logging before security middleware
+
+- **Fourth**, refactor `server.js` to use modular routing, initialize the logger, and implement graceful shutdown handlers
+
+- **Finally**, create `ecosystem.config.js` to configure PM2 for production deployment with cluster mode and environment-specific settings
+
+### 0.5.2 Component Impact Analysis
+
+**Direct Modifications Required:**
+
+| Component | Modification | Rationale |
+|-----------|--------------|-----------|
+| `server.js` | Add logger initialization, modular routing, graceful shutdown | Central integration point for all new features |
+| `middleware/security.js` | Add requestLogger to middleware chain | Logging must occur before security headers |
+| `.env.example` | Add logging and PM2 configuration variables | Document new environment configuration options |
+| `package.json` | Add dependencies and scripts | Enable logging and PM2 capabilities |
+
+**Indirect Impacts and Dependencies:**
+
+| Component | Impact | Reason |
+|-----------|--------|--------|
+| `tests/security/*.test.js` | May need logging mocking | Request logger in middleware chain |
+| Future middleware | Must follow logging pattern | Consistency in request tracing |
+| Deployment scripts | Must use ecosystem.config.js | PM2 configuration standardization |
+
+**New Components Introduction:**
+
+| Component | Type | Responsibility | Rationale |
+|-----------|------|----------------|-----------|
+| `config/logger.js` | Configuration | Logger factory and settings | Centralize logging configuration |
+| `config/env.js` | Configuration | Environment variable management | Validate and load environment |
+| `middleware/requestLogger.js` | Middleware | HTTP request/response logging | Request tracing and debugging |
+| `routes/index.js` | Router | Route aggregation | Modular route organization |
+| `routes/health.js` | Router | Health check endpoints | Operational monitoring |
+| `routes/api.js` | Router | Application API routes | Separate business logic routes |
+| `ecosystem.config.js` | PM2 Config | Process management | Production deployment |
+
+### 0.5.3 Architecture Integration
+
+**Middleware Chain (Updated Order):**
+
+```mermaid
+flowchart LR
+    A[Request] --> B[Request Logger]
+    B --> C[Helmet]
+    C --> D[CORS]
+    D --> E[Rate Limiter]
+    E --> F[Body Parser]
+    F --> G[Routes]
+    G --> H[Response]
 ```
 
-**For Production:**
+**Route Architecture:**
 
-- Use certificates from trusted Certificate Authority (Let's Encrypt, DigiCert, etc.)
-- Store certificate paths in environment variables
-- Implement certificate rotation strategy
-- Never commit private keys to version control
+```mermaid
+flowchart TD
+    A[server.js] --> B[routes/index.js]
+    B --> C[routes/health.js]
+    B --> D[routes/api.js]
+    C --> E[GET /health]
+    C --> F[GET /ready]
+    D --> G[GET /api/data]
+    D --> H[Future API endpoints]
+```
 
-**Certificate Security Rules:**
+**PM2 Cluster Mode Architecture:**
 
-| Rule | Implementation |
-|------|---------------|
-| No hardcoded paths | Use `SSL_KEY_PATH` and `SSL_CERT_PATH` env vars |
-| Git ignore certificates | Add `certs/*.pem` to `.gitignore` |
-| Secure permissions | Set `chmod 600` on private key files |
-| Rotation support | Application reads certs at startup |
+```mermaid
+flowchart TD
+    A[PM2 Master] --> B[Worker 1]
+    A --> C[Worker 2]
+    A --> D[Worker N]
+    B --> E[Express App]
+    C --> F[Express App]
+    D --> G[Express App]
+    H[Load Balancer] --> A
+```
 
-### 0.10.3 Environment-Specific Security Levels
+### 0.5.4 Critical Implementation Details
+
+**Logging Configuration Design:**
+
+```javascript
+// config/logger.js structure
+const pino = require('pino');
+const config = {
+  level: process.env.LOG_LEVEL || 'info',
+  // Production: JSON, Development: pretty
+};
+```
+
+**Request Logger Middleware Design:**
+
+```javascript
+// middleware/requestLogger.js structure
+const pinoHttp = require('pino-http');
+const { v4: uuidv4 } = require('uuid');
+// Generates request ID, logs request/response
+```
+
+**Health Endpoint Design:**
+
+```javascript
+// routes/health.js structure
+// GET /health - Liveness probe
+// GET /ready - Readiness probe (checks dependencies)
+```
+
+**Graceful Shutdown Design:**
+
+```javascript
+// server.js shutdown handler
+process.on('SIGTERM', () => {
+  // Close server, wait for connections, exit
+});
+```
+
+**PM2 Ecosystem Configuration Design:**
+
+```javascript
+// ecosystem.config.js structure
+module.exports = {
+  apps: [{
+    name: 'express-server',
+    script: 'server.js',
+    instances: 'max',
+    exec_mode: 'cluster'
+  }]
+};
+```
+
+**Integration Strategies:**
+
+| Integration Point | Strategy |
+|-------------------|----------|
+| Logger ↔ Middleware | Export logger instance from config/logger.js |
+| Routes ↔ Server | Mount router at app level in server.js |
+| PM2 ↔ Server | Use ecosystem.config.js for all PM2 operations |
+| Health ↔ Dependencies | Health endpoint queries internal state |
+
+**Data Flow Modifications:**
+
+| Flow | Current | Enhanced |
+|------|---------|----------|
+| Request Entry | Direct to security | Logger → Security |
+| Response Exit | Direct response | Response + Log |
+| Errors | Console output | Structured JSON logs |
+| Startup | Console.log | Logger.info |
+
+**Error Handling Considerations:**
+
+| Scenario | Handling |
+|----------|----------|
+| Logger initialization failure | Fallback to console |
+| Health check dependency failure | Return 503 with details |
+| Graceful shutdown timeout | Force exit after 10 seconds |
+| PM2 cluster worker crash | Auto-restart by PM2 |
+
+**Performance Considerations:**
+
+| Aspect | Approach |
+|--------|----------|
+| Logging overhead | Pino async mode for minimal blocking |
+| Cluster efficiency | PM2 cluster mode for CPU utilization |
+| Health check frequency | Lightweight, no heavy computations |
+| Memory management | Log rotation via PM2 or external tool |
+
+**Security Considerations:**
+
+| Aspect | Approach |
+|--------|----------|
+| Sensitive data in logs | Redaction paths for passwords, tokens |
+| Health endpoint exposure | No sensitive information in responses |
+| Log file access | PM2 log directory permissions |
+| Request ID collision | UUID v4 for uniqueness |
+
+## 0.6 Scope Boundaries
+
+### 0.6.1 Exhaustively In Scope
+
+**Source Code Changes:**
+
+| Pattern | Files | Purpose |
+|---------|-------|---------|
+| `server.js` | Main entry point | Add logging, routing, graceful shutdown |
+| `config/*.js` | Configuration modules | Add logger.js, env.js |
+| `middleware/*.js` | Middleware modules | Add requestLogger.js, update security.js |
+| `routes/*.js` | Route modules | Create index.js, health.js, api.js |
+
+**Configuration Updates:**
+
+| Pattern | Files | Purpose |
+|---------|-------|---------|
+| `ecosystem.config.js` | PM2 configuration | Process management settings |
+| `.env.example` | Environment template | Add new configuration variables |
+| `package.json` | Package manifest | Add dependencies, scripts |
+
+**Documentation Updates:**
+
+| Pattern | Files | Purpose |
+|---------|-------|---------|
+| `README.md` | Main documentation | Logging, PM2, health endpoint docs |
+
+**Test Updates:**
+
+| Pattern | Files | Purpose |
+|---------|-------|---------|
+| `tests/logging/*.test.js` | Logging tests | Request logger verification |
+| `tests/health/*.test.js` | Health tests | Health endpoint verification |
+
+**Specific Files In Scope (Complete List):**
+
+**New Files:**
+- `ecosystem.config.js`
+- `config/logger.js`
+- `config/env.js`
+- `middleware/requestLogger.js`
+- `routes/index.js`
+- `routes/health.js`
+- `routes/api.js`
+- `tests/logging/requestLogger.test.js`
+- `tests/health/health.test.js`
+
+**Modified Files:**
+- `server.js`
+- `middleware/security.js`
+- `.env.example`
+- `package.json`
+- `README.md`
+
+**Reference Files (Pattern Guidance Only):**
+- `config/cors.js`
+- `config/helmet.js`
+- `config/https.js`
+- `middleware/rateLimiter.js`
+- `middleware/validation.js`
+- `tests/security/*.test.js`
+
+### 0.6.2 Explicitly Out of Scope
+
+**Related Features Not Specified:**
+
+| Feature | Reason for Exclusion |
+|---------|---------------------|
+| Log aggregation service integration (ELK, CloudWatch) | External infrastructure, not part of codebase |
+| APM integration (New Relic, Datadog) | External service configuration |
+| Custom metrics collection | Beyond logging scope |
+| Dashboard creation | External tooling |
+| Alert configuration | External infrastructure |
+
+**Performance Optimizations Beyond Requirements:**
+
+| Optimization | Reason for Exclusion |
+|--------------|---------------------|
+| Database connection pooling | No database in scope |
+| Redis caching | No caching requirements specified |
+| CDN configuration | No static assets in scope |
+| Response compression tuning | Not requested |
+
+**Refactoring Unrelated to Core Objectives:**
+
+| Refactoring | Reason for Exclusion |
+|-------------|---------------------|
+| TypeScript migration | Not requested, CommonJS maintained |
+| ESM module conversion | Maintain existing CommonJS pattern |
+| Security middleware refactoring | Already well-structured |
+| Test framework migration | Jest working correctly |
+
+**Additional Tooling Not Mentioned:**
+
+| Tooling | Reason for Exclusion |
+|---------|---------------------|
+| Docker/containerization | Not explicitly requested |
+| Kubernetes configuration | Not specified |
+| Terraform/IaC | Infrastructure beyond scope |
+| GitHub Actions CI/CD | Not requested |
+
+**Future Enhancements Not Part of Current Request:**
+
+| Enhancement | Reason for Exclusion |
+|-------------|---------------------|
+| API documentation (Swagger/OpenAPI) | Not requested |
+| Authentication/authorization | Not requested |
+| Database integration | Not requested |
+| WebSocket support | Not requested |
+| GraphQL endpoints | Not requested |
+
+**Explicitly Excluded by Scope:**
+
+| Exclusion | Rationale |
+|-----------|-----------|
+| Modifications to existing security configuration | Security stack is complete and hardened |
+| Changes to TLS/HTTPS implementation | Already properly configured |
+| Rate limiting adjustments | Current settings are production-appropriate |
+| CORS policy changes | Whitelist-based approach is correct |
+| Existing test modifications | Unless required for new feature integration |
+
+### 0.6.3 Boundary Clarifications
+
+**Modification Boundaries:**
+
+| Component | Allowed Changes | Prohibited Changes |
+|-----------|-----------------|-------------------|
+| Security middleware chain | Add logger at start | Reorder existing middleware |
+| Configuration modules | Create new modules | Modify security configs |
+| Routes | Create new structure | Change existing behavior |
+| Tests | Add new test files | Modify existing test logic |
+| Environment variables | Add new variables | Change existing defaults |
+
+**Integration Points:**
+
+| Integration | Scope Status |
+|-------------|--------------|
+| Logger → Express app | IN SCOPE |
+| PM2 → Application process | IN SCOPE |
+| Health → Load balancer | IN SCOPE (endpoint only) |
+| Logs → File system | IN SCOPE (PM2 log management) |
+| Logs → External aggregator | OUT OF SCOPE |
+| PM2 → Monitoring service | OUT OF SCOPE |
+
+## 0.7 Execution Parameters
+
+### 0.7.1 Special Execution Instructions
+
+**Process-Specific Requirements:**
+
+| Requirement | Details |
+|-------------|---------|
+| Module pattern | Use CommonJS (`require`/`module.exports`) to match existing codebase |
+| Code style | Follow existing patterns in `config/` and `middleware/` directories |
+| Documentation | Include JSDoc comments matching existing file conventions |
+| Strict mode | Include `'use strict';` directive in all new JavaScript files |
+| Object immutability | Use `Object.freeze()` for configuration exports |
+
+**Tools and Platforms:**
+
+| Tool | Usage | Configuration |
+|------|-------|---------------|
+| Pino | Production logging | JSON output, async mode |
+| pino-http | HTTP request logging | Request ID generation |
+| pino-pretty | Development logging | Human-readable output |
+| PM2 | Process management | Cluster mode, auto-restart |
+| Jest | Testing | Match existing test patterns |
+
+**Quality Requirements:**
+
+| Quality Aspect | Requirement |
+|----------------|-------------|
+| Code coverage | Maintain existing coverage standards |
+| Linting | Follow existing ESLint configuration |
+| Error handling | Structured error responses with logging |
+| Performance | Async logging to minimize request blocking |
+
+**Output Constraints:**
+
+| Constraint | Details |
+|------------|---------|
+| Log format | JSON in production, pretty-print in development |
+| Log level | Configurable via environment variable |
+| Health response | JSON format with status, timestamp, uptime |
+| PM2 output | Ecosystem file with environment separation |
+
+### 0.7.2 Constraints and Boundaries
+
+**Technical Constraints:**
+
+| Constraint | Impact |
+|------------|--------|
+| Node.js >=18.0.0 | All dependencies must support Node 18+ |
+| Express 5.x | Use Express 5 patterns (async error handling) |
+| CommonJS | Cannot use ESM import/export syntax |
+| No database | Health checks limited to process state |
+
+**Process Constraints:**
+
+| Constraint | Details |
+|------------|---------|
+| Do not disrupt existing functionality | All existing tests must pass |
+| Do not modify security configuration | Security middleware chain is hardened |
+| Do not change environment defaults | Existing .env.example defaults preserved |
+| Do not alter certificate handling | TLS configuration is complete |
+
+**Output Constraints:**
+
+| Constraint | Details |
+|------------|---------|
+| Log files | Managed by PM2, not application |
+| Configuration files | No secrets in ecosystem.config.js |
+| Test files | Follow existing test directory structure |
+| Documentation | Update README.md inline, no separate docs |
+
+**Compatibility Requirements:**
+
+| Requirement | Details |
+|-------------|---------|
+| Backward compatibility | Existing API responses unchanged |
+| Test compatibility | Existing test suite must pass |
+| Environment compatibility | Works with existing .env configuration |
+| PM2 compatibility | Standard ecosystem file format |
+
+### 0.7.3 Environment Variable Requirements
+
+**New Environment Variables to Document:**
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `LOG_LEVEL` | `info` | Pino log level (trace, debug, info, warn, error, fatal) |
+| `LOG_FORMAT` | `json` | Log output format (json, pretty) |
+| `LOG_REDACT_PATHS` | `["req.headers.authorization"]` | JSON paths to redact from logs |
+| `PM2_INSTANCES` | `max` | Number of cluster instances (number or 'max') |
+| `PM2_EXEC_MODE` | `cluster` | PM2 execution mode (cluster, fork) |
+| `HEALTH_CHECK_PATH` | `/health` | Health check endpoint path |
+| `READY_CHECK_PATH` | `/ready` | Readiness check endpoint path |
+| `SHUTDOWN_TIMEOUT` | `10000` | Graceful shutdown timeout in milliseconds |
+
+**Existing Variables (Preserved):**
+
+| Variable | Default | Usage |
+|----------|---------|-------|
+| `NODE_ENV` | `development` | Environment mode |
+| `PORT` | `3000` | Server listen port |
+| `HOST` | `0.0.0.0` | Server bind address |
+| `HTTPS_ENABLED` | `false` | Enable HTTPS mode |
+| `ALLOWED_ORIGINS` | (empty) | CORS whitelist |
+| `RATE_LIMIT_WINDOW_MS` | `900000` | Rate limit window |
+| `RATE_LIMIT_MAX` | `100` | Maximum requests per window |
+
+### 0.7.4 Deployment Considerations
 
 **Development Environment:**
 
-```javascript
-// Relaxed security for development debugging
-const isDevelopment = process.env.NODE_ENV === 'development';
-
-// CSP allows unsafe-inline for dev tools
-// Rate limits are higher for testing
-// HTTPS is optional
-```
+| Aspect | Configuration |
+|--------|---------------|
+| Log output | Pretty-printed to console |
+| PM2 mode | Fork mode with watch |
+| Instances | Single instance |
+| Auto-restart | Enabled with file watch |
 
 **Production Environment:**
 
-```javascript
-// Strict security for production
-const isProduction = process.env.NODE_ENV === 'production';
+| Aspect | Configuration |
+|--------|---------------|
+| Log output | JSON to stdout (PM2 captures) |
+| PM2 mode | Cluster mode |
+| Instances | Max CPU cores |
+| Auto-restart | Enabled with exponential backoff |
 
-// CSP is strict
-// Rate limits enforced
-// HTTPS required
-// HSTS enabled
-```
+**Rollout Strategy:**
 
-### 0.10.4 Compliance Considerations
+| Phase | Action |
+|-------|--------|
+| 1 | Add dependencies to package.json |
+| 2 | Create configuration and middleware files |
+| 3 | Update server.js with new integrations |
+| 4 | Create ecosystem.config.js |
+| 5 | Update documentation |
+| 6 | Add and run tests |
 
-**Security Standards Alignment:**
+## 0.8 Rules
 
-| Standard | Relevant Controls | Implementation |
-|----------|------------------|----------------|
-| OWASP Top 10 | A05:2021 Security Misconfiguration | helmet.js default headers |
-| OWASP Top 10 | A07:2021 Cross-Site Scripting | Content-Security-Policy header |
-| PCI-DSS | Requirement 4 | HTTPS/TLS implementation |
-| SOC 2 | CC6.1 Logical Access | Rate limiting for access control |
+### 0.8.1 Task-Specific Rules
 
-### 0.10.5 Known Limitations and Future Considerations
+**Pattern Adherence Rules:**
 
-**Current Implementation Limitations:**
+| Rule | Enforcement |
+|------|-------------|
+| Follow existing patterns in `config/cors.js` | All new config modules must use `Object.freeze()` and factory pattern |
+| Follow existing patterns in `middleware/rateLimiter.js` | All new middleware must export factory functions |
+| Maintain CommonJS module format | No ESM syntax (`import`/`export`) allowed |
+| Include `'use strict';` directive | All new JavaScript files must start with strict mode |
+| Use JSDoc documentation style | Match existing documentation in `config/helmet.js` |
 
-| Limitation | Reason | Future Enhancement |
-|------------|--------|-------------------|
-| In-memory rate limiting | Simple deployment; no Redis | Add Redis store for distributed deployments |
-| Self-signed dev certificates | No CA integration | Integrate Let's Encrypt for auto-renewal |
-| Basic validation schemas | Minimal endpoints | Expand schemas as API grows |
-| No request logging | Not in original scope | Add security event logging |
+**Compatibility Rules:**
 
-**Recommended Future Enhancements:**
+| Rule | Requirement |
+|------|-------------|
+| Maintain backward compatibility with existing API | All existing routes must function unchanged |
+| Do not modify existing security middleware | Security stack (`helmet`, `cors`, `rateLimiter`) is frozen |
+| Preserve existing environment variable defaults | Only add new variables, do not change existing defaults |
+| All existing tests must pass | No breaking changes to tested functionality |
 
-1. **Security Logging:** Add winston or pino for security event logging
-2. **Distributed Rate Limiting:** Use Redis store for rate-limit-redis in multi-instance deployments
-3. **Authentication:** Add JWT or session-based authentication
-4. **API Gateway:** Consider moving to API gateway for enterprise deployments
-5. **WAF Integration:** Add Web Application Firewall for additional protection
+**Code Quality Rules:**
 
-### 0.10.6 Research Documentation
+| Rule | Standard |
+|------|----------|
+| Use descriptive variable and function names | Match existing naming conventions |
+| Handle all error cases | Use try-catch with structured logging |
+| Validate environment variables | Provide sensible defaults |
+| Avoid synchronous file operations | Use async/await patterns |
 
-**Security Advisories and Best Practices Consulted:**
+**Logging Rules:**
 
-| Source | Topic | URL |
-|--------|-------|-----|
-| Express.js Docs | Security Best Practices | https://expressjs.com/en/advanced/best-practice-security.html |
-| helmet.js | HTTP Headers Configuration | https://helmetjs.github.io/ |
-| OWASP | Secure Headers Project | https://owasp.org/www-project-secure-headers/ |
-| Node.js Docs | TLS Module | https://nodejs.org/api/tls.html |
-| npm | express-rate-limit | https://www.npmjs.com/package/express-rate-limit |
-| npm | cors | https://www.npmjs.com/package/cors |
-| npm | joi | https://www.npmjs.com/package/joi |
+| Rule | Implementation |
+|------|----------------|
+| Never log sensitive data | Implement redaction for passwords, tokens, keys |
+| Include request ID in all logs | Use UUID v4 for correlation |
+| Use appropriate log levels | error (5xx), warn (4xx), info (2xx/3xx) |
+| Log all application lifecycle events | Startup, shutdown, errors |
 
-### 0.10.7 Implementation Checklist
+**PM2 Configuration Rules:**
 
-**Pre-Implementation:**
-- [ ] Review current `server.js` implementation
-- [ ] Verify Node.js version compatibility (20.x ✓)
-- [ ] Ensure npm is available for dependency installation
+| Rule | Requirement |
+|------|-------------|
+| Support both development and production | Include env_development and env_production |
+| Use cluster mode for production | Leverage multi-core CPUs |
+| Configure graceful shutdown | Enable kill_timeout and wait_ready |
+| No secrets in ecosystem file | Use environment variables |
 
-**During Implementation:**
-- [ ] Add security dependencies to `package.json`
-- [ ] Run `npm install` to install new packages
-- [ ] Create middleware and config directories
-- [ ] Implement security middleware chain in `server.js`
-- [ ] Create environment configuration files
-- [ ] Set up certificate directory structure
+### 0.8.2 Architecture Rules
 
-**Post-Implementation:**
-- [ ] Run `npm audit` to verify no vulnerabilities
-- [ ] Test security headers with `curl -I`
-- [ ] Verify rate limiting behavior
-- [ ] Test CORS with cross-origin request
-- [ ] Validate HTTPS (if enabled)
-- [ ] Execute security test suite
-- [ ] Document any configuration changes needed
+**Middleware Chain Order:**
+
+| Position | Middleware | Rationale |
+|----------|------------|-----------|
+| 1 | Request Logger | Log before any processing |
+| 2 | Helmet | Security headers first |
+| 3 | CORS | Cross-origin control |
+| 4 | Rate Limiter | Prevent abuse |
+| 5 | Body Parser | Parse request bodies |
+| 6 | Routes | Business logic |
+
+**Route Organization Rules:**
+
+| Rule | Implementation |
+|------|----------------|
+| All routes through central aggregator | Use `routes/index.js` |
+| Health endpoints at root level | Mount at `/health`, `/ready` |
+| API endpoints under `/api` prefix | Mount at `/api/*` |
+| Validation middleware on routes | Apply where needed |
+
+### 0.8.3 Documentation Rules
+
+| Rule | Requirement |
+|------|-------------|
+| Update README.md with all new features | Logging, PM2, health endpoints |
+| Document all new environment variables | In README.md and .env.example |
+| Include usage examples | Command examples for PM2 |
+| Cross-reference related documentation | Link to PM2 docs where appropriate |
+
+### 0.8.4 Testing Rules
+
+| Rule | Requirement |
+|------|-------------|
+| Create tests for all new middleware | Request logger tests |
+| Create tests for all new endpoints | Health endpoint tests |
+| Follow existing test patterns | Use Jest and Supertest |
+| Mock external dependencies | Logger can be mocked in tests |
+
+### 0.8.5 Security Rules
+
+| Rule | Requirement |
+|------|-------------|
+| No sensitive data in logs | Redact authorization headers, passwords |
+| No sensitive data in health responses | Only status, timestamp, uptime |
+| No credentials in ecosystem.config.js | Use environment variables |
+| Validate all environment inputs | Sanitize before use |
+
+## 0.9 References
+
+### 0.9.1 Repository Files Analyzed
+
+**Configuration Files:**
+
+| File Path | Summary |
+|-----------|---------|
+| `config/cors.js` | CORS configuration module with environment-based origin whitelisting, uses `Object.freeze()` for immutability |
+| `config/helmet.js` | Helmet security headers configuration with CSP, HSTS, X-Frame-Options following OWASP guidelines |
+| `config/https.js` | HTTPS/TLS configuration for secure server initialization |
+
+**Middleware Files:**
+
+| File Path | Summary |
+|-----------|---------|
+| `middleware/security.js` | Centralized security middleware module that consolidates Helmet, CORS, and Rate Limiting in correct order |
+| `middleware/rateLimiter.js` | Rate limiting middleware using `express-rate-limit` with 100 requests per 15-minute window |
+| `middleware/validation.js` | Joi-based validation middleware factory for body, query, and params validation |
+
+**Core Application Files:**
+
+| File Path | Summary |
+|-----------|---------|
+| `server.js` | Main Express application entry point with HTTPS support and security middleware integration |
+| `package.json` | Package manifest with Express 5.1.0, security dependencies, and Node.js >=18 requirement |
+| `.env.example` | Environment variable template with security and server configuration |
+
+**Test Files:**
+
+| File Path | Summary |
+|-----------|---------|
+| `tests/security/cors.test.js` | CORS middleware integration tests |
+| `tests/security/helmet.test.js` | Helmet security headers tests |
+| `tests/security/https.test.js` | HTTPS/TLS implementation tests |
+| `tests/security/rateLimiter.test.js` | Rate limiting behavior tests |
+| `tests/security/validation.test.js` | Input validation middleware tests |
+
+**Documentation Files:**
+
+| File Path | Summary |
+|-----------|---------|
+| `README.md` | Project documentation with setup instructions |
+| `certs/README.md` | Certificate management documentation |
+
+### 0.9.2 Technical Specification Sections Retrieved
+
+| Section | Key Information |
+|---------|-----------------|
+| 1.2 System Overview | Architecture overview for security-hardened Express server |
+| 2.1 Feature Catalog | 8 core features (F-001 to F-008) including Security Headers, CORS, Rate Limiting |
+| 2.6 Environment Configuration Reference | Complete environment variable documentation |
+| 3.1 Programming Languages | Node.js 22.x LTS, JavaScript ES2022+ |
+| 8.6 CI/CD Pipeline | Zero build-step architecture, recommended pipeline structure |
+
+### 0.9.3 External Research Conducted
+
+| Research Topic | Source | Key Findings |
+|---------------|--------|--------------|
+| PM2 Latest Version | npm registry, GitHub releases | PM2 v6.0.14 is current stable, supports Node.js 12+ |
+| PM2 Cluster Mode | PM2 documentation | Built-in load balancer with `-i max` for CPU cores |
+| PM2 Ecosystem File | PM2 quick start guide | Configuration file with apps array, environment separation |
+| PM2 Graceful Restart | PM2 documentation | Zero-downtime via `pm2 reload` command |
+
+### 0.9.4 Attachments Provided
+
+No file attachments were provided by the user for this task.
+
+### 0.9.5 External URLs Referenced
+
+| URL | Description |
+|-----|-------------|
+| https://www.npmjs.com/package/pm2 | PM2 npm package page with version information |
+| https://github.com/Unitech/pm2 | PM2 GitHub repository with documentation |
+| https://pm2.keymetrics.io/ | Official PM2 documentation site |
+
+### 0.9.6 Environment Variables Provided
+
+| Variable | Value | Usage |
+|----------|-------|-------|
+| `DB_HOST` | (user-provided) | Available in environment |
+| `DB_HOST1` | (user-provided) | Available in environment |
+
+**Note:** No secrets were provided for this task.
+
+### 0.9.7 Key Decisions and Rationale
+
+| Decision | Rationale |
+|----------|-----------|
+| Pino over Winston | Higher performance, native JSON output, smaller footprint |
+| pino-http for request logging | Official Pino middleware for Express, includes request ID generation |
+| UUID v4 for request IDs | Industry standard, collision-resistant |
+| PM2 cluster mode | Maximizes multi-core CPU utilization for production |
+| Health endpoints at root | Standard pattern for load balancers and orchestration |
+| Logger before security middleware | Capture all requests including blocked ones |
+
+### 0.9.8 Compliance with Technical Specification
+
+| Tech Spec Section | Compliance Status | Notes |
+|-------------------|-------------------|-------|
+| F-001 Security Headers | ✅ Preserved | No modifications to Helmet configuration |
+| F-002 CORS Management | ✅ Preserved | No modifications to CORS configuration |
+| F-003 Rate Limiting | ✅ Preserved | No modifications to rate limiter |
+| F-004 Input Validation | ✅ Preserved | Validation middleware unchanged |
+| F-005 HTTPS Support | ✅ Preserved | TLS configuration unchanged |
+| F-006 Body Parsing | ✅ Preserved | Body parser unchanged |
+| F-007 Error Handling | ✅ Enhanced | Structured error logging added |
+| F-008 Application Endpoints | ✅ Enhanced | Modular routing, health endpoints |
 

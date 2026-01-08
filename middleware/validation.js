@@ -101,7 +101,56 @@ const validate = (schema, property = 'body') => {
 
     // Replace the request property with the validated and sanitized value
     // This ensures downstream handlers receive clean, validated data
-    req[property] = value;
+    // 
+    // IMPORTANT: Express 5.x Compatibility
+    // In Express 5.x, req.query and req.params are immutable (read-only getters).
+    // To maintain backward compatibility, we:
+    // 1. Store validated values in req.validated[property] for explicit access
+    // 2. For req.body (which is still writable), we directly replace the value
+    // 3. For req.query, we also merge the validated values back into req.query
+    //    by reassigning the getter (this maintains backward compatibility)
+    
+    // Initialize validated storage object if not exists
+    if (!req.validated) {
+      req.validated = {};
+    }
+    
+    // Store validated value in dedicated location
+    req.validated[property] = value;
+    
+    // Handle property-specific replacement
+    if (property === 'body') {
+      // For body, direct assignment works in Express 5.x
+      req.body = value;
+    } else if (property === 'query') {
+      // For query in Express 5.x, the property is immutable
+      // We store in req.validated.query and also make validated values
+      // accessible via req.query by using a defineProperty trick
+      // to shadow the prototype getter with own property
+      try {
+        Object.defineProperty(req, 'query', {
+          value: value,
+          writable: true,
+          enumerable: true,
+          configurable: true
+        });
+      } catch (e) {
+        // If defineProperty fails, validated data is still in req.validated.query
+        // This is a fallback for stricter environments
+      }
+    } else if (property === 'params') {
+      // For params in Express 5.x, similar immutability handling
+      try {
+        Object.defineProperty(req, 'params', {
+          value: value,
+          writable: true,
+          enumerable: true,
+          configurable: true
+        });
+      } catch (e) {
+        // Fallback: validated data available in req.validated.params
+      }
+    }
 
     // Proceed to the next middleware or route handler
     next();
