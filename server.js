@@ -139,3 +139,26 @@ process.on('SIGTERM', () => shutdown('SIGTERM'));
  * Provides consistent shutdown behavior across environments.
  */
 process.on('SIGINT', () => shutdown('SIGINT'));
+
+/**
+ * Uncaught exception handler.
+ * Logs the error and initiates graceful shutdown.
+ * Prevents silent crashes and ensures proper cleanup.
+ */
+process.on('uncaughtException', (err) => {
+  logger.error('Uncaught exception', { error: err.message, stack: err.stack });
+  shutdown('uncaughtException');
+});
+
+/**
+ * Unhandled promise rejection handler.
+ * Logs the rejection reason and initiates graceful shutdown.
+ * Catches unhandled async errors for proper logging and cleanup.
+ */
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error('Unhandled promise rejection', { 
+    reason: reason instanceof Error ? reason.message : String(reason),
+    stack: reason instanceof Error ? reason.stack : undefined
+  });
+  shutdown('unhandledRejection');
+});
