@@ -1,15 +1,24 @@
 /**
- * Security-Hardened Express.js Server
+ * Security-Hardened Express.js Server with Production-Grade Logging
  * 
  * This server implements comprehensive security hardening following OWASP guidelines
- * and Express.js security best practices. Security features include:
+ * and Express.js security best practices, enhanced with structured logging and
+ * graceful shutdown capabilities for production deployment.
  * 
+ * Security Features:
  * - HTTP Security Headers via helmet.js (CSP, HSTS, X-Frame-Options, etc.)
  * - Cross-Origin Resource Sharing (CORS) policy configuration
  * - Rate limiting to protect against brute-force and DoS attacks
  * - Input validation middleware using Joi schemas
  * - HTTPS/TLS support for encrypted communications
  * - Request body parsing with size limits
+ * 
+ * Production Features:
+ * - Structured JSON logging via Pino for log aggregation
+ * - Request ID correlation for distributed tracing
+ * - Graceful shutdown handling for zero-downtime deployments
+ * - Modular routing architecture for scalable endpoint management
+ * - Health check endpoints for load balancer integration
  * 
  * Environment Variables:
  * - NODE_ENV: Environment mode ('development' or 'production')
@@ -20,9 +29,12 @@
  * - ALLOWED_ORIGINS: Comma-separated list of allowed CORS origins
  * - RATE_LIMIT_WINDOW_MS: Rate limit time window in milliseconds
  * - RATE_LIMIT_MAX: Maximum requests per window per IP
+ * - LOG_LEVEL: Logging verbosity (trace, debug, info, warn, error, fatal)
+ * - SHUTDOWN_TIMEOUT: Graceful shutdown timeout in milliseconds (default: 10000)
  * 
  * @module server
  * @see https://expressjs.com/en/advanced/best-practice-security.html
+ * @see https://getpino.io/
  */
 
 'use strict';
@@ -109,6 +121,35 @@ const rateLimiter = require('./middleware/rateLimiter');
  */
 const { validate } = require('./middleware/validation');
 
+/**
+ * Pino logger factory for structured logging
+ * Creates production-grade JSON logger with request correlation
+ * @see ./config/logger.js
+ */
+const { createLogger } = require('./config/logger');
+
+/**
+ * Modular route configuration
+ * Provides health endpoints (/health, /ready) and API routes
+ * @see ./routes/index.js
+ */
+const { configureRoutes } = require('./routes');
+
+// =============================================================================
+// LOGGER INITIALIZATION
+// =============================================================================
+
+/**
+ * Application logger instance
+ * 
+ * Initialized early to capture all application events including startup,
+ * errors, and shutdown. Uses structured JSON format for log aggregation
+ * compatibility (ELK, CloudWatch, Datadog).
+ * 
+ * @type {import('pino').Logger}
+ */
+const logger = createLogger({ name: 'express-server' });
+
 // =============================================================================
 // ENVIRONMENT CONFIGURATION
 // =============================================================================
@@ -160,6 +201,13 @@ const SSL_CERT_PATH = process.env.SSL_CERT_PATH || './certs/cert.pem';
  * @type {boolean}
  */
 const isProduction = process.env.NODE_ENV === 'production';
+
+/**
+ * Graceful shutdown timeout in milliseconds
+ * Maximum time to wait for active connections to close before forcing shutdown
+ * @type {number}
+ */
+const SHUTDOWN_TIMEOUT = parseInt(process.env.SHUTDOWN_TIMEOUT, 10) || 10000;
 
 // =============================================================================
 // EXPRESS APPLICATION INITIALIZATION
@@ -258,63 +306,30 @@ app.use(express.urlencoded({
 }));
 
 // =============================================================================
-// ROUTE HANDLERS
+// MODULAR ROUTE CONFIGURATION
 // =============================================================================
-// Existing routes are preserved with unchanged functionality
-// Future routes can use validate() middleware for input validation
+// Routes are organized in separate modules for maintainability:
+// - routes/health.js: Health check endpoints (/health, /ready)
+// - routes/api.js: Application API endpoints (/, /evening, /data)
+// - routes/index.js: Route aggregator with 404 handler
 // =============================================================================
 
 /**
- * GET / - Home route
+ * Configure modular routes
  * 
- * Returns a simple greeting message.
- * Functionality preserved from original implementation.
+ * Applies all route modules to the Express application:
+ * 1. Health routes (GET /health, GET /ready) for operational monitoring
+ * 2. API routes (GET /, GET /evening, GET /data) for application logic
+ * 3. 404 handler for undefined routes
  * 
- * @route GET /
- * @returns {string} Hello, World!\n
- * @example
- * curl http://localhost:3000/
- * // Response: Hello, World!
+ * Routes are mounted at root level for simplicity.
+ * For larger applications, consider prefixing API routes with '/api'.
  */
-app.get('/', (req, res) => {
-  res.send('Hello, World!\n');
-});
-
-/**
- * GET /evening - Evening greeting route
- * 
- * Returns an evening greeting message.
- * Functionality preserved from original implementation.
- * 
- * @route GET /evening
- * @returns {string} Good evening
- * @example
- * curl http://localhost:3000/evening
- * // Response: Good evening
- */
-app.get('/evening', (req, res) => {
-  res.send('Good evening');
-});
+configureRoutes(app);
 
 // =============================================================================
 // ERROR HANDLING MIDDLEWARE
 // =============================================================================
-
-/**
- * 404 Not Found handler
- * 
- * Catches all unmatched routes and returns a consistent JSON error response.
- * Placed after all route definitions.
- */
-app.use((req, res, next) => {
-  res.status(404).json({
-    error: 'Not Found',
-    message: `The requested resource ${req.path} was not found on this server`,
-    path: req.path,
-    method: req.method,
-    timestamp: new Date().toISOString()
-  });
-});
 
 /**
  * Global error handler
@@ -323,18 +338,47 @@ app.use((req, res, next) => {
  * In production, error details are hidden to prevent information disclosure.
  * In development, full error stack is included for debugging.
  * 
+ * Error logging includes:
+ * - Request ID for correlation (if available from request logger)
+ * - Error message and stack trace
+ * - HTTP method and path
+ * - Timestamp for troubleshooting
+ * 
  * @param {Error} err - The error object
  * @param {express.Request} req - Express request object
  * @param {express.Response} res - Express response object
  * @param {express.NextFunction} next - Express next function
  */
 app.use((err, req, res, next) => {
-  // Log error for monitoring (can be enhanced with logging framework)
-  console.error(`[ERROR] ${new Date().toISOString()} - ${err.message}`);
-  console.error(err.stack);
-
   // Determine status code from error or default to 500
   const statusCode = err.statusCode || err.status || 500;
+  
+  // Log error with structured data for debugging and monitoring
+  // Include request ID from request logger middleware if available
+  const errorLogData = {
+    err: {
+      message: err.message,
+      stack: err.stack,
+      code: err.code,
+      statusCode: statusCode
+    },
+    req: {
+      id: req.id,
+      method: req.method,
+      path: req.path,
+      url: req.url,
+      ip: req.ip || req.socket?.remoteAddress
+    }
+  };
+  
+  // Log at appropriate level based on status code
+  if (statusCode >= 500) {
+    logger.error(errorLogData, `Server error: ${err.message}`);
+  } else if (statusCode >= 400) {
+    logger.warn(errorLogData, `Client error: ${err.message}`);
+  } else {
+    logger.info(errorLogData, `Error handled: ${err.message}`);
+  }
 
   // Build error response
   const errorResponse = {
@@ -343,6 +387,11 @@ app.use((err, req, res, next) => {
     timestamp: new Date().toISOString()
   };
 
+  // Include request ID for correlation if available
+  if (req.id) {
+    errorResponse.requestId = req.id;
+  }
+
   // Include stack trace in development mode only
   if (!isProduction) {
     errorResponse.stack = err.stack;
@@ -350,6 +399,115 @@ app.use((err, req, res, next) => {
 
   res.status(statusCode).json(errorResponse);
 });
+
+// =============================================================================
+// SERVER REFERENCES
+// =============================================================================
+
+/**
+ * HTTP server instance reference
+ * Used for graceful shutdown
+ * @type {import('http').Server|null}
+ */
+let httpServer = null;
+
+/**
+ * HTTPS server instance reference
+ * Used for graceful shutdown
+ * @type {import('https').Server|null}
+ */
+let httpsServer = null;
+
+// =============================================================================
+// GRACEFUL SHUTDOWN HANDLING
+// =============================================================================
+
+/**
+ * Graceful Shutdown Handler
+ * 
+ * Implements clean process termination for zero-downtime deployments.
+ * This handler is triggered by SIGTERM (PM2, Docker, Kubernetes) and
+ * SIGINT (Ctrl+C, manual termination) signals.
+ * 
+ * Shutdown sequence:
+ * 1. Log shutdown initiation
+ * 2. Stop accepting new connections
+ * 3. Wait for active connections to complete
+ * 4. Close HTTP and HTTPS servers
+ * 5. Exit with appropriate code
+ * 
+ * If connections don't close within SHUTDOWN_TIMEOUT, force exit.
+ * 
+ * @param {string} signal - The signal that triggered shutdown (SIGTERM, SIGINT)
+ */
+function gracefulShutdown(signal) {
+  logger.info({ signal, pid: process.pid }, `Received ${signal}, initiating graceful shutdown`);
+  
+  // Track shutdown state
+  let httpClosed = !httpServer; // True if no HTTP server
+  let httpsClosed = !httpsServer; // True if no HTTPS server
+  
+  /**
+   * Complete shutdown after all servers are closed
+   */
+  const completeShutdown = () => {
+    if (httpClosed && httpsClosed) {
+      logger.info({ 
+        signal, 
+        pid: process.pid,
+        uptime: process.uptime()
+      }, 'All servers closed, shutdown complete');
+      process.exit(0);
+    }
+  };
+  
+  /**
+   * Force shutdown after timeout
+   */
+  const forceShutdown = () => {
+    logger.warn({ 
+      signal, 
+      timeout: SHUTDOWN_TIMEOUT,
+      pid: process.pid 
+    }, 'Shutdown timeout exceeded, forcing exit');
+    process.exit(1);
+  };
+  
+  // Set force shutdown timeout
+  const shutdownTimer = setTimeout(forceShutdown, SHUTDOWN_TIMEOUT);
+  shutdownTimer.unref(); // Don't keep process alive just for timer
+  
+  // Close HTTP server if running
+  if (httpServer) {
+    logger.info('Closing HTTP server...');
+    httpServer.close((err) => {
+      if (err) {
+        logger.error({ err }, 'Error closing HTTP server');
+      } else {
+        logger.info('HTTP server closed successfully');
+      }
+      httpClosed = true;
+      completeShutdown();
+    });
+  }
+  
+  // Close HTTPS server if running
+  if (httpsServer) {
+    logger.info('Closing HTTPS server...');
+    httpsServer.close((err) => {
+      if (err) {
+        logger.error({ err }, 'Error closing HTTPS server');
+      } else {
+        logger.info('HTTPS server closed successfully');
+      }
+      httpsClosed = true;
+      completeShutdown();
+    });
+  }
+  
+  // If no servers were running, complete immediately
+  completeShutdown();
+}
 
 // =============================================================================
 // SERVER INITIALIZATION
@@ -365,12 +523,39 @@ app.use((err, req, res, next) => {
  * This prevents Jest from hanging due to open handles.
  */
 if (require.main === module) {
-  app.listen(port, hostname, () => {
-    console.log(`[HTTP] Server running at http://${hostname}:${port}/`);
-    console.log(`[SECURITY] Helmet security headers: ENABLED`);
-    console.log(`[SECURITY] CORS protection: ENABLED`);
-    console.log(`[SECURITY] Rate limiting: ENABLED`);
-    console.log(`[SECURITY] Body parsing with limits: ENABLED`);
+  httpServer = app.listen(port, hostname, () => {
+    logger.info({
+      protocol: 'HTTP',
+      hostname,
+      port,
+      pid: process.pid,
+      nodeVersion: process.version,
+      env: process.env.NODE_ENV || 'development'
+    }, `HTTP server running at http://${hostname}:${port}/`);
+    
+    logger.info({
+      security: {
+        helmet: 'ENABLED',
+        cors: 'ENABLED',
+        rateLimiting: 'ENABLED',
+        bodyParsing: 'ENABLED (10kb limit)'
+      }
+    }, 'Security middleware stack initialized');
+  });
+  
+  // Register shutdown handlers
+  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+  process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+  
+  // Handle uncaught exceptions
+  process.on('uncaughtException', (err) => {
+    logger.fatal({ err }, 'Uncaught exception, shutting down');
+    gracefulShutdown('uncaughtException');
+  });
+  
+  // Handle unhandled promise rejections
+  process.on('unhandledRejection', (reason, promise) => {
+    logger.error({ reason, promise }, 'Unhandled promise rejection');
   });
 }
 
@@ -414,18 +599,27 @@ if (require.main === module && HTTPS_ENABLED) {
     };
 
     // Create and start HTTPS server
-    https.createServer(httpsOptions, app).listen(HTTPS_PORT, hostname, () => {
-      console.log(`[HTTPS] Secure server running at https://${hostname}:${HTTPS_PORT}/`);
-      console.log(`[HTTPS] TLS version range: TLSv1.2 - TLSv1.3`);
+    httpsServer = https.createServer(httpsOptions, app).listen(HTTPS_PORT, hostname, () => {
+      logger.info({
+        protocol: 'HTTPS',
+        hostname,
+        port: HTTPS_PORT,
+        pid: process.pid,
+        tlsVersion: 'TLSv1.2 - TLSv1.3',
+        keyPath,
+        certPath
+      }, `HTTPS server running at https://${hostname}:${HTTPS_PORT}/`);
     });
 
   } catch (error) {
     // Log certificate loading error and continue with HTTP-only
-    console.warn(`[HTTPS] Failed to start HTTPS server: ${error.message}`);
-    console.warn(`[HTTPS] Application continues with HTTP only`);
-    console.warn(`[HTTPS] To enable HTTPS, ensure SSL certificates are available at:`);
-    console.warn(`[HTTPS]   Key: ${path.resolve(SSL_KEY_PATH)}`);
-    console.warn(`[HTTPS]   Cert: ${path.resolve(SSL_CERT_PATH)}`);
+    logger.warn({
+      err: error,
+      keyPath: path.resolve(SSL_KEY_PATH),
+      certPath: path.resolve(SSL_CERT_PATH)
+    }, 'Failed to start HTTPS server, continuing with HTTP only');
+    
+    logger.info('To enable HTTPS, ensure SSL certificates are available at the configured paths');
   }
 }
 
