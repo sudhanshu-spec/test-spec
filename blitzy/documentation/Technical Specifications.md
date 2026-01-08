@@ -4,690 +4,195 @@
 
 ## 0.1 Intent Clarification
 
-Based on the provided requirements, the Blitzy platform understands that the testing objective is to **create comprehensive unit tests for `server.js`** using Jest or Mocha as the testing framework. This request transforms a currently untested Express.js 5 tutorial application into a test-covered, production-quality codebase.
+### 0.1.1 Core Security Objective
 
-### 0.1.1 Core Testing Objective
+Based on the security enhancement request, the Blitzy platform understands that the objective is to **implement a comprehensive security middleware layer** for an existing Express.js 5.x application. This involves transforming a tutorial-grade application with minimal security controls into a production-hardened server with industry-standard security measures.
 
-**Request Category:** Add new tests (greenfield test implementation)
+**Vulnerability Category:** Multiple Security Enhancements (Proactive Security Hardening)
 
-The user has requested comprehensive unit test coverage for the `server.js` entry point of a minimal Express.js application. The specific testing requirements include:
+**Severity Assessment:** High - The current application lacks fundamental security controls that are considered baseline requirements for any production-facing web application.
 
-| Requirement | Technical Interpretation | Test Category |
-|------------|-------------------------|---------------|
-| HTTP responses | Verify response bodies match expected content | Endpoint contract tests |
-| Status codes | Assert 200 OK for valid routes, 404 for invalid | HTTP status validation |
-| Headers | Validate Content-Type and other response headers | Header assertion tests |
-| Server startup/shutdown | Test server binding and graceful termination | Lifecycle tests |
-| Error handling | Verify behavior on invalid routes and methods | Error scenario tests |
-| Edge cases | Test boundary conditions and unexpected inputs | Edge case coverage |
+**Security Requirements Identified:**
 
-### 0.1.2 Implicit Testing Needs
+| Requirement ID | Security Objective | Technical Implementation |
+|----------------|-------------------|-------------------------|
+| SEC-001 | Security Headers Protection | Implement helmet.js middleware for HTTP security headers |
+| SEC-002 | Input Validation | Add express-validator for request data sanitization |
+| SEC-003 | Rate Limiting | Implement express-rate-limit to prevent abuse and DoS |
+| SEC-004 | HTTPS Support | Configure secure transport and HSTS headers |
+| SEC-005 | CORS Policy | Implement cors middleware with proper origin controls |
+| SEC-006 | Dependency Security | Update all dependencies to secure versions |
 
-Beyond the explicit requirements, the Blitzy platform identifies the following implicit testing needs:
+**Implicit Security Needs Surfaced:**
+- Middleware ordering is critical for security effectiveness
+- Content Security Policy (CSP) configuration for XSS prevention
+- X-Frame-Options for clickjacking protection
+- Referrer policy for information leakage prevention
+- Environment-specific configuration (development vs production)
 
-- **Configuration Module Testing:** The `src/config/index.js` module provides environment-driven configuration that directly impacts `server.js` behavior and requires verification of default fallbacks
-- **Route Handler Testing:** The endpoint responses in `src/routes/main.routes.js` define the actual HTTP behaviors that `server.js` exposes
-- **App Factory Testing:** The `src/app.js` factory pattern is the testable unit that `server.js` consumes
-- **Express 5 Compatibility:** Tests must be compatible with Express.js 5.1.0, which has specific async error handling behaviors
-- **Node.js 18+ Compatibility:** Tests must run on Node.js 18+ (current environment: Node.js 20.19.6)
+### 0.1.2 Special Instructions and Constraints
 
-### 0.1.3 Special Instructions and Constraints
+**Change Scope:** Standard security implementation following Express.js security best practices
 
-**Framework Selection:** The user specified "Jest or Mocha" - Based on compatibility research, **Jest 30.x** is recommended as the primary framework because:
-- Native async/await support without additional configuration
-- Built-in assertion library eliminates need for Chai
-- Superior mocking capabilities for environment variable testing
-- <cite index="14-1,14-2">Jest 30 drops support for Node 14, 16, 19, and 21. The minimum supported Node versions are now 18.x.</cite>
-- Excellent integration with Supertest for HTTP testing
+**Security Requirements:**
+- Follow OWASP security guidelines for web applications
+- Implement security-by-default configurations
+- Maintain backward compatibility with existing API contracts
+- Preserve existing route functionality (`/` and `/evening` endpoints)
 
-**No User Examples Provided:** The user did not provide specific test examples to follow.
+**Configuration Requirements:**
+- Security settings should be configurable via environment variables
+- Development mode should allow relaxed settings for local testing
+- Production mode should enforce strict security policies
 
-**Web Search Research Completed:**
-- Jest 30.2.0 confirmed compatible with Node.js 20.x
-- Supertest 7.1.4 confirmed as latest stable version for HTTP assertions
-- <cite index="5-10,5-11,5-12">The standard pattern separates app.js (exports express app) from server.js (binds to port), enabling tests to import app.js directly.</cite>
+### 0.1.3 Technical Interpretation
 
-### 0.1.4 Technical Interpretation
+This security enhancement translates to the following technical implementation strategy:
 
-These testing requirements translate to the following technical test implementation strategy:
+**"To achieve comprehensive security hardening, we will:**
+1. Add `helmet.js` middleware to set 13+ HTTP security headers automatically
+2. Implement `cors` middleware with configurable origin whitelist policies
+3. Add `express-rate-limit` middleware for request throttling protection
+4. Integrate `express-validator` for input validation capabilities
+5. Configure HTTPS/TLS support through environment-based settings
+6. Update the middleware chain in `src/app.js` with proper security ordering"
 
-| Requirement | Implementation Approach |
-|-------------|------------------------|
-| To test HTTP responses | Create Supertest assertions against the `app` module, verifying `.expect('Hello, World!\n')` and `.expect('Good evening')` for the two endpoints |
-| To test status codes | Use Supertest's `.expect(200)` and `.expect(404)` chainable assertions |
-| To test headers | Assert `Content-Type` headers using `.expect('Content-Type', /text\/html/)` |
-| To test server startup | Verify the `app.listen()` callback executes and logs startup message |
-| To test shutdown | Test graceful server closure using `server.close()` method |
-| To test error handling | Verify 404 responses for undefined routes and unsupported HTTP methods |
-| To test edge cases | Test empty paths, trailing slashes, query parameters on static routes |
+**User Understanding Level:** General security concern with specific solution guidance (helmet.js, CORS, rate limiting mentioned explicitly)
 
-### 0.1.5 Coverage Requirements Interpretation
+**Implementation Approach:**
+```
+Request Flow: Client → Rate Limiter → CORS → Helmet → Routes → Response
+```
 
-**Explicit Coverage Target:** None specified by user
+The security middleware must be applied before route handlers to ensure all requests pass through security controls.
 
-**Implicit Coverage Expectations:**
+## 0.2 Vulnerability Research and Analysis
 
-Based on industry standards for Express.js applications and the existing codebase structure, comprehensive testing should achieve:
+### 0.2.1 Initial Assessment
 
-| Coverage Metric | Target | Rationale |
-|-----------------|--------|-----------|
-| Line Coverage | ≥ 80% | Industry standard minimum for production code |
-| Branch Coverage | ≥ 75% | Cover conditional logic in configuration parsing |
-| Function Coverage | ≥ 90% | All exported functions should be tested |
-| Statement Coverage | ≥ 80% | Comprehensive execution path coverage |
+The current Express.js application lacks security middleware, exposing it to common web vulnerabilities:
 
-**Critical Path Analysis:**
+| Security Gap | Current State | Risk Level |
+|--------------|---------------|------------|
+| Security Headers | None configured | High |
+| Rate Limiting | Not implemented | High |
+| CORS | Not configured | Medium |
+| Input Validation | Not implemented | Medium |
+| HTTPS Support | HTTP only | High |
 
-To achieve comprehensive testing, coverage should include:
+**CVE/Vulnerability Mapping:**
 
-- 100% of route handler functions (`/` and `/evening` endpoints)
-- 100% of configuration export properties (`host`, `port`, `env`)
-- Server startup success path
-- Server startup failure scenarios (port already in use)
-- 404 error path for undefined routes
-- Configuration default fallback paths
+| Gap | Related CVE/Advisory | Attack Vector |
+|-----|---------------------|---------------|
+| Missing CSP Headers | OWASP A7:2017 - XSS | Cross-site scripting injection |
+| Missing X-Frame-Options | CVE-2015-5729 (general) | Clickjacking attacks |
+| No Rate Limiting | OWASP API4:2019 | Resource exhaustion, brute force |
+| Missing HSTS | OWASP A3:2017 | Man-in-the-middle attacks |
+| No Input Validation | OWASP A1:2017 - Injection | SQL/NoSQL/Command injection |
 
+### 0.2.2 Required Web Research Findings
 
-## 0.2 Test Discovery and Analysis
+**Helmet.js Security Headers (v8.1.0):**
 
-### 0.2.1 Existing Test Infrastructure Assessment
+Research confirms that helmet.js sets 13 HTTP response headers by default, including Content-Security-Policy, Strict-Transport-Security, X-Content-Type-Options, X-Frame-Options, and removes the X-Powered-By header that could be used in reconnaissance attacks.
 
-Repository analysis reveals **no existing test infrastructure** in the `hello_world` project. The codebase is a greenfield testing scenario requiring complete test setup from scratch.
+**Express-Rate-Limit (v8.2.1):**
 
-**Search Patterns Employed:**
+The express-rate-limit package provides IP-based rate limiting with configurable windows and limits. The latest version supports draft-8 standard headers and configurable IPv6 subnet handling for better protection against distributed attacks.
 
-| Pattern | Files Found | Result |
-|---------|-------------|--------|
-| `*test*` | 0 | No test files exist |
-| `*spec*` | 0 | No spec files exist |
-| `test_*` | 0 | No Python-style test files |
-| `*.test.js` | 0 | No Jest test files |
-| `*.spec.js` | 0 | No Mocha/Jasmine spec files |
-| `jest.config.*` | 0 | No Jest configuration |
-| `mocha*` | 0 | No Mocha configuration |
-| `.nycrc*` | 0 | No coverage configuration |
+**CORS Package (v2.8.5):**
 
-**Package.json Analysis:**
+The cors middleware provides flexible cross-origin resource sharing configuration with support for dynamic origin validation, method restrictions, and pre-flight request handling.
+
+**Express-Validator (v7.x):**
+
+The express-validator library wraps validator.js to provide comprehensive input validation and sanitization, supporting both body, query, and param validation with chainable validators.
+
+### 0.2.3 Vulnerability Classification
+
+| Vulnerability Type | Attack Vector | Impact Categories | Exploitability |
+|-------------------|---------------|-------------------|----------------|
+| Missing Security Headers | Network | Confidentiality, Integrity | High |
+| No Rate Limiting | Network | Availability | High |
+| Missing CORS Policy | Network | Integrity | Medium |
+| No Input Validation | Network | Integrity, Confidentiality | Medium |
+| HTTP-only Transport | Network | Confidentiality | High |
+
+**Root Cause Analysis:**
+
+The application was designed as a tutorial-grade system (per Technical Specification Section 6.4.1.1) with explicit constraints (C-002, C-005) excluding security middleware. The transition to production readiness requires lifting these constraints.
+
+### 0.2.4 Security Advisory Sources Reviewed
+
+| Source | Advisory Type | Recommendation |
+|--------|--------------|----------------|
+| Express.js Security Best Practices | Official Documentation | Use helmet.js, implement rate limiting |
+| OWASP Top 10 2021 | Industry Standard | Input validation, security headers |
+| npm Security Advisories | Package Security | Keep dependencies updated |
+| Helmet.js Documentation | Package Documentation | Use default configuration as baseline |
+| MDN Web Security | Standards Reference | CORS, CSP, HSTS best practices |
+
+**Key Finding:** All recommended security packages (helmet, cors, express-rate-limit, express-validator) have no known vulnerabilities in their latest versions and are actively maintained.
+
+## 0.3 Security Scope Analysis
+
+### 0.3.1 Affected Component Discovery
+
+Repository analysis reveals the following files and directories affected by security middleware implementation:
+
+**Core Application Files:**
+
+| File Path | Impact Type | Security Changes Required |
+|-----------|-------------|--------------------------|
+| `package.json` | Direct | Add security dependencies (helmet, cors, express-rate-limit, express-validator) |
+| `src/app.js` | Direct | Integrate security middleware chain before routes |
+| `src/config/index.js` | Direct | Add security-related environment variables |
+| `server.js` | Potential | HTTPS configuration (if implementing TLS directly) |
+
+**Route Files (Indirect Impact):**
+
+| File Path | Impact Type | Changes Required |
+|-----------|-------------|------------------|
+| `src/routes/index.js` | Indirect | No changes - security applied at app level |
+| `src/routes/main.routes.js` | Indirect | No changes - security applied at app level |
+
+**Test Files (Updates Required):**
+
+| File Path | Impact Type | Changes Required |
+|-----------|-------------|------------------|
+| `tests/integration/endpoints.test.js` | Direct | Add security header assertions |
+| `tests/unit/*.test.js` | Potential | Unit tests for new middleware |
+
+**Configuration Files:**
+
+| File Path | Impact Type | Changes Required |
+|-----------|-------------|------------------|
+| `.env.example` (NEW) | Create | Document security environment variables |
+| `jest.config.js` | No change | Test configuration unchanged |
+
+### 0.3.2 Root Cause Identification
+
+The security gaps exist because the application was designed as a tutorial-grade system per Technical Specification constraint C-005:
+
+| Constraint | Description | Impact |
+|------------|-------------|--------|
+| C-002 | Single runtime dependency (Express.js) | No security middleware in current stack |
+| C-005 | No authentication/authorization | Security layer explicitly excluded |
+
+**Current State Assessment:**
+- Express 5.1.0 provides ReDoS protection via path-to-regexp v8.x
+- Default localhost binding (127.0.0.1) provides network isolation
+- No security headers, rate limiting, or CORS currently configured
+
+### 0.3.3 Current State Assessment
+
+**Dependency Manifest Analysis (`package.json`):**
 
 ```json
 {
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "dependencies": {
+    "express": "^5.1.0"  // Only runtime dependency
   },
-  "devDependencies": {}
-}
-```
-
-Repository analysis reveals a **placeholder test script** with no testing setup. The project has **zero devDependencies** and no test automation framework installed.
-
-### 0.2.2 Current Testing Framework Detection
-
-| Component | Status | Evidence |
-|-----------|--------|----------|
-| Testing Framework | ❌ Not Installed | No jest/mocha in package.json |
-| Test Runner Configuration | ❌ Not Present | No config files found |
-| Coverage Tools | ❌ Not Installed | No istanbul/nyc/c8 |
-| Mock/Stub Libraries | ❌ Not Installed | No sinon/jest-mock |
-| HTTP Test Library | ❌ Not Installed | No supertest/axios-mock |
-| Test Data Fixtures | ❌ Not Present | No fixtures directory |
-
-### 0.2.3 Testability Design Evidence
-
-Despite the absence of tests, the codebase is **intentionally designed for testability** through architectural patterns:
-
-| Pattern | Location | Testability Benefit |
-|---------|----------|---------------------|
-| Factory Pattern | `src/app.js` | Creates Express app without HTTP binding, enabling Supertest usage |
-| Configuration Separation | `src/config/index.js` | Environment variables are mockable in isolation |
-| Route Modularization | `src/routes/*.js` | Routes testable independently from server |
-| Server Separation | `server.js` vs `src/app.js` | App testable without starting HTTP server |
-
-From `src/app.js` documentation: *"Design pattern: Factory pattern - creates configured Express app enabling unit testing without starting the actual server"*
-
-### 0.2.4 Source Code Structure for Testing
-
-```
-hello_world/
-├── server.js              # Entry point - imports app, binds to port
-├── src/
-│   ├── app.js             # Express app factory (primary test target)
-│   ├── config/
-│   │   └── index.js       # Configuration with defaults (testable)
-│   └── routes/
-│       ├── index.js       # Route aggregator (barrel export)
-│       └── main.routes.js # Route handlers (testable endpoints)
-├── package.json           # No test dependencies
-└── README.md              # Manual verification commands
-```
-
-### 0.2.5 Web Search Research Conducted
-
-| Research Topic | Finding | Source |
-|----------------|---------|--------|
-| Jest + Express 5 patterns | Supertest with app factory is the standard approach | Jest official docs |
-| Jest 30 Node.js support | Minimum Node 18.x required, Node 20.x fully supported | jestjs.io |
-| Supertest best practices | Import app module directly, not running server | dennisokeeffe.com |
-| Test environment setup | Set `testEnvironment: 'node'` for server-side testing | Jest documentation |
-
-### 0.2.6 Module Dependency Map for Testing
-
-```mermaid
-flowchart TB
-    subgraph TestTargets["Modules to Test"]
-        ServerJS["server.js<br/>Entry point"]
-        AppJS["src/app.js<br/>Express factory"]
-        ConfigJS["src/config/index.js<br/>Configuration"]
-        MainRoutes["src/routes/main.routes.js<br/>Endpoint handlers"]
-        RouteIndex["src/routes/index.js<br/>Route barrel"]
-    end
-    
-    subgraph Dependencies["External Dependencies"]
-        Express["express@5.1.0"]
-        ProcessEnv["process.env<br/>Environment"]
-    end
-    
-    ServerJS --> AppJS
-    ServerJS --> ConfigJS
-    AppJS --> MainRoutes
-    AppJS --> RouteIndex
-    RouteIndex --> MainRoutes
-    AppJS --> Express
-    ConfigJS --> ProcessEnv
-```
-
-### 0.2.7 Identified Test Categories
-
-Based on the codebase analysis, the following test categories are required:
-
-| Category | Module | Test Count (Est.) | Priority |
-|----------|--------|-------------------|----------|
-| HTTP Endpoint Tests | `src/app.js` + routes | 8-10 | High |
-| Configuration Unit Tests | `src/config/index.js` | 6-8 | High |
-| Server Lifecycle Tests | `server.js` | 3-4 | Medium |
-| Error Handling Tests | `src/app.js` | 4-5 | High |
-| Edge Case Tests | Multiple | 5-6 | Medium |
-
-**Total Estimated Test Cases:** 26-33 tests
-
-
-## 0.3 Testing Scope Analysis
-
-### 0.3.1 Test Target Identification
-
-**Primary Code to Be Tested:**
-
-| Module/Class | Path | Test Types Required |
-|--------------|------|---------------------|
-| Server Entry Point | `server.js` | Lifecycle tests, startup/shutdown |
-| Express App Factory | `src/app.js` | Integration tests via Supertest |
-| Configuration Module | `src/config/index.js` | Unit tests for defaults and parsing |
-| Main Route Handlers | `src/routes/main.routes.js` | Endpoint response contract tests |
-| Route Aggregator | `src/routes/index.js` | Export verification (minimal) |
-
-**Existing Test File Mapping:**
-
-| Source File | Existing Test File | Test Categories Present |
-|-------------|-------------------|------------------------|
-| `server.js` | None | None |
-| `src/app.js` | None | None |
-| `src/config/index.js` | None | None |
-| `src/routes/index.js` | None | None |
-| `src/routes/main.routes.js` | None | None |
-
-### 0.3.2 Dependencies Requiring Mocking
-
-Given the minimal architecture, mocking requirements are limited:
-
-| Dependency | Mock Required | Mocking Approach | Rationale |
-|------------|---------------|------------------|-----------|
-| Express.js | No | N/A | Supertest handles Express internally |
-| `process.env` | Yes | Jest environment manipulation | Test configuration defaults |
-| `console.log` | Optional | `jest.spyOn()` | Verify startup logging |
-| HTTP Server | Yes | Jest mock | Test server lifecycle without binding |
-
-### 0.3.3 Version Compatibility Research
-
-Based on web search results, the recommended testing stack with verified compatibility:
-
-| Tool | Version | Node.js 20.x Compatible | Rationale |
-|------|---------|-------------------------|-----------|
-| Jest | 30.2.0 | ✅ Yes | Latest major release, Node 18+ supported |
-| Supertest | 7.1.4 | ✅ Yes | Latest stable, works with Express 5 |
-
-**Compatibility Verification:**
-
-- <cite index="12-1">Jest latest version: 30.2.0, last published 3 months ago.</cite>
-- <cite index="21-1,21-2">Supertest is a SuperAgent driven library for testing HTTP servers. Latest version: 7.1.4, last published 5 months ago.</cite>
-- Express.js 5.1.0 is fully compatible with both testing libraries
-- Node.js 20.19.6 exceeds the minimum requirement (Node 18.x) for Jest 30
-
-### 0.3.4 Test File Structure Design
-
-```
-hello_world/
-├── src/
-│   ├── app.js
-│   ├── config/
-│   │   └── index.js
-│   └── routes/
-│       ├── index.js
-│       └── main.routes.js
-├── tests/
-│   ├── unit/
-│   │   ├── config.test.js       # Configuration module tests
-│   │   └── routes.test.js       # Route handler tests
-│   ├── integration/
-│   │   └── endpoints.test.js    # HTTP endpoint tests
-│   └── lifecycle/
-│       └── server.test.js       # Server startup/shutdown tests
-├── server.js
-├── package.json
-└── jest.config.js
-```
-
-### 0.3.5 Test Surface Analysis
-
-| Module | Lines of Code | Testable Functions | Complexity | Test Effort |
-|--------|---------------|-------------------|------------|-------------|
-| `server.js` | 53 | 1 (HTTP listener) | Low | Medium |
-| `src/app.js` | 27 | 1 (app factory) | Low | Low |
-| `src/config/index.js` | 41 | 3 (config exports) | Low | Low |
-| `src/routes/index.js` | 19 | 1 (barrel export) | Trivial | Minimal |
-| `src/routes/main.routes.js` | 41 | 2 (route handlers) | Low | Low |
-| **Total** | **181** | **8** | **Low** | **Low-Medium** |
-
-### 0.3.6 Endpoint Contract Specification
-
-| Endpoint | Method | Expected Status | Expected Body | Content-Type |
-|----------|--------|-----------------|---------------|--------------|
-| `/` | GET | 200 | `Hello, World!\n` | `text/html; charset=utf-8` |
-| `/evening` | GET | 200 | `Good evening` | `text/html; charset=utf-8` |
-| `/invalid` | GET | 404 | HTML error page | `text/html; charset=utf-8` |
-| `/` | POST | 404 | HTML error page | `text/html; charset=utf-8` |
-| `/` | PUT | 404 | HTML error page | `text/html; charset=utf-8` |
-
-### 0.3.7 Configuration Test Scenarios
-
-| Environment Variable | Test Scenario | Input | Expected Output |
-|---------------------|---------------|-------|-----------------|
-| `HOST` | Default value | Not set | `'127.0.0.1'` |
-| `HOST` | Custom value | `HOST='0.0.0.0'` | `'0.0.0.0'` |
-| `PORT` | Default value | Not set | `3000` (number) |
-| `PORT` | Custom value | `PORT='8080'` | `8080` (number) |
-| `PORT` | Invalid value | `PORT='abc'` | `NaN` → fallback behavior |
-| `NODE_ENV` | Default value | Not set | `'development'` |
-| `NODE_ENV` | Production | `NODE_ENV='production'` | `'production'` |
-
-
-## 0.4 Test Implementation Design
-
-### 0.4.1 Test Strategy Selection
-
-**Test Types to Implement:**
-
-| Test Type | Focus Area | Primary Tool | Scope |
-|-----------|------------|--------------|-------|
-| Unit Tests | Configuration parsing, isolated functions | Jest assertions | `src/config/index.js` |
-| Integration Tests | HTTP endpoint responses | Supertest + Jest | `src/app.js`, routes |
-| Edge Case Tests | Boundary conditions, invalid inputs | Jest + Supertest | All modules |
-| Error Handling Tests | 404 responses, invalid methods | Supertest | Route handlers |
-| Lifecycle Tests | Server startup and shutdown | Jest mocks | `server.js` |
-
-### 0.4.2 Test Case Blueprints
-
-**Component: Configuration Module (`src/config/index.js`)**
-
-```
-Component: Configuration Module
-Test Categories:
-- Happy path: Default values returned when env vars not set
-- Happy path: Custom values returned when env vars are set
-- Edge cases: PORT parsing with invalid string input
-- Edge cases: Empty string environment variables
-```
-
-**Component: Express App Factory (`src/app.js`)**
-
-```
-Component: Express App Factory
-Test Categories:
-- Happy path: App instance created with Express
-- Happy path: Routes mounted correctly
-- Integration: Middleware chain functions properly
-```
-
-**Component: Route Handlers (`src/routes/main.routes.js`)**
-
-```
-Component: Route Handlers
-Test Categories:
-- Happy path: GET / returns "Hello, World!\n" with 200
-- Happy path: GET /evening returns "Good evening" with 200
-- Error cases: GET /undefined returns 404
-- Error cases: POST / returns 404 (method not allowed equivalent)
-- Edge cases: Trailing slashes handling
-- Edge cases: Query parameters on static routes
-```
-
-**Component: Server Entry Point (`server.js`)**
-
-```
-Component: Server Entry Point
-Test Categories:
-- Happy path: Server starts and logs message
-- Happy path: Server binds to configured host:port
-- Error cases: Server handles port-in-use error
-- Lifecycle: Server closes gracefully
-```
-
-### 0.4.3 Existing Test Extension Strategy
-
-Not applicable - no existing tests to extend. All tests are new implementations.
-
-### 0.4.4 Test Data and Fixtures Design
-
-**Required Test Data Structures:**
-
-| Fixture Type | Purpose | Location |
-|--------------|---------|----------|
-| Environment variables | Test configuration defaults | Inline in test files |
-| Expected responses | Endpoint response verification | Test constants |
-| Invalid inputs | Edge case testing | Test constants |
-
-**Fixture Organization Strategy:**
-
-For this minimal codebase, fixtures will be defined inline within test files rather than in separate fixture files. This approach reduces complexity while maintaining readability.
-
-**Mock Object Specifications:**
-
-| Mock Target | Jest Method | Purpose |
-|-------------|-------------|---------|
-| `process.env` | Direct assignment | Test configuration variations |
-| `console.log` | `jest.spyOn(console, 'log')` | Verify startup logging |
-| `server.listen` | `jest.fn()` | Test server lifecycle without binding |
-| `server.close` | `jest.fn()` | Test graceful shutdown |
-
-**Test Database/State Management:**
-
-Not applicable - the application has no database. State management limited to:
-- Resetting `process.env` before/after config tests
-- Ensuring server instances are closed after lifecycle tests
-
-### 0.4.5 Jest Configuration Design
-
-```javascript
-// jest.config.js - Recommended configuration
-module.exports = {
-  testEnvironment: 'node',
-  testMatch: ['**/tests/**/*.test.js'],
-  collectCoverageFrom: [
-    'server.js',
-    'src/**/*.js',
-    '!node_modules/**'
-  ],
-  coverageThreshold: {
-    global: {
-      branches: 75,
-      functions: 90,
-      lines: 80,
-      statements: 80
-    }
-  },
-  verbose: true,
-  testTimeout: 10000
-};
-```
-
-### 0.4.6 Test Execution Flow
-
-```mermaid
-flowchart TD
-    Start((Start Tests)) --> LoadJest["Load Jest Configuration"]
-    LoadJest --> SetEnv["Set NODE_ENV=test"]
-    
-    subgraph UnitTests["Unit Test Suite"]
-        ConfigTests["Config Tests<br/>Reset env vars"]
-        RouteTests["Route Tests<br/>Isolated handlers"]
-    end
-    
-    subgraph IntegrationTests["Integration Test Suite"]
-        EndpointTests["Endpoint Tests<br/>Import app.js"]
-        SupertestReq["Create Supertest<br/>Request"]
-        AssertResponse["Assert Response<br/>Status, Body, Headers"]
-    end
-    
-    subgraph LifecycleTests["Lifecycle Test Suite"]
-        StartupTests["Server Startup<br/>Mock listen()"]
-        ShutdownTests["Server Shutdown<br/>Mock close()"]
-    end
-    
-    SetEnv --> UnitTests
-    UnitTests --> IntegrationTests
-    IntegrationTests --> LifecycleTests
-    
-    LifecycleTests --> Coverage["Generate Coverage Report"]
-    Coverage --> Report["Output Results"]
-    Report --> End((End))
-```
-
-### 0.4.7 Test Isolation Strategy
-
-| Isolation Concern | Strategy | Implementation |
-|-------------------|----------|----------------|
-| Environment variables | Save/restore in beforeEach/afterEach | `const originalEnv = process.env` |
-| Express app instances | Create fresh app per test suite | Import `app.js` in describe block |
-| Server connections | Close all connections after tests | `afterAll(() => server.close())` |
-| Console output | Restore mocks after tests | `jest.restoreAllMocks()` |
-
-
-## 0.5 Test File Transformation Mapping
-
-### 0.5.1 File-by-File Test Plan
-
-**Test Transformation Modes:**
-- **CREATE** - Create a new test file
-- **UPDATE** - Update an existing test file
-- **DELETE** - Remove an obsolete test file
-- **REFERENCE** - Use as an example for test patterns and styles
-
-| Target Test File | Transformation | Source File/Reference | Purpose/Changes |
-|-----------------|----------------|----------------------|-----------------|
-| `tests/unit/config.test.js` | CREATE | `src/config/index.js` | Unit tests for configuration module: default values, custom values, edge cases |
-| `tests/unit/routes.test.js` | CREATE | `src/routes/main.routes.js` | Unit tests for route handler functions in isolation |
-| `tests/integration/endpoints.test.js` | CREATE | `src/app.js` | HTTP endpoint integration tests using Supertest |
-| `tests/lifecycle/server.test.js` | CREATE | `server.js` | Server startup, shutdown, and lifecycle tests |
-| `jest.config.js` | CREATE | N/A | Jest framework configuration |
-| `package.json` | UPDATE | `package.json` | Add test scripts and devDependencies |
-
-### 0.5.2 New Test Files Detail
-
-**`tests/unit/config.test.js`** - Configuration module unit tests
-
-| Test Category | Test Cases | Assertions |
-|---------------|------------|------------|
-| Default Values | `host` defaults to `'127.0.0.1'` | `expect(config.host).toBe('127.0.0.1')` |
-| Default Values | `port` defaults to `3000` | `expect(config.port).toBe(3000)` |
-| Default Values | `env` defaults to `'development'` | `expect(config.env).toBe('development')` |
-| Custom Values | `HOST` env var sets `host` | `expect(config.host).toBe('0.0.0.0')` |
-| Custom Values | `PORT` env var sets `port` | `expect(config.port).toBe(8080)` |
-| Edge Cases | Invalid PORT string handling | `expect(config.port).toBeNaN()` or fallback |
-| Type Checking | `port` is a number | `expect(typeof config.port).toBe('number')` |
-
-Mock dependencies: `process.env` direct manipulation
-
----
-
-**`tests/unit/routes.test.js`** - Route handler unit tests
-
-| Test Category | Test Cases | Assertions |
-|---------------|------------|------------|
-| Route Export | `mainRoutes` is an Express Router | `expect(mainRoutes).toBeDefined()` |
-| Handler Count | Router has expected routes | Route introspection |
-
-Mock dependencies: None (routes are pure Express Router objects)
-
----
-
-**`tests/integration/endpoints.test.js`** - HTTP endpoint integration tests
-
-| Test Category | Test Cases | Assertions |
-|---------------|------------|------------|
-| GET / | Returns 200 status | `.expect(200)` |
-| GET / | Returns "Hello, World!\n" body | `.expect('Hello, World!\n')` |
-| GET / | Returns text/html content-type | `.expect('Content-Type', /text\/html/)` |
-| GET /evening | Returns 200 status | `.expect(200)` |
-| GET /evening | Returns "Good evening" body | `.expect('Good evening')` |
-| GET /evening | Returns text/html content-type | `.expect('Content-Type', /text\/html/)` |
-| GET /invalid | Returns 404 status | `.expect(404)` |
-| POST / | Returns 404 status (no POST handler) | `.expect(404)` |
-| PUT /evening | Returns 404 status (no PUT handler) | `.expect(404)` |
-| Edge: trailing slash | GET // handling | Verify behavior |
-| Edge: query params | GET /?param=value | 200 with unchanged body |
-
-Mock dependencies: None (Supertest handles Express internally)
-
----
-
-**`tests/lifecycle/server.test.js`** - Server lifecycle tests
-
-| Test Category | Test Cases | Assertions |
-|---------------|------------|------------|
-| Startup | Server binds to host:port | Mock `app.listen` called |
-| Startup | Logs startup message | `console.log` spy called |
-| Startup | Uses config values | Correct host/port passed |
-| Shutdown | Server closes gracefully | `server.close` executes |
-| Error | Handles EADDRINUSE error | Error callback triggered |
-
-Mock dependencies: `console.log`, `app.listen`, `server.close`
-
-### 0.5.3 Test Configuration Files
-
-**`jest.config.js`** - Create new Jest configuration
-
-| Configuration Key | Value | Purpose |
-|-------------------|-------|---------|
-| `testEnvironment` | `'node'` | Server-side testing without DOM |
-| `testMatch` | `['**/tests/**/*.test.js']` | Test file discovery pattern |
-| `collectCoverage` | `true` | Enable coverage reporting |
-| `coverageDirectory` | `'coverage'` | Coverage output location |
-| `coveragePathIgnorePatterns` | `['/node_modules/']` | Exclude dependencies |
-| `verbose` | `true` | Detailed test output |
-| `testTimeout` | `10000` | 10 second timeout for lifecycle tests |
-
----
-
-**`package.json`** - Update scripts and dependencies
-
-| Update Type | Key | Value |
-|-------------|-----|-------|
-| Script | `test` | `"jest"` |
-| Script | `test:watch` | `"jest --watch"` |
-| Script | `test:coverage` | `"jest --coverage"` |
-| Script | `test:ci` | `"jest --ci --coverage"` |
-| devDependency | `jest` | `^30.2.0` |
-| devDependency | `supertest` | `^7.1.4` |
-
-### 0.5.4 Cross-File Test Dependencies
-
-| Shared Resource | Location | Used By |
-|-----------------|----------|---------|
-| App instance | `src/app.js` | `endpoints.test.js`, `server.test.js` |
-| Config module | `src/config/index.js` | `config.test.js`, `server.test.js` |
-| Routes | `src/routes/main.routes.js` | `routes.test.js`, `endpoints.test.js` |
-
-**Import Updates Required:**
-
-| Test File | Required Imports |
-|-----------|------------------|
-| `config.test.js` | `require('../../src/config')` |
-| `routes.test.js` | `require('../../src/routes/main.routes')` |
-| `endpoints.test.js` | `require('../../src/app')`, `require('supertest')` |
-| `server.test.js` | `require('../../src/app')`, `require('../../src/config')` |
-
-### 0.5.5 Complete Test File Inventory
-
-| File Path | Status | Lines (Est.) | Test Count (Est.) |
-|-----------|--------|--------------|-------------------|
-| `tests/unit/config.test.js` | CREATE | 60-80 | 7-8 |
-| `tests/unit/routes.test.js` | CREATE | 30-40 | 2-3 |
-| `tests/integration/endpoints.test.js` | CREATE | 80-100 | 10-12 |
-| `tests/lifecycle/server.test.js` | CREATE | 60-80 | 4-5 |
-| `jest.config.js` | CREATE | 15-20 | N/A |
-| `package.json` | UPDATE | +8 lines | N/A |
-
-**Total New Test Files:** 4
-**Total Configuration Files:** 1
-**Total Files Modified:** 1
-
-### 0.5.6 Directory Structure After Implementation
-
-```
-hello_world/
-├── src/
-│   ├── app.js
-│   ├── config/
-│   │   └── index.js
-│   └── routes/
-│       ├── index.js
-│       └── main.routes.js
-├── tests/
-│   ├── unit/
-│   │   ├── config.test.js       # NEW: 7-8 tests
-│   │   └── routes.test.js       # NEW: 2-3 tests
-│   ├── integration/
-│   │   └── endpoints.test.js    # NEW: 10-12 tests
-│   └── lifecycle/
-│       └── server.test.js       # NEW: 4-5 tests
-├── server.js
-├── package.json                  # MODIFIED: scripts + devDeps
-├── jest.config.js               # NEW: Jest configuration
-└── README.md
-```
-
-
-## 0.6 Dependency Inventory
-
-### 0.6.1 Testing Dependencies
-
-All key testing packages required for this testing exercise:
-
-| Registry | Package Name | Version | Purpose |
-|----------|--------------|---------|---------|
-| npm | jest | 30.2.0 | JavaScript testing framework and test runner |
-| npm | supertest | 7.1.4 | HTTP assertion library for Express testing |
-
-**Version Verification:**
-
-- **Jest 30.2.0**: Verified via npm registry search. <cite index="12-1">Jest latest version: 30.2.0, last published 3 months ago.</cite>
-- **Supertest 7.1.4**: Verified via npm registry search. <cite index="21-2">Supertest latest version: 7.1.4, last published 5 months ago.</cite>
-
-### 0.6.2 Existing Production Dependencies
-
-| Registry | Package Name | Version | Test Impact |
-|----------|--------------|---------|-------------|
-| npm | express | 5.1.0 | Tested application framework |
-
-### 0.6.3 Dependency Installation Commands
-
-```bash
-# Install testing dependencies as devDependencies
-npm install --save-dev jest@30.2.0 supertest@7.1.4
-```
-
-### 0.6.4 Package.json Updates Required
-
-**Current State:**
-
-```json
-{
-  "devDependencies": {}
-}
-```
-
-**Target State:**
-
-```json
-{
   "devDependencies": {
     "jest": "^30.2.0",
     "supertest": "^7.1.4"
@@ -695,543 +200,798 @@ npm install --save-dev jest@30.2.0 supertest@7.1.4
 }
 ```
 
-### 0.6.5 No Additional Dependencies Required
+**Application Entry Point (`src/app.js`):**
 
-The following commonly-used testing tools are **NOT required** for this implementation:
+Current middleware chain:
+1. No security middleware present
+2. Routes mounted directly without protection
 
-| Package | Reason Not Required |
-|---------|---------------------|
-| `@types/jest` | Project uses CommonJS JavaScript, not TypeScript |
-| `@types/supertest` | Project uses CommonJS JavaScript, not TypeScript |
-| `chai` | Jest includes built-in assertion library |
-| `sinon` | Jest includes built-in mocking capabilities |
-| `mocha` | Jest selected as testing framework |
-| `nyc`/`istanbul` | Jest includes built-in coverage reporting |
-| `ts-jest` | Project uses JavaScript, not TypeScript |
-| `babel-jest` | Node.js 20 natively supports ES2022+ features |
+**Configuration (`src/config/index.js`):**
 
-### 0.6.6 Compatibility Matrix
+| Variable | Current Default | Security Addition |
+|----------|-----------------|-------------------|
+| HOST | 127.0.0.1 | No change needed |
+| PORT | 3000 | No change needed |
+| NODE_ENV | development | Used for security mode switching |
+| CORS_ORIGIN | N/A | NEW - Allowed origins |
+| RATE_LIMIT_WINDOW | N/A | NEW - Rate limit window (ms) |
+| RATE_LIMIT_MAX | N/A | NEW - Max requests per window |
 
-| Dependency | Node.js 20.x | Express 5.1.0 | Status |
-|------------|--------------|---------------|--------|
-| jest@30.2.0 | ✅ Compatible | ✅ Compatible | Ready |
-| supertest@7.1.4 | ✅ Compatible | ✅ Compatible | Ready |
+### 0.3.4 Scope of Exposure
 
-### 0.6.7 Import Patterns for Test Files
+| Exposure Type | Current State | After Implementation |
+|---------------|---------------|---------------------|
+| Internal (localhost) | Exposed | Protected with security middleware |
+| Network (0.0.0.0) | Exposed (if configured) | Protected with security middleware |
+| API Endpoints | 2 GET routes | Same routes with security controls |
 
-**Configuration Test File:**
+**Endpoint Analysis:**
 
-```javascript
-// tests/unit/config.test.js
-// No external test dependencies needed
+| Endpoint | Method | Current Security | Target Security |
+|----------|--------|------------------|-----------------|
+| `/` | GET | None | Headers + Rate Limit + CORS |
+| `/evening` | GET | None | Headers + Rate Limit + CORS |
+| `/*` (404) | Any | Express default | Security headers on error responses |
+
+## 0.4 Version Compatibility Research
+
+### 0.4.1 Secure Version Identification
+
+Based on web research and npm registry analysis, the following package versions are recommended:
+
+| Package | Latest Stable | Recommended Version | Node.js Requirement | Express Compatibility |
+|---------|---------------|---------------------|---------------------|----------------------|
+| helmet | 8.1.0 | ^8.1.0 | Node 16+ | Express 4.x/5.x ✅ |
+| cors | 2.8.5 | ^2.8.5 | Node 14+ | Express 4.x/5.x ✅ |
+| express-rate-limit | 8.2.1 | ^8.2.1 | Node 16+ | Express 4.x/5.x ✅ |
+| express-validator | 7.2.1 | ^7.2.1 | Node 14+ | Express 4.x/5.x ✅ |
+
+### 0.4.2 Compatibility Verification
+
+**Current Application Stack:**
+
+| Component | Current Version | Compatibility Status |
+|-----------|-----------------|---------------------|
+| Node.js | ≥18.x (per spec) | ✅ All packages compatible |
+| Express.js | ^5.1.0 | ✅ All packages compatible |
+| Jest | ^30.2.0 | ✅ Test runner unchanged |
+| Supertest | ^7.1.4 | ✅ Integration testing unchanged |
+
+**Package Compatibility Matrix:**
+
+| Security Package | Express 5.x | Express 4.x | Notes |
+|------------------|-------------|-------------|-------|
+| helmet@8.1.0 | ✅ Compatible | ✅ Compatible | Uses standard middleware pattern |
+| cors@2.8.5 | ✅ Compatible | ✅ Compatible | Framework-agnostic |
+| express-rate-limit@8.2.1 | ✅ Compatible | ✅ Compatible | Designed for Express |
+| express-validator@7.2.1 | ✅ Compatible | ✅ Compatible | Express 4.x+ verified |
+
+### 0.4.3 Breaking Changes Assessment
+
+**Helmet 8.x Breaking Changes (from 7.x):**
+- Cross-Origin-Embedder-Policy disabled by default (no impact for new installations)
+- Node 14/15 support dropped (project requires Node 18+, no impact)
+- Expect-CT header removed from Helmet core (deprecated header, no impact)
+
+**Express-Rate-Limit 8.x Changes:**
+- Uses `limit` instead of `max` for request limits (minor API change)
+- Supports draft-8 RateLimit headers by default
+- `ipv6Subnet` option added for IPv6 protection
+
+**CORS 2.8.5:**
+- Stable release with no breaking changes
+- No migration required
+
+**Express-Validator 7.x:**
+- Requires Node.js 14+ (project uses 18+, no impact)
+- Works with Express 4.x+ (compatible with 5.x)
+
+### 0.4.4 Version Conflict Resolution
+
+No version conflicts detected. All recommended packages:
+- Share compatible Node.js requirements (Node 16+ supported by all)
+- Use standard Express middleware patterns
+- Have no conflicting peer dependencies
+
+**Dependency Graph:**
+
+```
+express@^5.1.0
+├── helmet@^8.1.0 (standalone, no deps)
+├── cors@^2.8.5 (standalone, no deps)
+├── express-rate-limit@^8.2.1 (standalone, no deps)
+└── express-validator@^7.2.1
+    └── validator.js (peer dependency, bundled)
 ```
 
-**Endpoint Test File:**
+### 0.4.5 Recommended Installation Command
 
-```javascript
-// tests/integration/endpoints.test.js
-const request = require('supertest');
-const app = require('../../src/app');
+```bash
+npm install helmet@^8.1.0 cors@^2.8.5 express-rate-limit@^8.2.1 express-validator@^7.2.1
 ```
 
-**Server Lifecycle Test File:**
-
-```javascript
-// tests/lifecycle/server.test.js
-const app = require('../../src/app');
-const config = require('../../src/config');
+**Alternative:** For exact version pinning in production:
+```bash
+npm install helmet@8.1.0 cors@2.8.5 express-rate-limit@8.2.1 express-validator@7.2.1 --save-exact
 ```
 
+## 0.5 Security Fix Design
 
-## 0.7 Coverage and Quality Targets
+### 0.5.1 Minimal Fix Strategy
 
-### 0.7.1 Coverage Metrics
+**Principle:** Apply targeted security middleware additions while preserving existing application structure and functionality.
 
-**Current Coverage:** 0% (no existing tests)
+**Fix Approach:** Security Middleware Integration + Configuration Enhancement
 
-**Target Coverage:** Based on user requirement for "comprehensive" tests and industry best practices:
-
-| Coverage Metric | Current | Target | Gap |
-|-----------------|---------|--------|-----|
-| Line Coverage | 0% | ≥ 80% | 80% |
-| Branch Coverage | 0% | ≥ 75% | 75% |
-| Function Coverage | 0% | ≥ 90% | 90% |
-| Statement Coverage | 0% | ≥ 80% | 80% |
-
-### 0.7.2 Per-File Coverage Targets
-
-| Source File | Target Line Coverage | Critical Paths |
-|-------------|---------------------|----------------|
-| `server.js` | ≥ 80% | Startup path, error handler |
-| `src/app.js` | ≥ 90% | App factory, middleware setup |
-| `src/config/index.js` | ≥ 90% | All export properties |
-| `src/routes/index.js` | ≥ 100% | Barrel export (trivial) |
-| `src/routes/main.routes.js` | ≥ 90% | Both route handlers |
-
-### 0.7.3 Coverage Gaps to Address
-
-| Component | Gap Description | Test Strategy |
-|-----------|-----------------|---------------|
-| `server.js` | Server startup callback | Mock `app.listen` and verify callback |
-| `server.js` | Console logging | Spy on `console.log` |
-| `src/config/index.js` | Default value paths | Test with unset env vars |
-| `src/config/index.js` | Custom value paths | Test with set env vars |
-| `src/config/index.js` | PORT parseInt branch | Test with non-numeric string |
-| `src/routes/main.routes.js` | `/` handler | Supertest GET request |
-| `src/routes/main.routes.js` | `/evening` handler | Supertest GET request |
-
-### 0.7.4 Test Quality Criteria
-
-| Quality Metric | Target | Measurement |
-|----------------|--------|-------------|
-| Assertion Density | ≥ 2 assertions per test | Manual review |
-| Test Isolation | 100% independent tests | Tests run in any order |
-| Test Naming | Descriptive `should` pattern | Code review |
-| Setup/Teardown | Proper beforeEach/afterEach | No test pollution |
-| Async Handling | All promises awaited | No unhandled rejections |
-
-### 0.7.5 Performance Constraints
-
-| Metric | Target | Rationale |
-|--------|--------|-----------|
-| Total Test Suite Time | < 10 seconds | Fast feedback loop |
-| Individual Test Time | < 1 second | Identify slow tests |
-| Coverage Generation | < 5 seconds | CI/CD efficiency |
-
-### 0.7.6 Maintainability Standards
-
-| Standard | Requirement | Implementation |
-|----------|-------------|----------------|
-| Test Organization | Group by test type | `tests/unit/`, `tests/integration/`, `tests/lifecycle/` |
-| Naming Convention | `*.test.js` pattern | Jest default discovery |
-| Documentation | Clear describe/it blocks | Self-documenting tests |
-| DRY Principle | Shared setup in beforeEach | Avoid code duplication |
-
-### 0.7.7 Test Coverage Configuration
-
-```javascript
-// In jest.config.js
-module.exports = {
-  collectCoverage: true,
-  coverageDirectory: 'coverage',
-  coverageReporters: ['text', 'lcov', 'html'],
-  coverageThreshold: {
-    global: {
-      branches: 75,
-      functions: 90,
-      lines: 80,
-      statements: 80
-    }
-  },
-  collectCoverageFrom: [
-    'server.js',
-    'src/**/*.js',
-    '!node_modules/**'
-  ]
-};
-```
-
-### 0.7.8 Quality Gates
-
-| Gate | Metric | Threshold | Action on Failure |
-|------|--------|-----------|-------------------|
-| Test Pass Rate | All tests pass | 100% | Block merge/deploy |
-| Line Coverage | Coverage percentage | ≥ 80% | Warning (soft gate) |
-| Branch Coverage | Coverage percentage | ≥ 75% | Warning (soft gate) |
-| Function Coverage | Coverage percentage | ≥ 90% | Warning (soft gate) |
-| Test Timeout | Individual test duration | < 10 seconds | Fail test |
-
-
-## 0.8 Scope Boundaries
-
-### 0.8.1 Exhaustively In Scope
-
-**New Test Files:**
-
-| Pattern | Description | Files |
-|---------|-------------|-------|
-| `tests/unit/**/*.test.js` | Unit tests for isolated modules | `config.test.js`, `routes.test.js` |
-| `tests/integration/**/*.test.js` | HTTP endpoint integration tests | `endpoints.test.js` |
-| `tests/lifecycle/**/*.test.js` | Server lifecycle tests | `server.test.js` |
-
-**Test Configuration:**
-
-| File | Purpose | Status |
-|------|---------|--------|
-| `jest.config.js` | Jest framework configuration | CREATE |
-| `package.json` | Test scripts and devDependencies | UPDATE |
-
-**Test Utilities and Helpers:**
-
-Not required for this minimal implementation. All test utilities will be inline.
-
-**Documentation Updates:**
-
-| File | Section | Update |
-|------|---------|--------|
-| `README.md` | Testing section | Add test execution instructions |
-
-### 0.8.2 Source Files Being Tested
-
-| Source File | Test Type | Test File |
-|-------------|-----------|-----------|
-| `server.js` | Lifecycle tests | `tests/lifecycle/server.test.js` |
-| `src/app.js` | Integration tests | `tests/integration/endpoints.test.js` |
-| `src/config/index.js` | Unit tests | `tests/unit/config.test.js` |
-| `src/routes/index.js` | N/A (barrel) | Indirect via endpoints |
-| `src/routes/main.routes.js` | Unit + Integration | `tests/unit/routes.test.js`, `tests/integration/endpoints.test.js` |
-
-### 0.8.3 Explicitly Out of Scope
-
-**Source Code Modifications:**
-
-| Item | Reason |
-|------|--------|
-| `server.js` source changes | Tests should verify existing behavior, not modify it |
-| `src/app.js` source changes | Tests should verify existing behavior, not modify it |
-| `src/config/index.js` source changes | Tests should verify existing behavior, not modify it |
-| `src/routes/*.js` source changes | Tests should verify existing behavior, not modify it |
-
-**Refactoring:**
-
-| Item | Reason |
-|------|--------|
-| Code refactoring for testability | Architecture already supports testing via factory pattern |
-| Dependency injection changes | Current module structure is sufficient |
-| Configuration restructuring | Current config module is testable as-is |
-
-**Feature Additions:**
-
-| Item | Reason |
-|------|--------|
-| New endpoints | Out of scope - test existing functionality only |
-| New middleware | Out of scope - test existing functionality only |
-| Logging enhancements | Out of scope - test existing functionality only |
-
-**Unrelated Test Files:**
-
-| Item | Reason |
-|------|--------|
-| E2E browser tests | Application has no UI |
-| Performance/load tests | Not specified in user requirements |
-| Security penetration tests | Not specified in user requirements |
-| Stress tests | Not specified in user requirements |
-
-**Performance Optimizations:**
-
-| Item | Reason |
-|------|--------|
-| Code optimizations | Focus is on testing, not performance |
-| Bundle size optimizations | Not applicable to Node.js server |
-
-### 0.8.4 Boundary Decision Matrix
-
-| Item | In Scope | Out of Scope | Rationale |
-|------|----------|--------------|-----------|
-| Unit tests for config | ✅ | | User requested comprehensive tests |
-| Integration tests for endpoints | ✅ | | User requested HTTP response tests |
-| Server lifecycle tests | ✅ | | User requested startup/shutdown tests |
-| Error handling tests | ✅ | | User requested error handling tests |
-| Edge case tests | ✅ | | User requested edge case coverage |
-| Jest configuration | ✅ | | Required for test execution |
-| Source code modification | | ✅ | Focus on testing only |
-| New feature development | | ✅ | Testing existing behavior |
-| CI/CD pipeline setup | | ✅ | Not specified in requirements |
-| TypeScript conversion | | ✅ | Project uses JavaScript |
-
-### 0.8.5 Test Scope Summary
+**Implementation Architecture:**
 
 ```mermaid
-flowchart LR
-    subgraph InScope["✅ In Scope"]
-        UnitTests["Unit Tests<br/>config, routes"]
-        IntegrationTests["Integration Tests<br/>HTTP endpoints"]
-        LifecycleTests["Lifecycle Tests<br/>startup/shutdown"]
-        JestConfig["Jest Configuration"]
-        PackageUpdate["package.json updates"]
+flowchart TD
+    subgraph SecurityMiddleware["Security Middleware Chain"]
+        A[Incoming Request] --> B[express-rate-limit]
+        B --> C[cors]
+        C --> D[helmet]
+        D --> E[express.json - Body Parser]
+        E --> F[Routes]
     end
     
-    subgraph OutOfScope["❌ Out of Scope"]
-        SourceChanges["Source Code Changes"]
-        NewFeatures["New Features"]
-        CICDSetup["CI/CD Pipeline"]
-        E2ETests["E2E Browser Tests"]
-        PerfTests["Performance Tests"]
+    subgraph Routes["Route Handlers"]
+        F --> G["GET / - Hello World"]
+        F --> H["GET /evening - Good evening"]
     end
+    
+    G --> I[Response with Security Headers]
+    H --> I
 ```
 
+### 0.5.2 Security Middleware Implementation
 
-## 0.9 Execution Parameters
+**Helmet.js Configuration:**
 
-### 0.9.1 Testing-Specific Instructions
+The helmet middleware will set 13 security headers by default:
+- Content-Security-Policy: Prevents XSS and data injection
+- Strict-Transport-Security: Enforces HTTPS
+- X-Content-Type-Options: Prevents MIME sniffing
+- X-Frame-Options: Prevents clickjacking
+- X-Download-Options: Prevents file download vulnerabilities
+- Referrer-Policy: Controls referrer information
+- And 7 additional security headers
 
-**Test Execution Commands:**
-
-| Purpose | Command | Description |
-|---------|---------|-------------|
-| Run all tests | `npm test` | Execute full test suite |
-| Watch mode | `npm run test:watch` | Re-run tests on file changes |
-| Coverage report | `npm run test:coverage` | Generate coverage metrics |
-| CI execution | `npm run test:ci` | Optimized for CI environments |
-| Single file | `npx jest tests/unit/config.test.js` | Run specific test file |
-| Pattern match | `npx jest --testPathPatterns="config"` | Run tests matching pattern |
-
-**Coverage Measurement Command:**
-
-```bash
-npm run test:coverage
-# Equivalent to: jest --coverage
+**Implementation Pattern:**
+```javascript
+app.use(helmet());  // Apply all 13 headers
 ```
 
-**Debug Mode Execution:**
+**Rate Limiting Configuration:**
 
-```bash
-# Run with verbose output
-npx jest --verbose
+Implement IP-based request throttling:
+- Window: 15 minutes (configurable)
+- Limit: 100 requests per IP per window (configurable)
+- Standard headers: draft-8 RateLimit headers
 
-#### Run with debug logging
-DEBUG=jest npx jest
-
-#### Run single test with inspector
-node --inspect-brk node_modules/.bin/jest --runInBand tests/unit/config.test.js
+**Implementation Pattern:**
+```javascript
+app.use(rateLimit({ windowMs, limit, standardHeaders }));
 ```
 
-### 0.9.2 Package.json Script Definitions
+**CORS Configuration:**
 
+Implement origin-based access control:
+- Development: Allow all origins or specific localhost ports
+- Production: Restrict to configured allowed origins
+
+**Implementation Pattern:**
+```javascript
+app.use(cors({ origin, methods, credentials }));
+```
+
+### 0.5.3 Configuration Module Enhancement
+
+Add security-related environment variables to `src/config/index.js`:
+
+| Environment Variable | Default (Development) | Production Recommendation |
+|---------------------|----------------------|---------------------------|
+| NODE_ENV | development | production |
+| CORS_ORIGIN | * | https://yourdomain.com |
+| RATE_LIMIT_WINDOW_MS | 900000 (15 min) | 900000 (15 min) |
+| RATE_LIMIT_MAX | 100 | 100 |
+| TRUST_PROXY | false | true (if behind reverse proxy) |
+
+### 0.5.4 Middleware Order Specification
+
+Security middleware must be applied in a specific order:
+
+| Order | Middleware | Purpose | Rationale |
+|-------|------------|---------|-----------|
+| 1 | `app.disable('x-powered-by')` | Remove Express fingerprint | Before any response |
+| 2 | Rate Limiter | Request throttling | Block excess requests early |
+| 3 | CORS | Origin validation | Validate cross-origin before processing |
+| 4 | Helmet | Security headers | Apply headers to all responses |
+| 5 | Body parsers | Parse request body | After security checks |
+| 6 | Input validation | Validate inputs | Before route handlers (per-route) |
+| 7 | Routes | Application logic | Protected by security chain |
+
+### 0.5.5 Security Improvement Validation
+
+**How Each Fix Eliminates Vulnerabilities:**
+
+| Security Control | Vulnerability Addressed | Verification Method |
+|-----------------|------------------------|---------------------|
+| Helmet default CSP | XSS attacks | Check Content-Security-Policy header |
+| Helmet HSTS | Man-in-the-middle | Check Strict-Transport-Security header |
+| Helmet X-Frame-Options | Clickjacking | Check X-Frame-Options: SAMEORIGIN |
+| X-Powered-By disabled | Server fingerprinting | Verify header absent |
+| Rate limiting | DoS, brute force | Test rate limit behavior |
+| CORS | Unauthorized cross-origin | Test cross-origin requests |
+
+**Rollback Plan:**
+- Remove security dependencies from package.json
+- Revert src/app.js to previous middleware chain
+- Revert src/config/index.js to previous state
+- All changes are additive and easily reversible
+
+## 0.6 File Transformation Mapping
+
+### 0.6.1 File-by-File Security Fix Plan
+
+**Security Fix Transformation Modes:**
+- **UPDATE** - Update an existing file to add security features
+- **CREATE** - Create a new file for security functionality
+- **REFERENCE** - Use as a pattern reference for security implementation
+
+| Target File | Transformation | Source/Reference | Security Changes |
+|-------------|----------------|------------------|------------------|
+| package.json | UPDATE | package.json | Add helmet@^8.1.0, cors@^2.8.5, express-rate-limit@^8.2.1, express-validator@^7.2.1 |
+| src/app.js | UPDATE | src/app.js | Integrate security middleware chain (helmet, cors, rate-limit) |
+| src/config/index.js | UPDATE | src/config/index.js | Add CORS_ORIGIN, RATE_LIMIT_WINDOW_MS, RATE_LIMIT_MAX, TRUST_PROXY variables |
+| src/middleware/security.js | CREATE | src/app.js | Extract security middleware configuration to dedicated module |
+| src/middleware/index.js | CREATE | src/routes/index.js | Barrel export for middleware modules |
+| src/middleware/rateLimiter.js | CREATE | src/middleware/security.js | Dedicated rate limiter configuration |
+| src/middleware/corsConfig.js | CREATE | src/middleware/security.js | Dedicated CORS configuration |
+| src/middleware/validators/index.js | CREATE | N/A | Input validation middleware exports |
+| tests/integration/security.test.js | CREATE | tests/integration/endpoints.test.js | Security header verification tests |
+| tests/unit/middleware/security.test.js | CREATE | tests/unit/*.test.js | Unit tests for security middleware |
+| .env.example | CREATE | src/config/index.js | Document all environment variables including security configs |
+
+### 0.6.2 Code Change Specifications
+
+**File: package.json**
+- Lines affected: dependencies section
+- Before state: Only express dependency
+- After state: Added 4 security dependencies
+- Security improvement: Enables security middleware integration
+
+**File: src/app.js**
+- Lines affected: ~5-25 (require statements and middleware chain)
+- Before state: Routes mounted directly without security middleware
+- After state: Security middleware chain → Routes
+- Security improvement: All requests pass through security controls
+
+**File: src/config/index.js**
+- Lines affected: ~5-20 (module.exports)
+- Before state: HOST, PORT, NODE_ENV only
+- After state: Added security-related configuration variables
+- Security improvement: Configurable security policies via environment
+
+### 0.6.3 Configuration Change Specifications
+
+**File: src/config/index.js**
+
+| Setting | Current Value | New Value | Security Rationale |
+|---------|---------------|-----------|-------------------|
+| corsOrigin | N/A | `process.env.CORS_ORIGIN \|\| '*'` | Control allowed origins |
+| rateLimitWindowMs | N/A | `parseInt(process.env.RATE_LIMIT_WINDOW_MS, 10) \|\| 900000` | 15-minute rate limit window |
+| rateLimitMax | N/A | `parseInt(process.env.RATE_LIMIT_MAX, 10) \|\| 100` | Max 100 requests per window |
+| trustProxy | N/A | `process.env.TRUST_PROXY === 'true'` | Enable when behind reverse proxy |
+
+### 0.6.4 New File Specifications
+
+**src/middleware/security.js:**
+- Purpose: Aggregate security middleware configuration
+- Exports: Configured helmet, cors, and rate limiter instances
+- Dependencies: helmet, cors, express-rate-limit
+
+**src/middleware/rateLimiter.js:**
+- Purpose: Rate limiter middleware factory
+- Configuration: windowMs, limit, standardHeaders, message
+- Export: Configured rateLimit middleware function
+
+**src/middleware/corsConfig.js:**
+- Purpose: CORS middleware configuration
+- Configuration: origin, methods, allowedHeaders, credentials
+- Export: Configured cors middleware function
+
+**src/middleware/validators/index.js:**
+- Purpose: Input validation middleware collection
+- Exports: Validation chains for future route parameters
+- Dependencies: express-validator
+
+**.env.example:**
+- Purpose: Document all environment variables
+- Contents: All config variables with default/example values
+- Security: Never committed with real values
+
+### 0.6.5 Directory Structure After Implementation
+
+```
+project/
+├── src/
+│   ├── app.js                    (UPDATED)
+│   ├── config/
+│   │   └── index.js              (UPDATED)
+│   ├── middleware/               (NEW DIRECTORY)
+│   │   ├── index.js              (NEW)
+│   │   ├── security.js           (NEW)
+│   │   ├── rateLimiter.js        (NEW)
+│   │   ├── corsConfig.js         (NEW)
+│   │   └── validators/           (NEW DIRECTORY)
+│   │       └── index.js          (NEW)
+│   └── routes/
+│       ├── index.js              (UNCHANGED)
+│       └── main.routes.js        (UNCHANGED)
+├── tests/
+│   ├── integration/
+│   │   ├── endpoints.test.js     (UNCHANGED)
+│   │   └── security.test.js      (NEW)
+│   └── unit/
+│       └── middleware/           (NEW DIRECTORY)
+│           └── security.test.js  (NEW)
+├── package.json                  (UPDATED)
+├── .env.example                  (NEW)
+└── server.js                     (UNCHANGED)
+```
+
+## 0.7 Dependency Inventory
+
+### 0.7.1 Security Package Additions
+
+| Registry | Package Name | Current | Target Version | Security Purpose | License |
+|----------|--------------|---------|----------------|------------------|---------|
+| npm | helmet | N/A | ^8.1.0 | HTTP security headers (13 headers) | MIT |
+| npm | cors | N/A | ^2.8.5 | Cross-origin resource sharing control | MIT |
+| npm | express-rate-limit | N/A | ^8.2.1 | IP-based request throttling | MIT |
+| npm | express-validator | N/A | ^7.2.1 | Input validation and sanitization | MIT |
+
+### 0.7.2 Existing Dependencies (Unchanged)
+
+| Registry | Package Name | Current | Status | Security Notes |
+|----------|--------------|---------|--------|----------------|
+| npm | express | ^5.1.0 | Keep | Includes ReDoS mitigation (path-to-regexp v8.x) |
+| npm | jest | ^30.2.0 | Keep | Development only - no runtime exposure |
+| npm | supertest | ^7.1.4 | Keep | Development only - no runtime exposure |
+
+### 0.7.3 Dependency Chain Analysis
+
+**Direct Dependencies (New):**
+
+| Package | Direct Deps | Notable Sub-deps |
+|---------|-------------|------------------|
+| helmet@8.1.0 | 0 | None (standalone) |
+| cors@2.8.5 | 2 | object-assign, vary |
+| express-rate-limit@8.2.1 | 0 | None (standalone) |
+| express-validator@7.2.1 | 1 | validator.js (bundled) |
+
+**Transitive Dependencies:**
+- **helmet**: Zero transitive dependencies - fully self-contained
+- **cors**: 2 minimal dependencies (object-assign for IE11 support, vary for Vary header)
+- **express-rate-limit**: Zero transitive dependencies - fully self-contained
+- **express-validator**: Includes validator.js for validation functions
+
+### 0.7.4 Development Dependencies (Unchanged)
+
+| Package | Version | Purpose | Runtime Exposure |
+|---------|---------|---------|------------------|
+| jest | ^30.2.0 | Test runner | None |
+| supertest | ^7.1.4 | HTTP integration testing | None |
+
+### 0.7.5 Import Statement Updates
+
+**src/app.js - New Imports:**
+
+```javascript
+// Security middleware imports (NEW)
+const helmet = require('helmet');
+const cors = require('cors');
+const rateLimit = require('express-rate-limit');
+```
+
+**src/middleware/validators/index.js - New Imports:**
+
+```javascript
+// Input validation (NEW)
+const { body, query, param, validationResult } = require('express-validator');
+```
+
+### 0.7.6 Package.json Dependencies Section
+
+**Before:**
 ```json
 {
-  "scripts": {
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
-    "test:ci": "jest --ci --coverage --reporters=default"
+  "dependencies": {
+    "express": "^5.1.0"
   }
 }
 ```
 
-### 0.9.3 Environment Setup Requirements
+**After:**
+```json
+{
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "express-rate-limit": "^8.2.1",
+    "express-validator": "^7.2.1",
+    "helmet": "^8.1.0"
+  }
+}
+```
 
-| Requirement | Value | Purpose |
-|-------------|-------|---------|
-| `NODE_ENV` | `test` | Identify test execution environment |
-| `CI` | `true` (in CI only) | Optimize for CI execution |
+### 0.7.7 Security Advisory Status
 
-**Pre-test Setup:**
+| Package | Known Vulnerabilities | Last Security Audit | Maintenance Status |
+|---------|----------------------|---------------------|-------------------|
+| helmet@8.1.0 | None | Active | Healthy (5.7M weekly downloads) |
+| cors@2.8.5 | None | Active | Stable (maintained by Express.js team) |
+| express-rate-limit@8.2.1 | None | Active | Healthy (8.8M weekly downloads) |
+| express-validator@7.2.1 | None | Active | Healthy (actively maintained) |
+
+### 0.7.8 Installation Commands
+
+**Standard Installation:**
+```bash
+npm install helmet cors express-rate-limit express-validator
+```
+
+**With Exact Versions (Production Recommended):**
+```bash
+npm install helmet@8.1.0 cors@2.8.5 express-rate-limit@8.2.1 express-validator@7.2.1 --save-exact
+```
+
+**Verify Installation:**
+```bash
+npm list helmet cors express-rate-limit express-validator
+npm audit
+```
+
+## 0.8 Impact Analysis and Testing Strategy
+
+### 0.8.1 Security Testing Requirements
+
+**Security Header Verification Tests:**
+
+| Test Case | Expected Behavior | Validation Method |
+|-----------|-------------------|-------------------|
+| Content-Security-Policy header present | Response includes CSP header | Assert header value matches helmet defaults |
+| X-Content-Type-Options: nosniff | Response includes nosniff directive | Assert header equals "nosniff" |
+| X-Frame-Options present | Response includes frame options | Assert header equals "SAMEORIGIN" |
+| Strict-Transport-Security present | Response includes HSTS | Assert header includes max-age |
+| X-Powered-By absent | Header removed | Assert header is undefined |
+| Referrer-Policy present | Response includes referrer policy | Assert header equals "no-referrer" |
+
+**Rate Limiting Tests:**
+
+| Test Case | Expected Behavior | Validation Method |
+|-----------|-------------------|-------------------|
+| Normal requests succeed | Requests within limit return 200 | Send N requests, verify all succeed |
+| Rate limit headers present | Response includes RateLimit-* headers | Assert header presence |
+| Excess requests blocked | Requests over limit return 429 | Exceed limit, verify 429 status |
+| Rate limit resets | After window, requests succeed again | Wait for window, verify success |
+
+**CORS Tests:**
+
+| Test Case | Expected Behavior | Validation Method |
+|-----------|-------------------|-------------------|
+| Same-origin requests allowed | No CORS headers needed | Verify response without origin header |
+| Allowed origin receives headers | Access-Control-Allow-Origin set | Send with allowed origin, check header |
+| Disallowed origin blocked | No CORS headers returned | Send with unknown origin, verify missing |
+| Preflight OPTIONS handled | OPTIONS returns 204 | Send OPTIONS, verify response |
+
+### 0.8.2 Test File Specifications
+
+**tests/integration/security.test.js:**
+
+| Test Suite | Test Cases |
+|------------|------------|
+| Security Headers | All 13 helmet headers present |
+| X-Powered-By Removal | Header not in response |
+| CORS Behavior | Origin validation, preflight handling |
+| Rate Limiting | Normal flow, limit reached, reset behavior |
+
+**tests/unit/middleware/security.test.js:**
+
+| Test Suite | Test Cases |
+|------------|------------|
+| Rate Limiter Config | Correct windowMs, limit values from config |
+| CORS Config | Origin whitelist validation |
+| Helmet Config | Default options applied |
+
+### 0.8.3 Existing Tests to Verify
+
+The following existing tests must continue to pass after security implementation:
+
+| Test File | Test Count | Expected Impact |
+|-----------|------------|-----------------|
+| tests/integration/endpoints.test.js | All | Should pass - endpoints unchanged |
+| tests/lifecycle/*.test.js | All | Should pass - server lifecycle unchanged |
+| tests/unit/*.test.js | All | Should pass - existing functionality preserved |
+
+**Regression Verification Command:**
+```bash
+npm test
+```
+
+### 0.8.4 Verification Methods
+
+**Automated Security Scanning:**
+
+| Tool | Command | Expected Result |
+|------|---------|-----------------|
+| npm audit | `npm audit` | No vulnerabilities |
+| Security header check | `curl -I http://localhost:3000/` | Security headers present |
+| Test suite | `npm test` | All tests pass |
+
+**Manual Verification Steps:**
+
+1. Start server: `npm start`
+2. Verify security headers: `curl -I http://localhost:3000/`
+3. Test rate limiting: Send 101 requests, verify 429 on 101st
+4. Test CORS: Send request with Origin header, verify response
+
+### 0.8.5 Impact Assessment
+
+**Direct Security Improvements:**
+
+| Improvement | Metric | Before | After |
+|-------------|--------|--------|-------|
+| Security headers | Count | 0 | 13 |
+| Rate limiting | Protection | None | 100 req/15min |
+| CORS control | Policy | None | Configurable |
+| Server fingerprinting | X-Powered-By | Present | Removed |
+
+**Minimal Side Effects:**
+
+| Area | Impact | Mitigation |
+|------|--------|------------|
+| Response size | ~500 bytes additional headers | Negligible overhead |
+| Response time | <1ms middleware processing | Acceptable latency |
+| Memory usage | ~2MB additional dependencies | Minimal footprint |
+| API compatibility | No breaking changes | Routes and responses unchanged |
+
+### 0.8.6 Verification Commands Summary
 
 ```bash
-# Install dependencies (if not installed)
+# Install dependencies
 npm install
 
-#### Install test dependencies
-npm install --save-dev jest@30.2.0 supertest@7.1.4
+#### Run full test suite (regression + security tests)
+npm test
+
+#### Security audit
+npm audit
+
+#### Manual header verification
+curl -I http://localhost:3000/
+
+#### Rate limit test (requires multiple rapid requests)
+for i in {1..105}; do curl -s -o /dev/null -w "%{http_code}\n" http://localhost:3000/; done
 ```
 
-### 0.9.4 Test Patterns in Repository
+## 0.9 Scope Boundaries
 
-| Pattern | Location | Usage |
-|---------|----------|-------|
-| Factory pattern | `src/app.js` | Import app directly without starting server |
-| Configuration separation | `src/config/index.js` | Mock environment variables for config tests |
-| Route modularization | `src/routes/*.js` | Test routes in isolation via Supertest |
+### 0.9.1 Exhaustively In Scope
 
-### 0.9.5 Test Execution Flow
+**Dependency Manifests:**
+- `package.json` - Add security dependencies
+- `package-lock.json` - Auto-generated on install
 
-```mermaid
-sequenceDiagram
-    participant Dev as Developer
-    participant NPM as npm CLI
-    participant Jest as Jest Runner
-    participant Tests as Test Files
-    participant App as Express App
-    
-    Dev->>NPM: npm test
-    NPM->>Jest: Execute jest
-    Jest->>Tests: Load test files
-    Tests->>App: Import app module
-    App-->>Tests: App instance (no server)
-    Tests->>Tests: Execute test cases
-    Tests->>Jest: Report results
-    Jest->>NPM: Exit code
-    NPM->>Dev: Pass/Fail status
+**Core Application Files:**
+- `src/app.js` - Security middleware integration
+- `src/config/index.js` - Security configuration variables
+
+**New Security Middleware Files:**
+- `src/middleware/` - New directory for middleware modules
+- `src/middleware/index.js` - Barrel export for middleware
+- `src/middleware/security.js` - Security middleware aggregation
+- `src/middleware/rateLimiter.js` - Rate limiting configuration
+- `src/middleware/corsConfig.js` - CORS configuration
+- `src/middleware/validators/` - Validation middleware directory
+- `src/middleware/validators/index.js` - Validation exports
+
+**Test Files:**
+- `tests/integration/security.test.js` - Security integration tests
+- `tests/unit/middleware/` - Unit test directory for middleware
+- `tests/unit/middleware/security.test.js` - Security middleware unit tests
+
+**Configuration Files:**
+- `.env.example` - Environment variable documentation
+
+**Documentation:**
+- `README.md` - Security configuration section (if exists)
+
+### 0.9.2 Explicitly Out of Scope
+
+| Exclusion | Rationale |
+|-----------|-----------|
+| Authentication/Authorization | Separate concern - not in current requirements |
+| Database security | No database in current architecture |
+| Session management | Stateless architecture maintained |
+| SSL/TLS certificate management | Infrastructure-level concern |
+| Web Application Firewall (WAF) | Infrastructure-level concern |
+| HTTPS server implementation | Typically handled by reverse proxy |
+| Logging/monitoring | Separate security concern |
+| API versioning | Not security-related |
+| Performance optimization | Not security-related |
+| UI/frontend changes | Backend-only changes |
+
+**Route Handler Changes:**
+- `src/routes/main.routes.js` - No changes (security at middleware level)
+- `src/routes/index.js` - No changes (security at middleware level)
+
+**Server Entry Point:**
+- `server.js` - No changes required (HTTP binding unchanged)
+
+**Existing Test Files:**
+- `tests/integration/endpoints.test.js` - Unchanged (existing tests preserved)
+- `tests/lifecycle/*.test.js` - Unchanged
+- `tests/unit/*.test.js` - Unchanged (existing tests preserved)
+
+### 0.9.3 File Change Summary
+
+| Category | Files Modified | Files Created | Files Unchanged |
+|----------|----------------|---------------|-----------------|
+| Core Application | 2 | 0 | 1 |
+| Middleware | 0 | 6 | 0 |
+| Configuration | 1 | 1 | 0 |
+| Tests | 0 | 2+ | 10+ |
+| Routes | 0 | 0 | 2 |
+
+### 0.9.4 Boundary Validation Checklist
+
+**Must Include:**
+- [ ] Helmet.js middleware integration
+- [ ] CORS middleware with configurable origins
+- [ ] Rate limiting middleware with configurable limits
+- [ ] Express-validator setup for future input validation
+- [ ] Environment variable configuration for security settings
+- [ ] Security-focused integration tests
+- [ ] Unit tests for middleware configuration
+
+**Must Exclude:**
+- [ ] Changes to existing route handlers
+- [ ] Authentication/authorization implementation
+- [ ] Database-related security
+- [ ] Infrastructure/deployment changes
+- [ ] Breaking changes to API contracts
+
+### 0.9.5 API Contract Preservation
+
+The following API contracts must remain unchanged:
+
+| Endpoint | Method | Response | Status |
+|----------|--------|----------|--------|
+| `/` | GET | `Hello, World!\n` | 200 |
+| `/evening` | GET | `Good evening` | 200 |
+| `/*` (undefined) | Any | Express 404 default | 404 |
+
+**Response Body Unchanged:**
+- Route handlers return identical content
+- Only HTTP headers are modified (security headers added)
+- Content-Type headers unchanged
+
+**Backward Compatibility Guaranteed:**
+- Existing clients will continue to work
+- Security headers do not break clients
+- Rate limiting only affects excessive usage
+
+## 0.10 Special Instructions
+
+### 0.10.1 Execution Parameters
+
+**Security Verification Commands:**
+
+| Purpose | Command | Expected Output |
+|---------|---------|-----------------|
+| Dependency vulnerability scan | `npm audit` | 0 vulnerabilities |
+| Security test execution | `npm test -- --testPathPattern=security` | All tests pass |
+| Full test suite validation | `npm test` | All tests pass |
+| Header verification | `curl -I http://localhost:3000/` | Security headers present |
+
+### 0.10.2 Implementation Priority Order
+
+Security middleware should be implemented in the following order:
+
+| Priority | Component | Rationale |
+|----------|-----------|-----------|
+| 1 | Helmet.js integration | Immediate security header protection |
+| 2 | Rate limiting | Prevent abuse before other processing |
+| 3 | CORS configuration | Control cross-origin access |
+| 4 | Input validation setup | Foundation for future validation needs |
+| 5 | Configuration updates | Environment-based settings |
+| 6 | Test coverage | Verify security controls work |
+
+### 0.10.3 Environment-Specific Configuration
+
+**Development Mode (NODE_ENV=development):**
+
+| Setting | Value | Purpose |
+|---------|-------|---------|
+| CORS_ORIGIN | * | Allow all origins for local testing |
+| RATE_LIMIT_MAX | 1000 | Higher limit for development |
+| TRUST_PROXY | false | No proxy in local development |
+
+**Production Mode (NODE_ENV=production):**
+
+| Setting | Recommended Value | Purpose |
+|---------|-------------------|---------|
+| CORS_ORIGIN | https://yourdomain.com | Restrict to known origins |
+| RATE_LIMIT_MAX | 100 | Standard rate limiting |
+| TRUST_PROXY | true | Enable when behind load balancer |
+
+### 0.10.4 Security Best Practices to Follow
+
+**OWASP Guidelines Applied:**
+
+| OWASP Principle | Implementation |
+|-----------------|----------------|
+| Defense in Depth | Multiple security layers (headers, rate limiting, CORS) |
+| Fail Securely | Default to restrictive CORS in production |
+| Least Privilege | Rate limiting prevents resource abuse |
+| Input Validation | Express-validator setup for future validation |
+
+### 0.10.5 Middleware Order Constraints
+
+**Critical Ordering Rules:**
+
+```
+1. app.disable('x-powered-by')  // Must be first
+2. Rate limiter                  // Block abuse early
+3. CORS                          // Validate origin before processing
+4. Helmet                        // Apply security headers
+5. Body parsers                  // Parse after security checks
+6. Routes                        // Application logic protected
 ```
 
-### 0.9.6 Jest CLI Options Reference
+**Incorrect ordering can cause:**
+- Rate limits not applied to blocked origins
+- Security headers missing on CORS preflight responses
+- Body parsing before security validation
 
-| Option | Purpose | Usage |
-|--------|---------|-------|
-| `--watch` | Watch mode | Development |
-| `--coverage` | Generate coverage | CI/verification |
-| `--ci` | CI optimizations | CI pipelines |
-| `--verbose` | Detailed output | Debugging |
-| `--runInBand` | Sequential execution | Debugging |
-| `--detectOpenHandles` | Detect leaks | Troubleshooting |
-| `--testPathPatterns` | Filter tests | Selective runs |
-| `--bail` | Stop on first failure | Quick feedback |
+### 0.10.6 CSP Configuration Notes
 
-### 0.9.7 Test Timeout Configuration
+Helmet.js default Content-Security-Policy may require adjustment for applications with:
+- External scripts (CDN hosted libraries)
+- Inline styles or scripts
+- WebSocket connections
+- External fonts or images
 
-| Context | Timeout | Rationale |
-|---------|---------|-----------|
-| Default test | 5,000ms | Standard Jest default |
-| Lifecycle tests | 10,000ms | Server operations need buffer |
-| HTTP tests | 5,000ms | Supertest is fast |
+**For this simple application, defaults are appropriate because:**
+- No external resources loaded
+- No inline scripts or styles
+- Static text responses only
 
-**Per-test timeout override:**
+### 0.10.7 References and Resources
 
-```javascript
-test('server starts successfully', async () => {
-  // Test implementation
-}, 10000); // 10 second timeout
-```
+**Official Documentation:**
+- Helmet.js: https://helmetjs.github.io/
+- Express Rate Limit: https://express-rate-limit.mintlify.app/
+- CORS: https://github.com/expressjs/cors
+- Express Validator: https://express-validator.github.io/docs/
 
-### 0.9.8 Parallel Execution
+**Security Standards:**
+- OWASP Top 10: https://owasp.org/Top10/
+- Express.js Security Best Practices: https://expressjs.com/en/advanced/best-practice-security.html
+- MDN Web Security: https://developer.mozilla.org/en-US/docs/Web/Security
 
-| Setting | Value | Rationale |
-|---------|-------|-----------|
-| Worker threads | Auto (default) | Jest determines optimal |
-| `--runInBand` | For debugging only | Sequential for isolation |
-| `--maxWorkers` | 50% (CI) | Prevent resource exhaustion |
+### 0.10.8 Post-Implementation Verification Checklist
 
-
-## 0.10 Special Instructions for Testing
-
-### 0.10.1 Testing-Specific Requirements
-
-The following special instructions apply to this testing implementation:
-
-| Instruction | Description | Rationale |
-|-------------|-------------|-----------|
-| **Minimal source changes** | DO NOT modify source code unless absolutely necessary for testability | Source code is already designed for testing via factory pattern |
-| **Follow existing patterns** | Match the codebase's CommonJS module style | Maintain consistency with `require()`/`module.exports` |
-| **Maintain test isolation** | Ensure tests can run independently and in parallel | Jest runs tests concurrently by default |
-| **Use Supertest for HTTP** | Do not start actual HTTP server for endpoint tests | <cite index="5-9">Supertest handles Express internally without binding to ports.</cite> |
-| **Reset environment** | Restore `process.env` after config tests | Prevent test pollution |
-| **Match naming conventions** | Use `*.test.js` suffix | Jest default discovery pattern |
-
-### 0.10.2 Architecture Preservation
-
-The existing codebase architecture MUST be preserved:
-
-```
-server.js → imports → src/app.js (factory)
-                      └── src/routes/ (handlers)
-                      └── src/config/ (configuration)
-```
-
-**DO:**
-- Import `src/app.js` for Supertest endpoint testing
-- Import `src/config/index.js` for configuration testing
-- Mock `process.env` for environment variable testing
-- Use Jest's built-in mocking for `console.log`
-
-**DO NOT:**
-- Modify the factory pattern in `src/app.js`
-- Add dependency injection just for testing
-- Change module export patterns
-- Refactor route handlers
-
-### 0.10.3 Express 5 Compatibility Notes
-
-Express 5.1.0 has specific behaviors that tests must account for:
-
-| Behavior | Express 5 Implementation | Test Approach |
-|----------|------------------------|---------------|
-| Async error handling | Promises rejected in handlers are caught | Test error scenarios with async handlers |
-| Path matching | Stricter route matching | Test exact paths |
-| Router behavior | New router features | Use standard Router testing patterns |
-
-### 0.10.4 Environment Variable Testing Protocol
-
-When testing `src/config/index.js`:
-
-```javascript
-describe('Configuration Module', () => {
-  const originalEnv = process.env;
-  
-  beforeEach(() => {
-    jest.resetModules();
-    process.env = { ...originalEnv };
-  });
-  
-  afterAll(() => {
-    process.env = originalEnv;
-  });
-  
-  // Tests go here
-});
-```
-
-**Critical:** Use `jest.resetModules()` to ensure the config module is re-evaluated with new environment variables.
-
-### 0.10.5 Supertest Usage Pattern
-
-Standard pattern for endpoint testing:
-
-```javascript
-const request = require('supertest');
-const app = require('../../src/app');
-
-describe('GET /', () => {
-  test('returns Hello World', async () => {
-    const response = await request(app)
-      .get('/')
-      .expect(200);
-    expect(response.text).toBe('Hello, World!\n');
-  });
-});
-```
-
-### 0.10.6 Server Lifecycle Testing Protocol
-
-Testing server startup requires mocking to avoid port conflicts:
-
-| Aspect | Approach |
-|--------|----------|
-| `app.listen()` | Mock to capture callback |
-| `console.log()` | Spy to verify logging |
-| Port binding | Do not actually bind in tests |
-| Graceful shutdown | Mock `server.close()` |
-
-### 0.10.7 Test File Organization Standards
-
-| Directory | Purpose | Naming |
-|-----------|---------|--------|
-| `tests/unit/` | Isolated module tests | `{module}.test.js` |
-| `tests/integration/` | HTTP endpoint tests | `{feature}.test.js` |
-| `tests/lifecycle/` | Server lifecycle tests | `server.test.js` |
-
-### 0.10.8 Quality Assurance Checklist
-
-Before considering tests complete, verify:
-
-- [ ] All test files use `*.test.js` naming convention
-- [ ] Tests can run in any order (isolated)
-- [ ] No hardcoded port numbers in tests
-- [ ] Environment variables restored after config tests
-- [ ] All async operations properly awaited
-- [ ] No `console.log` statements in test files (except spies)
-- [ ] Coverage meets or exceeds targets
-- [ ] All tests pass in CI mode (`npm run test:ci`)
-
-### 0.10.9 Backward Compatibility
-
-Tests must maintain backward compatibility with:
-
-| Component | Version | Compatibility Note |
-|-----------|---------|-------------------|
-| Node.js | 18.x+ | Use CommonJS syntax |
-| Express | 5.1.0 | Account for Express 5 behavior |
-| Jest | 30.x | Use current assertion syntax |
-
-### 0.10.10 Documentation Requirements
-
-Each test file should include:
-
-| Element | Requirement |
-|---------|-------------|
-| File header comment | Describe what module is being tested |
-| `describe` block naming | Module or feature name |
-| `test` naming | `should [expected behavior]` pattern |
-| Inline comments | Only for non-obvious test logic |
-
+- [ ] All 4 security packages installed (`npm list helmet cors express-rate-limit express-validator`)
+- [ ] `npm audit` reports 0 vulnerabilities
+- [ ] Security headers present in responses (`curl -I http://localhost:3000/`)
+- [ ] X-Powered-By header removed from responses
+- [ ] Rate limiting functional (429 response after exceeding limit)
+- [ ] CORS headers present for cross-origin requests
+- [ ] All existing tests pass (`npm test`)
+- [ ] New security tests pass
+- [ ] Environment variables documented in `.env.example`
+- [ ] Configuration module exports new security settings
 
