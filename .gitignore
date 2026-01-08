@@ -13,6 +13,11 @@ logs/
 *.log
 npm-debug.log*
 
+# PM2 process manager
+*.pid
+.pm2/
+ecosystem.config.js.bak
+
 # OS files
 .DS_Store
 Thumbs.db
