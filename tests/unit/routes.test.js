@@ -1,5 +1,12 @@
 /**
- * @fileoverview Unit tests for route handlers (src/routes/main.routes.js)
+ * @fileoverview Unit tests for route modules
+ * 
+ * Test coverage includes:
+ * - src/routes/index.js (barrel exports)
+ * - src/routes/main.routes.js (main route handlers)
+ * - src/routes/health.routes.js (health check endpoints)
+ * - src/routes/api.routes.js (versioned API routes)
+ * 
  * @module tests/unit/routes
  */
 
@@ -90,5 +97,63 @@ describe('Route Handlers - main.routes.js', () => {
       
       expect(rootIndex).toBeLessThan(eveningIndex);
     });
+  });
+});
+
+/**
+ * Tests for routes barrel exports (src/routes/index.js)
+ * Verifies that all route modules are properly exported through the index aggregator.
+ */
+describe('Routes Barrel Exports - routes/index.js', () => {
+  test('should export mainRoutes from routes index', () => {
+    jest.resetModules();
+    const routes = require('../../src/routes');
+    expect(routes).toHaveProperty('mainRoutes');
+  });
+
+  test('should export healthRoutes from routes index', () => {
+    jest.resetModules();
+    const routes = require('../../src/routes');
+    expect(routes).toHaveProperty('healthRoutes');
+  });
+
+  test('should export apiRoutes from routes index', () => {
+    jest.resetModules();
+    const routes = require('../../src/routes');
+    expect(routes).toHaveProperty('apiRoutes');
+  });
+});
+
+/**
+ * Tests for new route module structure
+ * Verifies that healthRoutes and apiRoutes are valid Express Router instances.
+ */
+describe('New Route Module Structure', () => {
+  test('healthRoutes should be an Express Router instance', () => {
+    jest.resetModules();
+    const { healthRoutes } = require('../../src/routes');
+    expect(healthRoutes).toBeDefined();
+    expect(healthRoutes.stack).toBeDefined();
+    expect(Array.isArray(healthRoutes.stack)).toBe(true);
+  });
+
+  test('apiRoutes should be an Express Router instance', () => {
+    jest.resetModules();
+    const { apiRoutes } = require('../../src/routes');
+    expect(apiRoutes).toBeDefined();
+    expect(apiRoutes.stack).toBeDefined();
+    expect(Array.isArray(apiRoutes.stack)).toBe(true);
+  });
+
+  test('healthRoutes should have router handle method defined', () => {
+    jest.resetModules();
+    const { healthRoutes } = require('../../src/routes');
+    expect(typeof healthRoutes.handle).toBe('function');
+  });
+
+  test('apiRoutes should have router handle method defined', () => {
+    jest.resetModules();
+    const { apiRoutes } = require('../../src/routes');
+    expect(typeof apiRoutes.handle).toBe('function');
   });
 });
