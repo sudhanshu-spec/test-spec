@@ -23,6 +23,7 @@ A simple Node.js web server built with Express.js 5.2.0, demonstrating routing, 
 - [Architecture Overview](#architecture-overview)
 - [Technology Stack](#technology-stack)
 - [Development](#development)
+- [Deployment Guide](#deployment-guide)
 - [Troubleshooting](#troubleshooting)
 - [Contributing](#contributing)
 - [License](#license)
@@ -755,6 +756,401 @@ app.get('/your-endpoint', (req, res) => {
 ### Development Guidelines
 
 For detailed contribution guidelines, code style standards, and pull request procedures, see [CONTRIBUTING.md](./CONTRIBUTING.md).
+
+## Deployment Guide
+
+This section provides comprehensive guidance for deploying the Express.js server to various environments.
+
+### Pre-Deployment Checklist
+
+Before deploying to production, ensure the following:
+
+- [ ] All tests pass: `npm test`
+- [ ] Security audit passes: `npm audit`
+- [ ] Environment variables are properly configured
+- [ ] HTTPS certificates are valid and accessible
+- [ ] Rate limiting is appropriately tuned for expected traffic
+- [ ] CORS origins are restricted to your production domains
+
+### Deployment Methods
+
+#### Method 1: Traditional Server Deployment
+
+Deploy directly to a Linux server (Ubuntu/Debian, CentOS/RHEL):
+
+```bash
+# 1. Install Node.js 20.x LTS
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt-get install -y nodejs
+
+# 2. Clone and setup application
+git clone <repository-url>
+cd hao-backprop-test
+npm ci --production
+
+# 3. Configure environment
+cp .env.example .env
+nano .env  # Edit with production values
+
+# 4. Start with process manager (PM2 recommended)
+npm install -g pm2
+pm2 start server.js --name "express-server"
+pm2 save
+pm2 startup
+```
+
+**PM2 Configuration (ecosystem.config.js):**
+
+```javascript
+module.exports = {
+  apps: [{
+    name: 'express-server',
+    script: 'server.js',
+    instances: 'max',
+    exec_mode: 'cluster',
+    env: {
+      NODE_ENV: 'production',
+      PORT: 3000
+    },
+    env_production: {
+      NODE_ENV: 'production',
+      PORT: 443,
+      ENABLE_HTTPS: 'true',
+      SSL_KEY_PATH: '/etc/ssl/private/server.key',
+      SSL_CERT_PATH: '/etc/ssl/certs/server.crt',
+      TRUST_PROXY: 'true'
+    }
+  }]
+};
+```
+
+#### Method 2: Docker Deployment
+
+Deploy using Docker containers:
+
+**Dockerfile:**
+
+```dockerfile
+FROM node:20-alpine
+
+# Create app directory
+WORKDIR /usr/src/app
+
+# Install dependencies first (cache layer)
+COPY package*.json ./
+RUN npm ci --production
+
+# Copy application source
+COPY . .
+
+# Create non-root user for security
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
+USER nodejs
+
+# Expose port
+EXPOSE 3000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
+
+# Start application
+CMD ["node", "server.js"]
+```
+
+**docker-compose.yml:**
+
+```yaml
+version: '3.8'
+
+services:
+  express-server:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - CORS_ORIGIN=https://yourdomain.com
+      - RATE_LIMIT_MAX=100
+      - RATE_LIMIT_WINDOW_MS=900000
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+```
+
+**Build and run:**
+
+```bash
+# Build the image
+docker build -t express-server:latest .
+
+# Run container
+docker run -d -p 3000:3000 \
+  -e NODE_ENV=production \
+  -e CORS_ORIGIN=https://yourdomain.com \
+  --name express-server \
+  express-server:latest
+
+# Using docker-compose
+docker-compose up -d
+```
+
+#### Method 3: Cloud Platform Deployment
+
+##### AWS Elastic Beanstalk
+
+```bash
+# Install EB CLI
+pip install awsebcli
+
+# Initialize EB application
+eb init -p node.js express-server
+
+# Create environment
+eb create production --single --instance-type t3.micro
+
+# Deploy
+eb deploy
+```
+
+**Procfile:**
+```
+web: node server.js
+```
+
+##### Google Cloud Run
+
+```bash
+# Build and deploy
+gcloud run deploy express-server \
+  --source . \
+  --platform managed \
+  --region us-central1 \
+  --allow-unauthenticated \
+  --port 3000 \
+  --set-env-vars "NODE_ENV=production,TRUST_PROXY=true"
+```
+
+##### Heroku
+
+```bash
+# Create Heroku app
+heroku create your-app-name
+
+# Set environment variables
+heroku config:set NODE_ENV=production
+heroku config:set CORS_ORIGIN=https://your-app-name.herokuapp.com
+
+# Deploy
+git push heroku main
+```
+
+**Procfile:**
+```
+web: node server.js
+```
+
+#### Method 4: Kubernetes Deployment
+
+**deployment.yaml:**
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: express-server
+  labels:
+    app: express-server
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: express-server
+  template:
+    metadata:
+      labels:
+        app: express-server
+    spec:
+      containers:
+      - name: express-server
+        image: express-server:latest
+        ports:
+        - containerPort: 3000
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: PORT
+          value: "3000"
+        - name: TRUST_PROXY
+          value: "true"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: express-server
+spec:
+  selector:
+    app: express-server
+  ports:
+  - port: 80
+    targetPort: 3000
+  type: LoadBalancer
+```
+
+### Reverse Proxy Configuration
+
+#### Nginx Configuration
+
+When running behind Nginx, use this configuration:
+
+```nginx
+upstream express_backend {
+    server 127.0.0.1:3000;
+    keepalive 64;
+}
+
+server {
+    listen 80;
+    listen 443 ssl http2;
+    server_name yourdomain.com;
+
+    # SSL Configuration
+    ssl_certificate /etc/letsencrypt/live/yourdomain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/yourdomain.com/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers on;
+
+    # Redirect HTTP to HTTPS
+    if ($scheme != "https") {
+        return 301 https://$host$request_uri;
+    }
+
+    location / {
+        proxy_pass http://express_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+```
+
+**Important:** Set `TRUST_PROXY=true` when running behind a reverse proxy.
+
+### Production Security Hardening
+
+1. **Environment Variables**: Never commit secrets to version control
+   ```bash
+   # Use secret management (AWS Secrets Manager, HashiCorp Vault)
+   export JWT_SECRET=$(aws secretsmanager get-secret-value --secret-id jwt-secret --query SecretString --output text)
+   ```
+
+2. **SSL/TLS Certificates**: Use certificates from trusted CAs
+   ```bash
+   # Let's Encrypt with Certbot
+   sudo certbot certonly --nginx -d yourdomain.com
+   ```
+
+3. **Rate Limiting Tuning**: Adjust based on expected traffic
+   ```bash
+   RATE_LIMIT_WINDOW_MS=900000  # 15 minutes
+   RATE_LIMIT_MAX=1000          # Higher for production APIs
+   ```
+
+4. **CORS Restriction**: Only allow known origins
+   ```bash
+   CORS_ORIGIN=https://yourdomain.com,https://api.yourdomain.com
+   ```
+
+### Monitoring and Health Checks
+
+Configure monitoring using the `/health` endpoint:
+
+```bash
+# Simple health check
+curl -f http://localhost:3000/health || exit 1
+
+# Parse health response
+curl -s http://localhost:3000/health | jq '.status'
+# Expected: "healthy"
+```
+
+**Health Check Response Format:**
+```json
+{
+  "status": "healthy",
+  "timestamp": "2024-01-08T12:00:00.000Z",
+  "security": {
+    "https": false,
+    "trustProxy": false,
+    "rateLimit": true,
+    "helmet": true,
+    "cors": true,
+    "inputValidation": true
+  },
+  "version": "2.0.0"
+}
+```
+
+### Scaling Considerations
+
+| Metric | Recommendation |
+|--------|----------------|
+| **Horizontal Scaling** | Use PM2 cluster mode or Kubernetes replicas |
+| **Load Balancing** | Use Nginx, HAProxy, or cloud load balancers |
+| **Session Affinity** | Not required (stateless application) |
+| **Memory per Instance** | 128-256MB recommended |
+| **CPU per Instance** | 0.25-0.5 vCPU minimum |
+
+### Rollback Procedures
+
+```bash
+# PM2 rollback
+pm2 deploy production revert 1
+
+# Docker rollback
+docker tag express-server:latest express-server:rollback
+docker pull express-server:previous
+docker tag express-server:previous express-server:latest
+docker-compose up -d
+
+# Kubernetes rollback
+kubectl rollout undo deployment/express-server
+```
 
 ## Troubleshooting
 
