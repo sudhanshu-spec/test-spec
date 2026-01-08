@@ -222,12 +222,15 @@ const SENSITIVE_HEADERS = [
  * // Returns: 'existing-uuid'
  */
 function generateRequestId(req) {
+  // Handle missing or undefined headers gracefully
+  const headers = req && req.headers ? req.headers : {};
+  
   // Check for existing request ID from upstream services (API gateway, load balancer)
   // Support common header variations
-  const existingId = req.headers['x-request-id'] ||
-                     req.headers['x-correlation-id'] ||
-                     req.headers['request-id'] ||
-                     req.headers['correlation-id'];
+  const existingId = headers['x-request-id'] ||
+                     headers['x-correlation-id'] ||
+                     headers['request-id'] ||
+                     headers['correlation-id'];
   
   if (existingId && typeof existingId === 'string' && existingId.trim().length > 0) {
     return existingId.trim();

@@ -129,6 +129,13 @@ const { validate } = require('./middleware/validation');
 const { createLogger } = require('./config/logger');
 
 /**
+ * HTTP request logging middleware factory
+ * Creates pino-http middleware for structured request/response logging
+ * @see ./middleware/requestLogger.js
+ */
+const { createRequestLogger } = require('./middleware/requestLogger');
+
+/**
  * Modular route configuration
  * Provides health endpoints (/health, /ready) and API routes
  * @see ./routes/index.js
@@ -220,22 +227,44 @@ const SHUTDOWN_TIMEOUT = parseInt(process.env.SHUTDOWN_TIMEOUT, 10) || 10000;
 const app = express();
 
 // =============================================================================
+// LOGGING MIDDLEWARE
+// =============================================================================
+// Request logging is applied FIRST to capture all requests including those
+// blocked by security middleware. This enables:
+// - Request correlation via X-Request-ID headers
+// - Response time tracking
+// - Status-based log levels
+// =============================================================================
+
+/**
+ * Apply request logging middleware
+ * 
+ * This is the FIRST middleware in the chain to ensure all requests are logged,
+ * including those that may be blocked by security middleware (CORS, rate limiting).
+ * 
+ * Features:
+ * - Generates/propagates X-Request-ID for request correlation
+ * - Tracks response time for performance monitoring
+ * - Uses appropriate log levels based on status (error for 5xx, warn for 4xx)
+ * - Redacts sensitive data (authorization headers, passwords) from logs
+ */
+app.use(createRequestLogger(logger));
+
+// =============================================================================
 // SECURITY MIDDLEWARE CHAIN
 // =============================================================================
 // Middleware is applied in a specific order for optimal security:
-// 1. Security headers (helmet) - First to ensure all responses have headers
-// 2. CORS - Early to handle preflight requests
-// 3. Rate limiting - Before processing to protect against abuse
-// 4. Body parsing - After rate limiting to prevent large payload attacks
+// 1. Request logging (above) - Log all requests before any processing
+// 2. Security headers (helmet) - Ensure all responses have security headers
+// 3. CORS - Early to handle preflight requests
+// 4. Rate limiting - Before processing to protect against abuse
+// 5. Body parsing - After rate limiting to prevent large payload attacks
 // =============================================================================
 
 /**
  * Apply helmet.js security headers middleware
  * 
- * This must be the FIRST middleware in the chain to ensure all responses
- * include security headers, including error responses.
- * 
- * Headers set include:
+ * Sets security headers on all responses including:
  * - Content-Security-Policy: Prevents XSS and data injection
  * - Strict-Transport-Security: Enforces HTTPS (when enabled)
  * - X-Frame-Options: Prevents clickjacking

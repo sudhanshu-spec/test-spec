@@ -1027,12 +1027,18 @@ describe('Request Logger Middleware', () => {
 
     /**
      * Test: Should work with POST requests
+     * 
+     * Note: The API routes currently only support GET methods, so POST to a
+     * defined route will return 404 (Method Not Allowed would require explicit
+     * method handling). The important verification here is that the request
+     * logger middleware processes POST requests correctly and includes the
+     * X-Request-ID header in the response.
      */
     test('should work with POST requests', async () => {
       const response = await request(app)
-        .post('/api/data')
+        .post('/test-post-endpoint')
         .send({ name: 'test', value: 123 })
-        .expect(400); // Expected as there's validation
+        .expect(404); // No POST routes defined, so 404 is expected
       
       const requestId = getRequestIdFromResponse(response);
       
