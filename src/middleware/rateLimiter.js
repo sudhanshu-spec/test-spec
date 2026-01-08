@@ -119,33 +119,16 @@ const rateLimiter = rateLimit({
    * Skip successful requests from the rate limit count
    * Successful requests are counted to ensure accurate rate limiting
    */
-  skipSuccessfulRequests: false,
+  skipSuccessfulRequests: false
 
   /**
-   * Key generator function for identifying clients
-   * Uses the request IP address for rate limiting
-   * When behind a proxy with TRUST_PROXY=true, this correctly resolves
-   * the client IP from X-Forwarded-For headers
+   * Note: keyGenerator is intentionally omitted to use express-rate-limit's
+   * built-in IP-based key generation which properly handles IPv6 addresses
+   * and proxy configurations (when app.set('trust proxy', ...) is configured).
    * 
-   * @param {object} req - Express request object
-   * @returns {string} Client identifier (IP address)
+   * The default keyGenerator uses req.ip which respects Express's trust proxy
+   * settings and handles IPv6 subnet masking correctly.
    */
-  keyGenerator: (req) => {
-    return req.ip;
-  },
-
-  /**
-   * Handler function called when rate limit is exceeded
-   * Sends the configured error response with proper headers
-   * 
-   * @param {object} req - Express request object
-   * @param {object} res - Express response object
-   * @param {Function} next - Express next middleware function
-   * @param {object} options - Rate limiter options containing message and statusCode
-   */
-  handler: (req, res, next, options) => {
-    res.status(options.statusCode).json(options.message);
-  }
 });
 
 module.exports = rateLimiter;
