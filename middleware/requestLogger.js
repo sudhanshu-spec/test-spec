@@ -612,11 +612,10 @@ function createRequestLogger(logger, options = {}) {
     
     // Enable response time tracking
     // The response time is automatically calculated and included in logs
-    quietReqLogger: false,
+    quietReqLogger: false
     
-    // Use extreme mode for better performance in production
-    // This batches writes to improve throughput
-    useLevel: 'info'
+    // Note: 'useLevel' option is not used because we use 'customLogLevel' instead
+    // Using both together causes an error in pino-http
   });
   
   // Return wrapper middleware that also sets X-Request-ID response header
