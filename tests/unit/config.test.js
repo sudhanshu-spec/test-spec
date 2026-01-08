@@ -1,5 +1,10 @@
 /**
  * @fileoverview Unit tests for the configuration module (src/config/index.js)
+ * Tests environment variable parsing and default values for:
+ * - HOST, PORT, NODE_ENV (original configuration)
+ * - LOG_LEVEL, LOG_FORMAT (logging configuration)
+ * - CORS_ORIGIN (security configuration)
+ * - PM2_INSTANCES (process management configuration)
  * @module tests/unit/config
  */
 
@@ -128,6 +133,10 @@ describe('Configuration Module', () => {
       expect(config).toHaveProperty('host');
       expect(config).toHaveProperty('port');
       expect(config).toHaveProperty('env');
+      expect(config).toHaveProperty('logLevel');
+      expect(config).toHaveProperty('logFormat');
+      expect(config).toHaveProperty('corsOrigin');
+      expect(config).toHaveProperty('pm2Instances');
     });
 
     test('should not have undefined values for any configuration property', () => {
@@ -135,6 +144,70 @@ describe('Configuration Module', () => {
       expect(config.host).toBeDefined();
       expect(config.port).toBeDefined();
       expect(config.env).toBeDefined();
+      expect(config.logLevel).toBeDefined();
+      expect(config.logFormat).toBeDefined();
+      expect(config.corsOrigin).toBeDefined();
+      expect(config.pm2Instances).toBeDefined();
+    });
+  });
+
+  describe('New Configuration Properties', () => {
+    describe('logLevel Configuration', () => {
+      test('should default logLevel to info when LOG_LEVEL not set', () => {
+        const config = loadConfigWithoutEnv(['LOG_LEVEL']);
+        expect(config.logLevel).toBe('info');
+      });
+
+      test('should use LOG_LEVEL env var when set', () => {
+        const config = loadConfigWithEnv({ LOG_LEVEL: 'debug' });
+        expect(config.logLevel).toBe('debug');
+      });
+
+      test('should return logLevel as string type', () => {
+        const config = loadConfigWithEnv({ LOG_LEVEL: 'warn' });
+        expect(typeof config.logLevel).toBe('string');
+      });
+    });
+
+    describe('logFormat Configuration', () => {
+      test('should default logFormat to combined when LOG_FORMAT not set', () => {
+        const config = loadConfigWithoutEnv(['LOG_FORMAT']);
+        expect(config.logFormat).toBe('combined');
+      });
+
+      test('should use LOG_FORMAT env var when set', () => {
+        const config = loadConfigWithEnv({ LOG_FORMAT: 'dev' });
+        expect(config.logFormat).toBe('dev');
+      });
+    });
+
+    describe('corsOrigin Configuration', () => {
+      test('should default corsOrigin to * when CORS_ORIGIN not set', () => {
+        const config = loadConfigWithoutEnv(['CORS_ORIGIN']);
+        expect(config.corsOrigin).toBe('*');
+      });
+
+      test('should use CORS_ORIGIN env var when set', () => {
+        const config = loadConfigWithEnv({ CORS_ORIGIN: 'https://example.com' });
+        expect(config.corsOrigin).toBe('https://example.com');
+      });
+    });
+
+    describe('pm2Instances Configuration', () => {
+      test('should default pm2Instances to 0 when PM2_INSTANCES not set', () => {
+        const config = loadConfigWithoutEnv(['PM2_INSTANCES']);
+        expect(config.pm2Instances).toBe(0);
+      });
+
+      test('should use PM2_INSTANCES env var when set', () => {
+        const config = loadConfigWithEnv({ PM2_INSTANCES: '4' });
+        expect(config.pm2Instances).toBe(4);
+      });
+
+      test('should return pm2Instances as number type', () => {
+        const config = loadConfigWithEnv({ PM2_INSTANCES: '2' });
+        expect(typeof config.pm2Instances).toBe('number');
+      });
     });
   });
 });
