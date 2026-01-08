@@ -155,10 +155,11 @@ process.on('uncaughtException', (err) => {
  * Logs the rejection reason and initiates graceful shutdown.
  * Catches unhandled async errors for proper logging and cleanup.
  */
-process.on('unhandledRejection', (reason, promise) => {
-  logger.error('Unhandled promise rejection', { 
-    reason: reason instanceof Error ? reason.message : String(reason),
-    stack: reason instanceof Error ? reason.stack : undefined
-  });
+process.on('unhandledRejection', (reason) => {
+  // Extract error details consistently whether reason is Error or string
+  const errorMessage = reason instanceof Error ? reason.message : String(reason);
+  const errorStack = reason instanceof Error ? reason.stack : undefined;
+
+  logger.error('Unhandled promise rejection', { reason: errorMessage, stack: errorStack });
   shutdown('unhandledRejection');
 });
