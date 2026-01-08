@@ -526,13 +526,15 @@ describe('Request Logger Middleware', () => {
   describe('Log Level Based on Status Code', () => {
     /**
      * Test: getCustomLogLevel should return 'info' for 2xx success responses
+     * Note: Function signature is (req, res, err) to match pino-http callback
      */
     test('should use "info" level for 2xx success responses', () => {
+      const mockReq = createMockRequest();
       HTTP_STATUS_CODES.SUCCESS.forEach(statusCode => {
         const mockRes = createMockResponse();
         mockRes.statusCode = statusCode;
         
-        const level = getCustomLogLevel(mockRes, null);
+        const level = getCustomLogLevel(mockReq, mockRes, null);
         
         expect(level).toBe('info');
       });
@@ -542,11 +544,12 @@ describe('Request Logger Middleware', () => {
      * Test: getCustomLogLevel should return 'info' for 3xx redirect responses
      */
     test('should use "info" level for 3xx redirect responses', () => {
+      const mockReq = createMockRequest();
       HTTP_STATUS_CODES.REDIRECT.forEach(statusCode => {
         const mockRes = createMockResponse();
         mockRes.statusCode = statusCode;
         
-        const level = getCustomLogLevel(mockRes, null);
+        const level = getCustomLogLevel(mockReq, mockRes, null);
         
         expect(level).toBe('info');
       });
@@ -556,11 +559,12 @@ describe('Request Logger Middleware', () => {
      * Test: getCustomLogLevel should return 'warn' for 4xx client error responses
      */
     test('should use "warn" level for 4xx client error responses', () => {
+      const mockReq = createMockRequest();
       HTTP_STATUS_CODES.CLIENT_ERROR.forEach(statusCode => {
         const mockRes = createMockResponse();
         mockRes.statusCode = statusCode;
         
-        const level = getCustomLogLevel(mockRes, null);
+        const level = getCustomLogLevel(mockReq, mockRes, null);
         
         expect(level).toBe('warn');
       });
@@ -570,11 +574,12 @@ describe('Request Logger Middleware', () => {
      * Test: getCustomLogLevel should return 'error' for 5xx server error responses
      */
     test('should use "error" level for 5xx server error responses', () => {
+      const mockReq = createMockRequest();
       HTTP_STATUS_CODES.SERVER_ERROR.forEach(statusCode => {
         const mockRes = createMockResponse();
         mockRes.statusCode = statusCode;
         
-        const level = getCustomLogLevel(mockRes, null);
+        const level = getCustomLogLevel(mockReq, mockRes, null);
         
         expect(level).toBe('error');
       });
@@ -584,11 +589,12 @@ describe('Request Logger Middleware', () => {
      * Test: getCustomLogLevel should return 'error' when error object is present
      */
     test('should return "error" when error object is present', () => {
+      const mockReq = createMockRequest();
       const mockRes = createMockResponse();
       mockRes.statusCode = 200; // Even with 200 status
       const err = new Error('Something went wrong');
       
-      const level = getCustomLogLevel(mockRes, err);
+      const level = getCustomLogLevel(mockReq, mockRes, err);
       
       expect(level).toBe('error');
     });
@@ -597,12 +603,13 @@ describe('Request Logger Middleware', () => {
      * Test: getCustomLogLevel should prioritize error object over status code
      */
     test('should prioritize error object over status code', () => {
+      const mockReq = createMockRequest();
       // Even with a successful status code, error should cause 'error' level
       const mockRes = createMockResponse();
       mockRes.statusCode = 201;
       const err = new Error('Database connection failed');
       
-      const level = getCustomLogLevel(mockRes, err);
+      const level = getCustomLogLevel(mockReq, mockRes, err);
       
       expect(level).toBe('error');
     });
@@ -611,10 +618,11 @@ describe('Request Logger Middleware', () => {
      * Test: getCustomLogLevel should handle 1xx informational responses
      */
     test('should use "info" level for 1xx informational responses', () => {
+      const mockReq = createMockRequest();
       const mockRes = createMockResponse();
       mockRes.statusCode = 100; // Continue
       
-      const level = getCustomLogLevel(mockRes, null);
+      const level = getCustomLogLevel(mockReq, mockRes, null);
       
       expect(level).toBe('info');
     });
@@ -623,32 +631,34 @@ describe('Request Logger Middleware', () => {
      * Test: getCustomLogLevel should handle edge case status codes
      */
     test('should handle edge case status codes correctly', () => {
+      const mockReq = createMockRequest();
       // Edge of 3xx/4xx boundary
       let mockRes = createMockResponse();
       mockRes.statusCode = 399;
-      expect(getCustomLogLevel(mockRes, null)).toBe('info');
+      expect(getCustomLogLevel(mockReq, mockRes, null)).toBe('info');
       
       mockRes = createMockResponse();
       mockRes.statusCode = 400;
-      expect(getCustomLogLevel(mockRes, null)).toBe('warn');
+      expect(getCustomLogLevel(mockReq, mockRes, null)).toBe('warn');
       
       // Edge of 4xx/5xx boundary
       mockRes = createMockResponse();
       mockRes.statusCode = 499;
-      expect(getCustomLogLevel(mockRes, null)).toBe('warn');
+      expect(getCustomLogLevel(mockReq, mockRes, null)).toBe('warn');
       
       mockRes = createMockResponse();
       mockRes.statusCode = 500;
-      expect(getCustomLogLevel(mockRes, null)).toBe('error');
+      expect(getCustomLogLevel(mockReq, mockRes, null)).toBe('error');
     });
 
     /**
      * Test: getCustomLogLevel should default to 500 for missing statusCode
      */
     test('should default to error level when statusCode is missing', () => {
+      const mockReq = createMockRequest();
       const mockRes = {}; // No statusCode
       
-      const level = getCustomLogLevel(mockRes, null);
+      const level = getCustomLogLevel(mockReq, mockRes, null);
       
       expect(level).toBe('error');
     });

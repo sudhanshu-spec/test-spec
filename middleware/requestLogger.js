@@ -252,6 +252,10 @@ function generateRequestId(req) {
  * If an error object is present, the function always returns 'error' level
  * regardless of status code to ensure exceptions are properly captured.
  * 
+ * Note: This function signature matches pino-http's customLogLevel callback:
+ * (req, res, err) => string
+ * 
+ * @param {Object} req - Express request object (required by pino-http)
  * @param {Object} res - Express response object
  * @param {Error|null} err - Error object if request resulted in an error
  * @returns {string} Pino log level ('error', 'warn', or 'info')
@@ -259,34 +263,34 @@ function generateRequestId(req) {
  * @example
  * // Server error response
  * res.statusCode = 500;
- * const level = getCustomLogLevel(res, null);
+ * const level = getCustomLogLevel(req, res, null);
  * // Returns: 'error'
  * 
  * @example
  * // Client error response
  * res.statusCode = 404;
- * const level = getCustomLogLevel(res, null);
+ * const level = getCustomLogLevel(req, res, null);
  * // Returns: 'warn'
  * 
  * @example
  * // Successful response
  * res.statusCode = 200;
- * const level = getCustomLogLevel(res, null);
+ * const level = getCustomLogLevel(req, res, null);
  * // Returns: 'info'
  * 
  * @example
  * // Error object present
- * const level = getCustomLogLevel(res, new Error('Something failed'));
+ * const level = getCustomLogLevel(req, res, new Error('Something failed'));
  * // Returns: 'error' (regardless of status code)
  */
-function getCustomLogLevel(res, err) {
+function getCustomLogLevel(req, res, err) {
   // If an error occurred, always log at error level
   if (err) {
     return STATUS_LOG_LEVELS.serverError;
   }
   
   // Get status code, defaulting to 500 if not set (shouldn't happen in normal operation)
-  const statusCode = res.statusCode || 500;
+  const statusCode = res && res.statusCode ? res.statusCode : 500;
   
   // Determine log level based on status code range
   if (statusCode >= 500) {
