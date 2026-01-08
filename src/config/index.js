@@ -15,15 +15,13 @@
  * - NODE_ENV: Set application environment (development, production, test)
  * - LOG_LEVEL: Log level for winston logger (error, warn, info, http, debug)
  * - LOG_FORMAT: Morgan log format (combined, common, dev, short, tiny)
- * - CORS_ORIGIN: CORS allowed origins
- * - PM2_INSTANCES: PM2 cluster instance count (0 = auto based on CPU cores)
+ * - CORS_ORIGIN: CORS allowed origins (comma-separated or '*' for all)
+ * - PM2_INSTANCES: PM2 cluster instances (0 = auto based on CPU cores)
  * 
  * @module src/config
  */
 
-'use strict';
-
-// Load environment variables from .env file
+// Load environment variables from .env file following Twelve-Factor App methodology
 require('dotenv').config();
 
 module.exports = {
@@ -50,7 +48,6 @@ module.exports = {
 
   /**
    * Logging level for winston
-   * Levels: error, warn, info, http, verbose, debug, silly
    * @type {string}
    * @default 'info'
    */
@@ -58,7 +55,6 @@ module.exports = {
 
   /**
    * HTTP request log format for morgan
-   * Formats: combined, common, dev, short, tiny
    * @type {string}
    * @default 'combined'
    */
@@ -66,15 +62,13 @@ module.exports = {
 
   /**
    * CORS allowed origins
-   * Use '*' to allow all origins (not recommended for production)
    * @type {string}
    * @default '*'
    */
   corsOrigin: process.env.CORS_ORIGIN || '*',
 
   /**
-   * PM2 cluster instance count
-   * 0 = auto based on CPU cores (uses 'max')
+   * PM2 cluster instance count (0 = auto based on CPU cores)
    * @type {number}
    * @default 0
    */
