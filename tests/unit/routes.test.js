@@ -6,6 +6,7 @@
  * - main.routes.js (base application routes)
  * - menu.routes.js (menu API routes)
  * - auth.routes.js (authentication API routes)
+ * - order.routes.js (order API routes)
  */
 
 'use strict';
@@ -13,6 +14,7 @@
 const mainRoutes = require('../../src/routes/main.routes');
 const menuRoutes = require('../../src/routes/menu.routes');
 const authRoutes = require('../../src/routes/auth.routes');
+const orderRoutes = require('../../src/routes/order.routes');
 
 /**
  * @typedef {Object} RouteLayer
@@ -82,6 +84,7 @@ function createMockResponse() {
  * @param {Object} [options] - Request options
  * @param {Object} [options.params] - Request parameters
  * @param {Object} [options.body] - Request body
+ * @param {Object} [options.query] - Query parameters
  * @param {Object} [options.headers] - Request headers
  * @returns {Object} Mock request object
  */
@@ -89,6 +92,7 @@ function createMockRequest(options = {}) {
   return {
     params: options.params || {},
     body: options.body || {},
+    query: options.query || {},
     headers: options.headers || {}
   };
 }
@@ -485,6 +489,413 @@ describe('Route Handlers - auth.routes.js', () => {
       handler(req, res);
       
       expect(res.statusCode).toBe(400);
+    });
+  });
+});
+
+/**
+ * Order Routes Tests
+ * Tests for order.routes.js - Order API endpoints for online ordering feature
+ */
+describe('Route Handlers - order.routes.js', () => {
+  describe('Router Export', () => {
+    test('should export an Express Router instance', () => {
+      expect(orderRoutes).toBeDefined();
+      expect(typeof orderRoutes).toBe('function');
+      expect(orderRoutes.stack).toBeDefined();
+      expect(Array.isArray(orderRoutes.stack)).toBe(true);
+    });
+
+    test('should have router handle method defined', () => {
+      expect(typeof orderRoutes.handle).toBe('function');
+    });
+  });
+
+  describe('Route Handler Definitions', () => {
+    test('should have four route handlers defined', () => {
+      const routeLayers = getRouteLayers(orderRoutes);
+      expect(routeLayers.length).toBe(4);
+    });
+
+    test('should define handlers for /, /:id, and /:id/status paths', () => {
+      const paths = getRoutePaths(orderRoutes);
+      expect(paths).toContain('/');
+      expect(paths).toContain('/:id');
+      expect(paths).toContain('/:id/status');
+    });
+
+    test('should define correct HTTP methods for each route', () => {
+      const routeLayers = getRouteLayers(orderRoutes);
+      
+      // POST / - Create order
+      const createRoute = routeLayers.find(l => 
+        l.route.path === '/' && l.route.methods.post
+      );
+      expect(createRoute).toBeDefined();
+      expect(createRoute.route.methods.post).toBe(true);
+      
+      // GET / - List orders
+      const listRoute = routeLayers.find(l => 
+        l.route.path === '/' && l.route.methods.get
+      );
+      expect(listRoute).toBeDefined();
+      expect(listRoute.route.methods.get).toBe(true);
+      
+      // GET /:id - Get order by ID
+      const getByIdRoute = routeLayers.find(l => 
+        l.route.path === '/:id' && l.route.methods.get
+      );
+      expect(getByIdRoute).toBeDefined();
+      expect(getByIdRoute.route.methods.get).toBe(true);
+      
+      // PUT /:id/status - Update order status
+      const updateStatusRoute = routeLayers.find(l => 
+        l.route.path === '/:id/status' && l.route.methods.put
+      );
+      expect(updateStatusRoute).toBeDefined();
+      expect(updateStatusRoute.route.methods.put).toBe(true);
+    });
+
+    test('should have named handler functions for middleware detection', () => {
+      const handlerNames = getHandlerNames(orderRoutes);
+      expect(handlerNames.length).toBe(4);
+      expect(handlerNames).toContain('createOrder');
+      expect(handlerNames).toContain('listOrders');
+      expect(handlerNames).toContain('getOrderById');
+      expect(handlerNames).toContain('updateOrderStatus');
+    });
+  });
+
+  describe('createOrder Handler', () => {
+    test('should return 201 for valid order with items', () => {
+      const handler = findHandler(orderRoutes, '/', 'post');
+      const req = createMockRequest({
+        body: {
+          items: [
+            { name: 'Burger', price: 9.99, quantity: 2 },
+            { name: 'Fries', price: 3.99, quantity: 1 }
+          ],
+          customerName: 'John Doe',
+          customerEmail: 'john@example.com'
+        }
+      });
+      const res = createMockResponse();
+      
+      handler(req, res);
+      
+      expect(res.statusCode).toBe(201);
+      expect(res.body).toHaveProperty('success', true);
+      expect(res.body).toHaveProperty('message');
+      expect(res.body).toHaveProperty('data');
+      expect(res.body.data).toHaveProperty('id');
+      expect(res.body.data).toHaveProperty('items');
+      expect(res.body.data).toHaveProperty('status', 'pending');
+    });
+
+    test('should return 400 for missing order data', () => {
+      const handler = findHandler(orderRoutes, '/', 'post');
+      const req = createMockRequest({ body: null });
+      const res = createMockResponse();
+      
+      handler(req, res);
+      
+      expect(res.statusCode).toBe(400);
+      expect(res.body).toHaveProperty('success', false);
+    });
+
+    test('should return 400 for non-object body', () => {
+      const handler = findHandler(orderRoutes, '/', 'post');
+      const req = createMockRequest();
+      req.body = 'invalid string';
+      const res = createMockResponse();
+      
+      handler(req, res);
+      
+      expect(res.statusCode).toBe(400);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error).toBe('Invalid order data');
+    });
+
+    test('should return 400 for empty items array', () => {
+      const handler = findHandler(orderRoutes, '/', 'post');
+      const req = createMockRequest({
+        body: {
+          items: [],
+          customerName: 'John Doe'
+        }
+      });
+      const res = createMockResponse();
+      
+      handler(req, res);
+      
+      expect(res.statusCode).toBe(400);
+      expect(res.body).toHaveProperty('success', false);
+    });
+
+    test('should return 400 for missing items array', () => {
+      const handler = findHandler(orderRoutes, '/', 'post');
+      const req = createMockRequest({
+        body: {
+          customerName: 'John Doe'
+        }
+      });
+      const res = createMockResponse();
+      
+      handler(req, res);
+      
+      expect(res.statusCode).toBe(400);
+      expect(res.body).toHaveProperty('success', false);
+    });
+
+    test('should calculate subtotal, tax and total correctly', () => {
+      const handler = findHandler(orderRoutes, '/', 'post');
+      const req = createMockRequest({
+        body: {
+          items: [
+            { name: 'Burger', price: 10.00, quantity: 2 },
+            { name: 'Fries', price: 5.00, quantity: 1 }
+          ]
+        }
+      });
+      const res = createMockResponse();
+      
+      handler(req, res);
+      
+      expect(res.statusCode).toBe(201);
+      expect(res.body.data.subtotal).toBe(25.00);
+      expect(res.body.data.tax).toBe(2.00);
+      expect(res.body.data.total).toBe(27.00);
+    });
+
+    test('should use default values for optional fields', () => {
+      const handler = findHandler(orderRoutes, '/', 'post');
+      const req = createMockRequest({
+        body: {
+          items: [{ name: 'Burger', price: 10.00, quantity: 1 }]
+        }
+      });
+      const res = createMockResponse();
+      
+      handler(req, res);
+      
+      expect(res.statusCode).toBe(201);
+      expect(res.body.data.customerName).toBe('Guest');
+      expect(res.body.data.orderType).toBe('pickup');
+    });
+
+    test('should handle items with non-numeric price values', () => {
+      const handler = findHandler(orderRoutes, '/', 'post');
+      const req = createMockRequest({
+        body: {
+          items: [
+            { name: 'Item1', price: 'invalid', quantity: 1 },
+            { name: 'Item2', price: 10.00, quantity: 'two' }
+          ]
+        }
+      });
+      const res = createMockResponse();
+      
+      handler(req, res);
+      
+      expect(res.statusCode).toBe(201);
+      expect(res.body.data.subtotal).toBe(10.00);
+    });
+  });
+
+  describe('listOrders Handler', () => {
+    test('should return 200 with orders list', () => {
+      const handler = findHandler(orderRoutes, '/', 'get');
+      const req = createMockRequest();
+      const res = createMockResponse();
+      
+      handler(req, res);
+      
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toHaveProperty('success', true);
+      expect(res.body).toHaveProperty('message');
+      expect(res.body).toHaveProperty('data');
+      expect(res.body.data).toHaveProperty('orders');
+      expect(Array.isArray(res.body.data.orders)).toBe(true);
+    });
+
+    test('should return pagination metadata', () => {
+      const handler = findHandler(orderRoutes, '/', 'get');
+      const req = createMockRequest({ query: { page: '2', limit: '20' } });
+      const res = createMockResponse();
+      
+      handler(req, res);
+      
+      expect(res.statusCode).toBe(200);
+      expect(res.body.data).toHaveProperty('pagination');
+      expect(res.body.data.pagination).toHaveProperty('currentPage', 2);
+      expect(res.body.data.pagination).toHaveProperty('limit', 20);
+    });
+
+    test('should accept status filter', () => {
+      const handler = findHandler(orderRoutes, '/', 'get');
+      const req = createMockRequest({ query: { status: 'pending' } });
+      const res = createMockResponse();
+      
+      handler(req, res);
+      
+      expect(res.statusCode).toBe(200);
+      expect(res.body.data).toHaveProperty('filters');
+      expect(res.body.data.filters.status).toBe('pending');
+    });
+
+    test('should handle invalid page number gracefully', () => {
+      const handler = findHandler(orderRoutes, '/', 'get');
+      const req = createMockRequest({ query: { page: '-5' } });
+      const res = createMockResponse();
+      
+      handler(req, res);
+      
+      expect(res.statusCode).toBe(200);
+      expect(res.body.data.pagination.currentPage).toBe(1);
+    });
+
+    test('should limit max items per page to 100', () => {
+      const handler = findHandler(orderRoutes, '/', 'get');
+      const req = createMockRequest({ query: { limit: '500' } });
+      const res = createMockResponse();
+      
+      handler(req, res);
+      
+      expect(res.statusCode).toBe(200);
+      expect(res.body.data.pagination.limit).toBe(100);
+    });
+  });
+
+  describe('getOrderById Handler', () => {
+    test('should return 400 for invalid order ID', () => {
+      const handler = findHandler(orderRoutes, '/:id', 'get');
+      const req = createMockRequest({ params: { id: '' } });
+      const res = createMockResponse();
+      
+      handler(req, res);
+      
+      expect(res.statusCode).toBe(400);
+      expect(res.body).toHaveProperty('success', false);
+      expect(res.body).toHaveProperty('error');
+    });
+
+    test('should return 400 for whitespace-only ID', () => {
+      const handler = findHandler(orderRoutes, '/:id', 'get');
+      const req = createMockRequest({ params: { id: '   ' } });
+      const res = createMockResponse();
+      
+      handler(req, res);
+      
+      expect(res.statusCode).toBe(400);
+    });
+
+    test('should return 404 for non-existent order', () => {
+      const handler = findHandler(orderRoutes, '/:id', 'get');
+      const req = createMockRequest({ params: { id: 'order_123' } });
+      const res = createMockResponse();
+      
+      handler(req, res);
+      
+      expect(res.statusCode).toBe(404);
+      expect(res.body).toHaveProperty('success', false);
+      expect(res.body).toHaveProperty('error');
+    });
+  });
+
+  describe('updateOrderStatus Handler', () => {
+    test('should return 200 for valid status update', () => {
+      const handler = findHandler(orderRoutes, '/:id/status', 'put');
+      const req = createMockRequest({
+        params: { id: 'order_123' },
+        body: { status: 'confirmed' }
+      });
+      const res = createMockResponse();
+      
+      handler(req, res);
+      
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toHaveProperty('success', true);
+      expect(res.body).toHaveProperty('data');
+      expect(res.body.data).toHaveProperty('orderId', 'order_123');
+      expect(res.body.data).toHaveProperty('newStatus', 'confirmed');
+    });
+
+    test('should return 400 for invalid order ID', () => {
+      const handler = findHandler(orderRoutes, '/:id/status', 'put');
+      const req = createMockRequest({
+        params: { id: '' },
+        body: { status: 'confirmed' }
+      });
+      const res = createMockResponse();
+      
+      handler(req, res);
+      
+      expect(res.statusCode).toBe(400);
+      expect(res.body).toHaveProperty('success', false);
+    });
+
+    test('should return 400 for missing status', () => {
+      const handler = findHandler(orderRoutes, '/:id/status', 'put');
+      const req = createMockRequest({
+        params: { id: 'order_123' },
+        body: {}
+      });
+      const res = createMockResponse();
+      
+      handler(req, res);
+      
+      expect(res.statusCode).toBe(400);
+      expect(res.body).toHaveProperty('success', false);
+    });
+
+    test('should return 400 for invalid status value', () => {
+      const handler = findHandler(orderRoutes, '/:id/status', 'put');
+      const req = createMockRequest({
+        params: { id: 'order_123' },
+        body: { status: 'invalid_status' }
+      });
+      const res = createMockResponse();
+      
+      handler(req, res);
+      
+      expect(res.statusCode).toBe(400);
+      expect(res.body).toHaveProperty('success', false);
+      expect(res.body.message).toContain('Status must be one of');
+    });
+
+    test('should accept all valid status values', () => {
+      const handler = findHandler(orderRoutes, '/:id/status', 'put');
+      const validStatuses = [
+        'pending', 'confirmed', 'preparing', 'ready',
+        'out_for_delivery', 'delivered', 'completed', 'cancelled', 'refunded'
+      ];
+      
+      validStatuses.forEach(status => {
+        const req = createMockRequest({
+          params: { id: 'order_123' },
+          body: { status }
+        });
+        const res = createMockResponse();
+        
+        handler(req, res);
+        
+        expect(res.statusCode).toBe(200);
+        expect(res.body.data.newStatus).toBe(status);
+      });
+    });
+
+    test('should normalize status to lowercase', () => {
+      const handler = findHandler(orderRoutes, '/:id/status', 'put');
+      const req = createMockRequest({
+        params: { id: 'order_123' },
+        body: { status: 'CONFIRMED' }
+      });
+      const res = createMockResponse();
+      
+      handler(req, res);
+      
+      expect(res.statusCode).toBe(200);
+      expect(res.body.data.newStatus).toBe('confirmed');
     });
   });
 });
