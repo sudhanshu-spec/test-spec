@@ -36,8 +36,8 @@ import {
 // Constants
 // ============================================================================
 
-/** Base URL for booking API endpoints */
-const API_BASE_URL = '/api/bookings';
+/** Base URL for booking API endpoints (wildcard matches any origin) */
+const API_BASE_URL = '*/api/bookings';
 
 /** Maximum allowed party size for reservations */
 const MAX_PARTY_SIZE = 20;
@@ -269,23 +269,31 @@ const createBookingHandler = http.post(
   async ({ request }) => {
     const body = (await request.json()) as CreateBookingRequest;
 
-    // Validate required fields
-    if (!body.date || !body.time || !body.partySize || !body.name || !body.phone) {
-      return HttpResponse.json<ErrorResponse>(
+    // Validate required fields (use explicit undefined/null checks for partySize since 0 is falsy but not missing)
+    const missingFields: string[] = [];
+    if (!body.date) missingFields.push('date');
+    if (!body.time) missingFields.push('time');
+    if (body.partySize === undefined || body.partySize === null) missingFields.push('partySize');
+    if (!body.name) missingFields.push('name');
+    if (!body.phone) missingFields.push('phone');
+
+    if (missingFields.length > 0) {
+      return HttpResponse.json(
         {
           code: 'VALIDATION_ERROR',
-          message: 'Missing required fields: date, time, partySize, name, and phone are required',
+          message: `Missing required fields: ${missingFields.join(', ')}`,
           details: {
             requiredFields: ['date', 'time', 'partySize', 'name', 'phone'],
+            missingFields,
           },
-        },
+        } satisfies ErrorResponse,
         { status: 400 }
       );
     }
 
     // Validate date format
     if (!isValidDateFormat(body.date)) {
-      return HttpResponse.json<ErrorResponse>(
+      return HttpResponse.json(
         {
           code: 'INVALID_DATE_FORMAT',
           message: 'Date must be in YYYY-MM-DD format',
@@ -293,14 +301,14 @@ const createBookingHandler = http.post(
             providedDate: body.date,
             expectedFormat: 'YYYY-MM-DD',
           },
-        },
+        } satisfies ErrorResponse,
         { status: 400 }
       );
     }
 
     // Validate date is not in the past
     if (isDateInPast(body.date)) {
-      return HttpResponse.json<ErrorResponse>(
+      return HttpResponse.json(
         {
           code: 'PAST_DATE',
           message: 'Cannot create booking for a past date',
@@ -308,14 +316,14 @@ const createBookingHandler = http.post(
             providedDate: body.date,
             minimumDate: validDate,
           },
-        },
+        } satisfies ErrorResponse,
         { status: 400 }
       );
     }
 
     // Validate restaurant is not closed on the requested date
     if (isClosedDate(body.date)) {
-      return HttpResponse.json<ErrorResponse>(
+      return HttpResponse.json(
         {
           code: 'RESTAURANT_CLOSED',
           message: 'Restaurant is closed on the requested date',
@@ -323,14 +331,14 @@ const createBookingHandler = http.post(
             requestedDate: body.date,
             reason: 'Holiday closure',
           },
-        },
+        } satisfies ErrorResponse,
         { status: 400 }
       );
     }
 
     // Validate time is within operating hours
     if (!isWithinOperatingHours(body.time)) {
-      return HttpResponse.json<ErrorResponse>(
+      return HttpResponse.json(
         {
           code: 'CLOSED_HOURS',
           message: `Booking time must be between ${OPENING_TIME} and ${LAST_SLOT_TIME}`,
@@ -339,14 +347,14 @@ const createBookingHandler = http.post(
             openingTime: OPENING_TIME,
             lastSlotTime: LAST_SLOT_TIME,
           },
-        },
+        } satisfies ErrorResponse,
         { status: 400 }
       );
     }
 
     // Validate party size
     if (!isValidPartySize(body.partySize)) {
-      return HttpResponse.json<ErrorResponse>(
+      return HttpResponse.json(
         {
           code: 'INVALID_PARTY_SIZE',
           message: `Party size must be between ${MIN_PARTY_SIZE} and ${MAX_PARTY_SIZE} guests`,
@@ -355,7 +363,7 @@ const createBookingHandler = http.post(
             minimumSize: MIN_PARTY_SIZE,
             maximumSize: MAX_PARTY_SIZE,
           },
-        },
+        } satisfies ErrorResponse,
         { status: 400 }
       );
     }
@@ -365,7 +373,7 @@ const createBookingHandler = http.post(
 
     if (!availableSlot) {
       const alternatives = getAlternativeSlots(body.time, availableSlots);
-      return HttpResponse.json<ErrorResponse>(
+      return HttpResponse.json(
         {
           code: 'SLOT_UNAVAILABLE',
           message: 'The requested time slot is not available',
@@ -377,7 +385,7 @@ const createBookingHandler = http.post(
               remainingCapacity: s.remainingCapacity,
             })),
           },
-        },
+        } satisfies ErrorResponse,
         { status: 409 }
       );
     }
@@ -394,11 +402,11 @@ const createBookingHandler = http.post(
       status: 'confirmed',
     });
 
-    return HttpResponse.json<CreateBookingResponse>(
+    return HttpResponse.json(
       {
         booking: newBooking,
         message: 'Booking created successfully',
-      },
+      } satisfies CreateBookingResponse,
       { status: 201 }
     );
   }
@@ -425,14 +433,14 @@ const getBookingHandler = http.get(
     const booking = findBookingById(id);
 
     if (!booking) {
-      return HttpResponse.json<ErrorResponse>(
+      return HttpResponse.json(
         {
           code: 'BOOKING_NOT_FOUND',
           message: `Booking with ID '${id}' not found`,
           details: {
             bookingId: id,
           },
-        },
+        } satisfies ErrorResponse,
         { status: 404 }
       );
     }
@@ -459,21 +467,21 @@ const getSlotsHandler = http.get(
 
     // Validate date parameter
     if (!date) {
-      return HttpResponse.json<ErrorResponse>(
+      return HttpResponse.json(
         {
           code: 'MISSING_DATE_PARAM',
           message: 'Date query parameter is required',
           details: {
             usage: 'GET /api/bookings/slots?date=YYYY-MM-DD&partySize=N',
           },
-        },
+        } satisfies ErrorResponse,
         { status: 400 }
       );
     }
 
     // Validate date format
     if (!isValidDateFormat(date)) {
-      return HttpResponse.json<ErrorResponse>(
+      return HttpResponse.json(
         {
           code: 'INVALID_DATE_FORMAT',
           message: 'Date must be in YYYY-MM-DD format',
@@ -481,34 +489,34 @@ const getSlotsHandler = http.get(
             providedDate: date,
             expectedFormat: 'YYYY-MM-DD',
           },
-        },
+        } satisfies ErrorResponse,
         { status: 400 }
       );
     }
 
     // Check if date is in the past
     if (isDateInPast(date)) {
-      return HttpResponse.json<ErrorResponse>(
+      return HttpResponse.json(
         {
           code: 'PAST_DATE',
           message: 'Cannot check availability for past dates',
           details: {
             providedDate: date,
           },
-        },
+        } satisfies ErrorResponse,
         { status: 400 }
       );
     }
 
     // Check if restaurant is closed
     if (isClosedDate(date)) {
-      return HttpResponse.json<SlotsResponse>(
+      return HttpResponse.json(
         {
           date,
           slots: [],
           openingTime: OPENING_TIME,
           closingTime: LAST_SLOT_TIME,
-        },
+        } satisfies SlotsResponse,
         { status: 200 }
       );
     }
@@ -520,7 +528,7 @@ const getSlotsHandler = http.get(
       const partySize = parseInt(partySizeParam, 10);
 
       if (isNaN(partySize) || !isValidPartySize(partySize)) {
-        return HttpResponse.json<ErrorResponse>(
+        return HttpResponse.json(
           {
             code: 'INVALID_PARTY_SIZE',
             message: `Party size must be a number between ${MIN_PARTY_SIZE} and ${MAX_PARTY_SIZE}`,
@@ -529,7 +537,7 @@ const getSlotsHandler = http.get(
               minimumSize: MIN_PARTY_SIZE,
               maximumSize: MAX_PARTY_SIZE,
             },
-          },
+          } satisfies ErrorResponse,
           { status: 400 }
         );
       }
@@ -539,13 +547,13 @@ const getSlotsHandler = http.get(
       );
     }
 
-    return HttpResponse.json<SlotsResponse>(
+    return HttpResponse.json(
       {
         date,
         slots: filteredSlots,
         openingTime: OPENING_TIME,
         closingTime: LAST_SLOT_TIME,
-      },
+      } satisfies SlotsResponse,
       { status: 200 }
     );
   }
@@ -569,21 +577,21 @@ const cancelBookingHandler = http.delete(
     const booking = findBookingById(id);
 
     if (!booking) {
-      return HttpResponse.json<ErrorResponse>(
+      return HttpResponse.json(
         {
           code: 'BOOKING_NOT_FOUND',
           message: `Booking with ID '${id}' not found`,
           details: {
             bookingId: id,
           },
-        },
+        } satisfies ErrorResponse,
         { status: 404 }
       );
     }
 
     // Check if booking is already cancelled
     if (booking.status === 'cancelled') {
-      return HttpResponse.json<ErrorResponse>(
+      return HttpResponse.json(
         {
           code: 'ALREADY_CANCELLED',
           message: 'This booking has already been cancelled',
@@ -591,14 +599,14 @@ const cancelBookingHandler = http.delete(
             bookingId: id,
             currentStatus: booking.status,
           },
-        },
+        } satisfies ErrorResponse,
         { status: 400 }
       );
     }
 
     // Check if booking is completed or no-show (cannot cancel)
     if (booking.status === 'completed' || booking.status === 'no-show') {
-      return HttpResponse.json<ErrorResponse>(
+      return HttpResponse.json(
         {
           code: 'CANNOT_CANCEL',
           message: `Cannot cancel a booking with status '${booking.status}'`,
@@ -606,14 +614,14 @@ const cancelBookingHandler = http.delete(
             bookingId: id,
             currentStatus: booking.status,
           },
-        },
+        } satisfies ErrorResponse,
         { status: 400 }
       );
     }
 
     // Check cancellation deadline
     if (isCancellationDeadlinePassed(booking.date, booking.time)) {
-      return HttpResponse.json<ErrorResponse>(
+      return HttpResponse.json(
         {
           code: 'CANCELLATION_DEADLINE_PASSED',
           message: `Bookings must be cancelled at least ${CANCELLATION_DEADLINE_HOURS} hours before the reservation time`,
@@ -622,7 +630,7 @@ const cancelBookingHandler = http.delete(
             bookingDateTime: `${booking.date} ${booking.time}`,
             cancellationPolicy: `${CANCELLATION_DEADLINE_HOURS} hours notice required`,
           },
-        },
+        } satisfies ErrorResponse,
         { status: 400 }
       );
     }
@@ -647,14 +655,14 @@ const getUserBookingsHandler = http.get(
 
     // Check for authentication
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return HttpResponse.json<ErrorResponse>(
+      return HttpResponse.json(
         {
           code: 'UNAUTHORIZED',
           message: 'Authentication required to access booking history',
           details: {
             hint: 'Include a valid Bearer token in the Authorization header',
           },
-        },
+        } satisfies ErrorResponse,
         { status: 401 }
       );
     }
@@ -668,11 +676,11 @@ const getUserBookingsHandler = http.get(
       (booking) => booking.userId === userId
     );
 
-    return HttpResponse.json<UserBookingsResponse>(
+    return HttpResponse.json(
       {
         bookings: userBookings,
         total: userBookings.length,
-      },
+      } satisfies UserBookingsResponse,
       { status: 200 }
     );
   }
