@@ -22,7 +22,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, cleanup, waitFor } from '@testing-library/react';
+import { render, screen, cleanup, waitFor, fireEvent, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BookingConfirmation } from '../BookingConfirmation';
 import {
@@ -139,11 +139,13 @@ describe('BookingConfirmation', () => {
 
   beforeEach(() => {
     vi.resetAllMocks();
-    // Mock clipboard API
-    Object.assign(navigator, {
-      clipboard: {
+    // Mock clipboard API using Object.defineProperty since navigator.clipboard is getter-only
+    Object.defineProperty(navigator, 'clipboard', {
+      value: {
         writeText: vi.fn().mockResolvedValue(undefined),
       },
+      writable: true,
+      configurable: true,
     });
   });
 
@@ -302,24 +304,33 @@ describe('BookingConfirmation', () => {
     });
 
     it('should provide copy to clipboard functionality', async () => {
-      // Arrange
+      // Arrange - set up clipboard mock before rendering
       const writeText = vi.fn().mockResolvedValue(undefined);
-      Object.assign(navigator, { clipboard: { writeText } });
+      Object.defineProperty(navigator, 'clipboard', {
+        value: { writeText },
+        writable: true,
+        configurable: true,
+      });
       renderConfirmation(confirmedBooking);
-      const user = userEvent.setup();
 
-      // Act
+      // Act - use fireEvent for simpler async behavior
       const copyButton = screen.getByRole('button', { name: /copy/i });
-      await user.click(copyButton);
+      fireEvent.click(copyButton);
 
-      // Assert
-      expect(writeText).toHaveBeenCalledWith(confirmedBooking.confirmationCode);
+      // Assert - wait for the async clipboard write to complete
+      await waitFor(() => {
+        expect(writeText).toHaveBeenCalledWith(confirmedBooking.confirmationCode);
+      });
     });
 
     it('should show success feedback after copying', async () => {
       // Arrange
       const writeText = vi.fn().mockResolvedValue(undefined);
-      Object.assign(navigator, { clipboard: { writeText } });
+      Object.defineProperty(navigator, 'clipboard', {
+        value: { writeText },
+        writable: true,
+        configurable: true,
+      });
       renderConfirmation(confirmedBooking);
       const user = userEvent.setup();
 
@@ -334,27 +345,37 @@ describe('BookingConfirmation', () => {
     });
 
     it('should reset copy success message after timeout', async () => {
-      // Arrange
-      vi.useFakeTimers();
+      // Arrange - set up clipboard mock
       const writeText = vi.fn().mockResolvedValue(undefined);
-      Object.assign(navigator, { clipboard: { writeText } });
+      Object.defineProperty(navigator, 'clipboard', {
+        value: { writeText },
+        writable: true,
+        configurable: true,
+      });
+      
+      // Use fake timers from the start
+      vi.useFakeTimers();
+      
       renderConfirmation(confirmedBooking);
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
 
-      // Act
+      // Act - click copy button with act wrapper
       const copyButton = screen.getByRole('button', { name: /copy/i });
-      await user.click(copyButton);
+      await act(async () => {
+        fireEvent.click(copyButton);
+        // Allow the promise to resolve
+        await vi.advanceTimersByTimeAsync(0);
+      });
 
       // Assert - Initially shows copied
       expect(screen.getByText(/copied/i)).toBeInTheDocument();
 
-      // Advance timer past the 2000ms reset
-      vi.advanceTimersByTime(2500);
+      // Advance timer past the 2000ms reset with act wrapper
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2500);
+      });
 
       // Should revert to "Copy" text
-      await waitFor(() => {
-        expect(screen.queryByText(/copied/i)).not.toBeInTheDocument();
-      });
+      expect(screen.queryByText(/copied/i)).not.toBeInTheDocument();
 
       vi.useRealTimers();
     });
@@ -455,47 +476,53 @@ describe('BookingConfirmation', () => {
     it('should show confirmation dialog before cancelling', async () => {
       // Arrange
       renderConfirmation(confirmedBooking, { onCancel: mockOnCancel });
-      const user = userEvent.setup();
 
-      // Act
+      // Act - use fireEvent wrapped in act for proper state update handling
       const cancelButton = screen.getByRole('button', { name: /cancel booking/i });
-      await user.click(cancelButton);
+      await act(async () => {
+        fireEvent.click(cancelButton);
+      });
 
-      // Assert - Dialog should appear
-      const dialog = screen.getByRole('dialog');
-      expect(dialog).toBeInTheDocument();
+      // Assert - Dialog should appear immediately after act
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
       expect(screen.getByText(/cancel booking\?/i)).toBeInTheDocument();
     });
 
     it('should emit onCancel callback when cancel is confirmed', async () => {
       // Arrange
       renderConfirmation(confirmedBooking, { onCancel: mockOnCancel });
-      const user = userEvent.setup();
 
-      // Act - Open dialog
+      // Act - Open dialog with act wrapper
       const cancelButton = screen.getByRole('button', { name: /cancel booking/i });
-      await user.click(cancelButton);
+      await act(async () => {
+        fireEvent.click(cancelButton);
+      });
 
-      // Act - Confirm cancellation
-      const confirmButton = screen.getByRole('button', { name: /yes, cancel/i });
-      await user.click(confirmButton);
+      // Act - Confirm cancellation (button has aria-label="Confirm cancellation")
+      const confirmButton = screen.getByRole('button', { name: /confirm cancellation/i });
+      await act(async () => {
+        fireEvent.click(confirmButton);
+      });
 
-      // Assert
+      // Assert - callback should be called
       expect(mockOnCancel).toHaveBeenCalledWith(confirmedBooking.id);
     });
 
     it('should close dialog when user chooses to keep booking', async () => {
       // Arrange
       renderConfirmation(confirmedBooking, { onCancel: mockOnCancel });
-      const user = userEvent.setup();
 
-      // Act - Open dialog
+      // Act - Open dialog with act wrapper
       const cancelButton = screen.getByRole('button', { name: /cancel booking/i });
-      await user.click(cancelButton);
+      await act(async () => {
+        fireEvent.click(cancelButton);
+      });
 
-      // Act - Choose to keep booking
+      // Act - Choose to keep booking with act wrapper
       const keepButton = screen.getByRole('button', { name: /keep booking/i });
-      await user.click(keepButton);
+      await act(async () => {
+        fireEvent.click(keepButton);
+      });
 
       // Assert - Dialog should close, onCancel should not be called
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
@@ -554,16 +581,15 @@ describe('BookingConfirmation', () => {
       expect(closeButton).toBeInTheDocument();
     });
 
-    it('should emit onClose callback when dismissed', async () => {
+    it('should emit onClose callback when dismissed', () => {
       // Arrange
       renderConfirmation(confirmedBooking, { onClose: mockOnClose });
-      const user = userEvent.setup();
 
-      // Act
+      // Act - use fireEvent for simpler sync behavior
       const closeButton = screen.getByRole('button', { name: /close/i });
-      await user.click(closeButton);
+      fireEvent.click(closeButton);
 
-      // Assert
+      // Assert - callback is called synchronously
       expect(mockOnClose).toHaveBeenCalledTimes(1);
     });
 
@@ -630,13 +656,14 @@ describe('BookingConfirmation', () => {
     it('should have modal dialog with proper ARIA attributes', async () => {
       // Arrange
       renderConfirmation(confirmedBooking, { onCancel: mockOnCancel });
-      const user = userEvent.setup();
 
-      // Act
+      // Act - with act wrapper
       const cancelButton = screen.getByRole('button', { name: /cancel booking/i });
-      await user.click(cancelButton);
+      await act(async () => {
+        fireEvent.click(cancelButton);
+      });
 
-      // Assert
+      // Assert - dialog should be visible immediately
       const dialog = screen.getByRole('dialog');
       expect(dialog).toHaveAttribute('aria-modal', 'true');
       expect(dialog).toHaveAttribute('aria-labelledby', 'cancel-dialog-title');
@@ -723,25 +750,36 @@ describe('BookingConfirmation', () => {
     it('should handle clipboard API failure gracefully', async () => {
       // Arrange
       const writeText = vi.fn().mockRejectedValue(new Error('Clipboard access denied'));
-      Object.assign(navigator, { clipboard: { writeText } });
+      Object.defineProperty(navigator, 'clipboard', {
+        value: { writeText },
+        writable: true,
+        configurable: true,
+      });
       
       // Mock document.execCommand as fallback
       const execCommandMock = vi.fn().mockReturnValue(true);
       document.execCommand = execCommandMock;
       
       renderConfirmation(confirmedBooking);
-      const user = userEvent.setup();
 
-      // Act
+      // Act - click and allow full async resolution
       const copyButton = screen.getByRole('button', { name: /copy/i });
-      await user.click(copyButton);
+      
+      // Use act with a small delay to allow the promise rejection and fallback to process
+      await act(async () => {
+        fireEvent.click(copyButton);
+        // Allow multiple microtask cycles for the rejection and fallback
+        await new Promise(resolve => setTimeout(resolve, 50));
+      });
 
-      // Assert - Should attempt clipboard API first
+      // Assert - Should have attempted clipboard API
       expect(writeText).toHaveBeenCalled();
-      // Should show copied (fallback succeeded)
+      
+      // The fallback (execCommand) should have shown "Copied" or the UI updated
+      // Check that the copy attempt was made - success feedback may vary based on implementation
       await waitFor(() => {
         expect(screen.getByText(/copied/i)).toBeInTheDocument();
-      });
+      }, { timeout: 1000 });
     });
 
     it('should handle no-show status', () => {
@@ -766,8 +804,8 @@ describe('BookingConfirmation', () => {
       // Arrange
       renderConfirmation(confirmedBooking);
 
-      // Assert
-      const calendarButton = screen.getByRole('button', { name: /add to calendar/i });
+      // Assert (button has aria-label="Add booking to calendar")
+      const calendarButton = screen.getByRole('button', { name: /add.*calendar/i });
       expect(calendarButton).toBeInTheDocument();
     });
 
@@ -795,16 +833,15 @@ describe('BookingConfirmation', () => {
       expect(modifyButton).toBeInTheDocument();
     });
 
-    it('should emit onModify callback when modify is clicked', async () => {
+    it('should emit onModify callback when modify is clicked', () => {
       // Arrange
       renderConfirmation(confirmedBooking, { onModify: mockOnModify });
-      const user = userEvent.setup();
 
-      // Act
+      // Act - use fireEvent for simpler sync handling
       const modifyButton = screen.getByRole('button', { name: /modify booking/i });
-      await user.click(modifyButton);
+      fireEvent.click(modifyButton);
 
-      // Assert
+      // Assert - callback is called synchronously
       expect(mockOnModify).toHaveBeenCalledWith(confirmedBooking.id);
     });
 
@@ -841,11 +878,12 @@ describe('BookingConfirmation', () => {
     it('should display booking details in cancellation confirmation', async () => {
       // Arrange
       renderConfirmation(confirmedBooking, { onCancel: mockOnCancel });
-      const user = userEvent.setup();
 
-      // Act
+      // Act - use fireEvent with act wrapper
       const cancelButton = screen.getByRole('button', { name: /cancel booking/i });
-      await user.click(cancelButton);
+      await act(async () => {
+        fireEvent.click(cancelButton);
+      });
 
       // Assert - Dialog should show date and time of the booking being cancelled
       expect(screen.getByRole('dialog')).toBeInTheDocument();
@@ -855,13 +893,15 @@ describe('BookingConfirmation', () => {
     it('should display warning about action being irreversible', async () => {
       // Arrange
       renderConfirmation(confirmedBooking, { onCancel: mockOnCancel });
-      const user = userEvent.setup();
 
-      // Act
+      // Act - use fireEvent with act wrapper
       const cancelButton = screen.getByRole('button', { name: /cancel booking/i });
-      await user.click(cancelButton);
+      await act(async () => {
+        fireEvent.click(cancelButton);
+      });
 
-      // Assert
+      // Assert - check warning in dialog
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
       expect(screen.getByText(/cannot be undone/i)).toBeInTheDocument();
     });
   });
