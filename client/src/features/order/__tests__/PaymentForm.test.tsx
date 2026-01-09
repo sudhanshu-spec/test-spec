@@ -475,7 +475,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
           type="submit"
           disabled={isProcessing}
           aria-busy={isProcessing}
-          aria-label={isProcessing ? 'Processing payment' : 'Submit payment'}
+          aria-label={isProcessing ? 'Processing payment' : `Pay $${formattedTotal}`}
         >
           {isProcessing ? 'Processing...' : `Pay $${formattedTotal}`}
         </button>
@@ -573,8 +573,8 @@ function getPaymentFormFields() {
     creditRadio: screen.queryByLabelText(/credit card/i),
     debitRadio: screen.queryByLabelText(/debit card/i),
     cashRadio: screen.queryByLabelText(/cash payment/i),
-    submitButton: screen.queryByRole('button', { name: /pay|submit|processing/i }),
-    cancelButton: screen.queryByRole('button', { name: /cancel/i }),
+    submitButton: screen.queryByRole('button', { name: /^pay \$|submit payment|processing/i }),
+    cancelButton: screen.queryByRole('button', { name: /cancel payment/i }),
   };
 }
 
@@ -716,7 +716,7 @@ describe('PaymentForm', () => {
         ...VALID_PAYMENT_DATA,
         cardNumber: '1234567890123456', // Invalid Luhn
       });
-      await user.click(screen.getByRole('button', { name: /pay/i }));
+      await user.click(screen.getByRole('button', { name: /^pay \$/i }));
 
       // Assert
       await waitFor(() => {
@@ -734,7 +734,7 @@ describe('PaymentForm', () => {
         ...VALID_PAYMENT_DATA,
         expiryDate: '01/20', // Expired date
       });
-      await user.click(screen.getByRole('button', { name: /pay/i }));
+      await user.click(screen.getByRole('button', { name: /^pay \$/i }));
 
       // Assert
       await waitFor(() => {
@@ -752,7 +752,7 @@ describe('PaymentForm', () => {
         ...VALID_PAYMENT_DATA,
         cvv: '12', // Too short
       });
-      await user.click(screen.getByRole('button', { name: /pay/i }));
+      await user.click(screen.getByRole('button', { name: /^pay \$/i }));
 
       // Assert
       await waitFor(() => {
@@ -766,12 +766,12 @@ describe('PaymentForm', () => {
       renderPaymentForm();
 
       // Act - Submit without filling any fields
-      await user.click(screen.getByRole('button', { name: /pay/i }));
+      await user.click(screen.getByRole('button', { name: /^pay \$/i }));
 
       // Assert
       await waitFor(() => {
         expect(screen.getByText(/valid 16-digit card number/i)).toBeInTheDocument();
-        expect(screen.getByText(/cardholder name/i)).toBeInTheDocument();
+        expect(screen.getByText(/please enter the cardholder name/i)).toBeInTheDocument();
         expect(screen.getByText(/valid expiry date/i)).toBeInTheDocument();
         expect(screen.getByText(/valid cvv/i)).toBeInTheDocument();
       });
@@ -786,7 +786,7 @@ describe('PaymentForm', () => {
         ...VALID_PAYMENT_DATA,
         cardNumber: '411111111111111', // Only 15 digits
       });
-      await user.click(screen.getByRole('button', { name: /pay/i }));
+      await user.click(screen.getByRole('button', { name: /^pay \$/i }));
 
       // Assert
       await waitFor(() => {
@@ -806,7 +806,7 @@ describe('PaymentForm', () => {
         ...VALID_PAYMENT_DATA,
         expiryDate: '13/25', // Month 13 is invalid
       });
-      await user.click(screen.getByRole('button', { name: /pay/i }));
+      await user.click(screen.getByRole('button', { name: /^pay \$/i }));
 
       // Assert
       await waitFor(() => {
@@ -820,7 +820,7 @@ describe('PaymentForm', () => {
 
       // Act
       await user.click(screen.getByLabelText(/cash payment/i));
-      await user.click(screen.getByRole('button', { name: /pay/i }));
+      await user.click(screen.getByRole('button', { name: /^pay \$/i }));
 
       // Assert
       await waitFor(() => {
@@ -842,7 +842,7 @@ describe('PaymentForm', () => {
 
       // Act
       await fillPaymentForm(user, VALID_PAYMENT_DATA);
-      await user.click(screen.getByRole('button', { name: /pay/i }));
+      await user.click(screen.getByRole('button', { name: /^pay \$/i }));
 
       // Assert
       await waitFor(() => {
@@ -877,7 +877,7 @@ describe('PaymentForm', () => {
       const { props } = renderPaymentForm();
 
       // Act - Submit with invalid data
-      await user.click(screen.getByRole('button', { name: /pay/i }));
+      await user.click(screen.getByRole('button', { name: /^pay \$/i }));
 
       // Assert
       expect(props.onSubmit).not.toHaveBeenCalled();
@@ -898,7 +898,7 @@ describe('PaymentForm', () => {
       await fillPaymentForm(user, VALID_PAYMENT_DATA);
       
       // Click submit but don't wait for completion
-      const submitButton = screen.getByRole('button', { name: /pay/i });
+      const submitButton = screen.getByRole('button', { name: /^pay \$/i });
       await user.click(submitButton);
 
       // Assert - Check that loading state is shown during submission
@@ -911,7 +911,7 @@ describe('PaymentForm', () => {
 
       // Act
       await user.click(screen.getByLabelText(/cash payment/i));
-      await user.click(screen.getByRole('button', { name: /pay/i }));
+      await user.click(screen.getByRole('button', { name: /^pay \$/i }));
 
       // Assert
       await waitFor(() => {
@@ -938,7 +938,7 @@ describe('PaymentForm', () => {
         ...VALID_PAYMENT_DATA,
         paymentMethod: 'debit',
       });
-      await user.click(screen.getByRole('button', { name: /pay/i }));
+      await user.click(screen.getByRole('button', { name: /^pay \$/i }));
 
       // Assert
       await waitFor(() => {
@@ -1068,9 +1068,9 @@ describe('PaymentForm', () => {
 
     it('should allow retry after error', async () => {
       // Arrange
-      const onSubmit = vi.fn()
-        .mockRejectedValueOnce(new Error('Payment failed'))
-        .mockResolvedValueOnce(undefined);
+      // The error is shown via prop (from a previous failed attempt handled by parent)
+      // On retry, the submission should succeed
+      const onSubmit = vi.fn().mockResolvedValue(undefined);
       
       const { rerender } = render(
         <PaymentForm
@@ -1095,7 +1095,7 @@ describe('PaymentForm', () => {
       );
 
       await fillPaymentForm(user, VALID_PAYMENT_DATA);
-      await user.click(screen.getByRole('button', { name: /pay/i }));
+      await user.click(screen.getByRole('button', { name: /^pay \$/i }));
 
       // Assert
       await waitFor(() => {
@@ -1109,7 +1109,7 @@ describe('PaymentForm', () => {
       renderPaymentForm();
 
       // Act - Submit to trigger validation errors
-      await user.click(screen.getByRole('button', { name: /pay/i }));
+      await user.click(screen.getByRole('button', { name: /^pay \$/i }));
 
       // Assert - Errors are shown
       await waitFor(() => {
@@ -1155,7 +1155,7 @@ describe('PaymentForm', () => {
 
       // Assert
       expect(screen.getByRole('alert')).toHaveTextContent(networkError);
-      expect(screen.getByRole('button', { name: /pay/i })).not.toBeDisabled();
+      expect(screen.getByRole('button', { name: /^pay \$/i })).not.toBeDisabled();
     });
   });
 
@@ -1193,7 +1193,7 @@ describe('PaymentForm', () => {
 
       // Act
       await fillPaymentForm(user, VALID_PAYMENT_DATA);
-      const submitButton = screen.getByRole('button', { name: /pay/i });
+      const submitButton = screen.getByRole('button', { name: /^pay \$/i });
       
       // Click multiple times rapidly
       await user.click(submitButton);
@@ -1232,7 +1232,7 @@ describe('PaymentForm', () => {
         ...VALID_PAYMENT_DATA,
         cardholderName: '  John   Doe  ',
       });
-      await user.click(screen.getByRole('button', { name: /pay/i }));
+      await user.click(screen.getByRole('button', { name: /^pay \$/i }));
 
       // Assert - Name should be submitted with whitespace (component doesn't trim)
       await waitFor(() => {
@@ -1254,7 +1254,7 @@ describe('PaymentForm', () => {
       renderPaymentForm();
 
       // Act
-      await user.click(screen.getByRole('button', { name: /pay/i }));
+      await user.click(screen.getByRole('button', { name: /^pay \$/i }));
 
       // Assert
       await waitFor(() => {
@@ -1270,7 +1270,7 @@ describe('PaymentForm', () => {
       renderPaymentForm();
 
       // Act
-      await user.click(screen.getByRole('button', { name: /pay/i }));
+      await user.click(screen.getByRole('button', { name: /^pay \$/i }));
 
       // Assert
       await waitFor(() => {
@@ -1287,7 +1287,7 @@ describe('PaymentForm', () => {
 
       // Assert
       expect(screen.getByRole('button', { name: /cancel payment/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /submit payment|pay/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /^pay \$/i })).toBeInTheDocument();
     });
 
     it('should have numeric input modes for number fields', () => {
