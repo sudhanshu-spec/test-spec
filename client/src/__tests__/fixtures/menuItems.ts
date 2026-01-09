@@ -400,6 +400,12 @@ export const highPriceItem: TestMenuItem = {
 // ============================================================================
 
 /**
+ * Counter for generating unique IDs.
+ * Incremented on each createMenuItem call to ensure uniqueness.
+ */
+let menuItemCounter = 0;
+
+/**
  * Factory function for creating test menu items with custom overrides.
  * Follows the createMockServer pattern from server.test.js.
  * 
@@ -421,10 +427,10 @@ export const highPriceItem: TestMenuItem = {
  * });
  */
 export function createMenuItem(overrides?: Partial<TestMenuItem>): TestMenuItem {
-  const timestamp = Date.now();
+  const uniqueId = `menu-item-${Date.now()}-${++menuItemCounter}`;
   const baseItem: TestMenuItem = {
     ...DEFAULT_MENU_ITEM,
-    id: `menu-item-${timestamp}`,
+    id: uniqueId,
     ...overrides,
   };
   return baseItem;
