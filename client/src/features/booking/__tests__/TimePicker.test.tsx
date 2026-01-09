@@ -17,7 +17,7 @@
  * - Consistent AAA (Arrange, Act, Assert) test structure
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi, type Mock } from 'vitest';
 import { render, screen, cleanup, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { TimePicker } from '../TimePicker';
@@ -67,7 +67,7 @@ function createTimePickerProps(
 ): TimePickerTestProps {
   return {
     slots: availableSlots,
-    onTimeSelect: vi.fn(),
+    onTimeSelect: vi.fn<(time: string) => void>(),
     selectedTime: undefined,
     isLoading: false,
     className: '',
@@ -109,12 +109,12 @@ function createCapacityVariedSlots(): TimeSlot[] {
 // ============================================================================
 
 describe('TimePicker', () => {
-  /** @type {ReturnType<typeof vi.fn>} */
-  let mockOnTimeSelect: ReturnType<typeof vi.fn>;
+  /** @type {Mock<(time: string) => void>} Mock callback for time selection */
+  let mockOnTimeSelect: Mock<(time: string) => void>;
 
   beforeEach(() => {
     vi.resetAllMocks();
-    mockOnTimeSelect = vi.fn();
+    mockOnTimeSelect = vi.fn<(time: string) => void>();
   });
 
   afterEach(() => {
@@ -421,10 +421,14 @@ describe('TimePicker', () => {
       render(<TimePicker {...props} />);
 
       // Assert
-      expect(screen.getByText('Selected time:')).toBeInTheDocument();
-      // The selection info should show formatted time
-      const selectionInfo = screen.getByText('6:00 PM');
-      expect(selectionInfo).toBeInTheDocument();
+      const selectionLabel = screen.getByText('Selected time:');
+      expect(selectionLabel).toBeInTheDocument();
+      // The selection info should show formatted time - query within the selection info container
+      const selectionInfoContainer = selectionLabel.parentElement;
+      expect(selectionInfoContainer).toBeInTheDocument();
+      const selectionValue = within(selectionInfoContainer!).getByText('6:00 PM');
+      expect(selectionValue).toBeInTheDocument();
+      expect(selectionValue).toHaveClass('time-picker__selection-value');
     });
 
     it('should update selection when different slot is clicked', async () => {
