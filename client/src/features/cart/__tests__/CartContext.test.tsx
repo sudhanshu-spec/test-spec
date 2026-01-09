@@ -564,9 +564,13 @@ describe('CartContext', () => {
     });
 
     it('should persist removal to localStorage', async () => {
-      // Arrange
-      const wrapper = createWrapper([SAMPLE_BURGER, SAMPLE_DRINK]);
+      // Arrange - Use setupStorageWithCart to enable persistence (not initialState)
+      setupStorageWithCart([SAMPLE_BURGER, SAMPLE_DRINK]);
+      const wrapper = createWrapper();
       const { result } = renderHook(() => useCartContext(), { wrapper });
+      
+      // Verify initial load from storage
+      expect(result.current.items).toHaveLength(2);
       
       // Act
       act(() => {
@@ -711,9 +715,14 @@ describe('CartContext', () => {
     });
 
     it('should persist quantity changes to localStorage', async () => {
-      // Arrange
-      const wrapper = createWrapper([{ ...SAMPLE_BURGER, quantity: 1 }]);
+      // Arrange - Use setupStorageWithCart to enable persistence (not initialState)
+      setupStorageWithCart([{ ...SAMPLE_BURGER, quantity: 1 }]);
+      const wrapper = createWrapper();
       const { result } = renderHook(() => useCartContext(), { wrapper });
+      
+      // Verify initial load from storage
+      expect(result.current.items).toHaveLength(1);
+      expect(result.current.items[0].quantity).toBe(1);
       
       // Act
       act(() => {
