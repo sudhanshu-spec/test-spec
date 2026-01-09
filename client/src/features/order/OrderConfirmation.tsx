@@ -117,8 +117,9 @@ export interface OrderConfirmationProps {
 
 /**
  * Route params interface for type-safe route parameter access
+ * Uses Record<string, string | undefined> compatible structure for react-router-dom
  */
-interface OrderConfirmationParams {
+interface OrderConfirmationParams extends Record<string, string | undefined> {
   orderId?: string;
 }
 
