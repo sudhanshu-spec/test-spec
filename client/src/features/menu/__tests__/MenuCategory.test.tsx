@@ -757,8 +757,12 @@ describe('MenuCategory', () => {
       // Act
       renderMenuCategory({ categories: zeroCountCategories });
 
-      // Assert
-      expect(screen.getByText('(0)')).toBeInTheDocument();
+      // Assert - Both "All" and the category will show (0), so use getAllByText
+      const zeroCountElements = screen.getAllByText('(0)');
+      expect(zeroCountElements.length).toBeGreaterThanOrEqual(1);
+      // Verify the Empty Category button shows the zero count
+      const emptyButton = screen.getByRole('button', { name: /empty category/i });
+      expect(within(emptyButton).getByText('(0)')).toBeInTheDocument();
     });
 
     it('should handle category without item count', () => {
@@ -788,10 +792,15 @@ describe('MenuCategory', () => {
       // Act
       renderMenuCategory({ categories: mixedCategories });
 
-      // Assert
-      expect(screen.getByText('(10)')).toBeInTheDocument();
+      // Assert - Both "All" and "With Count" show (10), so use getAllByText
+      const countElements = screen.getAllByText('(10)');
+      expect(countElements.length).toBeGreaterThanOrEqual(1);
       expect(screen.getByText('With Count')).toBeInTheDocument();
       expect(screen.getByText('Without Count')).toBeInTheDocument();
+      
+      // Verify the specific category has the count
+      const withCountButton = screen.getByRole('button', { name: /with count category/i });
+      expect(within(withCountButton).getByText('(10)')).toBeInTheDocument();
     });
 
     it('should handle selecting non-existent category gracefully', () => {
@@ -960,11 +969,20 @@ describe('MenuCategory', () => {
       // Act
       renderMenuCategory();
 
-      // Assert - Each category count should be displayed
+      // Assert - Each category count should be displayed (using getAllByText since counts may be duplicated with "All" button)
       expectedCounts.forEach((count) => {
         if (count !== '(undefined)') {
-          expect(screen.getByText(count)).toBeInTheDocument();
+          // Use getAllByText since "All" button may have the same total count
+          const elements = screen.getAllByText(count);
+          expect(elements.length).toBeGreaterThanOrEqual(1);
         }
+      });
+
+      // Verify each specific category button has its count
+      defaultProps.categories.forEach((cat) => {
+        const buttonNameRegex = new RegExp(`${cat.name} category`, 'i');
+        const button = screen.getByRole('button', { name: buttonNameRegex });
+        expect(within(button).getByText(`(${cat.itemCount})`)).toBeInTheDocument();
       });
     });
 
