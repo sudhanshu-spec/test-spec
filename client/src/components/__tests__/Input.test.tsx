@@ -80,9 +80,13 @@ interface InputProps {
  * Default props for Input component tests.
  * @type {Required<Pick<InputProps, 'value' | 'onChange' | 'type' | 'id' | 'name'>>}
  */
+/**
+ * Default props for Input component tests.
+ * @type {Required<Pick<InputProps, 'value' | 'onChange' | 'type' | 'id' | 'name'>>}
+ */
 const DEFAULT_INPUT_PROPS = {
   value: '',
-  onChange: vi.fn(),
+  onChange: vi.fn() as unknown as (value: string) => void,
   type: 'text' as InputType,
   id: 'test-input',
   name: 'test-input',
@@ -98,7 +102,7 @@ const DEFAULT_INPUT_PROPS = {
 function createMockInputProps(overrides: Partial<InputProps> = {}): InputProps {
   return {
     ...DEFAULT_INPUT_PROPS,
-    onChange: vi.fn(),
+    onChange: vi.fn() as unknown as (value: string) => void,
     ...overrides,
   };
 }
@@ -149,10 +153,11 @@ function createAsyncMockValidator(
 // ============================================================================
 
 describe('Input Component', () => {
-  let mockOnChange: ReturnType<typeof vi.fn>;
+  // Use type assertion to satisfy TypeScript while maintaining mock functionality
+  let mockOnChange: ((value: string) => void) & ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
-    mockOnChange = vi.fn();
+    mockOnChange = vi.fn() as ((value: string) => void) & ReturnType<typeof vi.fn>;
   });
 
   afterEach(() => {
@@ -895,7 +900,8 @@ describe('Input Component', () => {
 
       // Act
       render(<Input {...props} />);
-      const input = screen.getByLabelText('Required Input');
+      // Use regex to match label text that may include required indicator
+      const input = screen.getByLabelText(/Required Input/);
 
       // Assert
       expect(input).toHaveAttribute('aria-required', 'true');
@@ -1164,20 +1170,36 @@ describe('Input Component', () => {
       // Arrange
       const user = userEvent.setup();
       const mockSubmit = vi.fn((e: React.FormEvent) => e.preventDefault());
-      const props = createMockInputProps({
-        onChange: mockOnChange,
-        label: 'Form Input',
-        required: true,
-      });
+      let currentValue = '';
+      const handleChange = (newValue: string) => {
+        currentValue = newValue;
+      };
 
-      render(
-        <form onSubmit={mockSubmit}>
-          <Input {...props} />
-          <button type="submit">Submit</button>
-        </form>
-      );
+      // Use a wrapper component to properly manage controlled state
+      function FormWrapper() {
+        const [value, setValue] = React.useState('');
+        return (
+          <form onSubmit={mockSubmit}>
+            <Input
+              value={value}
+              onChange={(newValue) => {
+                setValue(newValue);
+                handleChange(newValue);
+              }}
+              label="Form Input"
+              required
+              id="form-input"
+              name="form-input"
+            />
+            <button type="submit">Submit</button>
+          </form>
+        );
+      }
 
-      const input = screen.getByLabelText('Form Input');
+      render(<FormWrapper />);
+
+      // Use regex to match label text that may include required indicator
+      const input = screen.getByLabelText(/Form Input/);
       const submitButton = screen.getByRole('button', { name: 'Submit' });
 
       // Act
@@ -1185,7 +1207,7 @@ describe('Input Component', () => {
       await user.click(submitButton);
 
       // Assert
-      expect(mockOnChange).toHaveBeenCalled();
+      expect(currentValue).toBe('form value');
       expect(mockSubmit).toHaveBeenCalled();
       expect(input).toHaveAttribute('required');
     });
