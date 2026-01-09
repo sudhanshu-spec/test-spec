@@ -495,4 +495,3 @@ const DatePicker: React.FC<DatePickerProps> = ({
 };
 
 export { DatePicker };
-export type { DatePickerProps };
