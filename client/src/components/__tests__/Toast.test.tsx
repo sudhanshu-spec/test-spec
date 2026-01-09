@@ -499,14 +499,25 @@ describe('Toast Component', () => {
   // --------------------------------------------------------------------------
 
   describe('User Interaction', () => {
+    // Use real timers for user interaction tests to avoid timeout issues
+    beforeEach(() => {
+      vi.useRealTimers();
+    });
+
+    afterEach(() => {
+      // Restore fake timers for other tests
+      vi.useFakeTimers();
+    });
+
     it('should call onClose when close button is clicked', async () => {
       // Arrange
       const mockOnClose = vi.fn();
       const props = createMockToastProps({
         message: 'Dismissible toast',
+        duration: 0, // Disable auto-dismiss for this test
         onClose: mockOnClose,
       });
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      const user = userEvent.setup();
 
       // Act
       render(<Toast {...props} />);
@@ -524,9 +535,10 @@ describe('Toast Component', () => {
       const mockOnClose = vi.fn();
       const props = createMockToastProps({
         message: 'Keyboard dismissible toast',
+        duration: 0, // Disable auto-dismiss for this test
         onClose: mockOnClose,
       });
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      const user = userEvent.setup();
 
       // Act
       render(<Toast {...props} />);
@@ -547,9 +559,10 @@ describe('Toast Component', () => {
       const mockOnClose = vi.fn();
       const props = createMockToastProps({
         message: 'Escape dismissible toast',
+        duration: 0, // Disable auto-dismiss for this test
         onClose: mockOnClose,
       });
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      const user = userEvent.setup();
 
       // Act
       render(<Toast {...props} />);
@@ -569,9 +582,10 @@ describe('Toast Component', () => {
       const mockOnClose = vi.fn();
       const props = createMockToastProps({
         message: 'Click-resistant toast',
+        duration: 0, // Disable auto-dismiss for this test
         onClose: mockOnClose,
       });
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      const user = userEvent.setup();
 
       // Act
       render(<Toast {...props} />);
@@ -765,14 +779,17 @@ describe('ToastContainer', () => {
     });
 
     it('should remove individual toasts without affecting others', async () => {
+      // Use real timers for user interaction
+      vi.useRealTimers();
+
       // Arrange
       const mockOnRemove = vi.fn();
       const toasts: ToastItem[] = [
-        createMockToastItem('toast-1', { message: 'Keep this toast' }),
-        createMockToastItem('toast-2', { message: 'Remove this toast' }),
-        createMockToastItem('toast-3', { message: 'Also keep this toast' }),
+        createMockToastItem('toast-1', { message: 'Keep this toast', duration: 0 }),
+        createMockToastItem('toast-2', { message: 'Remove this toast', duration: 0 }),
+        createMockToastItem('toast-3', { message: 'Also keep this toast', duration: 0 }),
       ];
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      const user = userEvent.setup();
 
       // Act
       render(<ToastContainer toasts={toasts} onRemove={mockOnRemove} />);
@@ -787,6 +804,9 @@ describe('ToastContainer', () => {
       // Other toasts should still be in the DOM (before re-render)
       expect(screen.getByText('Keep this toast')).toBeInTheDocument();
       expect(screen.getByText('Also keep this toast')).toBeInTheDocument();
+
+      // Restore fake timers
+      vi.useFakeTimers();
     });
 
     it('should render empty container when no toasts', () => {
@@ -913,13 +933,16 @@ describe('ToastContainer', () => {
     });
 
     it('should maintain focus management for keyboard users', async () => {
+      // Use real timers for user interaction
+      vi.useRealTimers();
+
       // Arrange
       const mockOnRemove = vi.fn();
       const toasts: ToastItem[] = [
-        createMockToastItem('toast-1', { message: 'Focusable toast 1' }),
-        createMockToastItem('toast-2', { message: 'Focusable toast 2' }),
+        createMockToastItem('toast-1', { message: 'Focusable toast 1', duration: 0 }),
+        createMockToastItem('toast-2', { message: 'Focusable toast 2', duration: 0 }),
       ];
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      const user = userEvent.setup();
 
       // Act
       render(<ToastContainer toasts={toasts} onRemove={mockOnRemove} />);
@@ -932,6 +955,9 @@ describe('ToastContainer', () => {
       expect(closeButtons.length).toBe(2);
       expect(closeButtons[0]).toBeInTheDocument();
       expect(closeButtons[1]).toBeInTheDocument();
+
+      // Restore fake timers
+      vi.useFakeTimers();
     });
   });
 });
