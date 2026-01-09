@@ -93,11 +93,11 @@ function createMockButtonProps(
 // ============================================================================
 
 describe('Button Component', () => {
-  /** Mock click handler function */
-  let mockOnClick: ReturnType<typeof vi.fn>;
+  /** Mock click handler function - properly typed for Button's onClick prop */
+  let mockOnClick: ReturnType<typeof vi.fn<(event: React.MouseEvent<HTMLButtonElement>) => void>>;
 
   beforeEach(() => {
-    mockOnClick = vi.fn();
+    mockOnClick = vi.fn<(event: React.MouseEvent<HTMLButtonElement>) => void>();
   });
 
   afterEach(() => {

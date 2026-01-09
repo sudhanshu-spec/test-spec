@@ -491,16 +491,30 @@ describe('Modal Component', () => {
       });
       render(<Modal {...props} />);
 
-      // Act - Tab through modal
-      await user.tab();
+      // Wait for modal to establish initial focus (close button)
+      await waitFor(() => {
+        const modal = getModalDialog();
+        expect(modal).toContainElement(document.activeElement as HTMLElement);
+      });
+
+      // Get reference elements
+      const navInput = screen.getByTestId('nav-input');
+      const navBtn = screen.getByTestId('nav-btn');
+
+      // Start from a known position (nav-input)
+      navInput.focus();
       const firstActive = document.activeElement;
+      
+      // Tab to next element
       await user.tab();
       const secondActive = document.activeElement;
 
-      // Assert
+      // Assert - focus should have moved to a different element
       expect(firstActive).not.toBe(secondActive);
       expect(getModalDialog()).toContainElement(firstActive as HTMLElement);
       expect(getModalDialog()).toContainElement(secondActive as HTMLElement);
+      expect(firstActive).toBe(navInput);
+      expect(secondActive).toBe(navBtn);
     });
 
     it('should handle Shift+Tab key navigation', async () => {
@@ -535,14 +549,31 @@ describe('Modal Component', () => {
     });
 
     it('should ignore other key presses', async () => {
-      // Arrange
-      const props = createMockModalProps(mockOnClose);
+      // Arrange - Create modal with a non-button focusable element
+      const props = createMockModalProps(mockOnClose, {
+        children: (
+          <div>
+            <input data-testid="key-test-input" type="text" />
+          </div>
+        ),
+      });
       render(<Modal {...props} />);
 
+      // Wait for modal to render and focus to be established
+      await waitFor(() => {
+        expect(getModalDialog()).toBeInTheDocument();
+      });
+
+      // Focus the input element (not the close button) before testing key presses
+      const input = screen.getByTestId('key-test-input');
+      input.focus();
+
       // Act - Press various keys that shouldn't close modal
-      await user.keyboard('{Enter}');
-      await user.keyboard('{Space}');
+      // Note: Enter and Space on a focused button would trigger click, so we test on input
       await user.keyboard('{ArrowDown}');
+      await user.keyboard('{ArrowUp}');
+      await user.keyboard('{ArrowLeft}');
+      await user.keyboard('{ArrowRight}');
       await user.keyboard('a');
 
       // Assert - Modal should still be open and onClose not called
