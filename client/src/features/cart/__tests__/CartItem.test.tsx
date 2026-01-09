@@ -375,7 +375,8 @@ describe('CartItem', () => {
       
       // Assert
       const priceText = formatPrice(itemPrice);
-      const priceElement = screen.getByText(priceText);
+      // Use data-testid to avoid duplicate text issue when quantity=1
+      const priceElement = screen.getByTestId('cart-item-price');
       expect(priceElement).toBeInTheDocument();
       expect(priceElement).toBeVisible();
       expect(priceElement.textContent).toContain('12.99');
@@ -665,8 +666,11 @@ describe('CartItem', () => {
       
       // Assert
       const formattedPrice = formatPrice(price);
-      expect(screen.getByText(formattedPrice)).toBeInTheDocument();
-      expect(screen.getByText(formattedPrice)).toBeVisible();
+      // Use data-testid to avoid duplicate text issue when quantity=1
+      const priceElement = screen.getByTestId('cart-item-price');
+      expect(priceElement).toBeInTheDocument();
+      expect(priceElement).toBeVisible();
+      expect(priceElement.textContent).toBe(formattedPrice);
       expect(formattedPrice).toBe('$8.99');
     });
 
@@ -713,7 +717,10 @@ describe('CartItem', () => {
       
       // Assert
       const zeroPriceText = formatPrice(0);
-      expect(screen.getByText(zeroPriceText)).toBeInTheDocument();
+      // Use data-testid to avoid duplicate text issue when quantity=1
+      const priceElement = screen.getByTestId('cart-item-price');
+      expect(priceElement).toBeInTheDocument();
+      expect(priceElement.textContent).toBe(zeroPriceText);
       expect(screen.getByText(freeItem.name)).toBeInTheDocument();
       expect(zeroPriceText).toBe('$0.00');
     });
@@ -727,7 +734,10 @@ describe('CartItem', () => {
       
       // Assert
       const highPriceText = formatPrice(expensiveItem.price);
-      expect(screen.getByText(highPriceText)).toBeInTheDocument();
+      // Use data-testid to avoid duplicate text issue when quantity=1
+      const priceElement = screen.getByTestId('cart-item-price');
+      expect(priceElement).toBeInTheDocument();
+      expect(priceElement.textContent).toBe(highPriceText);
       expect(screen.getByText(expensiveItem.name)).toBeInTheDocument();
       expect(highPriceText).toBe('$99.99');
     });
@@ -855,7 +865,9 @@ describe('CartItem', () => {
       // Assert
       // Component should render without crashing
       expect(screen.getByText(itemWithoutImage.name)).toBeInTheDocument();
-      expect(screen.getByText(formatPrice(itemWithoutImage.price))).toBeInTheDocument();
+      // Use data-testid to avoid duplicate text issue when quantity=1
+      const priceElement = screen.getByTestId('cart-item-price');
+      expect(priceElement.textContent).toBe(formatPrice(itemWithoutImage.price));
       expect(screen.getByText('1')).toBeInTheDocument();
     });
   });
@@ -944,7 +956,9 @@ describe('CartItem', () => {
       
       // Assert
       // Component should still render price and quantity
-      expect(screen.getByText(formatPrice(emptyNameItem.price))).toBeInTheDocument();
+      // Use data-testid to avoid duplicate text issue when quantity=1
+      const priceElement = screen.getByTestId('cart-item-price');
+      expect(priceElement.textContent).toBe(formatPrice(emptyNameItem.price));
       expect(screen.getByText('1')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /remove/i })).toBeInTheDocument();
     });
@@ -1235,7 +1249,9 @@ describe('CartItem', () => {
       
       // Assert
       expect(screen.getByText('Burger')).toBeInTheDocument();
-      expect(screen.getByText(formatPrice(9.99))).toBeInTheDocument();
+      // Use data-testid to avoid duplicate text issue when quantity=1
+      const priceElement = screen.getByTestId('cart-item-price');
+      expect(priceElement.textContent).toBe(formatPrice(9.99));
       expect(screen.getByText('1')).toBeInTheDocument();
     });
 
@@ -1255,7 +1271,9 @@ describe('CartItem', () => {
         
         const calculatedTotal = calculateLineTotal(price, quantity);
         expect(calculatedTotal).toBeCloseTo(expected, 2);
-        expect(screen.getByText(formatPrice(calculatedTotal))).toBeInTheDocument();
+        // Use data-testid to avoid duplicate text issue when quantity=1
+        const lineTotalElement = screen.getByTestId('cart-item-line-total');
+        expect(lineTotalElement.textContent).toBe(formatPrice(calculatedTotal));
       });
     });
 
@@ -1327,7 +1345,9 @@ describe('CartItem', () => {
       
       // Core elements must exist
       expect(screen.getByText(DEFAULT_CART_ITEM.name)).toBeInTheDocument();
-      expect(screen.getByText(formatPrice(DEFAULT_CART_ITEM.price))).toBeInTheDocument();
+      // Use data-testid to avoid duplicate text issue when quantity=1
+      const priceElement = screen.getByTestId('cart-item-price');
+      expect(priceElement.textContent).toBe(formatPrice(DEFAULT_CART_ITEM.price));
       expect(screen.getByText(DEFAULT_CART_ITEM.quantity.toString())).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /remove/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /increase|increment|\+/i })).toBeInTheDocument();
