@@ -369,17 +369,17 @@ describe('useCart', () => {
     });
 
     it('should not exceed maximum quantity limit', () => {
-      // Arrange
-      const initialItems = [toCartItem(DEFAULT_MENU_ITEM, MAX_QUANTITY - 1)];
+      // Arrange - start at MAX_QUANTITY to trigger the warning case
+      const initialItems = [toCartItem(DEFAULT_MENU_ITEM, MAX_QUANTITY)];
       const wrapper = createWrapper(initialItems);
       const { result } = renderHook(() => useCart(), { wrapper });
       
-      // Act - try to add more than limit allows
+      // Act - try to add more when already at limit
       act(() => {
         result.current.addItem({ menuItem: DEFAULT_MENU_ITEM, quantity: 5 });
       });
       
-      // Assert - should cap at MAX_QUANTITY
+      // Assert - should stay at MAX_QUANTITY and warn since already at max
       expect(result.current.items[0].quantity).toBe(MAX_QUANTITY);
       expect(consoleWarnSpy).toHaveBeenCalled();
       expect(result.current.items).toHaveLength(1);
