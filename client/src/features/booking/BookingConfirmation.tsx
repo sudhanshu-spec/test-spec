@@ -504,6 +504,3 @@ export function BookingConfirmation({
     </div>
   );
 }
-
-// Re-export types for external use
-export type { BookingConfirmationProps, BookingDetails, BookingStatus };
