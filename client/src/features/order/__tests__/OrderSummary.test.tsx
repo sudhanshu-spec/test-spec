@@ -356,9 +356,10 @@ describe('OrderSummary', () => {
       expect(friesElement).toBeInTheDocument();
       expect(sodaElement).toBeInTheDocument();
 
-      // Assert - verify quantities are displayed
-      // Quantities may be displayed as "x2" or "Qty: 2" depending on component design
-      expect(screen.getByText(/2/)).toBeInTheDocument(); // Burger quantity
+      // Assert - verify quantities are displayed (using getAllByText since multiple quantities)
+      // Quantities are displayed as "x2" for items with quantity > 1
+      const quantityElements = screen.getAllByText(/x\d+/);
+      expect(quantityElements.length).toBeGreaterThan(0);
     });
 
     it('should display item prices correctly', () => {
@@ -503,7 +504,9 @@ describe('OrderSummary', () => {
       // Assert - verify calculations account for quantity
       expect(calculateExpectedSubtotal(itemsWithMultipleQuantity)).toBe(expectedSubtotal);
       expect(screen.getByText('Classic Burger')).toBeInTheDocument();
-      expect(screen.getByText(new RegExp('26\\.97'))).toBeInTheDocument();
+      // Use getAllByText since subtotal and line total may both show the same value
+      const priceElements = screen.getAllByText(/26\.97/);
+      expect(priceElements.length).toBeGreaterThan(0);
     });
 
     it('should format currency with two decimal places', () => {
@@ -523,7 +526,9 @@ describe('OrderSummary', () => {
 
       // Assert - verify currency formatting includes two decimal places
       // $10.00 should display as "10.00" not "10"
-      expect(screen.getByText(/10\.00/)).toBeInTheDocument();
+      // Use getAllByText since multiple elements may contain the same price
+      const priceElements = screen.getAllByText(/10\.00/);
+      expect(priceElements.length).toBeGreaterThan(0);
       expect(formatCurrency(10.0)).toBe('$10.00');
       expect(formatCurrency(10.1)).toBe('$10.10');
     });
@@ -572,7 +577,9 @@ describe('OrderSummary', () => {
       // Assert - verify single item order displays correctly
       expect(screen.getByText('Classic Burger')).toBeInTheDocument();
       expect(calculateExpectedSubtotal(SINGLE_ITEM)).toBe(expectedSubtotal);
-      expect(screen.getByText(/8\.99/)).toBeInTheDocument();
+      // Use getAllByText since price appears in unit price and subtotal
+      const priceElements = screen.getAllByText(/8\.99/);
+      expect(priceElements.length).toBeGreaterThan(0);
     });
 
     it('should handle maximum quantity (99)', () => {
@@ -587,7 +594,9 @@ describe('OrderSummary', () => {
       // Assert - verify max quantity is handled correctly
       expect(screen.getByText('Classic Burger')).toBeInTheDocument();
       expect(expectedSubtotal).toBe(890.01);
-      expect(screen.getByText(/890\.01/)).toBeInTheDocument();
+      // Use getAllByText since price may appear in subtotal and line total
+      const priceElements = screen.getAllByText(/890\.01/);
+      expect(priceElements.length).toBeGreaterThan(0);
     });
 
     it('should handle promotional/zero price items', () => {
@@ -626,7 +635,9 @@ describe('OrderSummary', () => {
         screen.queryByText(/Double Bacon/);
 
       expect(textElement).toBeInTheDocument();
-      expect(screen.getByText(/15\.99/)).toBeInTheDocument();
+      // Use getAllByText since price may appear in unit price and subtotal
+      const priceElements = screen.getAllByText(/15\.99/);
+      expect(priceElements.length).toBeGreaterThan(0);
       expect(LONG_NAME_ITEMS[0].name.length).toBeGreaterThan(50);
     });
 
@@ -658,7 +669,9 @@ describe('OrderSummary', () => {
 
       // Assert - verify fixture data is used correctly
       expect(screen.getByText('Classic Burger')).toBeInTheDocument();
-      expect(screen.getByText(/8\.99/)).toBeInTheDocument();
+      // Use getAllByText since price may appear multiple times
+      const priceElements = screen.getAllByText(/8\.99/);
+      expect(priceElements.length).toBeGreaterThan(0);
       expect(calculateOrderTotal(singleItemCart)).toBe(8.99);
     });
 
@@ -839,7 +852,9 @@ describe('OrderSummary', () => {
 
       // Assert
       expect(screen.getByText('Custom Test Burger')).toBeInTheDocument();
-      expect(screen.getByText(/12\.99/)).toBeInTheDocument();
+      // Use getAllByText since price may appear multiple times
+      const priceElements = screen.getAllByText(/12\.99/);
+      expect(priceElements.length).toBeGreaterThan(0);
       expect(customMenuItem.category).toBe('burgers');
     });
 
