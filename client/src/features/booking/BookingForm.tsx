@@ -1008,4 +1008,3 @@ const BookingForm: React.FC<BookingFormProps> = ({
 };
 
 export { BookingForm };
-export type { BookingFormProps, BookingFormData, BookingConfirmation };
