@@ -185,11 +185,12 @@ const SUPPRESSED_WARNINGS: string[] = [
  * @returns {boolean} True if the message should be suppressed
  */
 function shouldSuppressWarning(args: unknown[]): boolean {
-  if (typeof args[0] !== 'string') {
+  const firstArg = args[0];
+  if (typeof firstArg !== 'string') {
     return false;
   }
 
-  return SUPPRESSED_WARNINGS.some((warning) => args[0].toString().includes(warning));
+  return SUPPRESSED_WARNINGS.some((warning) => firstArg.includes(warning));
 }
 
 // ============================================================================
@@ -227,14 +228,18 @@ beforeAll(() => {
  * Reset state before each test for proper isolation.
  *
  * Performs the following cleanup operations:
- * - Resets all Vitest mocks to their initial state
+ * - Clears all Vitest mock call history while preserving implementations
  *
- * Following Section 0.10.1 requirement:
- * "Use vi.resetAllMocks() in beforeEach hooks"
+ * Note: We use vi.clearAllMocks() instead of vi.resetAllMocks() to preserve
+ * the global browser API mock implementations (matchMedia, ResizeObserver,
+ * IntersectionObserver, etc.) while still clearing call history between tests.
+ *
+ * Following Section 0.10.1 requirement for mock isolation between tests.
  */
 beforeEach(() => {
-  // Reset all mock function calls and implementations
-  vi.resetAllMocks();
+  // Clear all mock function call history while preserving implementations
+  // This ensures global mocks (matchMedia, ResizeObserver, etc.) remain functional
+  vi.clearAllMocks();
 });
 
 /**
@@ -342,11 +347,16 @@ Object.defineProperty(window, 'matchMedia', {
  * });
  * global.ResizeObserver = MockResizeObserver;
  */
-global.ResizeObserver = vi.fn().mockImplementation((): MockResizeObserver => ({
-  observe: vi.fn(),
-  unobserve: vi.fn(),
-  disconnect: vi.fn(),
-}));
+class MockResizeObserverClass implements MockResizeObserver {
+  observe = vi.fn();
+  unobserve = vi.fn();
+  disconnect = vi.fn();
+  
+  constructor(_callback: ResizeObserverCallback) {
+    // Callback stored for potential use in tests
+  }
+}
+global.ResizeObserver = MockResizeObserverClass as unknown as typeof ResizeObserver;
 
 /**
  * Mock IntersectionObserver for components using viewport intersection detection.
@@ -379,14 +389,19 @@ global.ResizeObserver = vi.fn().mockImplementation((): MockResizeObserver => ({
  * // Then trigger the callback:
  * intersectionCallback([{ isIntersecting: true, target: element }]);
  */
-global.IntersectionObserver = vi.fn().mockImplementation((): MockIntersectionObserver => ({
-  observe: vi.fn(),
-  unobserve: vi.fn(),
-  disconnect: vi.fn(),
-  root: null,
-  rootMargin: '',
-  thresholds: [],
-}));
+class MockIntersectionObserverClass implements MockIntersectionObserver {
+  observe = vi.fn();
+  unobserve = vi.fn();
+  disconnect = vi.fn();
+  root: Element | Document | null = null;
+  rootMargin = '';
+  thresholds: ReadonlyArray<number> = [];
+  
+  constructor(_callback: IntersectionObserverCallback, _options?: IntersectionObserverInit) {
+    // Callback and options stored for potential use in tests
+  }
+}
+global.IntersectionObserver = MockIntersectionObserverClass as unknown as typeof IntersectionObserver;
 
 // ============================================================================
 // Additional Browser API Mocks (if needed)
