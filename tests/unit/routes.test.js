@@ -7,6 +7,7 @@
  * - menu.routes.js (menu API routes)
  * - auth.routes.js (authentication API routes)
  * - order.routes.js (order API routes)
+ * - booking.routes.js (booking/reservation API routes)
  */
 
 'use strict';
@@ -15,6 +16,7 @@ const mainRoutes = require('../../src/routes/main.routes');
 const menuRoutes = require('../../src/routes/menu.routes');
 const authRoutes = require('../../src/routes/auth.routes');
 const orderRoutes = require('../../src/routes/order.routes');
+const bookingRoutes = require('../../src/routes/booking.routes');
 
 /**
  * @typedef {Object} RouteLayer
@@ -896,6 +898,253 @@ describe('Route Handlers - order.routes.js', () => {
       
       expect(res.statusCode).toBe(200);
       expect(res.body.data.newStatus).toBe('confirmed');
+    });
+  });
+});
+
+/**
+ * Tests for booking.routes.js
+ * Tests the booking/reservation API routes for table reservations
+ */
+describe('Route Handlers - booking.routes.js', () => {
+  describe('Router Export', () => {
+    test('should export an Express Router instance', () => {
+      expect(bookingRoutes).toBeDefined();
+      expect(typeof bookingRoutes).toBe('function');
+      expect(bookingRoutes.stack).toBeDefined();
+      expect(Array.isArray(bookingRoutes.stack)).toBe(true);
+    });
+
+    test('should have router handle method defined', () => {
+      expect(typeof bookingRoutes.handle).toBe('function');
+    });
+  });
+
+  describe('Route Handler Definitions', () => {
+    test('should have five route handlers defined', () => {
+      const routeLayers = getRouteLayers(bookingRoutes);
+      expect(routeLayers.length).toBe(5);
+    });
+
+    test('should define handlers for /, and /:id paths', () => {
+      const paths = getRoutePaths(bookingRoutes);
+      expect(paths).toContain('/');
+      expect(paths).toContain('/:id');
+    });
+
+    test('should define correct HTTP methods for each route', () => {
+      const routeLayers = getRouteLayers(bookingRoutes);
+      
+      // POST /
+      const postRoot = routeLayers.find(l => l.route.path === '/' && l.route.methods.post);
+      expect(postRoot).toBeDefined();
+      
+      // GET /
+      const getRoot = routeLayers.find(l => l.route.path === '/' && l.route.methods.get);
+      expect(getRoot).toBeDefined();
+      
+      // GET /:id
+      const getId = routeLayers.find(l => l.route.path === '/:id' && l.route.methods.get);
+      expect(getId).toBeDefined();
+      
+      // PUT /:id
+      const putId = routeLayers.find(l => l.route.path === '/:id' && l.route.methods.put);
+      expect(putId).toBeDefined();
+      
+      // DELETE /:id
+      const deleteId = routeLayers.find(l => l.route.path === '/:id' && l.route.methods.delete);
+      expect(deleteId).toBeDefined();
+    });
+
+    test('should have named handler functions for middleware detection', () => {
+      const handlerNames = getHandlerNames(bookingRoutes);
+      expect(handlerNames).toContain('createBooking');
+      expect(handlerNames).toContain('listBookings');
+      expect(handlerNames).toContain('getBookingDetails');
+      expect(handlerNames).toContain('updateBooking');
+      expect(handlerNames).toContain('cancelBooking');
+    });
+  });
+
+  describe('createBooking Handler', () => {
+    test('should return 201 for valid booking', () => {
+      const handler = findHandler(bookingRoutes, '/', 'post');
+      const req = createMockRequest({
+        body: {
+          date: '2026-01-15',
+          time: '19:00',
+          partySize: 4,
+          name: 'John Doe',
+          email: 'john@example.com',
+          phone: '555-1234'
+        }
+      });
+      const res = createMockResponse();
+      
+      handler(req, res);
+      
+      expect(res.statusCode).toBe(201);
+      expect(res.body).toHaveProperty('success', true);
+      expect(res.body).toHaveProperty('message', 'Booking created successfully');
+      expect(res.body).toHaveProperty('booking');
+      expect(res.body.booking).toHaveProperty('id');
+      expect(res.body.booking).toHaveProperty('name', 'John Doe');
+      expect(res.body.booking).toHaveProperty('partySize', 4);
+      expect(res.body.booking).toHaveProperty('status', 'confirmed');
+    });
+
+    test('should use default values for missing fields', () => {
+      const handler = findHandler(bookingRoutes, '/', 'post');
+      const req = createMockRequest({ body: {} });
+      const res = createMockResponse();
+      
+      handler(req, res);
+      
+      expect(res.statusCode).toBe(201);
+      expect(res.body.booking.name).toBe('Guest');
+      expect(res.body.booking.partySize).toBe(1);
+    });
+
+    test('should handle undefined body gracefully', () => {
+      const handler = findHandler(bookingRoutes, '/', 'post');
+      const req = createMockRequest();
+      const res = createMockResponse();
+      
+      handler(req, res);
+      
+      expect(res.statusCode).toBe(201);
+      expect(res.body.success).toBe(true);
+    });
+  });
+
+  describe('listBookings Handler', () => {
+    test('should return 200 with bookings list', () => {
+      const handler = findHandler(bookingRoutes, '/', 'get');
+      const req = createMockRequest();
+      const res = createMockResponse();
+      
+      handler(req, res);
+      
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toHaveProperty('success', true);
+      expect(res.body).toHaveProperty('bookings');
+      expect(Array.isArray(res.body.bookings)).toBe(true);
+      expect(res.body).toHaveProperty('count');
+    });
+  });
+
+  describe('getBookingDetails Handler', () => {
+    test('should return 404 for non-existent booking', () => {
+      const handler = findHandler(bookingRoutes, '/:id', 'get');
+      const req = createMockRequest({
+        params: { id: 'booking_123' }
+      });
+      const res = createMockResponse();
+      
+      handler(req, res);
+      
+      expect(res.statusCode).toBe(404);
+      expect(res.body).toHaveProperty('success', false);
+      expect(res.body.message).toContain('not found');
+    });
+
+    test('should return 400 for missing booking ID', () => {
+      const handler = findHandler(bookingRoutes, '/:id', 'get');
+      const req = createMockRequest({
+        params: { id: '' }
+      });
+      const res = createMockResponse();
+      
+      handler(req, res);
+      
+      expect(res.statusCode).toBe(400);
+      expect(res.body).toHaveProperty('success', false);
+      expect(res.body.message).toContain('Booking ID is required');
+    });
+  });
+
+  describe('updateBooking Handler', () => {
+    test('should return 200 for valid update', () => {
+      const handler = findHandler(bookingRoutes, '/:id', 'put');
+      const req = createMockRequest({
+        params: { id: 'booking_123' },
+        body: {
+          date: '2026-01-20',
+          time: '20:00',
+          partySize: 6,
+          name: 'Jane Doe'
+        }
+      });
+      const res = createMockResponse();
+      
+      handler(req, res);
+      
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toHaveProperty('success', true);
+      expect(res.body).toHaveProperty('message', 'Booking updated successfully');
+      expect(res.body).toHaveProperty('booking');
+      expect(res.body.booking).toHaveProperty('id', 'booking_123');
+      expect(res.body.booking).toHaveProperty('partySize', 6);
+    });
+
+    test('should return 400 for missing booking ID', () => {
+      const handler = findHandler(bookingRoutes, '/:id', 'put');
+      const req = createMockRequest({
+        params: { id: '' },
+        body: { partySize: 4 }
+      });
+      const res = createMockResponse();
+      
+      handler(req, res);
+      
+      expect(res.statusCode).toBe(400);
+      expect(res.body).toHaveProperty('success', false);
+      expect(res.body.message).toContain('Booking ID is required');
+    });
+
+    test('should use default values for missing update fields', () => {
+      const handler = findHandler(bookingRoutes, '/:id', 'put');
+      const req = createMockRequest({
+        params: { id: 'booking_123' },
+        body: {}
+      });
+      const res = createMockResponse();
+      
+      handler(req, res);
+      
+      expect(res.statusCode).toBe(200);
+      expect(res.body.booking.name).toBe('Guest');
+      expect(res.body.booking.partySize).toBe(1);
+    });
+  });
+
+  describe('cancelBooking Handler', () => {
+    test('should return 200 for successful cancellation', () => {
+      const handler = findHandler(bookingRoutes, '/:id', 'delete');
+      const req = createMockRequest({
+        params: { id: 'booking_123' }
+      });
+      const res = createMockResponse();
+      
+      handler(req, res);
+      
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toHaveProperty('success', true);
+      expect(res.body.message).toContain('cancelled');
+    });
+
+    test('should return 400 for missing booking ID', () => {
+      const handler = findHandler(bookingRoutes, '/:id', 'delete');
+      const req = createMockRequest({
+        params: { id: '' }
+      });
+      const res = createMockResponse();
+      
+      handler(req, res);
+      
+      expect(res.statusCode).toBe(400);
+      expect(res.body).toHaveProperty('success', false);
+      expect(res.body.message).toContain('Booking ID is required');
     });
   });
 });
