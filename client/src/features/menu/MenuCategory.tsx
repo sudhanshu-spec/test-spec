@@ -181,7 +181,7 @@ export const MenuCategory: React.FC<MenuCategoryProps> = ({
    */
   const getButtonClassName = useCallback(
     (categoryId: string | null): string => {
-      const classes = [STYLE_CLASSES.button];
+      const classes: string[] = [STYLE_CLASSES.button];
       if (isSelected(categoryId)) {
         classes.push(STYLE_CLASSES.buttonActive);
       } else {
