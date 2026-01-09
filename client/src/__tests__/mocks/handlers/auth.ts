@@ -697,9 +697,6 @@ export const authHandlers = [
   deleteAccountHandler
 ];
 
-// Export utility function for test cleanup
-export { resetAuthState };
-
 // Export individual handlers for granular testing scenarios
 export {
   loginHandler,
