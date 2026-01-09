@@ -1,0 +1,25 @@
+{
+  "source": {
+    "include": ["server.js", "src/"],
+    "exclude": ["node_modules/"]
+  },
+  "opts": {
+    "destination": "./docs/api",
+    "recurse": true,
+    "readme": "README.md",
+    "package": "package.json"
+  },
+  "plugins": ["plugins/markdown"],
+  "templates": {
+    "default": {
+      "outputSourceFiles": true,
+      "includeDate": false
+    },
+    "cleverLinks": true,
+    "monospaceLinks": false
+  },
+  "tags": {
+    "allowUnknownTags": true,
+    "dictionaries": ["jsdoc", "closure"]
+  }
+}
