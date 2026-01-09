@@ -372,15 +372,16 @@ export async function waitForLoadingToFinish(): Promise<void> {
  *   document.querySelector('button[type="submit"]') as HTMLElement
  * );
  */
-export async function waitForElement(callback: () => HTMLElement): Promise<HTMLElement> {
-  let element: HTMLElement | null = null;
+export async function waitForElement(callback: () => HTMLElement | null): Promise<HTMLElement> {
+  let foundElement: HTMLElement | null = null;
 
   await waitFor(
     () => {
-      element = callback();
-      if (!element) {
+      const result = callback();
+      if (!result) {
         throw new Error('Element not found');
       }
+      foundElement = result;
     },
     {
       timeout: 5000,
@@ -388,8 +389,13 @@ export async function waitForElement(callback: () => HTMLElement): Promise<HTMLE
     }
   );
 
-  // The waitFor ensures element is found, but TypeScript needs this assertion
-  return element as HTMLElement;
+  // After waitFor succeeds, foundElement is guaranteed to be set
+  // TypeScript needs explicit null check even though waitFor ensures this
+  if (!foundElement) {
+    throw new Error('Element not found after waitFor completed');
+  }
+
+  return foundElement;
 }
 
 // ============================================================================
