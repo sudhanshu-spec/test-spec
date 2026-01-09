@@ -19,9 +19,11 @@ module.exports = {
   collectCoverageFrom: [
     'server.js',
     'src/**/*.js',
-    '!node_modules/**'
+    '!node_modules/**',
+    '!client/**'
   ],
-  coveragePathIgnorePatterns: ['/node_modules/'],
+  coveragePathIgnorePatterns: ['/node_modules/', '/client/'],
+  testPathIgnorePatterns: ['/node_modules/', '/client/'],
   verbose: true,
   testTimeout: 10000
 };

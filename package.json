@@ -8,7 +8,11 @@
         "test": "jest",
         "test:watch": "jest --watch",
         "test:coverage": "jest --coverage",
-        "test:ci": "jest --ci --coverage --reporters=default"
+        "test:ci": "jest --ci --coverage --reporters=default",
+        "test:client": "cd client && npm test",
+        "test:all": "npm test && npm run test:client",
+        "test:client:coverage": "cd client && npm run test:coverage",
+        "coverage:all": "npm run test:coverage && npm run test:client:coverage"
     },
     "author": "hxu",
     "license": "MIT",
