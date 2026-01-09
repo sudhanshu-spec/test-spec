@@ -421,7 +421,7 @@ function createRegisterHandler() {
         email: email.toLowerCase(),
         password,
         name: name.trim(),
-        role: 'user'
+        role: 'customer'
       };
 
       // Generate tokens for the new user

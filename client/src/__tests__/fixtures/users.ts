@@ -14,6 +14,11 @@
 /**
  * Represents a test user with all authentication-related properties.
  * Used throughout auth tests for login, registration, and profile testing.
+ * 
+ * Note: Role values are aligned with testUtils.ts TestUser interface:
+ * - 'customer': Regular user (maps to 'user' in UI)
+ * - 'admin': Administrator with elevated privileges
+ * - 'staff': Restaurant staff member
  */
 export interface TestUser {
   /** Unique identifier for the user */
@@ -25,7 +30,7 @@ export interface TestUser {
   /** User's display name */
   name: string;
   /** User's role determining access permissions */
-  role?: 'user' | 'admin';
+  role: 'customer' | 'admin' | 'staff';
 }
 
 /**
@@ -65,7 +70,7 @@ export const validUser: TestUser = {
   email: 'john.doe@example.com',
   password: 'SecureP@ss123',
   name: 'John Doe',
-  role: 'user'
+  role: 'customer'
 };
 
 /**
@@ -89,7 +94,7 @@ export const newUser: TestUser = {
   email: 'new.user@example.com',
   password: 'NewUser#789',
   name: 'New User',
-  role: 'user'
+  role: 'customer'
 };
 
 /**
@@ -101,7 +106,7 @@ export const specialCharsUser: TestUser = {
   email: "jane.o'connor+test@example.com",
   password: 'Sp3c!@l#Ch4rs',
   name: "Jane O'Connor-Smith",
-  role: 'user'
+  role: 'customer'
 };
 
 /**
@@ -113,7 +118,7 @@ export const longNameUser: TestUser = {
   email: 'maximilian.longname@example.com',
   password: 'LongName123!',
   name: 'Maximilian Alexander von Hohenzollern-Sigmaringen the Third Junior',
-  role: 'user'
+  role: 'customer'
 };
 
 /**
@@ -124,7 +129,8 @@ export const minimalUser: TestUser = {
   id: 'user-minimal-001',
   email: 'minimal@example.com',
   password: 'MinimalP@ss1',
-  name: 'Min'
+  name: 'Min',
+  role: 'customer'
 };
 
 /**
@@ -143,14 +149,14 @@ export const testUsers: TestUser[] = [
     email: 'jane.smith@example.com',
     password: 'JaneP@ss456',
     name: 'Jane Smith',
-    role: 'user'
+    role: 'customer'
   },
   {
     id: 'user-003',
     email: 'bob.wilson@example.com',
     password: 'BobW!ls0n789',
     name: 'Bob Wilson',
-    role: 'user'
+    role: 'customer'
   }
 ];
 
@@ -282,7 +288,7 @@ export function createTestUser(overrides?: Partial<TestUser>): TestUser {
     email: `testuser${uniqueId}@example.com`,
     password: `TestPass${uniqueId}!`,
     name: `Test User ${uniqueId}`,
-    role: 'user'
+    role: 'customer'
   };
 
   return {
@@ -316,7 +322,7 @@ export function generateAuthToken(user: TestUser): string {
   const payload = {
     userId: user.id,
     email: user.email,
-    role: user.role || 'user',
+    role: user.role,
     name: user.name,
     iat: now,
     exp: now + 86400 // 24 hours from now

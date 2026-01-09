@@ -272,25 +272,28 @@ export const menuItems: TestMenuItem[] = [
 /**
  * Array of menu categories with their item counts.
  * Used for category filtering and display tests.
+ * 
+ * Note: Category IDs must match the category field in menu items
+ * for filtering to work correctly (e.g., 'burgers' matches item.category='burgers')
  */
 export const categories: MenuCategory[] = [
   {
-    id: 'cat-burgers',
+    id: 'burgers',
     name: 'Burgers',
     itemCount: burgers.length,
   },
   {
-    id: 'cat-sides',
+    id: 'sides',
     name: 'Sides',
     itemCount: sides.length,
   },
   {
-    id: 'cat-drinks',
+    id: 'drinks',
     name: 'Drinks',
     itemCount: drinks.length,
   },
   {
-    id: 'cat-desserts',
+    id: 'desserts',
     name: 'Desserts',
     itemCount: desserts.length,
   },

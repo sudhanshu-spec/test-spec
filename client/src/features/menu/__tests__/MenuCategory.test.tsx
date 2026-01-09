@@ -998,7 +998,7 @@ describe('MenuCategory', () => {
       await user.click(burgersButton);
 
       // Assert - Should be called with the fixture category ID
-      expect(mockOnSelectCategory).toHaveBeenCalledWith('cat-burgers');
+      expect(mockOnSelectCategory).toHaveBeenCalledWith('burgers');
     });
   });
 });

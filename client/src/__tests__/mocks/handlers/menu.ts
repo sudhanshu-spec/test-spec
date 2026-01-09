@@ -257,7 +257,7 @@ const getItemHandler = http.get(`${API_BASE_URL}/items/:id`, ({ params }) => {
  * @example
  * // Get all categories
  * GET /api/menu/categories
- * // Returns: [{ id: 'cat-burgers', name: 'Burgers', itemCount: 4 }, ...]
+ * // Returns: [{ id: 'burgers', name: 'Burgers', itemCount: 4 }, ...]
  */
 const getCategoriesHandler = http.get(`${API_BASE_URL}/categories`, () => {
   return HttpResponse.json(categories, { status: 200 });
