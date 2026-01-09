@@ -462,12 +462,5 @@ function validateBookingStatus(status: unknown): BookingStatus | undefined {
   return undefined;
 }
 
-export { useBooking };
-export type {
-  UseBookingState,
-  TimeSlot,
-  Booking,
-  BookingStatus,
-  CreateBookingData,
-  UseBookingReturn,
-};
+// Re-export types for convenience when importing from this module
+// Note: Primary exports are inline with interface/type/function declarations above
