@@ -5,11 +5,16 @@
     "main": "server.js",
     "scripts": {
         "start": "node server.js",
-        "test": "echo \"Error: no test specified\" && exit 1"
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "docs": "jsdoc -c jsdoc.json",
+        "docs:serve": "npx serve docs/api"
     },
     "author": "hxu",
     "license": "MIT",
     "dependencies": {
         "express": "^5.1.0"
+    },
+    "devDependencies": {
+        "jsdoc": "^4.0.5"
     }
 }
