@@ -13,8 +13,8 @@
 'use strict';
 
 const mainRoutes = require('../../src/routes/main.routes');
-const menuRoutes = require('../../src/routes/menu.routes');
 const authRoutes = require('../../src/routes/auth.routes');
+const menuRoutes = require('../../src/routes/menu.routes');
 const orderRoutes = require('../../src/routes/order.routes');
 const bookingRoutes = require('../../src/routes/booking.routes');
 
@@ -42,6 +42,29 @@ function getRouteLayers(router) {
  */
 function getRoutePaths(router) {
   return getRouteLayers(router).map(layer => layer.route.path);
+}
+
+/**
+ * Filters routes by HTTP method from Express Router.
+ * @param {import('express').Router} router - Express Router instance
+ * @param {string} method - HTTP method to filter by (get, post, put, delete)
+ * @returns {RouteLayer[]} Array of route layers that have the specified method defined
+ */
+function getRoutesByMethod(router, method) {
+  return getRouteLayers(router).filter(layer => layer.route.methods[method]);
+}
+
+/**
+ * Checks if a route layer has middleware with a specific name.
+ * @param {RouteLayer} routeLayer - Route layer to check
+ * @param {string} middlewareName - Name of the middleware to look for
+ * @returns {boolean} True if middleware with the given name exists in the route stack
+ */
+function hasMiddleware(routeLayer, middlewareName) {
+  if (!routeLayer || !routeLayer.route || !routeLayer.route.stack) {
+    return false;
+  }
+  return routeLayer.route.stack.some(handler => handler.name === middlewareName);
 }
 
 /**
