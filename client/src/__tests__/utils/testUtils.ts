@@ -45,14 +45,16 @@ export interface TestMenuItem {
   id: string;
   /** Name of the menu item */
   name: string;
-  /** Price of the menu item in cents (to avoid floating point issues) */
+  /** Price of the menu item in dollars (e.g., 9.99) */
   price: number;
-  /** Category the menu item belongs to */
-  category: 'burgers' | 'sides' | 'drinks' | 'desserts';
+  /** Category the menu item belongs to (e.g., 'burgers', 'sides', 'drinks', 'desserts') */
+  category: string;
   /** URL to the menu item's image */
   imageUrl: string;
   /** Description of the menu item */
   description: string;
+  /** Whether the item is currently available for ordering (defaults to true) */
+  available?: boolean;
 }
 
 /**
