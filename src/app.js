@@ -57,7 +57,7 @@
 
 /**
  * Express framework for HTTP request handling.
- * @type {import('express')}
+ * @type {Function}
  */
 const express = require('express');
 

@@ -53,7 +53,7 @@
 /**
  * Import the configured Express application instance.
  * The app is pre-configured with routes and middleware in src/app.js.
- * @type {import('express').Application}
+ * @type {Object}
  */
 const app = require('./src/app');
 
