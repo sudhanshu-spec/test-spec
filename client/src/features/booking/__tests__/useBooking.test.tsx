@@ -38,7 +38,7 @@ import {
   openingTimeBooking,
   lastSlotBooking,
 } from '../../../__tests__/fixtures/bookings';
-import { useBooking } from '../hooks/useBooking';
+import { useBooking, Booking } from '../hooks/useBooking';
 import { AllProviders } from '../../../__tests__/utils/render';
 import {
   createMockBooking,
@@ -474,7 +474,7 @@ describe('useBooking', () => {
       };
 
       // Act
-      let createdBooking;
+      let createdBooking: Booking | undefined;
       await act(async () => {
         createdBooking = await result.current.createBooking(bookingData);
       });
@@ -507,7 +507,7 @@ describe('useBooking', () => {
       };
 
       // Act
-      let createdBooking;
+      let createdBooking: Booking | undefined;
       await act(async () => {
         createdBooking = await result.current.createBooking(bookingData);
       });
@@ -570,7 +570,7 @@ describe('useBooking', () => {
       };
 
       // Act
-      let createdBooking;
+      let createdBooking: Booking | undefined;
       await act(async () => {
         createdBooking = await result.current.createBooking(bookingData);
       });
@@ -597,7 +597,7 @@ describe('useBooking', () => {
       };
 
       // Act
-      let createdBooking;
+      let createdBooking: Booking | undefined;
       await act(async () => {
         createdBooking = await result.current.createBooking(bookingData);
       });
@@ -801,7 +801,7 @@ describe('useBooking', () => {
       };
 
       // Act
-      let createdBooking;
+      let createdBooking: Booking | undefined;
       await act(async () => {
         createdBooking = await result.current.createBooking(bookingData);
       });
@@ -828,7 +828,7 @@ describe('useBooking', () => {
       };
 
       // Act
-      let createdBooking;
+      let createdBooking: Booking | undefined;
       await act(async () => {
         createdBooking = await result.current.createBooking(bookingData);
       });
@@ -856,7 +856,7 @@ describe('useBooking', () => {
       };
 
       // Act
-      let createdBooking;
+      let createdBooking: Booking | undefined;
       await act(async () => {
         createdBooking = await result.current.createBooking(bookingData);
       });
@@ -884,7 +884,7 @@ describe('useBooking', () => {
       };
 
       // Act
-      let createdBooking;
+      let createdBooking: Booking | undefined;
       await act(async () => {
         createdBooking = await result.current.createBooking(bookingData);
       });
@@ -1068,7 +1068,7 @@ describe('useBooking', () => {
       const { result } = renderHook(() => useBooking(), { wrapper });
 
       // Act
-      let fetchedBooking;
+      let fetchedBooking: Booking | undefined;
       await act(async () => {
         fetchedBooking = await result.current.getBooking(confirmedBooking.id);
       });

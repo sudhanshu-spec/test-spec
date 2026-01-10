@@ -22,7 +22,7 @@ import { ReactNode } from 'react';
 import { http, HttpResponse } from 'msw';
 
 // Internal imports from depends_on_files
-import { useOrder } from '../hooks/useOrder';
+import { useOrder, Order } from '../hooks/useOrder';
 import { AllProviders } from '../../../__tests__/utils/render';
 import { server } from '../../../__tests__/mocks/server';
 import { ordersHandlers } from '../../../__tests__/mocks/handlers/orders';
@@ -316,18 +316,19 @@ describe('useOrder hook', () => {
       const orderInput = createOrderInput();
 
       // Act
-      let createdOrder: ReturnType<typeof result.current.createOrder> extends Promise<infer T> ? T : never = null;
+      let createdOrder: Order | null = null;
       await act(async () => {
         createdOrder = await result.current.createOrder(orderInput);
       });
 
       // Assert
       expect(createdOrder).not.toBeNull();
-      expect(createdOrder).toHaveProperty('id');
-      expect(createdOrder).toHaveProperty('status', 'pending');
-      expect(createdOrder).toHaveProperty('total');
-      expect(createdOrder).toHaveProperty('items');
-      expect(createdOrder?.items).toHaveLength(orderInput.items.length);
+      const order = createdOrder!;
+      expect(order).toHaveProperty('id');
+      expect(order).toHaveProperty('status', 'pending');
+      expect(order).toHaveProperty('total');
+      expect(order).toHaveProperty('items');
+      expect(order.items).toHaveLength(orderInput.items.length);
     });
 
     it('should update orders array with new order', async () => {
@@ -1284,10 +1285,11 @@ expect.extend({
 
 // TypeScript declaration for custom matcher
 declare module 'vitest' {
-  interface Assertion<T = unknown> {
-    toBeOneOf(expected: unknown[]): T;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  interface Assertion<T = any> {
+    toBeOneOf(expected: unknown[]): void;
   }
   interface AsymmetricMatchersContaining {
-    toBeOneOf(expected: unknown[]): unknown;
+    toBeOneOf(expected: unknown[]): void;
   }
 }
