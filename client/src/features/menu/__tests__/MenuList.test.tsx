@@ -139,17 +139,26 @@ function setupSlowLoadingHandler(
 
 /**
  * Sets up MSW handler for empty menu response.
+ * Overrides both items and categories endpoints.
+ * Returns empty items and empty categories to simulate completely empty menu.
  */
 function setupEmptyMenuHandler(): void {
   server.use(
     http.get(MENU_ITEMS_ENDPOINT, () => {
       return HttpResponse.json(createMenuResponse([]), { status: 200 });
+    }),
+    // Also override categories to be empty for a truly empty menu
+    http.get(MENU_CATEGORIES_ENDPOINT, () => {
+      return HttpResponse.json([], { status: 200 });
     })
   );
 }
 
 /**
  * Sets up MSW handler for API error response.
+ * Overrides both items and categories endpoints to ensure error state is triggered.
+ * The useMenu hook uses Promise.all for both endpoints, so both need to fail
+ * or one failing will cause the error to propagate.
  * @param statusCode - HTTP status code for error (default 500)
  * @param message - Error message to return
  */
@@ -157,8 +166,16 @@ function setupErrorHandler(
   statusCode: number = 500,
   message: string = 'Internal Server Error'
 ): void {
+  // Override the items endpoint to return an error
   server.use(
     http.get(MENU_ITEMS_ENDPOINT, () => {
+      return HttpResponse.json(
+        { error: message, statusCode },
+        { status: statusCode }
+      );
+    }),
+    // Also override categories endpoint to ensure consistent error behavior
+    http.get(MENU_CATEGORIES_ENDPOINT, () => {
       return HttpResponse.json(
         { error: message, statusCode },
         { status: statusCode }
@@ -222,22 +239,36 @@ function getRenderedMenuItems(): HTMLElement[] {
 // Test Suite
 // ============================================================================
 
+// Track the current mock time offset to invalidate cache between tests
+let mockTimeOffset = 0;
+
 describe('MenuList', () => {
   /**
    * Setup hook that runs before each test.
-   * Resets all mocks and MSW handlers to ensure test isolation.
+   * Resets all mocks, modules, and MSW handlers to ensure test isolation.
+   * Increments mock time to invalidate the module-level cache in useMenu hook.
    */
   beforeEach(() => {
+    // Reset all mocks and handlers
     vi.resetAllMocks();
     server.resetHandlers();
+    
+    // Increment mock time by more than cache duration (5 minutes = 300000ms)
+    // This ensures any cache from previous tests is invalidated
+    mockTimeOffset += 6 * 60 * 1000; // Add 6 minutes per test
+    
+    // Mock Date.now to return increasing time, invalidating cache
+    const realDateNow = Date.now.bind(Date);
+    vi.spyOn(Date, 'now').mockImplementation(() => realDateNow() + mockTimeOffset);
   });
 
   /**
    * Cleanup hook that runs after each test.
-   * Cleans up rendered components to prevent memory leaks.
+   * Cleans up rendered components and restores Date.now mock.
    */
   afterEach(() => {
     cleanup();
+    vi.restoreAllMocks();
   });
 
   // ==========================================================================
@@ -289,8 +320,15 @@ describe('MenuList', () => {
       // Act
       customRender(<MenuList />);
 
-      // Assert
-      expect(screen.getByText(/loading menu items/i)).toBeInTheDocument();
+      // Assert - Use getAllByText since there are multiple loading text elements
+      // (one in the sr-only live region and one visible)
+      const loadingTexts = screen.getAllByText(/loading menu items/i);
+      expect(loadingTexts.length).toBeGreaterThanOrEqual(1);
+      // Verify at least one is visible (the <p> element)
+      const visibleLoadingText = loadingTexts.find(
+        (el) => !el.classList.contains('sr-only')
+      );
+      expect(visibleLoadingText).toBeInTheDocument();
     });
 
     it('should hide loading indicator after data loads successfully', async () => {
@@ -582,12 +620,14 @@ describe('MenuList', () => {
     it('should retry data fetch when retry button is clicked', async () => {
       // Arrange
       const user = userEvent.setup();
-      let requestCount = 0;
+      let itemsRequestCount = 0;
+      let categoriesRequestCount = 0;
 
+      // Override both endpoints - first request fails, subsequent succeed
       server.use(
         http.get(MENU_ITEMS_ENDPOINT, () => {
-          requestCount++;
-          if (requestCount === 1) {
+          itemsRequestCount++;
+          if (itemsRequestCount === 1) {
             // First request fails
             return HttpResponse.json(
               { error: 'Server Error', statusCode: 500 },
@@ -598,6 +638,18 @@ describe('MenuList', () => {
           return HttpResponse.json(createMenuResponse(menuItems), {
             status: 200,
           });
+        }),
+        http.get(MENU_CATEGORIES_ENDPOINT, () => {
+          categoriesRequestCount++;
+          if (categoriesRequestCount === 1) {
+            // First request fails
+            return HttpResponse.json(
+              { error: 'Server Error', statusCode: 500 },
+              { status: 500 }
+            );
+          }
+          // Subsequent requests succeed
+          return HttpResponse.json(categories, { status: 200 });
         })
       );
 
@@ -605,20 +657,26 @@ describe('MenuList', () => {
       customRender(<MenuList />);
 
       // Wait for error state
-      await waitFor(() => {
-        expect(screen.getByTestId('menu-list-error')).toBeInTheDocument();
-      });
+      await waitFor(
+        () => {
+          expect(screen.getByTestId('menu-list-error')).toBeInTheDocument();
+        },
+        { timeout: DEFAULT_TIMEOUT }
+      );
 
       // Click retry
       const retryButton = screen.getByTestId('retry-button');
       await user.click(retryButton);
 
       // Assert - Should show menu items after retry
-      await waitFor(() => {
-        expect(screen.getByTestId('menu-list-grid')).toBeInTheDocument();
-      });
+      await waitFor(
+        () => {
+          expect(screen.getByTestId('menu-list-grid')).toBeInTheDocument();
+        },
+        { timeout: DEFAULT_TIMEOUT }
+      );
 
-      expect(requestCount).toBe(2);
+      expect(itemsRequestCount).toBe(2);
     });
   });
 
@@ -772,7 +830,9 @@ describe('MenuList', () => {
       await waitForMenuToLoad();
 
       // Act - Find and click add to cart button on first item
-      const addButtons = screen.getAllByRole('button', { name: /add to cart/i });
+      // Note: The aria-label format is "Add {item name} to cart for ${price}"
+      // so we need a regex that matches with words between "add" and "to cart"
+      const addButtons = screen.getAllByRole('button', { name: /add .+ to cart/i });
       await user.click(addButtons[0]);
 
       // Assert
@@ -795,7 +855,8 @@ describe('MenuList', () => {
       await waitForMenuToLoad();
 
       // Act - Click multiple add to cart buttons
-      const addButtons = screen.getAllByRole('button', { name: /add to cart/i });
+      // Note: The aria-label format is "Add {item name} to cart for ${price}"
+      const addButtons = screen.getAllByRole('button', { name: /add .+ to cart/i });
       await user.click(addButtons[0]);
       await user.click(addButtons[1]);
       await user.click(addButtons[2]);
@@ -822,7 +883,8 @@ describe('MenuList', () => {
       await waitForMenuToLoad();
 
       // Act
-      const addButtons = screen.getAllByRole('button', { name: /add to cart/i });
+      // Note: The aria-label format is "Add {item name} to cart for ${price}"
+      const addButtons = screen.getAllByRole('button', { name: /add .+ to cart/i });
       await user.click(addButtons[0]);
 
       // Assert - Verify item structure matches MenuItem interface
