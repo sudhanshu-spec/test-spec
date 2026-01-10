@@ -681,6 +681,7 @@ export const newOrderResponse = {
   order: {
     id: 'order-new-001',
     status: 'pending',
+    total: 15.47,
     estimatedTime: '25-35 minutes',
     createdAt: new Date().toISOString(),
   },
