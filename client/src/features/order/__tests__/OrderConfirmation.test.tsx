@@ -1258,7 +1258,7 @@ describe('OrderConfirmation', () => {
 
     it('should have proper alert role for error state', async () => {
       // Arrange
-      setupOrderNotFoundHandler('not-found');
+      setupOrderNotFoundHandler();
       render(<OrderConfirmation orderId="not-found" />);
 
       // Assert
