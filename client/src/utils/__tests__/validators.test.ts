@@ -1700,7 +1700,7 @@ describe('Validation Utilities', () => {
 
         // Assert
         expect(result.isValid).toBe(false);
-        expect(result.errors).toContain(expect.stringMatching(/uppercase/i));
+        expect(result.errors).toEqual(expect.arrayContaining([expect.stringMatching(/uppercase/i)]));
       });
 
       it('should return invalid for password missing lowercase', () => {
@@ -1712,7 +1712,7 @@ describe('Validation Utilities', () => {
 
         // Assert
         expect(result.isValid).toBe(false);
-        expect(result.errors).toContain(expect.stringMatching(/lowercase/i));
+        expect(result.errors).toEqual(expect.arrayContaining([expect.stringMatching(/lowercase/i)]));
       });
 
       it('should return invalid for password missing numbers', () => {
@@ -1730,7 +1730,7 @@ describe('Validation Utilities', () => {
 
         // Assert
         expect(result.isValid).toBe(false);
-        expect(result.errors).toContain(expect.stringMatching(/number|digit/i));
+        expect(result.errors).toEqual(expect.arrayContaining([expect.stringMatching(/number|digit/i)]));
       });
 
       it('should return invalid for password missing special characters', () => {
@@ -1748,7 +1748,7 @@ describe('Validation Utilities', () => {
 
         // Assert
         expect(result.isValid).toBe(false);
-        expect(result.errors).toContain(expect.stringMatching(/special/i));
+        expect(result.errors).toEqual(expect.arrayContaining([expect.stringMatching(/special/i)]));
       });
 
       it('should return invalid for all lowercase password', () => {
