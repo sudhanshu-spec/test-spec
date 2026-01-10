@@ -1323,8 +1323,8 @@ describe('Bookings API', () => {
 
       // Assert
       expect(receivedBody).toEqual(bookingData);
-      expect(receivedBody?.name).toBe('John Smith');
-      expect(receivedBody?.specialRequests).toBe('Window seat please');
+      expect(receivedBody!.name).toBe('John Smith');
+      expect(receivedBody!.specialRequests).toBe('Window seat please');
     });
 
     it('should handle booking without optional email', async () => {

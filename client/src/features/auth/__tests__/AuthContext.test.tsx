@@ -1020,7 +1020,7 @@ describe('AuthContext', () => {
 
       // Assert
       expect(refreshError).toBeDefined();
-      expect(refreshError?.message).toBe('Not authenticated');
+      expect(refreshError!.message).toBe('Not authenticated');
 
       expect(result.current.isAuthenticated).toBe(false);
     });
@@ -1485,7 +1485,7 @@ describe('AuthContext', () => {
 
       // Assert
       expect(loginError).toBeDefined();
-      expect(loginError?.message).toBe('Invalid response from authentication server');
+      expect(loginError!.message).toBe('Invalid response from authentication server');
       expect(result.current.isAuthenticated).toBe(false);
     });
 
@@ -1506,7 +1506,7 @@ describe('AuthContext', () => {
 
       // Assert
       expect(loginError).toBeDefined();
-      expect(loginError?.message).toBe('Email is required');
+      expect(loginError!.message).toBe('Email is required');
       expect(result.current.isAuthenticated).toBe(false);
     });
 
@@ -1527,7 +1527,7 @@ describe('AuthContext', () => {
 
       // Assert
       expect(loginError).toBeDefined();
-      expect(loginError?.message).toBe('Password is required');
+      expect(loginError!.message).toBe('Password is required');
       expect(result.current.isAuthenticated).toBe(false);
     });
 
@@ -1548,7 +1548,7 @@ describe('AuthContext', () => {
 
       // Assert
       expect(loginError).toBeDefined();
-      expect(loginError?.message).toBe('Email is required');
+      expect(loginError!.message).toBe('Email is required');
     });
 
     it('should clear state on login failure', async () => {
