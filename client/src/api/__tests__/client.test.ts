@@ -29,7 +29,7 @@ import {
   vi,
 } from 'vitest';
 import { server } from '../../__tests__/mocks/server';
-import { http, HttpResponse } from 'msw';
+import { http, HttpResponse, JsonBodyType } from 'msw';
 
 // ============================================================================
 // Type Definitions
@@ -156,7 +156,7 @@ const TEST_TOKEN = 'test-jwt-token-abc123';
 function createTestHandler(
   method: 'get' | 'post' | 'put' | 'patch' | 'delete',
   path: string,
-  response: unknown,
+  response: JsonBodyType,
   status: number = 200
 ) {
   const fullPath = `${BASE_URL}${path}`;
@@ -202,7 +202,7 @@ function createDelayedHandler(
   method: 'get' | 'post' | 'put' | 'patch' | 'delete',
   path: string,
   delay: number,
-  response: unknown
+  response: JsonBodyType
 ) {
   const fullPath = `${BASE_URL}${path}`;
   return http[method](fullPath, async () => {
@@ -258,7 +258,7 @@ function createTextHandler(
 function createCapturingHandler(
   method: 'get' | 'post' | 'put' | 'patch' | 'delete',
   path: string,
-  response: unknown,
+  response: JsonBodyType,
   captureCallback: (info: { headers: Headers; body: unknown; url: URL }) => void
 ) {
   const fullPath = `${BASE_URL}${path}`;
@@ -971,8 +971,8 @@ describe('API Client', () => {
 
       // Assert
       expect(capturedHeaders).not.toBeNull();
-      expect(capturedHeaders?.get('X-Custom-Header')).toBe('custom-value');
-      expect(capturedHeaders?.get('Content-Type')).toBe('application/json');
+      expect(capturedHeaders!.get('X-Custom-Header')).toBe('custom-value');
+      expect(capturedHeaders!.get('Content-Type')).toBe('application/json');
     });
 
     it('should allow custom timeout', async () => {
@@ -1036,9 +1036,10 @@ describe('API Client', () => {
         await apiClient.get(TEST_ENDPOINT, { params });
 
         // Assert
-        expect(capturedUrl?.searchParams.get('page')).toBe('1');
-        expect(capturedUrl?.searchParams.get('limit')).toBe('10');
-        expect(capturedUrl?.searchParams.get('sort')).toBe('name');
+        expect(capturedUrl).not.toBeNull();
+        expect(capturedUrl!.searchParams.get('page')).toBe('1');
+        expect(capturedUrl!.searchParams.get('limit')).toBe('10');
+        expect(capturedUrl!.searchParams.get('sort')).toBe('name');
       });
 
       it('should return response data', async () => {
@@ -1143,9 +1144,10 @@ describe('API Client', () => {
         await apiClient.post(TEST_ENDPOINT, { test: 'data' });
 
         // Assert
-        expect(capturedHeaders?.get('Content-Type')).toBe('application/json');
-        expect(capturedHeaders?.get('Content-Type')).not.toBeNull();
-        expect(capturedHeaders?.get('Content-Type')).toMatch(/json/);
+        expect(capturedHeaders).not.toBeNull();
+        expect(capturedHeaders!.get('Content-Type')).toBe('application/json');
+        expect(capturedHeaders!.get('Content-Type')).not.toBeNull();
+        expect(capturedHeaders!.get('Content-Type')).toMatch(/json/);
       });
 
       it('should return created resource', async () => {
@@ -1239,9 +1241,9 @@ describe('API Client', () => {
         await apiClient.put(`${TEST_ENDPOINT}/123`, { test: 'data' });
 
         // Assert
-        expect(capturedHeaders?.get('Content-Type')).toBe('application/json');
         expect(capturedHeaders).not.toBeNull();
-        expect(capturedHeaders?.has('Content-Type')).toBe(true);
+        expect(capturedHeaders!.get('Content-Type')).toBe('application/json');
+        expect(capturedHeaders!.has('Content-Type')).toBe(true);
       });
     });
 
@@ -1415,9 +1417,10 @@ describe('API Client', () => {
       await apiClient.get(TEST_ENDPOINT);
 
       // Assert
-      expect(capturedHeaders?.get('Authorization')).toBe(`Bearer ${TEST_TOKEN}`);
-      expect(capturedHeaders?.get('Authorization')).toContain('Bearer');
-      expect(capturedHeaders?.get('Authorization')).not.toBeNull();
+      expect(capturedHeaders).not.toBeNull();
+      expect(capturedHeaders!.get('Authorization')).toBe(`Bearer ${TEST_TOKEN}`);
+      expect(capturedHeaders!.get('Authorization')).toContain('Bearer');
+      expect(capturedHeaders!.get('Authorization')).not.toBeNull();
     });
 
     it('should not include authorization header when no token', async () => {
@@ -1434,9 +1437,10 @@ describe('API Client', () => {
       await apiClient.get(TEST_ENDPOINT);
 
       // Assert
-      expect(capturedHeaders?.get('Authorization')).toBeNull();
+      expect(capturedHeaders).not.toBeNull();
+      expect(capturedHeaders!.get('Authorization')).toBeNull();
       expect(apiClient.getAuthToken()).toBeNull();
-      expect(capturedHeaders?.has('Authorization')).toBe(false);
+      expect(capturedHeaders!.has('Authorization')).toBe(false);
     });
 
     it('should merge custom headers with defaults', async () => {
@@ -1454,9 +1458,10 @@ describe('API Client', () => {
       await apiClient.get(TEST_ENDPOINT, { headers: customHeaders });
 
       // Assert
-      expect(capturedHeaders?.get('X-Request-ID')).toBe('req-12345');
-      expect(capturedHeaders?.get('Content-Type')).toBe('application/json');
-      expect(capturedHeaders?.has('X-Request-ID')).toBe(true);
+      expect(capturedHeaders).not.toBeNull();
+      expect(capturedHeaders!.get('X-Request-ID')).toBe('req-12345');
+      expect(capturedHeaders!.get('Content-Type')).toBe('application/json');
+      expect(capturedHeaders!.has('X-Request-ID')).toBe(true);
     });
 
     it('should allow overriding default headers', async () => {
@@ -1474,9 +1479,10 @@ describe('API Client', () => {
       await apiClient.get(TEST_ENDPOINT, { headers: customHeaders });
 
       // Assert
-      expect(capturedHeaders?.get('Content-Type')).toBe('text/plain');
-      expect(capturedHeaders?.get('Content-Type')).not.toBe('application/json');
-      expect(capturedHeaders?.has('Content-Type')).toBe(true);
+      expect(capturedHeaders).not.toBeNull();
+      expect(capturedHeaders!.get('Content-Type')).toBe('text/plain');
+      expect(capturedHeaders!.get('Content-Type')).not.toBe('application/json');
+      expect(capturedHeaders!.has('Content-Type')).toBe(true);
     });
 
     it('should handle case-insensitive headers', async () => {
@@ -1494,9 +1500,10 @@ describe('API Client', () => {
       await apiClient.get(TEST_ENDPOINT, { headers: customHeaders });
 
       // Assert
-      expect(capturedHeaders?.get('Content-Type')).toBeTruthy();
-      expect(capturedHeaders?.get('content-type')).toBeTruthy();
-      expect(capturedHeaders?.has('Content-Type')).toBe(true);
+      expect(capturedHeaders).not.toBeNull();
+      expect(capturedHeaders!.get('Content-Type')).toBeTruthy();
+      expect(capturedHeaders!.get('content-type')).toBeTruthy();
+      expect(capturedHeaders!.has('Content-Type')).toBe(true);
     });
 
     it('should include multiple custom headers', async () => {
@@ -1518,9 +1525,10 @@ describe('API Client', () => {
       await apiClient.get(TEST_ENDPOINT, { headers: customHeaders });
 
       // Assert
-      expect(capturedHeaders?.get('X-Api-Key')).toBe('api-key-123');
-      expect(capturedHeaders?.get('X-Correlation-ID')).toBe('corr-456');
-      expect(capturedHeaders?.get('Accept-Language')).toBe('en-US');
+      expect(capturedHeaders).not.toBeNull();
+      expect(capturedHeaders!.get('X-Api-Key')).toBe('api-key-123');
+      expect(capturedHeaders!.get('X-Correlation-ID')).toBe('corr-456');
+      expect(capturedHeaders!.get('Accept-Language')).toBe('en-US');
     });
   });
 
@@ -1714,9 +1722,10 @@ describe('API Client', () => {
       await apiClient.get(TEST_ENDPOINT);
 
       // Assert
-      expect(capturedHeaders?.get('X-Intercepted')).toBe('true');
-      expect(capturedHeaders?.has('X-Intercepted')).toBe(true);
-      expect(capturedHeaders?.get('Content-Type')).toBe('application/json');
+      expect(capturedHeaders).not.toBeNull();
+      expect(capturedHeaders!.get('X-Intercepted')).toBe('true');
+      expect(capturedHeaders!.has('X-Intercepted')).toBe(true);
+      expect(capturedHeaders!.get('Content-Type')).toBe('application/json');
     });
 
     it('should handle interceptor errors', async () => {
@@ -1764,7 +1773,8 @@ describe('API Client', () => {
       // Assert
       expect(firstInterceptor).toHaveBeenCalled();
       expect(secondInterceptor).toHaveBeenCalled();
-      expect(capturedHeaders?.get('X-First')).toBe('1');
+      expect(capturedHeaders).not.toBeNull();
+      expect(capturedHeaders!.get('X-First')).toBe('1');
     });
   });
 
@@ -1954,8 +1964,8 @@ describe('API Client', () => {
 
       // Assert
       expect(capturedUrl).not.toBeNull();
-      expect(capturedUrl?.pathname).toContain('test%20item');
-      expect(decodeURIComponent(capturedUrl?.pathname || '')).toContain('test item');
+      expect(capturedUrl!.pathname).toContain('test%20item');
+      expect(decodeURIComponent(capturedUrl!.pathname)).toContain('test item');
     });
 
     it('should handle deeply nested response objects', async () => {
