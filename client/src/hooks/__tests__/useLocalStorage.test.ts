@@ -177,8 +177,18 @@ function createQuotaExceededStorage(): MockStorage {
 }
 
 /**
+ * Reference to the original localStorage for storage events.
+ * Needed because jsdom requires a real Storage object for StorageEvent.
+ */
+let realLocalStorage: Storage | null = null;
+
+/**
  * Helper function to dispatch a storage event.
  * Simulates cross-tab localStorage changes.
+ *
+ * Note: We use a custom event approach because jsdom's StorageEvent
+ * constructor requires a real Storage object for the storageArea parameter,
+ * which doesn't work with our mock storage.
  *
  * @param {string} key - Storage key that changed
  * @param {string | null} newValue - New value (null for deletion)
@@ -189,13 +199,18 @@ function dispatchStorageEvent(
   newValue: string | null,
   oldValue: string | null = null
 ): void {
-  const event = new StorageEvent('storage', {
-    key,
-    newValue,
-    oldValue,
-    storageArea: window.localStorage,
-    url: window.location.href,
+  // Create a storage event manually to avoid jsdom type checking issues
+  const event = new Event('storage') as StorageEvent;
+  
+  // Manually set the properties since we can't use the constructor
+  Object.defineProperties(event, {
+    key: { value: key, writable: false },
+    newValue: { value: newValue, writable: false },
+    oldValue: { value: oldValue, writable: false },
+    storageArea: { value: realLocalStorage, writable: false },
+    url: { value: window.location.href, writable: false },
   });
+  
   window.dispatchEvent(event);
 }
 
@@ -217,6 +232,8 @@ describe('useLocalStorage Hook', () => {
   beforeEach(() => {
     mockStorage = createMockStorage();
     originalLocalStorage = window.localStorage;
+    // Store reference to real localStorage for storage events
+    realLocalStorage = originalLocalStorage;
 
     // Replace localStorage with mock
     Object.defineProperty(window, 'localStorage', {
