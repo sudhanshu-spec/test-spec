@@ -169,10 +169,16 @@ function createCartItems(count: number): CartItem[] {
  * @returns {CartItem} A cart item with merged properties
  */
 function createCartItem(overrides: Partial<CartItem> = {}): CartItem {
-  const menuItem = createMenuItem({
-    name: overrides.name,
-    price: overrides.price,
-  });
+  // Only pass defined values to createMenuItem to avoid overwriting defaults with undefined
+  const menuItemOverrides: Partial<{ name: string; price: number }> = {};
+  if (overrides.name !== undefined) {
+    menuItemOverrides.name = overrides.name;
+  }
+  if (overrides.price !== undefined) {
+    menuItemOverrides.price = overrides.price;
+  }
+  
+  const menuItem = createMenuItem(menuItemOverrides);
   return {
     id: menuItem.id,
     name: menuItem.name,
@@ -381,9 +387,13 @@ describe('Cart', () => {
         initialCartState: { items: cartItems, total },
       });
 
-      // Assert
+      // Assert - Use getAllByText for prices that may appear multiple times
+      // $8.99 appears once (unit price) - item total is $17.98 for qty 2
       expect(screen.getByText(formatPrice(8.99))).toBeInTheDocument();
-      expect(screen.getByText(formatPrice(3.99))).toBeInTheDocument();
+      // $3.99 appears twice (unit price and item total, since qty is 1)
+      const prices399 = screen.getAllByText(formatPrice(3.99));
+      expect(prices399.length).toBeGreaterThan(0);
+      // $2.49 appears once (unit price) - item total is $7.47 for qty 3
       expect(screen.getByText(formatPrice(2.49))).toBeInTheDocument();
     });
   });
@@ -803,9 +813,10 @@ describe('Cart', () => {
      */
     it('should display correct total in checkout button', () => {
       // Arrange
+      // Use item names that don't contain "checkout" to avoid matching remove button aria-labels
       const cartItems = [
-        createCartItem({ id: 'chk-1', name: 'Checkout Item 1', price: 12.50, quantity: 2 }),
-        createCartItem({ id: 'chk-2', name: 'Checkout Item 2', price: 8.00, quantity: 1 }),
+        createCartItem({ id: 'chk-1', name: 'Premium Burger', price: 12.50, quantity: 2 }),
+        createCartItem({ id: 'chk-2', name: 'Large Fries', price: 8.00, quantity: 1 }),
       ];
       const expectedTotal = calculateTotal(cartItems); // 12.50 * 2 + 8.00 = 33.00
 
@@ -815,7 +826,8 @@ describe('Cart', () => {
       });
 
       // Assert
-      const checkoutButton = screen.getByRole('button', { name: /checkout/i });
+      // Use more specific pattern to match only the checkout button, not remove buttons
+      const checkoutButton = screen.getByRole('button', { name: /proceed to checkout/i });
       expect(checkoutButton).toHaveTextContent('Checkout');
       expect(checkoutButton).toHaveTextContent(formatPrice(33.00));
       expect(checkoutButton).toBeEnabled();
@@ -1172,7 +1184,9 @@ describe('Cart', () => {
 
       // Assert
       expect(screen.getByText('Free Item')).toBeInTheDocument();
-      expect(screen.getByText(formatPrice(0))).toBeInTheDocument();
+      // Price appears in multiple places (item price, item total, subtotal, checkout button)
+      const priceElements = screen.getAllByText(formatPrice(0));
+      expect(priceElements.length).toBeGreaterThan(0);
       expect(screen.getByRole('button', { name: /checkout/i })).toHaveTextContent(formatPrice(0));
     });
 
@@ -1239,7 +1253,9 @@ describe('Cart', () => {
 
       // Assert
       expect(screen.getByText('Expensive Item')).toBeInTheDocument();
-      expect(screen.getByText(formatPrice(99.99))).toBeInTheDocument();
+      // Price appears in multiple places (item price, item total, subtotal, checkout button)
+      const priceElements = screen.getAllByText(formatPrice(99.99));
+      expect(priceElements.length).toBeGreaterThan(0);
       expect(screen.getByRole('button', { name: /checkout/i })).toHaveTextContent(formatPrice(99.99));
     });
 
