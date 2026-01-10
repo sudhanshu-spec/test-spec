@@ -305,7 +305,7 @@ describe('useMenu', () => {
       expect(itemsCallTime).not.toBeNull();
       expect(categoriesCallTime).not.toBeNull();
       // Both calls should happen close together (within 100ms)
-      expect(Math.abs((itemsCallTime as number) - (categoriesCallTime as number))).toBeLessThan(100);
+      expect(Math.abs((itemsCallTime as unknown as number) - (categoriesCallTime as unknown as number))).toBeLessThan(100);
     });
   });
 
@@ -646,13 +646,15 @@ describe('useMenu', () => {
     });
 
     it('should set loading during refetch', async () => {
-      // Arrange
+      // Arrange - setup delayed response handler to control timing
       let resolveItems: (() => void) | null = null;
+      let requestStarted = false;
       let isFirstCall = true;
 
       server.use(
         http.get(MENU_ITEMS_ENDPOINT, async () => {
           if (!isFirstCall) {
+            requestStarted = true;
             await new Promise<void>((resolve) => {
               resolveItems = resolve;
             });
@@ -668,18 +670,27 @@ describe('useMenu', () => {
         expect(result.current.isLoading).toBe(false);
       });
 
-      // Act
+      // Act - call refetch (don't await it, we want to check loading state)
       act(() => {
         result.current.refetch();
+      });
+
+      // Wait for the refetch request to start
+      await waitFor(() => {
+        expect(requestStarted).toBe(true);
       });
 
       // Assert - should be loading during refetch
       expect(result.current.isLoading).toBe(true);
 
       // Cleanup - resolve the pending request
-      if (resolveItems) {
-        resolveItems();
-      }
+      await act(async () => {
+        if (resolveItems) {
+          resolveItems();
+        }
+        // Give time for state to update
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      });
 
       await waitFor(() => {
         expect(result.current.isLoading).toBe(false);
@@ -850,8 +861,13 @@ describe('useMenu', () => {
     it('should abort pending requests on unmount', async () => {
       // Arrange - create a slow response that will be aborted
       let requestAborted = false;
+      let requestStarted = false;
+      let resolveRequest: (() => void) | null = null;
+
       server.use(
         http.get(MENU_ITEMS_ENDPOINT, async ({ request }) => {
+          requestStarted = true;
+          
           // Create an AbortController to track abort signal
           const abortPromise = new Promise<void>((resolve) => {
             request.signal.addEventListener('abort', () => {
@@ -860,10 +876,15 @@ describe('useMenu', () => {
             });
           });
 
-          // Wait for either abort or timeout
+          // Create a pending promise that we control
+          const pendingPromise = new Promise<void>((resolve) => {
+            resolveRequest = resolve;
+          });
+
+          // Wait for either abort or manual resolution
           await Promise.race([
             abortPromise,
-            new Promise((resolve) => setTimeout(resolve, 100)),
+            pendingPromise,
           ]);
 
           return HttpResponse.json(createMenuItemsResponse(), { status: 200 });
@@ -873,14 +894,24 @@ describe('useMenu', () => {
       // Act
       const { unmount } = renderHook(() => useMenu());
 
-      // Unmount immediately before fetch completes
+      // Wait for the request to actually start
+      await waitFor(() => {
+        expect(requestStarted).toBe(true);
+      });
+
+      // Unmount while request is pending - this should trigger abort
       unmount();
 
-      // Wait a bit for cleanup
-      await new Promise((resolve) => setTimeout(resolve, 150));
+      // Wait a bit for cleanup to process
+      await new Promise((resolve) => setTimeout(resolve, 50));
 
       // Assert - request should have been aborted
       expect(requestAborted).toBe(true);
+
+      // Cleanup - resolve any pending promise to avoid hanging
+      if (resolveRequest !== null) {
+        (resolveRequest as () => void)();
+      }
     });
 
     it('should handle initial category option', async () => {
@@ -1014,8 +1045,8 @@ describe('useMenu', () => {
       unmount();
 
       // Resolve the request after unmount
-      if (resolveRequest) {
-        resolveRequest();
+      if (resolveRequest !== null) {
+        (resolveRequest as () => void)();
       }
 
       // Wait for any potential state updates
