@@ -876,6 +876,8 @@ describe('useAuth', () => {
     it('should throw error when refreshing token without being authenticated', async () => {
       // Arrange
       const wrapper = createWrapper();
+      // Use object to track error for TypeScript compatibility
+      const errorState: { error: Error | null } = { error: null };
 
       // Act
       const { result } = renderHook(() => useAuth(), { wrapper });
@@ -887,18 +889,17 @@ describe('useAuth', () => {
       // Verify not authenticated
       expect(result.current.isAuthenticated).toBe(false);
 
-      let refreshError: Error | null = null;
       await act(async () => {
         try {
           await result.current.refreshToken();
         } catch (e) {
-          refreshError = e as Error;
+          errorState.error = e as Error;
         }
       });
 
       // Assert
-      expect(refreshError).not.toBeNull();
-      expect(refreshError?.message).toContain('Not authenticated');
+      expect(errorState.error).not.toBeNull();
+      expect(errorState.error?.message).toContain('Not authenticated');
       expect(result.current.error).not.toBeNull();
     });
 
