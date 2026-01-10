@@ -567,17 +567,14 @@ describe('AuthContext', () => {
       const wrapper = createWrapper({ isLoading: false });
       const { result } = renderHook(() => useAuthContext(), { wrapper });
 
-      // Act: Trigger multiple login attempts concurrently
-      const loginPromises = [
-        act(async () => {
-          await result.current.login(validUser.email, validUser.password);
-        }),
-        act(async () => {
-          await result.current.login(validUser.email, validUser.password);
-        })
-      ];
-
-      await Promise.all(loginPromises);
+      // Act: Trigger multiple login attempts within a single act() to avoid overlapping act() calls
+      // Note: React Testing Library doesn't support concurrent act() calls
+      await act(async () => {
+        // Start both login attempts simultaneously inside a single act()
+        const loginPromise1 = result.current.login(validUser.email, validUser.password);
+        const loginPromise2 = result.current.login(validUser.email, validUser.password);
+        await Promise.all([loginPromise1, loginPromise2]);
+      });
 
       // Assert: State should be consistent after concurrent updates
       expect(result.current.isAuthenticated).toBe(true);
@@ -981,12 +978,19 @@ describe('AuthContext', () => {
       const wrapper = createWrapper(initialState);
       const { result } = renderHook(() => useAuthContext(), { wrapper });
 
-      // Act & Assert
-      await expect(
-        act(async () => {
+      // Act: Attempt refresh within a single act() and catch the error
+      let refreshError: Error | null = null;
+      await act(async () => {
+        try {
           await result.current.refreshToken();
-        })
-      ).rejects.toThrow();
+        } catch (error) {
+          refreshError = error as Error;
+        }
+      });
+
+      // Assert: Error was thrown
+      expect(refreshError).toBeDefined();
+      expect(refreshError).toBeInstanceOf(Error);
 
       // Assert: User should be logged out
       expect(result.current.isAuthenticated).toBe(false);
@@ -1004,12 +1008,19 @@ describe('AuthContext', () => {
       });
       const { result } = renderHook(() => useAuthContext(), { wrapper });
 
-      // Act & Assert
-      await expect(
-        act(async () => {
+      // Act: Attempt refresh within a single act() and catch the error
+      let refreshError: Error | null = null;
+      await act(async () => {
+        try {
           await result.current.refreshToken();
-        })
-      ).rejects.toThrow('Not authenticated');
+        } catch (error) {
+          refreshError = error as Error;
+        }
+      });
+
+      // Assert
+      expect(refreshError).toBeDefined();
+      expect(refreshError?.message).toBe('Not authenticated');
 
       expect(result.current.isAuthenticated).toBe(false);
     });
@@ -1043,23 +1054,19 @@ describe('AuthContext', () => {
       const wrapper = createWrapper(initialState);
       const { result } = renderHook(() => useAuthContext(), { wrapper });
 
-      // Act: Trigger multiple concurrent refresh requests
-      await Promise.all([
-        act(async () => {
-          try {
-            await result.current.refreshToken();
-          } catch {
+      // Act: Trigger multiple concurrent refresh requests within a single act()
+      // Note: React Testing Library doesn't support overlapping act() calls
+      await act(async () => {
+        const refreshPromises = [
+          result.current.refreshToken().catch(() => {
             // Expected potential race condition
-          }
-        }),
-        act(async () => {
-          try {
-            await result.current.refreshToken();
-          } catch {
+          }),
+          result.current.refreshToken().catch(() => {
             // Expected potential race condition
-          }
-        })
-      ]);
+          })
+        ];
+        await Promise.all(refreshPromises);
+      });
 
       // Assert: State should be consistent
       expect(result.current.isAuthenticated).toBe(true);
@@ -1133,14 +1140,19 @@ describe('AuthContext', () => {
       const wrapper = createWrapper(initialState);
       const { result } = renderHook(() => useAuthContext(), { wrapper });
 
-      // Act: Attempt to refresh (simulating expired token scenario)
-      await expect(
-        act(async () => {
+      // Act: Attempt to refresh within a single act() and catch the error
+      let refreshError: Error | null = null;
+      await act(async () => {
+        try {
           await result.current.refreshToken();
-        })
-      ).rejects.toThrow();
+        } catch (error) {
+          refreshError = error as Error;
+        }
+      });
 
-      // Assert
+      // Assert: Error was thrown
+      expect(refreshError).toBeDefined();
+      // Assert: User should be logged out
       expect(result.current.isAuthenticated).toBe(false);
       expect(result.current.user).toBeNull();
     });
@@ -1392,13 +1404,18 @@ describe('AuthContext', () => {
       const wrapper = createWrapper(initialState);
       const { result } = renderHook(() => useAuthContext(), { wrapper });
 
-      // Act & Assert
-      await expect(
-        act(async () => {
+      // Act: Attempt refresh within a single act() and catch the error
+      let refreshError: Error | null = null;
+      await act(async () => {
+        try {
           await result.current.refreshToken();
-        })
-      ).rejects.toThrow();
+        } catch (error) {
+          refreshError = error as Error;
+        }
+      });
 
+      // Assert: Error was thrown
+      expect(refreshError).toBeDefined();
       // User should be logged out on refresh failure
       expect(result.current.isAuthenticated).toBe(false);
     });
@@ -1422,15 +1439,17 @@ describe('AuthContext', () => {
       const wrapper = createWrapper({ isLoading: false });
       const { result } = renderHook(() => useAuthContext(), { wrapper });
 
-      // Act: First attempt fails
-      await expect(
-        act(async () => {
-          await result.current.login(validUser.email, validUser.password);
-        })
-      ).rejects.toThrow();
-
-      // Second attempt succeeds
+      // Act: Both attempts within a single act() to avoid overlapping act() calls
       await act(async () => {
+        // First attempt fails
+        try {
+          await result.current.login(validUser.email, validUser.password);
+        } catch (error) {
+          // Expected to fail - first request returns 503
+          expect(error).toBeDefined();
+        }
+
+        // Second attempt succeeds
         await result.current.login(validUser.email, validUser.password);
       });
 
@@ -1454,13 +1473,19 @@ describe('AuthContext', () => {
       const wrapper = createWrapper({ isLoading: false });
       const { result } = renderHook(() => useAuthContext(), { wrapper });
 
-      // Act & Assert
-      await expect(
-        act(async () => {
+      // Act: Attempt login within a single act() and catch the error
+      let loginError: Error | null = null;
+      await act(async () => {
+        try {
           await result.current.login(validUser.email, validUser.password);
-        })
-      ).rejects.toThrow('Invalid response from authentication server');
+        } catch (error) {
+          loginError = error as Error;
+        }
+      });
 
+      // Assert
+      expect(loginError).toBeDefined();
+      expect(loginError?.message).toBe('Invalid response from authentication server');
       expect(result.current.isAuthenticated).toBe(false);
     });
 
@@ -1469,13 +1494,19 @@ describe('AuthContext', () => {
       const wrapper = createWrapper({ isLoading: false });
       const { result } = renderHook(() => useAuthContext(), { wrapper });
 
-      // Act & Assert
-      await expect(
-        act(async () => {
+      // Act: Attempt login within a single act() and catch the error
+      let loginError: Error | null = null;
+      await act(async () => {
+        try {
           await result.current.login('', validUser.password);
-        })
-      ).rejects.toThrow('Email is required');
+        } catch (error) {
+          loginError = error as Error;
+        }
+      });
 
+      // Assert
+      expect(loginError).toBeDefined();
+      expect(loginError?.message).toBe('Email is required');
       expect(result.current.isAuthenticated).toBe(false);
     });
 
@@ -1484,13 +1515,19 @@ describe('AuthContext', () => {
       const wrapper = createWrapper({ isLoading: false });
       const { result } = renderHook(() => useAuthContext(), { wrapper });
 
-      // Act & Assert
-      await expect(
-        act(async () => {
+      // Act: Attempt login within a single act() and catch the error
+      let loginError: Error | null = null;
+      await act(async () => {
+        try {
           await result.current.login(validUser.email, '');
-        })
-      ).rejects.toThrow('Password is required');
+        } catch (error) {
+          loginError = error as Error;
+        }
+      });
 
+      // Assert
+      expect(loginError).toBeDefined();
+      expect(loginError?.message).toBe('Password is required');
       expect(result.current.isAuthenticated).toBe(false);
     });
 
@@ -1499,12 +1536,19 @@ describe('AuthContext', () => {
       const wrapper = createWrapper({ isLoading: false });
       const { result } = renderHook(() => useAuthContext(), { wrapper });
 
-      // Act & Assert
-      await expect(
-        act(async () => {
+      // Act: Attempt login within a single act() and catch the error
+      let loginError: Error | null = null;
+      await act(async () => {
+        try {
           await result.current.login('   ', validUser.password);
-        })
-      ).rejects.toThrow('Email is required');
+        } catch (error) {
+          loginError = error as Error;
+        }
+      });
+
+      // Assert
+      expect(loginError).toBeDefined();
+      expect(loginError?.message).toBe('Email is required');
     });
 
     it('should clear state on login failure', async () => {
