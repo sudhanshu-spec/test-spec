@@ -19,7 +19,7 @@
  * @see {@link module:tests/utils/render} Custom render utilities
  */
 
-import React, { useState, FormEvent } from 'react';
+import React, { useState, FormEvent, useRef } from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach, beforeAll, afterAll } from 'vitest';
 import { screen, waitFor, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -96,6 +96,9 @@ function MockLoginForm({ onLoginSuccess, onLoginError }: MockLoginFormProps): Re
   const [isLoading, setIsLoading] = useState(false);
   const [emailError, setEmailError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
+  
+  // Ref to prevent concurrent submissions (handles rapid clicks synchronously)
+  const isSubmittingRef = useRef(false);
 
   const auth = useAuthContext();
 
@@ -115,6 +118,13 @@ function MockLoginForm({ onLoginSuccess, onLoginError }: MockLoginFormProps): Re
    */
   const handleSubmit = async (e: FormEvent): Promise<void> => {
     e.preventDefault();
+    
+    // Prevent concurrent submissions using ref for synchronous check
+    if (isSubmittingRef.current) {
+      return;
+    }
+    isSubmittingRef.current = true;
+    
     setError(null);
     setEmailError(null);
     setPasswordError(null);
@@ -136,6 +146,7 @@ function MockLoginForm({ onLoginSuccess, onLoginError }: MockLoginFormProps): Re
     }
 
     if (hasErrors) {
+      isSubmittingRef.current = false;
       return;
     }
 
@@ -150,11 +161,12 @@ function MockLoginForm({ onLoginSuccess, onLoginError }: MockLoginFormProps): Re
       onLoginError?.(err instanceof Error ? err : new Error(errorMessage));
     } finally {
       setIsLoading(false);
+      isSubmittingRef.current = false;
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} aria-label="Login form">
+    <form onSubmit={handleSubmit} aria-label="Login form" noValidate>
       <div>
         <label htmlFor="email">Email</label>
         <input
@@ -284,7 +296,7 @@ function MockRegisterForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} aria-label="Registration form">
+    <form onSubmit={handleSubmit} aria-label="Registration form" noValidate>
       <div>
         <label htmlFor="register-name">Name</label>
         <input
@@ -443,13 +455,13 @@ function createMockAuthState(
   overrides: Partial<{
     isAuthenticated: boolean;
     user: typeof validUser | null;
-    token: string | null;
+    token?: string;
     isLoading: boolean;
   }> = {}
 ): {
   isAuthenticated: boolean;
   user: typeof validUser | null;
-  token: string | null;
+  token?: string;
   isLoading: boolean;
 } {
   return {
@@ -1069,7 +1081,7 @@ describe('Authentication Integration Tests', () => {
           initialAuthState: {
             isAuthenticated: false,
             user: null,
-            token: null,
+            token: undefined,
             isLoading: false,
           },
         }
@@ -1089,7 +1101,7 @@ describe('Authentication Integration Tests', () => {
         initialAuthState: {
           isAuthenticated: false,
           user: null,
-          token: null,
+          token: undefined,
           isLoading: true,
         },
       });
@@ -1121,7 +1133,7 @@ describe('Authentication Integration Tests', () => {
         initialAuthState: {
           isAuthenticated: false,
           user: null,
-          token: null,
+          token: undefined,
           isLoading: false,
         },
       });
@@ -1152,7 +1164,7 @@ describe('Authentication Integration Tests', () => {
         initialAuthState: {
           isAuthenticated: false,
           user: null,
-          token: null,
+          token: undefined,
           isLoading: true,
         },
       });
@@ -1337,6 +1349,21 @@ describe('Authentication Integration Tests', () => {
       const user = userEvent.setup();
       const onLoginSuccess = vi.fn();
 
+      // Add a delay to the login API so we can test rapid submission prevention
+      // This simulates a slow network where multiple clicks could happen before response
+      server.use(
+        http.post('/api/auth/login', async ({ request }) => {
+          // Add delay to simulate network latency
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
+          const body = await request.json() as { email: string; password: string };
+          if (body.email === validCredentials.email && body.password === validCredentials.password) {
+            return HttpResponse.json(createAuthResponse(validUser));
+          }
+          return HttpResponse.json({ error: 'Invalid credentials' }, { status: 401 });
+        })
+      );
+
       render(<MockLoginForm onLoginSuccess={onLoginSuccess} />);
 
       // Act - Fill form
@@ -1347,15 +1374,17 @@ describe('Authentication Integration Tests', () => {
       await user.type(emailInput, validCredentials.email);
       await user.type(passwordInput, validCredentials.password);
 
-      // Rapid clicks
+      // Trigger first click and then immediately try additional clicks
+      // The ref-based prevention should block subsequent submissions
       await user.click(submitButton);
+      // Clicks 2 and 3 should be blocked by isSubmittingRef
       await user.click(submitButton);
       await user.click(submitButton);
 
-      // Assert - Should only process once (button disabled during submission)
+      // Assert - Should only call success once due to ref-based submission lock
       await waitFor(() => {
         expect(onLoginSuccess).toHaveBeenCalledTimes(1);
-      });
+      }, { timeout: 2000 });
     });
 
     it('should handle special characters in password', async () => {

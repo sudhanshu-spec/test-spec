@@ -225,8 +225,11 @@ export function AuthProvider({ children, initialState }: AuthProviderProps): Rea
    */
   useEffect(() => {
     // Skip initialization if initial state was provided (for testing)
+    // Preserve the isLoading state if explicitly provided for testing loading states
     if (initialState?.user !== undefined || initialState?.isAuthenticated !== undefined) {
-      setAuthState(prev => ({ ...prev, isLoading: false }));
+      if (initialState?.isLoading === undefined) {
+        setAuthState(prev => ({ ...prev, isLoading: false }));
+      }
       return;
     }
 
