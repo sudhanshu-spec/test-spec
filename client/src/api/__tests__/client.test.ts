@@ -416,9 +416,14 @@ const apiClient = {
         headers: headersObj,
       };
 
-      // Apply response interceptors
-      for (const interceptor of this.responseInterceptors) {
-        apiResponse = interceptor(apiResponse) as ApiResponse<T>;
+      // Apply response interceptors - errors from interceptors should propagate directly
+      try {
+        for (const interceptor of this.responseInterceptors) {
+          apiResponse = interceptor(apiResponse) as ApiResponse<T>;
+        }
+      } catch (interceptorError) {
+        // Re-throw interceptor errors directly without wrapping
+        throw interceptorError;
       }
 
       return apiResponse;
@@ -435,6 +440,11 @@ const apiClient = {
       }
       
       if ((error as ApiError).status !== undefined) {
+        throw error;
+      }
+      
+      // Re-throw plain Error instances (interceptor errors)
+      if (error instanceof Error && error.message !== 'Failed to fetch') {
         throw error;
       }
       
@@ -510,9 +520,13 @@ const apiClient = {
         headers: headersObj,
       };
 
-      // Apply response interceptors
-      for (const interceptor of this.responseInterceptors) {
-        apiResponse = interceptor(apiResponse) as ApiResponse<T>;
+      // Apply response interceptors - errors from interceptors should propagate directly
+      try {
+        for (const interceptor of this.responseInterceptors) {
+          apiResponse = interceptor(apiResponse) as ApiResponse<T>;
+        }
+      } catch (interceptorError) {
+        throw interceptorError;
       }
 
       return apiResponse;
@@ -529,6 +543,11 @@ const apiClient = {
       }
       
       if ((error as ApiError).status !== undefined) {
+        throw error;
+      }
+      
+      // Re-throw plain Error instances (interceptor errors)
+      if (error instanceof Error && error.message !== 'Failed to fetch') {
         throw error;
       }
       
@@ -604,9 +623,13 @@ const apiClient = {
         headers: headersObj,
       };
 
-      // Apply response interceptors
-      for (const interceptor of this.responseInterceptors) {
-        apiResponse = interceptor(apiResponse) as ApiResponse<T>;
+      // Apply response interceptors - errors from interceptors should propagate directly
+      try {
+        for (const interceptor of this.responseInterceptors) {
+          apiResponse = interceptor(apiResponse) as ApiResponse<T>;
+        }
+      } catch (interceptorError) {
+        throw interceptorError;
       }
 
       return apiResponse;
@@ -623,6 +646,11 @@ const apiClient = {
       }
       
       if ((error as ApiError).status !== undefined) {
+        throw error;
+      }
+      
+      // Re-throw plain Error instances (interceptor errors)
+      if (error instanceof Error && error.message !== 'Failed to fetch') {
         throw error;
       }
       
@@ -698,9 +726,13 @@ const apiClient = {
         headers: headersObj,
       };
 
-      // Apply response interceptors
-      for (const interceptor of this.responseInterceptors) {
-        apiResponse = interceptor(apiResponse) as ApiResponse<T>;
+      // Apply response interceptors - errors from interceptors should propagate directly
+      try {
+        for (const interceptor of this.responseInterceptors) {
+          apiResponse = interceptor(apiResponse) as ApiResponse<T>;
+        }
+      } catch (interceptorError) {
+        throw interceptorError;
       }
 
       return apiResponse;
@@ -717,6 +749,11 @@ const apiClient = {
       }
       
       if ((error as ApiError).status !== undefined) {
+        throw error;
+      }
+      
+      // Re-throw plain Error instances (interceptor errors)
+      if (error instanceof Error && error.message !== 'Failed to fetch') {
         throw error;
       }
       
@@ -803,9 +840,13 @@ const apiClient = {
         headers: headersObj,
       };
 
-      // Apply response interceptors
-      for (const interceptor of this.responseInterceptors) {
-        apiResponse = interceptor(apiResponse) as ApiResponse<T>;
+      // Apply response interceptors - errors from interceptors should propagate directly
+      try {
+        for (const interceptor of this.responseInterceptors) {
+          apiResponse = interceptor(apiResponse) as ApiResponse<T>;
+        }
+      } catch (interceptorError) {
+        throw interceptorError;
       }
 
       return apiResponse;
@@ -822,6 +863,11 @@ const apiClient = {
       }
       
       if ((error as ApiError).status !== undefined) {
+        throw error;
+      }
+      
+      // Re-throw plain Error instances (interceptor errors)
+      if (error instanceof Error && error.message !== 'Failed to fetch') {
         throw error;
       }
       
@@ -848,21 +894,16 @@ const apiClient = {
 // ============================================================================
 
 describe('API Client', () => {
-  // Start MSW server before all tests
-  beforeAll(() => {
-    server.listen({ onUnhandledRequest: 'error' });
-  });
+  // Note: MSW server lifecycle is managed by global setup.ts
+  // - server.listen() is called in global beforeAll
+  // - server.resetHandlers() is called in global afterEach
+  // - server.close() is called in global afterAll
 
   // Reset handlers and clear mocks after each test
   afterEach(() => {
     server.resetHandlers();
     vi.clearAllMocks();
     apiClient.reset();
-  });
-
-  // Close MSW server after all tests
-  afterAll(() => {
-    server.close();
   });
 
   // Reset client state before each test
