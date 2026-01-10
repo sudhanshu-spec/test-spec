@@ -234,87 +234,55 @@ const formatAddress = (address: DeliveryAddress): string => {
 };
 
 /**
- * Simulates fetching order details from the API
- * In production, this would make an actual API call
+ * Fetches order details from the API
  * @param orderId - The order ID to fetch
  * @returns Promise resolving to order details or error
  */
 const fetchOrderDetails = async (orderId: string): Promise<FetchOrderResponse> => {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 500));
-  
-  // For testing and development, return mock data based on orderId
-  // In production, this would be replaced with actual API call:
-  // const response = await fetch(`/api/orders/${orderId}`);
-  // return response.json();
-  
-  // Simulate order not found for specific test case
-  if (orderId === 'not-found' || orderId === 'invalid') {
+  try {
+    const response = await fetch(`/api/orders/${orderId}`, {
+      headers: {
+        'Authorization': 'Bearer test-token',
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    if (!response.ok) {
+      // Handle specific error statuses
+      if (response.status === 404) {
+        return {
+          success: false,
+          error: 'Order not found. Please check your order ID and try again.',
+        };
+      }
+      
+      // Try to parse error response
+      try {
+        const errorData = await response.json();
+        return {
+          success: false,
+          error: errorData.error?.message || 'Failed to retrieve order details.',
+        };
+      } catch {
+        return {
+          success: false,
+          error: 'Failed to retrieve order details.',
+        };
+      }
+    }
+    
+    const data = await response.json();
     return {
-      success: false,
-      error: 'Order not found. Please check your order ID and try again.',
+      success: true,
+      order: data.order,
     };
-  }
-  
-  // Simulate network error for specific test case
-  if (orderId === 'network-error') {
+  } catch (error) {
+    // Handle network errors
     return {
       success: false,
       error: 'Unable to retrieve order details. Please check your connection and try again.',
     };
   }
-  
-  // Return mock order data for valid order IDs
-  const mockOrder: ConfirmedOrder = {
-    id: orderId,
-    confirmationNumber: `BG-${orderId.toUpperCase().substring(0, 6)}`,
-    items: [
-      {
-        id: 'item-1',
-        name: 'Classic Burger',
-        price: 12.99,
-        quantity: 2,
-        imageUrl: '/images/classic-burger.jpg',
-      },
-      {
-        id: 'item-2',
-        name: 'Cheese Fries',
-        price: 5.99,
-        quantity: 1,
-        imageUrl: '/images/cheese-fries.jpg',
-      },
-      {
-        id: 'item-3',
-        name: 'Soft Drink',
-        price: 2.99,
-        quantity: 2,
-        imageUrl: '/images/soft-drink.jpg',
-      },
-    ],
-    subtotal: 37.95,
-    tax: 3.42,
-    deliveryFee: 4.99,
-    total: 46.36,
-    estimatedTime: '25-30 minutes',
-    status: 'confirmed',
-    orderType: 'delivery',
-    deliveryAddress: {
-      street: '123 Main Street',
-      street2: 'Apt 4B',
-      city: 'Springfield',
-      state: 'IL',
-      zipCode: '62701',
-    },
-    orderDate: new Date().toISOString(),
-    customerName: 'John Doe',
-    customerEmail: 'john.doe@example.com',
-    customerPhone: '555-123-4567',
-  };
-  
-  return {
-    success: true,
-    order: mockOrder,
-  };
 };
 
 /**

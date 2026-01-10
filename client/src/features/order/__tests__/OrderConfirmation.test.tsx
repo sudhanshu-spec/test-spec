@@ -342,9 +342,11 @@ describe('OrderConfirmation', () => {
     // Set up user event instance
     user = userEvent.setup();
 
-    // Set up clipboard mock
-    Object.assign(navigator, {
-      clipboard: mockClipboard,
+    // Set up clipboard mock - use defineProperty since navigator.clipboard is getter-only
+    Object.defineProperty(navigator, 'clipboard', {
+      value: mockClipboard,
+      writable: true,
+      configurable: true,
     });
 
     // Set up print mock
@@ -370,6 +372,7 @@ describe('OrderConfirmation', () => {
       const order = createConfirmedOrder({
         confirmationNumber: 'BG-ABC123',
       });
+      setupSuccessfulOrderHandler(order);
 
       // Act
       render(<OrderConfirmation orderId={order.id} />);
@@ -388,6 +391,7 @@ describe('OrderConfirmation', () => {
       const order = createConfirmedOrder({
         total: 46.36,
       });
+      setupSuccessfulOrderHandler(order);
 
       // Act
       render(<OrderConfirmation orderId={order.id} />);
@@ -404,6 +408,7 @@ describe('OrderConfirmation', () => {
     it('should display order items summary with names and quantities', async () => {
       // Arrange
       const order = createConfirmedOrder();
+      setupSuccessfulOrderHandler(order);
 
       // Act
       render(<OrderConfirmation orderId={order.id} />);
@@ -414,8 +419,9 @@ describe('OrderConfirmation', () => {
       });
       expect(screen.getByText('Cheese Fries')).toBeInTheDocument();
       expect(screen.getByText('Soft Drink')).toBeInTheDocument();
-      // Verify quantities are shown
-      expect(screen.getByText('x2')).toBeInTheDocument();
+      // Verify quantities are shown - use getAllByText since multiple items may have same quantity
+      const x2Elements = screen.getAllByText('x2');
+      expect(x2Elements.length).toBeGreaterThanOrEqual(1);
       expect(screen.getByText('x1')).toBeInTheDocument();
     });
 
@@ -425,6 +431,7 @@ describe('OrderConfirmation', () => {
         orderType: 'delivery',
         estimatedTime: '25-30 minutes',
       });
+      setupSuccessfulOrderHandler(order);
 
       // Act
       render(<OrderConfirmation orderId={order.id} />);
@@ -439,19 +446,30 @@ describe('OrderConfirmation', () => {
     });
 
     it('should show estimated pickup time for pickup orders', async () => {
-      // Arrange - Use pickup order variant
-      render(<OrderConfirmation orderId="pickup-order-001" />);
+      // Arrange - Set up pickup order with handler
+      const order = createConfirmedOrder({
+        id: 'pickup-order-001',
+        orderType: 'pickup',
+        estimatedTime: '15-20 minutes',
+      });
+      setupSuccessfulOrderHandler(order);
+      
+      // Act
+      render(<OrderConfirmation orderId={order.id} />);
 
       // Wait for component to render with pickup text
       await waitFor(() => {
         const estimatedTime = screen.getByTestId('estimated-time');
         expect(estimatedTime).toBeInTheDocument();
       });
+      expect(screen.getByText(/Estimated Pickup Time/i)).toBeInTheDocument();
+      expect(screen.getByText('15-20 minutes')).toBeInTheDocument();
     });
 
     it('should display success message and icon', async () => {
       // Arrange
       const order = createConfirmedOrder();
+      setupSuccessfulOrderHandler(order);
 
       // Act
       render(<OrderConfirmation orderId={order.id} />);
@@ -476,6 +494,7 @@ describe('OrderConfirmation', () => {
           zipCode: '60601',
         },
       });
+      setupSuccessfulOrderHandler(order);
 
       // Act
       render(<OrderConfirmation orderId={order.id} />);
@@ -491,7 +510,15 @@ describe('OrderConfirmation', () => {
     });
 
     it('should not display delivery address for pickup orders', async () => {
-      // Arrange - Use a pickup order
+      // Arrange - Create and setup a pickup order
+      const pickupOrder = createConfirmedOrder({
+        id: 'pickup-order-001',
+        orderType: 'pickup',
+        deliveryAddress: undefined,
+      });
+      setupSuccessfulOrderHandler(pickupOrder);
+
+      // Act
       render(<OrderConfirmation orderId="pickup-order-001" />);
 
       // Wait for order to load
@@ -510,6 +537,7 @@ describe('OrderConfirmation', () => {
         tax: 3.42,
         deliveryFee: 4.99,
       });
+      setupSuccessfulOrderHandler(order);
 
       // Act
       render(<OrderConfirmation orderId={order.id} />);
@@ -529,6 +557,7 @@ describe('OrderConfirmation', () => {
         customerEmail: 'jane@example.com',
         customerPhone: '555-987-6543',
       });
+      setupSuccessfulOrderHandler(order);
 
       // Act
       render(<OrderConfirmation orderId={order.id} />);
@@ -561,6 +590,7 @@ describe('OrderConfirmation', () => {
     it('should hide loading spinner after order loads', async () => {
       // Arrange
       const order = createConfirmedOrder();
+      setupSuccessfulOrderHandler(order);
 
       // Act
       render(<OrderConfirmation orderId={order.id} />);
@@ -625,8 +655,10 @@ describe('OrderConfirmation', () => {
     });
 
     it('should handle network error gracefully', async () => {
-      // Arrange - Render with network error simulation order ID
-      render(<OrderConfirmation orderId="network-error" />);
+      // Arrange - Set up network error handler
+      setupNetworkErrorHandler();
+      
+      render(<OrderConfirmation orderId="any-order-id" />);
 
       // Assert - Wait for network error message
       await waitFor(() => {
@@ -637,20 +669,25 @@ describe('OrderConfirmation', () => {
 
     it('should allow retry after error', async () => {
       // Arrange - Start with error state
-      render(<OrderConfirmation orderId="invalid" />);
+      setupOrderNotFoundHandler();
+      render(<OrderConfirmation orderId="any-order-id" />);
 
       // Wait for error to appear
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /Try Again/i })).toBeInTheDocument();
       });
 
+      // Set up success handler for retry
+      const order = createConfirmedOrder({ id: 'any-order-id' });
+      setupSuccessfulOrderHandler(order);
+
       // Act - Click retry button
       const retryButton = screen.getByRole('button', { name: /Try Again/i });
       await user.click(retryButton);
 
-      // Assert - Verify retry was triggered (loading state appears again)
+      // Assert - Verify retry loads the order successfully
       await waitFor(() => {
-        expect(screen.getByText(/Loading your order details/i)).toBeInTheDocument();
+        expect(screen.getByText(/Thank You for Your Order/i)).toBeInTheDocument();
       });
     });
 
@@ -700,6 +737,7 @@ describe('OrderConfirmation', () => {
     it('should navigate to menu on "Order More" button click', async () => {
       // Arrange
       const order = createConfirmedOrder();
+      setupSuccessfulOrderHandler(order);
       render(<OrderConfirmation orderId={order.id} />);
 
       // Wait for order to load
@@ -718,6 +756,7 @@ describe('OrderConfirmation', () => {
     it('should navigate to order tracking on "Track Order" click', async () => {
       // Arrange
       const order = createConfirmedOrder();
+      setupSuccessfulOrderHandler(order);
       render(<OrderConfirmation orderId={order.id} />);
 
       // Wait for order to load
@@ -736,6 +775,7 @@ describe('OrderConfirmation', () => {
     it('should navigate to order details on "View Order Details" click', async () => {
       // Arrange
       const order = createConfirmedOrder();
+      setupSuccessfulOrderHandler(order);
       render(<OrderConfirmation orderId={order.id} />);
 
       // Wait for order to load
@@ -756,6 +796,7 @@ describe('OrderConfirmation', () => {
       const order = createConfirmedOrder({
         confirmationNumber: 'BG-COPY123',
       });
+      setupSuccessfulOrderHandler(order);
       render(<OrderConfirmation orderId={order.id} />);
 
       // Wait for order to load
@@ -775,6 +816,7 @@ describe('OrderConfirmation', () => {
     it('should show "Copied!" feedback after copying', async () => {
       // Arrange
       const order = createConfirmedOrder();
+      setupSuccessfulOrderHandler(order);
       render(<OrderConfirmation orderId={order.id} />);
 
       // Wait for order to load
@@ -795,6 +837,7 @@ describe('OrderConfirmation', () => {
     it('should call custom onOrderMore callback when provided', async () => {
       // Arrange
       const order = createConfirmedOrder();
+      setupSuccessfulOrderHandler(order);
       const mockOnOrderMore = vi.fn();
       render(<OrderConfirmation orderId={order.id} onOrderMore={mockOnOrderMore} />);
 
@@ -814,6 +857,7 @@ describe('OrderConfirmation', () => {
     it('should call custom onTrackOrder callback when provided', async () => {
       // Arrange
       const order = createConfirmedOrder();
+      setupSuccessfulOrderHandler(order);
       const mockOnTrackOrder = vi.fn();
       render(<OrderConfirmation orderId={order.id} onTrackOrder={mockOnTrackOrder} />);
 
@@ -834,6 +878,7 @@ describe('OrderConfirmation', () => {
     it('should call custom onViewDetails callback when provided', async () => {
       // Arrange
       const order = createConfirmedOrder();
+      setupSuccessfulOrderHandler(order);
       const mockOnViewDetails = vi.fn();
       render(<OrderConfirmation orderId={order.id} onViewDetails={mockOnViewDetails} />);
 
@@ -854,6 +899,7 @@ describe('OrderConfirmation', () => {
     it('should have all action buttons accessible', async () => {
       // Arrange
       const order = createConfirmedOrder();
+      setupSuccessfulOrderHandler(order);
       render(<OrderConfirmation orderId={order.id} />);
 
       // Wait for order to load
@@ -885,6 +931,7 @@ describe('OrderConfirmation', () => {
       const order = createConfirmedOrder({
         status: 'confirmed',
       });
+      setupSuccessfulOrderHandler(order);
       render(<OrderConfirmation orderId={order.id} />);
 
       // Assert - Verify status is displayed
@@ -900,6 +947,7 @@ describe('OrderConfirmation', () => {
       const order = createConfirmedOrder({
         status: 'pending',
       });
+      setupSuccessfulOrderHandler(order);
       render(<OrderConfirmation orderId={order.id} />);
 
       // Assert
@@ -913,6 +961,7 @@ describe('OrderConfirmation', () => {
       const order = createConfirmedOrder({
         status: 'preparing',
       });
+      setupSuccessfulOrderHandler(order);
       render(<OrderConfirmation orderId={order.id} />);
 
       // Assert
@@ -926,6 +975,7 @@ describe('OrderConfirmation', () => {
       const order = createConfirmedOrder({
         status: 'ready',
       });
+      setupSuccessfulOrderHandler(order);
       render(<OrderConfirmation orderId={order.id} />);
 
       // Assert
@@ -939,6 +989,7 @@ describe('OrderConfirmation', () => {
       const order = createConfirmedOrder({
         status: 'out-for-delivery',
       });
+      setupSuccessfulOrderHandler(order);
       render(<OrderConfirmation orderId={order.id} />);
 
       // Assert
@@ -952,6 +1003,7 @@ describe('OrderConfirmation', () => {
       const order = createConfirmedOrder({
         status: 'delivered',
       });
+      setupSuccessfulOrderHandler(order);
       render(<OrderConfirmation orderId={order.id} />);
 
       // Assert
@@ -965,6 +1017,7 @@ describe('OrderConfirmation', () => {
       const order = createConfirmedOrder({
         status: 'picked-up',
       });
+      setupSuccessfulOrderHandler(order);
       render(<OrderConfirmation orderId={order.id} />);
 
       // Assert
@@ -978,6 +1031,7 @@ describe('OrderConfirmation', () => {
       const order = createConfirmedOrder({
         status: 'cancelled',
       });
+      setupSuccessfulOrderHandler(order);
       render(<OrderConfirmation orderId={order.id} />);
 
       // Assert
@@ -991,6 +1045,7 @@ describe('OrderConfirmation', () => {
       const order = createConfirmedOrder({
         status: 'confirmed',
       });
+      setupSuccessfulOrderHandler(order);
       render(<OrderConfirmation orderId={order.id} />);
 
       // Assert - Verify status has proper aria-label
@@ -1011,6 +1066,7 @@ describe('OrderConfirmation', () => {
       const order = createConfirmedOrder({
         id: 'ORD-12345-ABCDE',
       });
+      setupSuccessfulOrderHandler(order);
       render(<OrderConfirmation orderId={order.id} />);
 
       // Assert
@@ -1024,6 +1080,7 @@ describe('OrderConfirmation', () => {
       const order = createConfirmedOrder({
         orderType: 'delivery',
       });
+      setupSuccessfulOrderHandler(order);
       render(<OrderConfirmation orderId={order.id} />);
 
       // Assert
@@ -1034,18 +1091,25 @@ describe('OrderConfirmation', () => {
 
     it('should display order type for pickup', async () => {
       // Arrange - Use pickup order
-      render(<OrderConfirmation orderId="pickup-order-001" />);
+      const order = createConfirmedOrder({
+        id: 'pickup-order-001',
+        orderType: 'pickup',
+      });
+      setupSuccessfulOrderHandler(order);
+      render(<OrderConfirmation orderId={order.id} />);
 
-      // Assert - Since we need to verify what the component actually renders
+      // Assert - Verify order type is pickup
       await waitFor(() => {
         const orderType = screen.getByTestId('order-type');
         expect(orderType).toBeInTheDocument();
+        expect(orderType).toHaveTextContent('Pickup');
       });
     });
 
     it('should display order summary section', async () => {
       // Arrange
       const order = createConfirmedOrder();
+      setupSuccessfulOrderHandler(order);
       render(<OrderConfirmation orderId={order.id} />);
 
       // Assert
@@ -1058,6 +1122,7 @@ describe('OrderConfirmation', () => {
     it('should display order details section', async () => {
       // Arrange
       const order = createConfirmedOrder();
+      setupSuccessfulOrderHandler(order);
       render(<OrderConfirmation orderId={order.id} />);
 
       // Assert
@@ -1072,17 +1137,20 @@ describe('OrderConfirmation', () => {
       const order = createConfirmedOrder({
         customerEmail: 'test@example.com',
       });
+      setupSuccessfulOrderHandler(order);
       render(<OrderConfirmation orderId={order.id} />);
 
       // Assert
       await waitFor(() => {
         expect(screen.getByText(/confirmation email has been sent/i)).toBeInTheDocument();
       });
-      expect(screen.getByText(/test@example.com/)).toBeInTheDocument();
+      // Email appears in both the email message and customer details - use getAllByText to verify presence
+      const emailElements = screen.getAllByText(/test@example.com/);
+      expect(emailElements.length).toBeGreaterThanOrEqual(1);
     });
 
     it('should display each order item with correct price', async () => {
-      // Arrange
+      // Arrange - Use unique prices that won't conflict with delivery fee
       const order = createConfirmedOrder({
         items: [
           {
@@ -1094,11 +1162,13 @@ describe('OrderConfirmation', () => {
           {
             id: 'test-item-2',
             name: 'Test Fries',
-            price: 4.99,
+            price: 5.49,
             quantity: 1,
           },
         ],
+        deliveryFee: 3.99, // Different from item prices
       });
+      setupSuccessfulOrderHandler(order);
       render(<OrderConfirmation orderId={order.id} />);
 
       // Assert - Verify items display with calculated prices
@@ -1108,7 +1178,7 @@ describe('OrderConfirmation', () => {
       expect(screen.getByText('Test Fries')).toBeInTheDocument();
       // Check that item totals are calculated (10.99 * 2 = $21.98)
       expect(screen.getByText('$21.98')).toBeInTheDocument();
-      expect(screen.getByText('$4.99')).toBeInTheDocument();
+      expect(screen.getByText('$5.49')).toBeInTheDocument();
     });
   });
 
@@ -1120,6 +1190,7 @@ describe('OrderConfirmation', () => {
     it('should have accessible main content area', async () => {
       // Arrange
       const order = createConfirmedOrder();
+      setupSuccessfulOrderHandler(order);
       render(<OrderConfirmation orderId={order.id} />);
 
       // Assert
@@ -1132,6 +1203,7 @@ describe('OrderConfirmation', () => {
     it('should have accessible heading structure', async () => {
       // Arrange
       const order = createConfirmedOrder();
+      setupSuccessfulOrderHandler(order);
       render(<OrderConfirmation orderId={order.id} />);
 
       // Assert - Main heading
@@ -1145,6 +1217,7 @@ describe('OrderConfirmation', () => {
     it('should have accessible items list', async () => {
       // Arrange
       const order = createConfirmedOrder();
+      setupSuccessfulOrderHandler(order);
       render(<OrderConfirmation orderId={order.id} />);
 
       // Assert - Items list should have aria-label
@@ -1159,6 +1232,7 @@ describe('OrderConfirmation', () => {
       const order = createConfirmedOrder({
         status: 'confirmed',
       });
+      setupSuccessfulOrderHandler(order);
       render(<OrderConfirmation orderId={order.id} />);
 
       // Assert
@@ -1171,6 +1245,7 @@ describe('OrderConfirmation', () => {
     it('should have accessible copy button', async () => {
       // Arrange
       const order = createConfirmedOrder();
+      setupSuccessfulOrderHandler(order);
       render(<OrderConfirmation orderId={order.id} />);
 
       // Assert
@@ -1183,6 +1258,7 @@ describe('OrderConfirmation', () => {
 
     it('should have proper alert role for error state', async () => {
       // Arrange
+      setupOrderNotFoundHandler('not-found');
       render(<OrderConfirmation orderId="not-found" />);
 
       // Assert
@@ -1211,6 +1287,7 @@ describe('OrderConfirmation', () => {
         orderType: 'pickup',
         deliveryFee: 0,
       });
+      setupSuccessfulOrderHandler(order);
       render(<OrderConfirmation orderId={order.id} />);
 
       // Assert - Delivery fee should not be shown for pickup
@@ -1225,6 +1302,7 @@ describe('OrderConfirmation', () => {
       const order = createConfirmedOrder({
         customerPhone: undefined,
       });
+      setupSuccessfulOrderHandler(order);
       render(<OrderConfirmation orderId={order.id} />);
 
       // Assert
@@ -1239,6 +1317,7 @@ describe('OrderConfirmation', () => {
       const order = createConfirmedOrder({
         customerEmail: undefined,
       });
+      setupSuccessfulOrderHandler(order);
       render(<OrderConfirmation orderId={order.id} />);
 
       // Assert
@@ -1253,6 +1332,7 @@ describe('OrderConfirmation', () => {
       const order = createConfirmedOrder({
         confirmationNumber: 'BG-VERYLONGCONFIRMATIONNUMBER12345',
       });
+      setupSuccessfulOrderHandler(order);
       render(<OrderConfirmation orderId={order.id} />);
 
       // Assert
@@ -1274,6 +1354,7 @@ describe('OrderConfirmation', () => {
       const order = createConfirmedOrder({
         items: manyItems,
       });
+      setupSuccessfulOrderHandler(order);
       render(<OrderConfirmation orderId={order.id} />);
 
       // Assert - All items should be displayed
@@ -1295,6 +1376,7 @@ describe('OrderConfirmation', () => {
           },
         ],
       });
+      setupSuccessfulOrderHandler(order);
       render(<OrderConfirmation orderId={order.id} />);
 
       // Assert
@@ -1321,13 +1403,16 @@ describe('OrderConfirmation', () => {
         deliveryFee: 0,
         total: 0,
       });
+      setupSuccessfulOrderHandler(order);
       render(<OrderConfirmation orderId={order.id} />);
 
       // Assert
       await waitFor(() => {
         expect(screen.getByText('Free Promotional Item')).toBeInTheDocument();
       });
-      expect(screen.getByText('$0.00')).toBeInTheDocument();
+      // Multiple $0.00 values appear (item price, subtotal, tax, total) - verify at least one exists
+      const zeroElements = screen.getAllByText('$0.00');
+      expect(zeroElements.length).toBeGreaterThanOrEqual(1);
     });
   });
 });

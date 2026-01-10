@@ -210,6 +210,55 @@ function simulateNetworkFailure(): void {
 }
 
 /**
+ * Sets up MSW handler for successful order retrieval.
+ * The OrderConfirmation component fetches order details from /api/orders/:id.
+ * 
+ * @param orderId - The order ID to handle
+ * @param overrides - Optional properties to override the default order
+ */
+function setupOrderConfirmationHandler(orderId: string, overrides: Partial<{
+  confirmationNumber: string;
+  status: string;
+  items: CartItem[];
+  total: number;
+  estimatedTime: string;
+  orderType: string;
+}> = {}): void {
+  server.use(
+    http.get(`/api/orders/${orderId}`, () => {
+      return HttpResponse.json({
+        success: true,
+        order: {
+          id: orderId,
+          confirmationNumber: overrides.confirmationNumber || 'BG-TEST123',
+          status: overrides.status || 'confirmed',
+          items: overrides.items || [
+            { id: 'burger-001', name: 'Classic Burger', price: 8.99, quantity: 1 },
+            { id: 'fries-001', name: 'Fries', price: 3.99, quantity: 1 },
+          ],
+          subtotal: 12.98,
+          tax: 1.04,
+          deliveryFee: 4.99,
+          total: overrides.total || 19.01,
+          estimatedTime: overrides.estimatedTime || '25-30 minutes',
+          orderType: overrides.orderType || 'delivery',
+          deliveryAddress: {
+            street: '123 Main St',
+            city: 'Anytown',
+            state: 'ST',
+            zipCode: '12345',
+          },
+          customerName: 'Test User',
+          customerEmail: 'test@example.com',
+          customerPhone: '555-123-4567',
+          createdAt: new Date().toISOString(),
+        },
+      }, { status: 200 });
+    })
+  );
+}
+
+/**
  * Calculates the expected total for cart items.
  * Used for verification in assertions.
  *
@@ -967,6 +1016,9 @@ describe('Ordering Integration Tests', () => {
     it('should display order confirmation with order number', async () => {
       // Arrange
       const mockOrderId = 'order-123-abc';
+      setupOrderConfirmationHandler(mockOrderId, {
+        confirmationNumber: 'BG-ORDER123',
+      });
 
       // Act
       render(<OrderConfirmation orderId={mockOrderId} />, {
@@ -986,6 +1038,9 @@ describe('Ordering Integration Tests', () => {
     it('should display estimated delivery/pickup time', async () => {
       // Arrange
       const mockOrderId = 'order-123-abc';
+      setupOrderConfirmationHandler(mockOrderId, {
+        estimatedTime: '30-40 minutes',
+      });
 
       // Act
       render(<OrderConfirmation orderId={mockOrderId} />, {
@@ -1005,6 +1060,7 @@ describe('Ordering Integration Tests', () => {
       // Arrange
       const mockOrderId = 'order-123-abc';
       const mockOnViewDetails = vi.fn();
+      setupOrderConfirmationHandler(mockOrderId);
 
       // Act
       render(
