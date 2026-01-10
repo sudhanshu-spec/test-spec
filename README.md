@@ -133,21 +133,57 @@ hao-backprop-test/
 ├── README.md                    # Project documentation (this file)
 ├── .gitignore                   # Git ignore patterns
 ├── jest.config.js               # Jest test framework configuration
-├── src/                         # Application source root
+├── src/                         # Backend application source root
 │   ├── app.js                   # Express application factory
 │   ├── config/                  # Configuration module
 │   │   └── index.js             # Environment variable management
 │   └── routes/                  # Routing surface
 │       ├── index.js             # Route aggregator (barrel pattern)
 │       └── main.routes.js       # Route handlers implementation
-└── tests/                       # Test suite root
-    ├── unit/                    # Isolated module tests
-    │   ├── config.test.js       # Configuration module tests
-    │   └── routes.test.js       # Route handler tests
-    ├── integration/             # HTTP endpoint tests
-    │   └── endpoints.test.js    # API endpoint contract tests
-    └── lifecycle/               # Server lifecycle tests
-        └── server.test.js       # Startup/shutdown tests
+├── tests/                       # Backend test suite root
+│   ├── unit/                    # Isolated module tests
+│   │   ├── config.test.js       # Configuration module tests
+│   │   └── routes.test.js       # Route handler tests
+│   ├── integration/             # HTTP endpoint tests
+│   │   └── endpoints.test.js    # API endpoint contract tests
+│   └── lifecycle/               # Server lifecycle tests
+│       └── server.test.js       # Startup/shutdown tests
+└── client/                      # Frontend application (Vite + React + TypeScript)
+    ├── vitest.config.ts         # Vitest test framework configuration
+    ├── tsconfig.json            # TypeScript configuration
+    ├── package.json             # Frontend dependencies and scripts
+    └── src/                     # Frontend source root
+        ├── __tests__/           # Global test infrastructure
+        │   ├── setup.ts         # Global test setup (Testing Library, jsdom)
+        │   ├── mocks/           # MSW mock handlers
+        │   │   ├── server.ts    # MSW server configuration
+        │   │   └── handlers/    # API mock handlers by feature
+        │   │       ├── auth.ts      # Authentication API mocks
+        │   │       ├── menu.ts      # Menu API mocks
+        │   │       ├── orders.ts    # Orders API mocks
+        │   │       └── bookings.ts  # Bookings API mocks
+        │   ├── fixtures/        # Test data fixtures
+        │   │   ├── users.ts         # User test data
+        │   │   ├── menuItems.ts     # Menu item fixtures
+        │   │   ├── orders.ts        # Order fixtures
+        │   │   └── bookings.ts      # Booking fixtures
+        │   ├── utils/           # Test utility functions
+        │   │   ├── render.tsx       # Custom render with providers
+        │   │   └── testUtils.ts     # Shared test utilities
+        │   └── integration/     # Integration test suites
+        │       ├── auth.integration.test.tsx      # Auth flow tests
+        │       ├── ordering.integration.test.tsx  # Order flow tests
+        │       └── booking.integration.test.tsx   # Booking flow tests
+        ├── features/            # Feature modules with co-located tests
+        │   ├── auth/__tests__/          # Authentication component tests
+        │   ├── menu/__tests__/          # Menu component tests
+        │   ├── cart/__tests__/          # Cart component tests
+        │   ├── booking/__tests__/       # Booking component tests
+        │   └── order/__tests__/         # Order component tests
+        ├── components/__tests__/        # Shared component tests
+        ├── api/__tests__/               # API client tests
+        ├── hooks/__tests__/             # Custom hook tests
+        └── utils/__tests__/             # Utility function tests
 ```
 
 ### File Descriptions
@@ -230,32 +266,56 @@ npm ls express
 
 ## Scripts
 
+### Backend Scripts
+
 | Script | Command | Description |
 |--------|---------|-------------|
 | `start` | `node server.js` | Starts the HTTP server |
-| `test` | `jest` | Run the complete test suite |
-| `test:watch` | `jest --watch` | Run tests in watch mode for development |
-| `test:coverage` | `jest --coverage` | Run tests and generate coverage report |
-| `test:ci` | `jest --ci --coverage` | Run tests optimized for CI/CD environments |
+| `test` | `jest` | Run the complete backend test suite |
+| `test:watch` | `jest --watch` | Run backend tests in watch mode for development |
+| `test:coverage` | `jest --coverage` | Run backend tests and generate coverage report |
+| `test:ci` | `jest --ci --coverage` | Run backend tests optimized for CI/CD environments |
+
+### Frontend Scripts
+
+| Script | Command | Description |
+|--------|---------|-------------|
+| `test:client` | `cd client && npm test` | Run all frontend tests (Vitest) |
+| `test:client:watch` | `cd client && npm run test:watch` | Run frontend tests in watch mode |
+| `test:client:coverage` | `cd client && npm run test:coverage` | Run frontend tests with coverage report |
+| `test:client:ui` | `cd client && npm run test:ui` | Open Vitest UI for interactive testing |
+
+### Combined Scripts
+
+| Script | Command | Description |
+|--------|---------|-------------|
+| `test:all` | `npm test && npm run test:client` | Run both backend and frontend test suites |
+| `coverage:all` | `npm run test:coverage && npm run test:client:coverage` | Generate combined coverage reports |
 
 ## Testing
 
-This project includes a comprehensive test suite built with **Jest 30.x** and **Supertest** for HTTP endpoint testing.
+This project includes a comprehensive dual-framework test suite:
+- **Backend Testing**: Jest 30.x with Supertest for HTTP endpoint testing
+- **Frontend Testing**: Vitest 4.x with React Testing Library for component testing
 
-### Test Execution Commands
+---
+
+### Backend Testing (Jest)
+
+The backend test suite is built with **Jest 30.x** and **Supertest** for HTTP endpoint testing.
+
+#### Backend Test Execution Commands
 
 | Purpose | Command | Description |
 |---------|---------|-------------|
-| Run all tests | `npm test` | Execute the complete test suite |
+| Run all backend tests | `npm test` | Execute the complete backend test suite |
 | Watch mode | `npm run test:watch` | Re-run tests automatically on file changes |
 | Coverage report | `npm run test:coverage` | Generate detailed code coverage metrics |
 | CI execution | `npm run test:ci` | Optimized execution for CI/CD pipelines |
 | Single file | `npx jest tests/unit/config.test.js` | Run a specific test file |
 | Pattern match | `npx jest --testPathPatterns="config"` | Run tests matching a pattern |
 
-### Test Structure
-
-The test suite is organized into three categories based on test scope:
+#### Backend Test Structure
 
 ```
 tests/
@@ -274,9 +334,7 @@ tests/
 | `tests/integration/` | Test HTTP endpoint responses | Supertest requests against the Express app |
 | `tests/lifecycle/` | Test server startup/shutdown | Mock-based lifecycle verification |
 
-### Coverage Targets
-
-The project enforces the following code coverage thresholds:
+#### Backend Coverage Targets
 
 | Coverage Metric | Target | Description |
 |-----------------|--------|-------------|
@@ -285,23 +343,213 @@ The project enforces the following code coverage thresholds:
 | Function Coverage | ≥ 90% | Percentage of functions called by tests |
 | Statement Coverage | ≥ 80% | Percentage of statements executed by tests |
 
-**Generate and view coverage report:**
+**Generate and view backend coverage report:**
 ```bash
 npm run test:coverage
 # Coverage report generated in ./coverage/
 # Open ./coverage/lcov-report/index.html for detailed HTML report
 ```
 
-### Test Dependencies
+#### Backend Test Dependencies
 
 | Package | Version | Purpose |
 |---------|---------|---------|
 | `jest` | ^30.2.0 | JavaScript testing framework and test runner |
 | `supertest` | ^7.1.4 | HTTP assertion library for Express endpoint testing |
 
+---
+
+### Frontend Testing (Vitest)
+
+The frontend test suite is built with **Vitest 4.x**, **React Testing Library**, and **MSW** for comprehensive component and integration testing.
+
+#### Frontend Testing Stack
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| `vitest` | 4.0.16 | Testing framework optimized for Vite projects with native ESM support |
+| `@vitest/coverage-v8` | 4.0.16 | V8-based code coverage for accurate metrics |
+| `@vitest/ui` | 4.0.16 | Browser-based interactive test UI |
+| `@testing-library/react` | 16.1.0 | React component testing utilities with user-centric approach |
+| `@testing-library/dom` | 10.4.0 | DOM testing utilities (peer dependency for RTL 16+) |
+| `@testing-library/user-event` | 14.5.2 | Realistic user interaction simulation |
+| `@testing-library/jest-dom` | 6.6.3 | Custom DOM matchers for enhanced assertions |
+| `jsdom` | 25.0.1 | DOM environment simulation for Node.js |
+| `msw` | 2.7.0 | Mock Service Worker for API request interception |
+
+#### Frontend Test Execution Commands
+
+| Purpose | Command | Description |
+|---------|---------|-------------|
+| Run all frontend tests | `npm run test:client` | Execute the complete frontend test suite |
+| Run directly | `cd client && npm test` | Run frontend tests from client directory |
+| Watch mode | `cd client && npm run test:watch` | Re-run tests automatically on file changes |
+| Coverage report | `npm run test:client:coverage` | Generate frontend coverage metrics |
+| Interactive UI | `cd client && npm run test:ui` | Open Vitest UI in browser |
+| Single file | `cd client && npx vitest run src/features/auth/__tests__/LoginForm.test.tsx` | Run a specific test file |
+| Pattern match | `cd client && npx vitest run --grep "login"` | Run tests matching a pattern |
+| Directory tests | `cd client && npx vitest run src/features/cart/` | Run all tests in a directory |
+
+#### Frontend Test Structure
+
+```
+client/src/
+├── __tests__/                           # Global test infrastructure
+│   ├── setup.ts                         # Global test setup and configuration
+│   ├── mocks/                           # MSW mock handlers
+│   │   ├── server.ts                    # MSW server configuration
+│   │   └── handlers/                    # API mock handlers by feature
+│   ├── fixtures/                        # Reusable test data
+│   └── utils/                           # Test utility functions
+│       ├── render.tsx                   # Custom render with providers
+│       └── testUtils.ts                 # Shared test helpers
+├── features/
+│   ├── auth/__tests__/                  # Authentication tests
+│   │   ├── LoginForm.test.tsx           # Login form unit tests
+│   │   ├── RegisterForm.test.tsx        # Registration form tests
+│   │   ├── AuthContext.test.tsx         # Auth state management tests
+│   │   └── ProtectedRoute.test.tsx      # Route protection tests
+│   ├── menu/__tests__/                  # Menu feature tests
+│   ├── cart/__tests__/                  # Cart feature tests
+│   ├── booking/__tests__/               # Booking feature tests
+│   └── order/__tests__/                 # Order feature tests
+├── components/__tests__/                # Shared component tests
+├── api/__tests__/                       # API client tests
+├── hooks/__tests__/                     # Custom hook tests
+└── utils/__tests__/                     # Utility function tests
+```
+
+| Directory | Purpose | Test Approach |
+|-----------|---------|---------------|
+| `client/src/__tests__/` | Global test infrastructure | Setup, mocks, fixtures, utilities |
+| `client/src/features/**/__tests__/` | Feature component tests | React Testing Library with Vitest |
+| `client/src/components/__tests__/` | Shared component tests | Unit tests for reusable components |
+| `client/src/api/__tests__/` | API client tests | MSW-based request/response testing |
+| `client/src/hooks/__tests__/` | Custom hook tests | Isolated hook testing |
+| `client/src/utils/__tests__/` | Utility function tests | Pure function unit tests |
+
+#### Frontend Coverage Targets
+
+| Coverage Metric | Target | Description |
+|-----------------|--------|-------------|
+| Branch Coverage | ≥ 80% | Percentage of conditional branches tested |
+| Function Coverage | ≥ 85% | Percentage of functions called by tests |
+| Line Coverage | ≥ 85% | Percentage of code lines executed by tests |
+| Statement Coverage | ≥ 85% | Percentage of statements executed by tests |
+
+**Critical Path Coverage Requirements:**
+- Authentication components: 100% coverage
+- Cart state management: 100% coverage
+- API client functions: 100% coverage
+- Utility/validation functions: 100% coverage
+- Order checkout flow: 90%+ coverage
+
+**Generate and view frontend coverage report:**
+```bash
+npm run test:client:coverage
+# Coverage report generated in ./client/coverage/
+# Open ./client/coverage/lcov-report/index.html for detailed HTML report
+```
+
+#### MSW (Mock Service Worker) API Mocking
+
+The frontend tests use MSW for intercepting and mocking API requests:
+
+```typescript
+// Example: Authentication mock handler
+import { http, HttpResponse } from 'msw';
+
+export const authHandlers = [
+  http.post('/api/auth/login', async ({ request }) => {
+    const { email, password } = await request.json();
+    if (email === 'test@example.com' && password === 'password') {
+      return HttpResponse.json({ token: 'mock-jwt-token', user: { id: '1', email } });
+    }
+    return HttpResponse.json({ error: 'Invalid credentials' }, { status: 401 });
+  }),
+];
+```
+
+**Mock Handler Categories:**
+- `auth.ts` - Login, logout, registration, token refresh
+- `menu.ts` - Menu items, categories, search
+- `orders.ts` - Order creation, history, status updates
+- `bookings.ts` - Reservation creation, availability, cancellation
+
+#### Custom Test Utilities
+
+**Custom Render with Providers:**
+```typescript
+// client/src/__tests__/utils/render.tsx
+import { render } from '@testing-library/react';
+import { AuthProvider } from '@/features/auth/AuthContext';
+import { CartProvider } from '@/features/cart/CartContext';
+import { BrowserRouter } from 'react-router-dom';
+
+export function renderWithProviders(ui: React.ReactElement, options = {}) {
+  return render(ui, {
+    wrapper: ({ children }) => (
+      <BrowserRouter>
+        <AuthProvider>
+          <CartProvider>
+            {children}
+          </CartProvider>
+        </AuthProvider>
+      </BrowserRouter>
+    ),
+    ...options,
+  });
+}
+```
+
+---
+
+### Combined Test Execution
+
+Run both frontend and backend tests together:
+
+```bash
+# Run all tests (backend + frontend)
+npm run test:all
+
+# Generate combined coverage reports
+npm run coverage:all
+```
+
+### Test Quality Guidelines
+
+**All tests should follow these principles:**
+
+1. **AAA Pattern**: Arrange, Act, Assert structure for clarity
+2. **Single Responsibility**: Each test verifies one behavior
+3. **Isolation**: Tests run independently without shared state
+4. **Descriptive Naming**: Test names explain expected behavior
+5. **User-Centric**: Test user-facing behavior, not implementation details
+
+**Frontend Test Pattern Example:**
+```typescript
+describe('LoginForm', () => {
+  beforeEach(() => {
+    // Reset mocks before each test
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  describe('when user submits valid credentials', () => {
+    it('should redirect to dashboard on successful login', async () => {
+      // Arrange: Set up mocks and render component
+      // Act: Simulate user interactions
+      // Assert: Verify expected behavior
+    });
+  });
+});
+```
+
 ## Troubleshooting
 
-### Common Issues
+### Common Server Issues
 
 **Port already in use:**
 ```bash
@@ -322,6 +570,130 @@ PORT=8080 npm start
 # Error: Cannot find module 'express'
 # Solution: Install dependencies
 npm install
+```
+
+### Common Backend Testing Issues
+
+**Jest tests hanging or timing out:**
+```bash
+# Error: Jest did not exit one second after the test run has completed
+# Solution: Ensure all async operations complete and mocks are properly cleared
+npm test -- --detectOpenHandles
+```
+
+**Coverage thresholds not met:**
+```bash
+# Error: Coverage threshold for X not met
+# Solution: Add more tests or adjust thresholds in jest.config.js
+npm run test:coverage -- --verbose
+```
+
+### Common Frontend Testing Issues
+
+**Vitest tests failing with module resolution errors:**
+```bash
+# Error: Cannot find module '@/components/...'
+# Solution: Ensure tsconfig paths are correctly configured in vitest.config.ts
+cd client && npx vitest --config vitest.config.ts
+```
+
+**React Testing Library "act" warnings:**
+```typescript
+// Warning: An update to Component inside a test was not wrapped in act(...)
+// Solution: Use waitFor or findBy queries for async operations
+import { waitFor } from '@testing-library/react';
+
+await waitFor(() => {
+  expect(screen.getByText('Success')).toBeInTheDocument();
+});
+```
+
+**MSW handlers not intercepting requests:**
+```typescript
+// Issue: API calls not being mocked during tests
+// Solution: Ensure MSW server is started before tests and handlers are registered
+
+// In setup.ts
+import { server } from './mocks/server';
+
+beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
+afterEach(() => server.resetHandlers());
+afterAll(() => server.close());
+```
+
+**jsdom environment issues:**
+```bash
+# Error: ReferenceError: document is not defined
+# Solution: Ensure vitest.config.ts has jsdom environment configured
+# In vitest.config.ts:
+# test: { environment: 'jsdom' }
+```
+
+**Tests passing locally but failing in CI:**
+```bash
+# Issue: Timing-related test failures in CI
+# Solution: Use explicit waits and avoid hardcoded timeouts
+# Run with similar CI conditions locally:
+CI=true npm run test:client
+```
+
+**User event interactions not working:**
+```typescript
+// Issue: userEvent.click() not triggering expected behavior
+// Solution: Ensure userEvent is properly set up
+import userEvent from '@testing-library/user-event';
+
+it('should handle click', async () => {
+  const user = userEvent.setup();
+  render(<MyComponent />);
+  await user.click(screen.getByRole('button'));
+  // assertions...
+});
+```
+
+**Vitest watch mode not detecting changes:**
+```bash
+# Issue: Tests not re-running when files change
+# Solution: Check file watching limits on Linux
+echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.conf
+sudo sysctl -p
+```
+
+**Coverage report showing 0% for some files:**
+```bash
+# Issue: Files not included in coverage report
+# Solution: Check include/exclude patterns in vitest.config.ts
+# Ensure source files are properly imported in tests
+cd client && npx vitest run --coverage --reporter=verbose
+```
+
+**Testing Library queries not finding elements:**
+```typescript
+// Issue: getByRole/getByText not finding expected elements
+// Solution: Use screen.debug() to inspect current DOM state
+import { screen } from '@testing-library/react';
+
+render(<MyComponent />);
+screen.debug(); // Prints current DOM to console
+
+// Use more specific queries or check element accessibility
+screen.getByRole('button', { name: /submit/i });
+```
+
+### Debug Mode Testing
+
+**Run frontend tests in debug mode:**
+```bash
+# Start Vitest in debug mode
+cd client && npx vitest --inspect-brk --single-thread
+
+# In another terminal, attach debugger (VS Code, Chrome DevTools, etc.)
+```
+
+**Run backend tests in debug mode:**
+```bash
+# Start Jest in debug mode
+node --inspect-brk node_modules/.bin/jest --runInBand
 ```
 
 ## License

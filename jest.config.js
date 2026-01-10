@@ -1,5 +1,8 @@
 /**
  * @fileoverview Jest configuration for Express.js hello_world application
+ * @description Backend test configuration using Jest. Frontend tests use Vitest
+ * and are located in the client directory, which is explicitly excluded here
+ * to ensure clean separation between Jest (backend) and Vitest (frontend) test runners.
  * @type {import('jest').Config}
  */
 module.exports = {
@@ -19,9 +22,11 @@ module.exports = {
   collectCoverageFrom: [
     'server.js',
     'src/**/*.js',
-    '!node_modules/**'
+    '!node_modules/**',
+    '!client/**'
   ],
-  coveragePathIgnorePatterns: ['/node_modules/'],
+  coveragePathIgnorePatterns: ['/node_modules/', '/client/'],
+  testPathIgnorePatterns: ['/node_modules/', '/client/'],
   verbose: true,
   testTimeout: 10000
 };
