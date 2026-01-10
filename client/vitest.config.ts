@@ -312,17 +312,20 @@ export default defineConfig({
     // =========================================================================
 
     /**
-     * Dependencies to inline during testing.
+     * Server configuration for dependency handling during testing.
      *
+     * In Vitest 4.x, deps.inline was moved to server.deps.inline.
      * Forces Vitest to transform and bundle certain dependencies that may
      * have issues with ESM resolution or contain non-standard imports.
      */
-    deps: {
-      /**
-       * Inline specific packages that have ESM compatibility issues.
-       * Add packages here if they cause "Cannot find module" errors.
-       */
-      inline: [],
+    server: {
+      deps: {
+        /**
+         * Inline specific packages that have ESM compatibility issues.
+         * Add packages here if they cause "Cannot find module" errors.
+         */
+        inline: [],
+      },
     },
   },
 

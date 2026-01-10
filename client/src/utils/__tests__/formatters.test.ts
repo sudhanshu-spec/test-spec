@@ -1035,7 +1035,9 @@ describe('String Formatting - capitalize', () => {
       const result = capitalize(input);
 
       // Assert
-      expect(result).toContain('H') || expect(result).toContain('h');
+      // Either preserves leading whitespace with lowercase h, or capitalizes first letter char
+      expect(result).toMatch(/[Hh]/);
+      expect(typeof result).toBe('string');
     });
 
     it('should handle string with trailing whitespace', () => {
