@@ -238,6 +238,7 @@ The following table maps every file to be created, updated, or deleted with tran
 ### 0.3.2 New Files Detail
 
 ## `.env` - Environment Variables File
+
 - **Content type**: Configuration
 - **Based on**: `.env.example` template
 - **Key sections**:
@@ -246,6 +247,7 @@ The following table maps every file to be created, updated, or deleted with tran
   - Logging configuration (LOG_LEVEL)
 
 ### `.env.example` - Environment Template
+
 - **Content type**: Documentation/Configuration
 - **Based on**: Industry best practices
 - **Key sections**:
@@ -254,6 +256,7 @@ The following table maps every file to be created, updated, or deleted with tran
   - Security notes
 
 ### `ecosystem.config.js` - PM2 Configuration
+
 - **Content type**: Configuration
 - **Based on**: PM2 documentation, Express.js best practices
 - **Key sections**:
@@ -262,6 +265,7 @@ The following table maps every file to be created, updated, or deleted with tran
   - Restart policies and instance management
 
 ## `src/utils/logger.js` - Winston Logger
+
 - **Content type**: Source code (utility)
 - **Based on**: Winston 3.x documentation
 - **Key functions**:
@@ -271,6 +275,7 @@ The following table maps every file to be created, updated, or deleted with tran
   - Log level management based on NODE_ENV
 
 ### `src/middleware/morgan.middleware.js` - HTTP Request Logger
+
 - **Content type**: Source code (middleware)
 - **Based on**: Morgan documentation, Winston integration
 - **Key functions**:
@@ -279,6 +284,7 @@ The following table maps every file to be created, updated, or deleted with tran
   - Environment-aware format selection
 
 ### `src/middleware/error.middleware.js` - Error Handler
+
 - **Content type**: Source code (middleware)
 - **Based on**: Express.js error handling patterns
 - **Key functions**:
@@ -287,6 +293,7 @@ The following table maps every file to be created, updated, or deleted with tran
   - Stack trace suppression in production
 
 ### `src/routes/health.routes.js` - Health Check Route
+
 - **Content type**: Source code (route)
 - **Based on**: `src/routes/main.routes.js` pattern
 - **Key endpoints**:
@@ -295,12 +302,14 @@ The following table maps every file to be created, updated, or deleted with tran
 ### 0.3.3 Files to Modify Detail
 
 ## `package.json` - npm Manifest
+
 - **Sections to update**:
   - `dependencies`: Add dotenv, winston, morgan, helmet, cors, compression
   - `devDependencies`: Add pm2
   - `scripts`: Add start:dev, start:prod, pm2:start, pm2:stop, pm2:restart, pm2:logs
 
 ## `server.js` - Entry Point
+
 - **Sections to update**:
   - Line 1: Add `require('dotenv').config()` before any other imports
   - After listen callback: Add graceful shutdown handlers
@@ -310,6 +319,7 @@ The following table maps every file to be created, updated, or deleted with tran
   - Connection draining logic
 
 ## `src/app.js` - Express Application Factory
+
 - **Sections to update**:
   - After express() initialization: Add middleware stack
   - Before route mounting: Configure security and logging middleware
@@ -321,6 +331,7 @@ The following table maps every file to be created, updated, or deleted with tran
   - healthRoutes from routes
 
 ## `src/config/index.js` - Configuration Manager
+
 - **Sections to update**:
   - Top of file: Ensure dotenv is loaded (or rely on server.js)
   - Configuration object: Add LOG_LEVEL, additional environment variables
@@ -329,19 +340,23 @@ The following table maps every file to be created, updated, or deleted with tran
   - Expanded configuration options
 
 ## `src/routes/index.js` - Route Aggregator
+
 - **Sections to update**:
   - Add require for healthRoutes
   - Add healthRoutes to exports object
 
 ## `.gitignore` - Git Ignore Rules
+
 - **New content to add**:
   ```
 #### Environment variables
+
   .env
   .env.local
   .env.*.local
   
 #### Logs
+
   logs/
   *.log
   ```
@@ -518,10 +533,12 @@ module.exports = { mainRoutes, healthRoutes };
 
 ```bash
 # Install runtime dependencies
+
 npm install dotenv@^16.4.7 winston@^3.17.0 morgan@^1.10.0 \
   helmet@^8.0.0 cors@^2.8.5 compression@^1.7.5
 
 #### Install development dependencies
+
 npm install --save-dev pm2@^5.4.3
 ```
 
@@ -1138,12 +1155,15 @@ module.exports = { host, port };
 
 ```bash
 # Verify dependencies installed
+
 npm ls
 
 #### Start in development mode
+
 npm run start:dev
 
 #### Test existing routes (must be unchanged)
+
 curl http://localhost:3000/
 #### Expected: Hello, World!
 
@@ -1151,25 +1171,31 @@ curl http://localhost:3000/evening
 # Expected: Good evening
 
 #### Test new health endpoint
+
 curl http://localhost:3000/health
 #### Expected: {"status":"ok","timestamp":"..."}
 
 #### Test 404 handling
+
 curl http://localhost:3000/nonexistent
 #### Expected: {"error":"Not Found","message":"..."}
 
 #### Verify log files created
+
 ls -la logs/
 
 #### Test PM2 deployment
+
 npm run pm2:start
 pm2 status
 npm run pm2:stop
 
 #### Verify graceful shutdown
+
 npm start &
 kill -SIGTERM $!
 #### Should see graceful shutdown message
+
 ```
 
 
