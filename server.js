@@ -1,3 +1,7 @@
+// Load environment variables from .env file before any other imports
+// This ensures all subsequently loaded modules have access to env vars
+require('dotenv').config();
+
 /**
  * HTTP Server Entry Point
  *
@@ -54,21 +58,75 @@ const config = require('./src/config');
  * Start the HTTP server.
  *
  * Binds the Express application to the configured host and port.
- * Logs a startup message upon successful binding.
+ * Logs startup messages upon successful binding.
  *
  * Default binding: http://127.0.0.1:3000/
  * Override via HOST and PORT environment variables.
+ *
+ * @type {import('http').Server}
  */
-app.listen(config.port, config.host, () => {
-  // Log server startup information
+const server = app.listen(config.port, config.host, () => {
+  // Log server startup information with URL for easy access
   console.log(`Server running at http://${config.host}:${config.port}/`);
+  console.log(`Environment: ${config.env} | Log level: ${config.logLevel}`);
 });
 
-// Log application initialization complete
-console.log('Application module loaded successfully');
+// ---------------------------------------------------------------------------
+// Graceful Shutdown Handling
+// ---------------------------------------------------------------------------
 
-// PR test log - added for testing purposes
-console.log('Express.js server initialization complete - PR validation log');
+/**
+ * Shutdown timeout in milliseconds.
+ * If graceful shutdown doesn't complete within this time, force exit.
+ * This value should match kill_timeout in ecosystem.config.js for PM2 compatibility.
+ * @constant {number}
+ */
+const SHUTDOWN_TIMEOUT_MS = 10000;
 
-// Additional PR validation log - added per user request for testing purposes
-console.log('PR update test: Server module fully initialized');
+/**
+ * Graceful shutdown handler for the HTTP server.
+ *
+ * This function handles graceful termination of the server when receiving
+ * shutdown signals. It stops accepting new connections and waits for
+ * existing requests to complete before exiting.
+ *
+ * Key behaviors:
+ * - Logs the received signal for debugging and monitoring
+ * - Closes the HTTP server gracefully (stops accepting new connections)
+ * - Waits for existing connections to complete
+ * - Forces shutdown after timeout to prevent hanging
+ *
+ * @param {string} signal - The signal that triggered the shutdown (e.g., 'SIGTERM', 'SIGINT')
+ */
+const gracefulShutdown = (signal) => {
+  console.log(`\n${signal} received. Starting graceful shutdown...`);
+  
+  // Stop accepting new connections and wait for existing requests to finish
+  server.close(() => {
+    console.log('HTTP server closed.');
+    process.exit(0);
+  });
+
+  // Force close after timeout if graceful shutdown hangs
+  // This prevents the process from running indefinitely if connections don't close
+  setTimeout(() => {
+    console.log('Forcing shutdown after timeout.');
+    process.exit(1);
+  }, SHUTDOWN_TIMEOUT_MS);
+};
+
+/**
+ * Register signal handlers for graceful shutdown.
+ *
+ * SIGTERM: Sent by PM2 for graceful reload/stop, also used by Kubernetes
+ *          and most process managers for graceful termination.
+ *
+ * SIGINT:  Sent when pressing Ctrl+C in the terminal during development.
+ *          Allows developers to cleanly stop the server.
+ */
+
+// PM2 graceful reload signal and Kubernetes termination signal
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+
+// Ctrl+C in development terminal
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));

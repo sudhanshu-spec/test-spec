@@ -6,14 +6,19 @@
  * all routes with a single require statement.
  * 
  * Usage in src/app.js:
- *   const { mainRoutes } = require('./routes');
+ *   const { mainRoutes, healthRoutes } = require('./routes');
  *   app.use('/', mainRoutes);
+ *   app.use('/health', healthRoutes);
  * 
  * @module src/routes
  */
 
+'use strict';
+
 const mainRoutes = require('./main.routes');
+const healthRoutes = require('./health.routes');
 
 module.exports = {
-  mainRoutes
+  mainRoutes,
+  healthRoutes
 };

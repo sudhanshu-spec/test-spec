@@ -1,0 +1,6 @@
+# This file ensures the logs directory exists in the git repository.
+# Git does not track empty directories, but this folder is needed for:
+# - Winston file transports: error.log, combined.log
+# - PM2 process logs: pm2-error.log, pm2-out.log
+# 
+# Note: The logs/ directory contents are gitignored except for this file.
