@@ -201,4 +201,107 @@ describe('Server Entry Point', () => {
 
     consoleErrorSpy.mockRestore();
   });
+
+  test('should handle EACCES error for privileged ports', () => {
+    jest.resetModules();
+
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+
+    /** @type {TestConfig} */
+    const privilegedPortConfig = {
+      host: '127.0.0.1',
+      port: 80,
+      env: 'test'
+    };
+
+    /** @type {Function|null} */
+    let errorHandler = null;
+
+    const errorMockServer = createMockServer(privilegedPortConfig);
+    errorMockServer.on = jest.fn((event, handler) => {
+      if (event === 'error') {
+        errorHandler = handler;
+      }
+      return errorMockServer;
+    });
+
+    const errorMockListen = createMockListen(errorMockServer, false);
+    setupMocks(errorMockListen, privilegedPortConfig);
+
+    require('../../server');
+
+    expect(errorMockListen).toHaveBeenCalled();
+
+    const eaccesError = new Error('listen EACCES: permission denied');
+    /** @type {NodeJS.ErrnoException} */
+    const errnoException = Object.assign(eaccesError, {
+      code: 'EACCES',
+      port: privilegedPortConfig.port
+    });
+
+    if (errorHandler) {
+      expect(() => errorHandler(errnoException)).not.toThrow();
+    }
+
+    expect(errorMockListen).toHaveBeenCalledWith(
+      privilegedPortConfig.port,
+      privilegedPortConfig.host,
+      expect.any(Function)
+    );
+
+    consoleErrorSpy.mockRestore();
+  });
+
+  test('should support IPv6 host binding', () => {
+    jest.resetModules();
+    consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+
+    /** @type {TestConfig} */
+    const ipv6Config = {
+      host: '::1',
+      port: 3000,
+      env: 'test'
+    };
+
+    const ipv6MockServer = createMockServer(ipv6Config);
+    const ipv6MockListen = createMockListen(ipv6MockServer);
+    setupMocks(ipv6MockListen, ipv6Config);
+
+    require('../../server');
+
+    expect(ipv6MockListen).toHaveBeenCalledTimes(1);
+    expect(ipv6MockListen.mock.calls[0][0]).toBe(ipv6Config.port);
+    expect(ipv6MockListen.mock.calls[0][1]).toBe(ipv6Config.host);
+    expect(typeof ipv6MockListen.mock.calls[0][2]).toBe('function');
+
+    const expectedMessage = `Server running at http://${ipv6Config.host}:${ipv6Config.port}/`;
+    expect(consoleSpy).toHaveBeenCalledWith(expectedMessage);
+  });
+
+  test('should work with zero port for dynamic assignment', () => {
+    jest.resetModules();
+    consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+
+    /** @type {TestConfig} */
+    const dynamicPortConfig = {
+      host: '127.0.0.1',
+      port: 0,
+      env: 'test'
+    };
+
+    const dynamicMockServer = createMockServer(dynamicPortConfig);
+    const dynamicMockListen = createMockListen(dynamicMockServer);
+    setupMocks(dynamicMockListen, dynamicPortConfig);
+
+    require('../../server');
+
+    expect(dynamicMockListen).toHaveBeenCalledTimes(1);
+    expect(dynamicMockListen.mock.calls[0][0]).toBe(0);
+    expect(dynamicMockListen.mock.calls[0][1]).toBe(dynamicPortConfig.host);
+    expect(typeof dynamicMockListen.mock.calls[0][2]).toBe('function');
+
+    const expectedMessage = `Server running at http://${dynamicPortConfig.host}:${dynamicPortConfig.port}/`;
+    expect(consoleSpy).toHaveBeenCalledWith(expectedMessage);
+  });
 });
