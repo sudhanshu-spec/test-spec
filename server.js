@@ -24,14 +24,20 @@
 
 /**
  * Pre-configured Express application instance.
+ *
  * Routes and middleware are already mounted in src/app.js.
+ * Using the Factory pattern enables unit testing without HTTP binding.
+ *
  * @type {import('express').Application}
  */
 const app = require('./src/app');
 
 /**
  * Application configuration settings.
- * Values are sourced from environment variables with sensible defaults.
+ *
+ * Values sourced from environment variables with sensible defaults.
+ * Follows the Twelve-Factor App methodology for configuration.
+ *
  * @type {{ host: string, port: number, env: string }}
  */
 const config = require('./src/config');
@@ -47,6 +53,6 @@ const config = require('./src/config');
  * The callback fires once the server is ready to accept connections.
  */
 app.listen(config.port, config.host, () => {
-  // Display startup confirmation with the server URL
+  // Log startup confirmation with the server URL
   console.log(`Server running at http://${config.host}:${config.port}/`);
 });

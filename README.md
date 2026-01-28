@@ -192,22 +192,135 @@ PORT=8080 npm start
 
 ## Architecture
 
-This project follows a modular Express.js architecture with separation of concerns:
+This project implements a **Layered Monolithic Architecture** using Express.js 5.x, designed for maintainability, testability, and clear separation of concerns. The architecture follows enterprise-grade patterns while remaining simple enough for tutorial purposes.
+
+### Layered Architecture Overview
+
+The application is organized into four distinct layers, each with a specific responsibility:
 
 ```
-Request Flow:
+┌─────────────────────────────────────────────────────────────────────┐
+│                        ENTRY POINT LAYER                            │
+│                          server.js                                  │
+│              HTTP server binding and startup logging                │
+└────────────────────────────┬────────────────────────────────────────┘
+                             │
+                             ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                     APPLICATION CORE LAYER                          │
+│                        src/app.js                                   │
+│         Express factory pattern - creates app without binding       │
+└────────────────────────────┬────────────────────────────────────────┘
+                             │
+              ┌──────────────┴──────────────┐
+              ▼                              ▼
+┌──────────────────────────┐    ┌──────────────────────────────────────┐
+│   CONFIGURATION LAYER    │    │          ROUTING LAYER               │
+│   src/config/index.js    │    │         src/routes/                  │
+│  Twelve-Factor App       │    │  ├── index.js (Barrel pattern)       │
+│  environment config      │    │  └── main.routes.js (Handlers)       │
+└──────────────────────────┘    └──────────────────────────────────────┘
+```
+
+### Layer Responsibilities
+
+| Layer | Component | Responsibility |
+|-------|-----------|----------------|
+| **Entry Point Layer** | `server.js` | HTTP server binding via `app.listen()`, port configuration from config module, startup logging with server URL |
+| **Application Core Layer** | `src/app.js` | Express application factory creation, route mounting via `app.use()`, middleware configuration, exports unconfigured app for testing |
+| **Configuration Layer** | `src/config/index.js` | Environment variable parsing (`HOST`, `PORT`, `NODE_ENV`), sensible default values, configuration object export |
+| **Routing Layer** | `src/routes/` | Route aggregation via barrel pattern, endpoint handler implementation, HTTP method and path declarations |
+
+### Request Flow Architecture
+
+The following diagram illustrates how HTTP requests flow through the layered architecture:
+
+```
+                                    ┌─────────────────┐
+                                    │     Client      │
+                                    │  HTTP Request   │
+                                    └────────┬────────┘
+                                             │
+                                             ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  ENTRY POINT LAYER: server.js                                       │
+│  ─────────────────────────────                                      │
+│  • Imports Express app from src/app.js                              │
+│  • Imports configuration from src/config/index.js                   │
+│  • Binds HTTP server to configured host:port                        │
+│  • Logs startup message with server URL                             │
+└────────────────────────────┬────────────────────────────────────────┘
+                             │
+                             ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  APPLICATION CORE LAYER: src/app.js                                 │
+│  ────────────────────────────────                                   │
+│  • Creates Express application instance                             │
+│  • Mounts routes from src/routes/                                   │
+│  • Exports app WITHOUT starting server (Factory Pattern)            │
+│  • Enables unit testing without HTTP binding overhead               │
+└────────────────────────────┬────────────────────────────────────────┘
+                             │
+                             ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  ROUTING LAYER: src/routes/                                         │
+│  ────────────────────────────                                       │
+│  • index.js: Barrel pattern aggregator for route exports            │
+│  • main.routes.js: Implements GET / and GET /evening handlers       │
+│  • Uses Express Router for declarative route definitions            │
+│  • Returns HTTP responses with appropriate status codes             │
+└────────────────────────────┬────────────────────────────────────────┘
+                             │
+                             ▼
+                    ┌─────────────────┐
+                    │     Client      │
+                    │  HTTP Response  │
+                    └─────────────────┘
+```
+
+**Simplified Request Flow:**
+```
 Client → server.js → Express App (src/app.js) → Router (src/routes/) → Response
                            ↑
                      Configuration
                    (src/config/index.js)
 ```
 
+### Separation of Concerns
+
+This architecture enforces strict separation between HTTP binding and application logic:
+
+| Concern | Location | Description |
+|---------|----------|-------------|
+| **HTTP Server Binding** | `server.js` | Only file that calls `app.listen()`. Responsible for binding the Express app to a network port. |
+| **Application Logic** | `src/app.js` | Creates and configures Express app WITHOUT starting the server. Exports the app instance for testing. |
+| **Configuration** | `src/config/index.js` | Centralizes all environment-driven configuration. No business logic. |
+| **Route Handling** | `src/routes/` | Contains all endpoint definitions and response logic. Decoupled from server lifecycle. |
+
+**Key Benefits of This Separation:**
+- **Testability**: `src/app.js` exports the Express app without starting a server, allowing unit tests to use `supertest` without binding to a port
+- **Flexibility**: Server binding configuration (host, port) is separate from application logic
+- **Maintainability**: Each layer has a single responsibility, making code easier to understand and modify
+- **Scalability**: New routes can be added without touching server binding logic
+
 ### Design Patterns Used
 
-- **Factory Pattern**: `src/app.js` exports a configured Express app without starting the server, enabling testability
-- **Barrel Pattern**: `src/routes/index.js` aggregates route exports for clean imports
-- **CommonJS Modules**: Uses `require`/`module.exports` for Node.js compatibility
-- **Twelve-Factor App**: Configuration externalized to environment variables
+| Pattern | Implementation | Purpose |
+|---------|----------------|---------|
+| **Factory Pattern** | `src/app.js` | Exports a configured Express app without starting the server, enabling unit testing without HTTP binding overhead |
+| **Barrel Pattern** | `src/routes/index.js` | Aggregates route exports for clean imports and easy expansion of route modules |
+| **Twelve-Factor App** | `src/config/index.js` | Configuration externalized to environment variables with sensible defaults |
+| **CommonJS Modules** | All `.js` files | Uses `require`/`module.exports` for native Node.js compatibility without transpilation |
+
+### Module Dependency Graph
+
+```
+server.js
+    ├── requires → src/app.js
+    │                  └── requires → src/routes/index.js
+    │                                      └── requires → src/routes/main.routes.js
+    └── requires → src/config/index.js
+```
 
 ## Dependencies
 
@@ -255,7 +368,7 @@ This project includes a comprehensive test suite built with **Jest 30.x** and **
 
 ### Test Structure
 
-The test suite is organized into three categories based on test scope:
+The test suite is organized into three categories based on test scope, following best practices for Express.js application testing:
 
 ```
 tests/
@@ -273,6 +386,58 @@ tests/
 | `tests/unit/` | Test isolated modules without HTTP | Direct module imports with Jest assertions |
 | `tests/integration/` | Test HTTP endpoint responses | Supertest requests against the Express app |
 | `tests/lifecycle/` | Test server startup/shutdown | Mock-based lifecycle verification |
+
+### Test Suite Documentation
+
+Each test file serves a specific purpose in validating the Express.js application:
+
+#### `tests/unit/config.test.js` - Configuration Module Tests
+
+Tests the configuration layer (`src/config/index.js`) in isolation:
+
+| Test Case | Description |
+|-----------|-------------|
+| Default values | Verifies `HOST='127.0.0.1'`, `PORT=3000`, `NODE_ENV='development'` when no env vars set |
+| Environment variable parsing | Tests that `HOST`, `PORT`, `NODE_ENV` environment variables are correctly read |
+| Port integer conversion | Ensures `PORT` is parsed as integer via `parseInt()` |
+| Invalid port handling | Tests behavior when `PORT` is non-numeric |
+| Configuration object structure | Validates exported object contains `{ host, port, env }` |
+
+#### `tests/unit/routes.test.js` - Route Handler Tests
+
+Tests the routing layer exports and structure:
+
+| Test Case | Description |
+|-----------|-------------|
+| Router export validation | Verifies `main.routes.js` exports an Express Router instance |
+| Route aggregator exports | Tests that `routes/index.js` correctly re-exports `mainRoutes` |
+| Handler function existence | Confirms route handlers are properly defined |
+
+#### `tests/integration/endpoints.test.js` - HTTP Endpoint Tests
+
+Tests the complete HTTP request/response cycle using Supertest:
+
+| Test Case | Description |
+|-----------|-------------|
+| `GET /` success | Returns `200 OK` with body `Hello, World!\n` |
+| `GET /` content-type | Response has `Content-Type: text/html; charset=utf-8` |
+| `GET /evening` success | Returns `200 OK` with body `Good evening` |
+| `GET /evening` content-type | Response has `Content-Type: text/html; charset=utf-8` |
+| Unknown route handling | `GET /invalid` returns `404 Not Found` |
+| Method not allowed | `POST /`, `PUT /evening`, `DELETE /` return `404` |
+| Response body exact match | Validates character-for-character response content |
+
+#### `tests/lifecycle/server.test.js` - Server Lifecycle Tests
+
+Tests server startup and shutdown behavior:
+
+| Test Case | Description |
+|-----------|-------------|
+| Server startup | Verifies `app.listen()` is called with correct host and port |
+| Startup logging | Confirms server logs URL on successful startup |
+| Graceful shutdown | Tests server can be stopped without errors |
+| Configuration integration | Validates server uses config module for host/port |
+| Error handling | Tests behavior when port is already in use |
 
 ### Coverage Targets
 
