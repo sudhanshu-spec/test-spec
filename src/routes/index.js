@@ -10,6 +10,9 @@
  *   app.use('/', mainRoutes);
  * 
  * @module src/routes
+ * @exports {Object} routes
+ * @property {import('express').Router} mainRoutes - The main application router
+ * @see module:./main.routes
  */
 
 const mainRoutes = require('./main.routes');
