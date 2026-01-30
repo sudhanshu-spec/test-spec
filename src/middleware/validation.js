@@ -22,7 +22,7 @@
 
 'use strict';
 
-const { body, param, query, validationResult } = require('express-validator');
+const { body, param, query, validationResult, matchedData } = require('express-validator');
 
 /**
  * Validation Error Handler Middleware
@@ -171,13 +171,15 @@ const commonValidators = {
    * // Sanitize a 'name' field in request body
    * commonValidators.sanitizeString('name')
    * // Input: "  <script>alert('xss')</script>  "
-   * // Output: "&lt;script&gt;alert('xss')&lt;/script&gt;"
+   * // Output: "&lt;script&gt;alert(&#x27;xss&#x27;)&lt;/script&gt;"
+   * 
+   * @note This is a sanitizer that transforms input - it does not produce
+   * validation errors. Use with validators for complete protection.
    */
   sanitizeString: (field) => {
     return body(field)
       .trim()
-      .escape()
-      .withMessage(`${field} contains potentially unsafe characters`);
+      .escape();
   },
 
   /**
@@ -258,13 +260,15 @@ const commonValidators = {
    * commonValidators.sanitizeQuery('search')
    * // Input: ?search=<script>
    * // Output: sanitized value with escaped characters
+   * 
+   * @note This is a sanitizer that transforms input - it does not produce
+   * validation errors. Use with validators for complete protection.
    */
   sanitizeQuery: (field) => {
     return query(field)
       .optional()
       .trim()
-      .escape()
-      .withMessage(`${field} contains potentially unsafe characters`);
+      .escape();
   }
 };
 
@@ -284,6 +288,7 @@ const commonValidators = {
  * - param: Create validation chain for URL parameters
  * - query: Create validation chain for query string parameters
  * - validationResult: Extract validation results from request
+ * - matchedData: Extract sanitized/validated data from request
  * 
  * @example
  * // Import all validation utilities
@@ -294,8 +299,20 @@ const commonValidators = {
  *   body,
  *   param,
  *   query,
- *   validationResult
+ *   validationResult,
+ *   matchedData
  * } = require('./middleware/validation');
+ * 
+ * @example
+ * // Using matchedData to get sanitized values
+ * router.get('/search',
+ *   validateRequest([commonValidators.sanitizeQuery('q')]),
+ *   (req, res) => {
+ *     const sanitized = matchedData(req);
+ *     // sanitized.q contains the trimmed and escaped value
+ *     res.json({ query: sanitized.q });
+ *   }
+ * );
  */
 module.exports = {
   // Custom validation utilities
@@ -307,5 +324,6 @@ module.exports = {
   body,
   param,
   query,
-  validationResult
+  validationResult,
+  matchedData
 };
