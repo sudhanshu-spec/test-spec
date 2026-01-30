@@ -21,6 +21,8 @@ const router = express.Router();
  * Responds with 'Hello, World!\n' - exact match to original server.js line 9
  * 
  * @route GET /
+ * @param {import('express').Request} req - Express request object
+ * @param {import('express').Response} res - Express response object
  * @returns {string} 'Hello, World!\n'
  */
 router.get('/', (req, res) => {
@@ -32,6 +34,8 @@ router.get('/', (req, res) => {
  * Responds with 'Good evening' - exact match to original server.js line 13
  * 
  * @route GET /evening
+ * @param {import('express').Request} req - Express request object
+ * @param {import('express').Response} res - Express response object
  * @returns {string} 'Good evening'
  */
 router.get('/evening', (req, res) => {
