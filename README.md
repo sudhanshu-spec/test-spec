@@ -324,6 +324,230 @@ PORT=8080 npm start
 npm install
 ```
 
+## Deployment Guide
+
+This section consolidates deployment information for running the Hello World Tutorial Server in various environments.
+
+### Deployment Overview
+
+The application supports multiple deployment configurations through environment variables. The server can be configured for local development, production deployment, or custom network binding scenarios.
+
+| Deployment Mode | HOST | PORT | NODE_ENV | Use Case |
+|-----------------|------|------|----------|----------|
+| Development (default) | `127.0.0.1` | `3000` | `development` | Local development and testing |
+| Production | `0.0.0.0` | `80` or `443` | `production` | Production server deployment |
+| Custom | User-defined | User-defined | User-defined | Custom network configurations |
+
+### Development Mode
+
+For local development, the server runs with default settings:
+
+```bash
+# Start with default configuration
+npm start
+```
+
+**Default Configuration:**
+- **HOST:** `127.0.0.1` (localhost only, not accessible from other machines)
+- **PORT:** `3000`
+- **NODE_ENV:** `development`
+
+**Expected Output:**
+```
+Server running at http://127.0.0.1:3000/
+```
+
+**Verify Endpoints:**
+```bash
+curl -s http://127.0.0.1:3000/
+# Output: Hello, World!
+
+curl -s http://127.0.0.1:3000/evening
+# Output: Good evening
+```
+
+### Production Mode
+
+For production deployment, configure the server to accept external connections:
+
+```bash
+# Production deployment with external access
+HOST=0.0.0.0 PORT=80 NODE_ENV=production npm start
+```
+
+**Production Configuration:**
+- **HOST:** `0.0.0.0` (accepts connections from any network interface)
+- **PORT:** `80` (standard HTTP port) or `443` (with reverse proxy for HTTPS)
+- **NODE_ENV:** `production`
+
+**Expected Output:**
+```
+Server running at http://0.0.0.0:80/
+```
+
+> **Note:** Binding to port 80 or 443 typically requires elevated privileges (root/sudo) or using a reverse proxy like nginx.
+
+**Alternative Production Configuration (non-privileged port):**
+```bash
+HOST=0.0.0.0 PORT=8080 NODE_ENV=production npm start
+```
+
+### Custom Network Binding
+
+Configure custom host and port settings for specific deployment scenarios:
+
+**Custom Port (localhost):**
+```bash
+PORT=8080 npm start
+# Binds to http://127.0.0.1:8080/
+```
+
+**Custom Host (all interfaces):**
+```bash
+HOST=0.0.0.0 npm start
+# Binds to http://0.0.0.0:3000/
+```
+
+**Combined Custom Configuration:**
+```bash
+HOST=0.0.0.0 PORT=8080 NODE_ENV=production npm start
+# Binds to http://0.0.0.0:8080/
+```
+
+**Specific Interface Binding:**
+```bash
+HOST=192.168.1.100 PORT=3000 npm start
+# Binds to http://192.168.1.100:3000/
+```
+
+### Process Management
+
+For production deployments, use a process manager to ensure the application stays running and automatically restarts on failure.
+
+**Using PM2 (recommended):**
+
+```bash
+# Install PM2 globally
+npm install -g pm2
+
+# Start the application with PM2
+HOST=0.0.0.0 PORT=80 NODE_ENV=production pm2 start server.js --name "hello-world-server"
+
+# View running processes
+pm2 list
+
+# View logs
+pm2 logs hello-world-server
+
+# Restart the application
+pm2 restart hello-world-server
+
+# Stop the application
+pm2 stop hello-world-server
+
+# Enable startup on system boot
+pm2 startup
+pm2 save
+```
+
+**Using systemd (Linux):**
+
+Create a systemd service file at `/etc/systemd/system/hello-world.service`:
+
+```ini
+[Unit]
+Description=Hello World Tutorial Server
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/path/to/hao-backprop-test
+Environment=HOST=0.0.0.0
+Environment=PORT=8080
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node server.js
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+```
+
+**Manage the service:**
+```bash
+# Reload systemd configuration
+sudo systemctl daemon-reload
+
+# Start the service
+sudo systemctl start hello-world
+
+# Enable auto-start on boot
+sudo systemctl enable hello-world
+
+# Check status
+sudo systemctl status hello-world
+
+# View logs
+sudo journalctl -u hello-world -f
+```
+
+### Health Checks
+
+Verify deployment success by testing the application endpoints:
+
+**Basic Health Check:**
+```bash
+curl -s http://127.0.0.1:3000/
+# Expected: Hello, World!
+```
+
+**Comprehensive Health Check Script:**
+```bash
+#!/bin/bash
+# health-check.sh - Verify all endpoints are operational
+
+HOST="${1:-127.0.0.1}"
+PORT="${2:-3000}"
+BASE_URL="http://${HOST}:${PORT}"
+
+echo "Checking server at ${BASE_URL}..."
+
+# Check root endpoint
+ROOT_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "${BASE_URL}/")
+if [ "$ROOT_RESPONSE" = "200" ]; then
+    echo "✓ GET / - OK (HTTP 200)"
+else
+    echo "✗ GET / - FAILED (HTTP $ROOT_RESPONSE)"
+    exit 1
+fi
+
+# Check evening endpoint
+EVENING_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "${BASE_URL}/evening")
+if [ "$EVENING_RESPONSE" = "200" ]; then
+    echo "✓ GET /evening - OK (HTTP 200)"
+else
+    echo "✗ GET /evening - FAILED (HTTP $EVENING_RESPONSE)"
+    exit 1
+fi
+
+echo "All health checks passed!"
+```
+
+**Usage:**
+```bash
+chmod +x health-check.sh
+./health-check.sh                    # Check localhost:3000
+./health-check.sh 0.0.0.0 8080       # Check custom host:port
+```
+
+**Response Content Verification:**
+```bash
+# Verify exact response content
+curl -s http://127.0.0.1:3000/ | grep -q "Hello, World!" && echo "Root endpoint OK"
+curl -s http://127.0.0.1:3000/evening | grep -q "Good evening" && echo "Evening endpoint OK"
+```
+
 ## License
 
 This project is licensed under the MIT License.
