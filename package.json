@@ -1,15 +1,29 @@
 {
     "name": "hello_world",
     "version": "1.0.0",
-    "description": "Hello world in Node.js",
+    "description": "Production-ready Express.js server",
     "main": "server.js",
+    "engines": {
+        "node": ">=18.0.0"
+    },
     "scripts": {
         "start": "node server.js",
+        "dev": "nodemon server.js",
+        "prod": "pm2 start ecosystem.config.js --env production",
         "test": "echo \"Error: no test specified\" && exit 1"
     },
     "author": "hxu",
     "license": "MIT",
     "dependencies": {
-        "express": "^5.1.0"
+        "compression": "^1.7.5",
+        "cors": "^2.8.5",
+        "dotenv": "^16.4.7",
+        "express": "^5.1.0",
+        "helmet": "^8.0.0",
+        "morgan": "^1.10.0",
+        "winston": "^3.17.0"
+    },
+    "devDependencies": {
+        "nodemon": "^3.1.9"
     }
 }
