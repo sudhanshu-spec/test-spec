@@ -202,3 +202,222 @@ describe('Server Entry Point', () => {
     consoleErrorSpy.mockRestore();
   });
 });
+
+describe('HTTPS Server Support', () => {
+  /** @type {jest.SpyInstance} */
+  let consoleSpy;
+  /** @type {jest.SpyInstance} */
+  let consoleWarnSpy;
+
+  beforeEach(() => {
+    jest.resetModules();
+    consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+    consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  afterAll(() => {
+    jest.clearAllMocks();
+  });
+
+  test('should start HTTPS server when httpsEnabled is true and certificates are valid', () => {
+    jest.resetModules();
+    consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+
+    const httpsConfig = {
+      host: '127.0.0.1',
+      port: 3000,
+      env: 'production',
+      httpsEnabled: true,
+      sslKeyPath: './certs/server.key',
+      sslCertPath: './certs/server.cert'
+    };
+
+    const mockHttpsServer = {
+      listen: jest.fn((port, host, callback) => {
+        if (callback) callback();
+        return mockHttpsServer;
+      }),
+      close: jest.fn(),
+      on: jest.fn()
+    };
+
+    // Mock fs.readFileSync to return fake certificate content
+    jest.doMock('fs', () => ({
+      readFileSync: jest.fn((path) => {
+        if (path === httpsConfig.sslKeyPath) return 'fake-key-content';
+        if (path === httpsConfig.sslCertPath) return 'fake-cert-content';
+        throw new Error('File not found');
+      })
+    }));
+
+    // Mock https.createServer
+    jest.doMock('https', () => ({
+      createServer: jest.fn(() => mockHttpsServer)
+    }));
+
+    // Mock app and config
+    jest.doMock('../../src/app', () => ({ listen: jest.fn() }));
+    jest.doMock('../../src/config', () => httpsConfig);
+
+    require('../../server');
+
+    const https = require('https');
+    expect(https.createServer).toHaveBeenCalledTimes(1);
+    expect(https.createServer).toHaveBeenCalledWith(
+      { key: 'fake-key-content', cert: 'fake-cert-content' },
+      expect.anything()
+    );
+    expect(mockHttpsServer.listen).toHaveBeenCalledWith(
+      httpsConfig.port,
+      httpsConfig.host,
+      expect.any(Function)
+    );
+
+    const expectedMessage = `HTTPS Server running at https://${httpsConfig.host}:${httpsConfig.port}/`;
+    expect(consoleSpy).toHaveBeenCalledWith(expectedMessage);
+  });
+
+  test('should fallback to HTTP when SSL certificate loading fails', () => {
+    jest.resetModules();
+    consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+    consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const httpsConfig = {
+      host: '127.0.0.1',
+      port: 3000,
+      env: 'production',
+      httpsEnabled: true,
+      sslKeyPath: './certs/nonexistent.key',
+      sslCertPath: './certs/nonexistent.cert'
+    };
+
+    const mockServer = {
+      close: jest.fn(),
+      on: jest.fn()
+    };
+
+    const mockAppListen = jest.fn((port, host, callback) => {
+      if (callback) callback();
+      return mockServer;
+    });
+
+    // Mock fs.readFileSync to throw error (certificate not found)
+    jest.doMock('fs', () => ({
+      readFileSync: jest.fn(() => {
+        const error = new Error('ENOENT: no such file or directory');
+        error.code = 'ENOENT';
+        throw error;
+      })
+    }));
+
+    // Mock https module
+    jest.doMock('https', () => ({
+      createServer: jest.fn()
+    }));
+
+    // Mock app and config
+    jest.doMock('../../src/app', () => ({ listen: mockAppListen }));
+    jest.doMock('../../src/config', () => httpsConfig);
+
+    require('../../server');
+
+    // Should have warned about certificate failure
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
+      'Failed to load SSL certificates, falling back to HTTP:',
+      expect.stringContaining('ENOENT')
+    );
+
+    // Should have fallen back to HTTP
+    expect(mockAppListen).toHaveBeenCalledWith(
+      httpsConfig.port,
+      httpsConfig.host,
+      expect.any(Function)
+    );
+
+    const expectedMessage = `Server running at http://${httpsConfig.host}:${httpsConfig.port}/`;
+    expect(consoleSpy).toHaveBeenCalledWith(expectedMessage);
+  });
+
+  test('should use HTTP when httpsEnabled is false', () => {
+    jest.resetModules();
+    consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+
+    const httpConfig = {
+      host: '127.0.0.1',
+      port: 3000,
+      env: 'development',
+      httpsEnabled: false,
+      sslKeyPath: '',
+      sslCertPath: ''
+    };
+
+    const mockServer = {
+      close: jest.fn(),
+      on: jest.fn()
+    };
+
+    const mockAppListen = jest.fn((port, host, callback) => {
+      if (callback) callback();
+      return mockServer;
+    });
+
+    // Mock app and config
+    jest.doMock('../../src/app', () => ({ listen: mockAppListen }));
+    jest.doMock('../../src/config', () => httpConfig);
+
+    require('../../server');
+
+    expect(mockAppListen).toHaveBeenCalledWith(
+      httpConfig.port,
+      httpConfig.host,
+      expect.any(Function)
+    );
+
+    const expectedMessage = `Server running at http://${httpConfig.host}:${httpConfig.port}/`;
+    expect(consoleSpy).toHaveBeenCalledWith(expectedMessage);
+  });
+
+  test('should use HTTP when sslKeyPath is missing even if httpsEnabled is true', () => {
+    jest.resetModules();
+    consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+
+    const partialHttpsConfig = {
+      host: '127.0.0.1',
+      port: 3000,
+      env: 'development',
+      httpsEnabled: true,
+      sslKeyPath: '', // Missing
+      sslCertPath: './certs/server.cert'
+    };
+
+    const mockServer = {
+      close: jest.fn(),
+      on: jest.fn()
+    };
+
+    const mockAppListen = jest.fn((port, host, callback) => {
+      if (callback) callback();
+      return mockServer;
+    });
+
+    // Mock app and config
+    jest.doMock('../../src/app', () => ({ listen: mockAppListen }));
+    jest.doMock('../../src/config', () => partialHttpsConfig);
+
+    require('../../server');
+
+    // Should use HTTP when sslKeyPath is missing
+    expect(mockAppListen).toHaveBeenCalledWith(
+      partialHttpsConfig.port,
+      partialHttpsConfig.host,
+      expect.any(Function)
+    );
+
+    const expectedMessage = `Server running at http://${partialHttpsConfig.host}:${partialHttpsConfig.port}/`;
+    expect(consoleSpy).toHaveBeenCalledWith(expectedMessage);
+  });
+});
