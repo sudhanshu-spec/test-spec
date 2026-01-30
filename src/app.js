@@ -6,11 +6,11 @@
  * (which remains in server.js), enabling unit testing without starting
  * the actual server.
  * 
- * Middleware Stack:
- * - Body parsing (JSON and URL-encoded)
- * - Application routes
- * - 404 Not Found handler
- * - Global error handler
+ * Features:
+ * - Body parsing middleware for JSON and URL-encoded data
+ * - Main application routes
+ * - 404 Not Found handler for undefined routes
+ * - Global error handler for consistent error responses
  * 
  * Design pattern: Factory pattern - creates configured Express app
  * 
@@ -22,26 +22,15 @@ const { mainRoutes } = require('./routes');
 
 const app = express();
 
-// ---------------------------------------------------------------------------
-// Body Parsing Middleware
-// ---------------------------------------------------------------------------
-
 /**
- * Parse JSON request bodies.
- * Enables handling of application/json content type in request bodies.
+ * Body Parsing Middleware
+ * 
+ * Enables handling of JSON and form data in request bodies.
+ * These must be registered before route handlers to ensure
+ * req.body is properly populated.
  */
 app.use(express.json());
-
-/**
- * Parse URL-encoded request bodies.
- * Enables handling of application/x-www-form-urlencoded content type.
- * extended: true allows for rich objects and arrays to be encoded.
- */
 app.use(express.urlencoded({ extended: true }));
-
-// ---------------------------------------------------------------------------
-// Application Routes
-// ---------------------------------------------------------------------------
 
 /**
  * Mount main routes at root path
@@ -51,21 +40,21 @@ app.use(express.urlencoded({ extended: true }));
  */
 app.use('/', mainRoutes);
 
-// ---------------------------------------------------------------------------
-// Error Handling Middleware
-// ---------------------------------------------------------------------------
-
 /**
  * 404 Not Found Handler
  * 
- * Catches all requests that don't match any defined route.
- * Must be placed AFTER all route definitions.
- * Returns a consistent JSON error response format.
+ * Catches requests to undefined routes and returns a consistent
+ * JSON error response. This middleware must be placed AFTER all
+ * route definitions but BEFORE the global error handler.
  * 
- * @param {import('express').Request} req - Express request object
- * @param {import('express').Response} res - Express response object
+ * Response format:
+ * {
+ *   status: 'error',
+ *   message: 'Cannot <METHOD> <path>',
+ *   statusCode: 404
+ * }
  */
-app.use((req, res) => {
+app.use((req, res, next) => {
   res.status(404).json({
     status: 'error',
     message: `Cannot ${req.method} ${req.originalUrl}`,
@@ -74,40 +63,49 @@ app.use((req, res) => {
 });
 
 /**
- * Global Error Handler
+ * Global Error Handler Middleware
  * 
- * Centralizes error handling for consistent error responses across the application.
- * Must be the LAST middleware registered (4-parameter function signature).
+ * Centralizes error handling for consistent API error responses.
+ * This must be the LAST middleware registered (4-parameter function).
  * 
- * In development: Includes error stack trace for debugging
- * In production: Hides stack trace to prevent information leakage
+ * Features:
+ * - Logs error details to console for debugging
+ * - Returns JSON error response with appropriate status code
+ * - Hides stack trace in production environment for security
+ * 
+ * Response format:
+ * {
+ *   status: 'error',
+ *   message: '<error message>',
+ *   statusCode: <status code>
+ * }
  * 
  * @param {Error} err - The error object
- * @param {import('express').Request} req - Express request object
- * @param {import('express').Response} res - Express response object
- * @param {import('express').NextFunction} next - Express next function
+ * @param {Request} req - Express request object
+ * @param {Response} res - Express response object
+ * @param {Function} next - Express next middleware function
  */
 app.use((err, req, res, next) => {
   // Log error details for debugging
   console.error('Error:', err.message);
   console.error('Stack:', err.stack);
 
-  // Determine appropriate status code
+  // Determine the appropriate status code
   const statusCode = err.status || err.statusCode || 500;
 
-  // Build response object
-  const response = {
+  // Build the error response
+  const errorResponse = {
     status: 'error',
     message: err.message || 'Internal Server Error',
     statusCode: statusCode
   };
 
-  // Include stack trace in development only
+  // In production, do NOT include stack trace for security
   if (process.env.NODE_ENV !== 'production') {
-    response.stack = err.stack;
+    errorResponse.stack = err.stack;
   }
 
-  res.status(statusCode).json(response);
+  res.status(statusCode).json(errorResponse);
 });
 
 module.exports = app;
