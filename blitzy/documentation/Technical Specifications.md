@@ -4,844 +4,1131 @@
 
 ## 0.1 Intent Clarification
 
-### 0.1.1 Core Refactoring Objective
+Based on the provided requirements, the Blitzy platform understands that the testing objective is to **create comprehensive unit tests for server.js** using the Jest testing framework. The request focuses on validating HTTP server behavior, including responses, status codes, headers, startup/shutdown lifecycle, error handling, and edge cases.
 
-Based on the prompt, the Blitzy platform understands that the refactoring objective is to **transform a raw Node.js HTTP server into a modular Express.js 5.x application** while preserving all existing features and functionality exactly as in the original implementation. The goal is to leverage Express.js's declarative routing, middleware architecture, and ecosystem benefits while maintaining complete behavioral equivalence.
+### 0.1.1 Core Testing Objective
 
-**Refactoring Type**: Code structure + Tech stack migration (raw Node.js HTTP → Express.js framework)
+**Category**: Add new tests | Update existing tests | Improve coverage
 
-**Target Repository**: Same repository (in-place refactoring)
+The Blitzy platform interprets this requirement as an enhancement of the existing test suite to ensure comprehensive coverage of the `server.js` entry point module. The repository already contains a well-structured test infrastructure with Jest 30.2.0 and Supertest 7.1.4, along with existing lifecycle tests in `tests/lifecycle/server.test.js`.
 
-**Refactoring Goals**:
-- Convert raw Node.js `http.createServer()` implementation to Express.js application factory pattern
-- Migrate inline request handlers to Express Router-based modular routes
-- Externalize configuration to follow Twelve-Factor App principles
-- Implement layered architecture with clear separation of concerns
-- Preserve exact response behavior including status codes, headers, and body content
-- Maintain 100% test coverage throughout the refactoring
+| Requirement | Technical Interpretation | Priority |
+|-------------|-------------------------|----------|
+| Test HTTP responses | Validate response bodies for GET `/` and GET `/evening` endpoints | High |
+| Test status codes | Assert 200 for valid routes, 404 for invalid routes/methods | High |
+| Test headers | Verify `Content-Type: text/html; charset=utf-8` on responses | High |
+| Test server startup | Validate `app.listen()` binding with correct host, port, callback | High |
+| Test server shutdown | Verify `server.close()` graceful shutdown behavior | High |
+| Test error handling | Assert EADDRINUSE and other server errors are handled | High |
+| Test edge cases | Query parameters, path normalization, method restrictions | Medium |
 
-**Implicit Requirements Surfaced**:
-- Maintain API compatibility: All HTTP endpoints must return identical responses
-- Preserve behavior: Response strings, status codes, and Content-Type headers must match exactly
-- No feature additions: This is a structural refactoring, not a feature enhancement
-- Test preservation: All existing test cases must continue passing with same assertions
+### 0.1.2 Implicit Testing Needs
 
-### 0.1.2 Special Instructions and Constraints
+The following implicit requirements have been surfaced based on best practices for Node.js/Express server testing:
 
-**Critical Directives**:
-- All public interfaces must remain unchanged (GET `/` and GET `/evening` endpoints)
-- Response bodies must be preserved character-for-character
-- HTTP status codes must remain identical for all scenarios
-- Content-Type headers must maintain exact formatting
-- Error handling behavior (404 for undefined routes) must be preserved
-
-**Migration Requirements**:
-- Migrate from raw Node.js HTTP module to Express.js 5.1.0
-- Implement modular folder structure following Express.js best practices
-- Use CommonJS module system for native Node.js compatibility
-- Apply Factory Pattern for Express app creation to enable unit testing
-
-**Performance and Scalability**:
-- Maintain lightweight footprint with minimal dependencies
-- Enable testability without HTTP binding overhead
-- Support graceful shutdown for production deployments
+- **Module Isolation**: Tests must use `jest.resetModules()` to ensure fresh module evaluation
+- **Environment Variable Testing**: Configuration override scenarios for HOST, PORT, NODE_ENV
+- **Console Output Verification**: Startup log message format validation using `jest.spyOn()`
+- **Mock Factory Patterns**: Reusable mock server and listen function factories
+- **Callback Invocation Timing**: Both immediate and deferred callback execution scenarios
+- **Error Event Registration**: Verify `'error'` event handler wiring on server object
 
 ### 0.1.3 Technical Interpretation
 
-This refactoring translates to the following technical transformation strategy:
+These testing requirements translate to the following technical test implementation strategy:
 
-**Architecture Transformation**:
+- **To test HTTP responses**, we will use Supertest to validate exact response bodies including trailing newlines and character encoding
+- **To test status codes**, we will verify 200 OK for defined routes and 404 Not Found for undefined routes and unsupported methods
+- **To test headers**, we will assert Content-Type header matches `text/html; charset=utf-8` pattern
+- **To test server startup**, we will mock `src/app` and `src/config` modules, then verify `listen()` invocation arguments
+- **To test server shutdown**, we will validate `server.close()` callback execution for graceful termination
+- **To test error handling**, we will simulate EADDRINUSE errors and verify non-throwing handler behavior
 
-| Source Architecture | Target Architecture |
-|---------------------|---------------------|
-| Single-file monolithic server | Layered modular architecture |
-| Raw `http.createServer()` | Express.js 5.x application factory |
-| Inline request handling | Router-based declarative routing |
-| Hardcoded configuration | Environment-driven configuration module |
-| Manual HTTP parsing | Express.js middleware pipeline |
+### 0.1.4 Coverage Requirements Interpretation
 
-**Pattern Applications**:
-- **Factory Pattern**: `src/app.js` creates Express app without starting server
-- **Barrel Pattern**: `src/routes/index.js` aggregates route exports
-- **Twelve-Factor App**: `src/config/index.js` manages environment variables
-- **Separation of Concerns**: Server binding isolated from application logic
+| Coverage Type | Explicit Target | Implicit Expectation |
+|---------------|-----------------|---------------------|
+| Line Coverage | ≥ 80% | Maintain existing 100% coverage |
+| Branch Coverage | ≥ 75% | Cover all conditional paths in config |
+| Function Coverage | ≥ 90% | All exported functions called |
+| Statement Coverage | ≥ 80% | Maintain existing 100% coverage |
 
-**Transformation Rules**:
+To achieve comprehensive testing, coverage should include:
+- All code paths in `server.js` (currently at 100%)
+- Error handling branches for server binding failures
+- Custom configuration scenarios (non-default host/port)
+- Console logging verification for startup messages
 
-```javascript
-// BEFORE: Raw Node.js HTTP handling
-http.createServer((req, res) => {
-  if (req.url === '/' && req.method === 'GET') {
-    res.writeHead(200, {'Content-Type': 'text/html'});
-    res.end('Hello, World!\n');
-  }
-}).listen(3000);
+## 0.2 Test Discovery and Analysis
 
-// AFTER: Express.js declarative routing
-router.get('/', (req, res) => {
-  res.send('Hello, World!\n');
-});
+### 0.2.1 Existing Test Infrastructure Assessment
+
+Repository analysis reveals a **Jest 30.x + Supertest testing setup** with comprehensive existing coverage across unit, integration, and lifecycle test categories. The test infrastructure is production-ready with enforced coverage thresholds.
+
+**Current Testing Framework**: Jest version ^30.2.0
+**Test Runner Configuration**: `jest.config.js` at repository root
+**Coverage Tools**: Istanbul (built into Jest)
+**HTTP Testing Library**: Supertest version ^7.1.4
+
+| Test Infrastructure Component | Location | Status |
+|------------------------------|----------|--------|
+| Jest Configuration | `jest.config.js` | ✓ Configured |
+| Test Match Pattern | `**/tests/**/*.test.js` | ✓ Active |
+| Coverage Collection | Enabled by default | ✓ Active |
+| Coverage Thresholds | 75% branches, 90% functions, 80% lines/statements | ✓ Enforced |
+| Test Environment | Node.js | ✓ Configured |
+| Test Timeout | 10 seconds | ✓ Configured |
+
+### 0.2.2 Existing Test File Mapping
+
+| Test Directory | Test File | Purpose | Test Count |
+|----------------|-----------|---------|------------|
+| `tests/unit/` | `config.test.js` | Configuration module validation | ~14 tests |
+| `tests/unit/` | `routes.test.js` | Router structure introspection | ~7 tests |
+| `tests/integration/` | `endpoints.test.js` | HTTP endpoint contract tests | ~12 tests |
+| `tests/lifecycle/` | `server.test.js` | Server startup/shutdown behavior | ~5 tests |
+
+### 0.2.3 Test Infrastructure Details
+
+**Mock/Stub Libraries Detected**:
+- Jest built-in mocking: `jest.fn()`, `jest.doMock()`, `jest.spyOn()`
+- Module reset utilities: `jest.resetModules()`
+
+**Test Data Fixtures Present**:
+- `DEFAULT_CONFIG` constant in lifecycle tests
+- Mock server factory functions: `createMockServer()`, `createMockListen()`
+- Helper assertion functions: `assertSuccessfulHtmlResponse()`, `assert404Response()`
+
+### 0.2.4 Current Test Coverage Analysis
+
+Based on test execution output, the repository achieves **100% coverage** across all metrics:
+
+| File | Statements | Branches | Functions | Lines |
+|------|------------|----------|-----------|-------|
+| `server.js` | 100% | 100% | 100% | 100% |
+| `src/app.js` | 100% | 100% | 100% | 100% |
+| `src/config/index.js` | 100% | 100% | 100% | 100% |
+| `src/routes/index.js` | 100% | 100% | 100% | 100% |
+| `src/routes/main.routes.js` | 100% | 100% | 100% | 100% |
+
+### 0.2.5 Web Search Research Conducted
+
+Based on <cite index="1-12">Jest 30 research, the framework "delivers real-world performance gains thanks to many optimizations, especially related to module resolution, memory usage, and test isolation."</cite>
+
+**Jest 30 Best Practices Identified**:
+- <cite index="1-23">"Jest achieves test isolation between files by running each test in a separate VM context, giving each file a fresh global environment."</cite>
+- <cite index="6-6,6-7">"Keep Tests Small and Focused: Each test should focus on a single behavior. This makes it easier to understand and quickly identify errors."</cite>
+- <cite index="6-10,6-11">"Test Behavior, Not Implementation: Focus on what the code does, not how it does it. This way, your tests will remain useful even if the code changes."</cite>
+
+**Mocking Strategy Best Practices**:
+- <cite index="7-22,7-23">"Whenever your code interacts with APIs, databases, or other external services, use mocks to simulate their behavior. Jest provides utilities like jest.fn() and jest.mock() to help you isolate your tests."</cite>
+- <cite index="6-21,6-22">"When using mocks, it's important to clean them up after each test to avoid memory leaks or interference between tests. Solution: Use jest.clearAllMocks() or jest.resetAllMocks() inside the afterEach block."</cite>
+
+**Test Organization Conventions**:
+- <cite index="6-32,6-33">"Use clear names for your test files. A common convention is to use .test.js or .spec.js for the test files."</cite>
+- Group tests by feature/module in dedicated folders
+- Use `beforeEach`/`afterEach` for setup and teardown
+
+### 0.2.6 Existing Patterns to Follow
+
+The repository demonstrates consistent patterns that should be maintained:
+
+| Pattern | Example | Location |
+|---------|---------|----------|
+| JSDoc Type Annotations | `@typedef {Object} MockServer` | `tests/lifecycle/server.test.js` |
+| 'use strict' Directive | `'use strict';` at file top | All test files |
+| Helper Factory Functions | `createMockServer()`, `createMockListen()` | `tests/lifecycle/server.test.js` |
+| Test Naming Convention | `should + [expected behavior]` | All test files |
+| Module Isolation | `jest.resetModules()` in `beforeEach` | Unit and lifecycle tests |
+
+## 0.3 Testing Scope Analysis
+
+### 0.3.1 Test Target Identification
+
+**Primary Code to be Tested**:
+
+| Module/File | Path | Test Categories Required |
+|-------------|------|-------------------------|
+| Server Entry Point | `server.js` | Lifecycle tests (startup, shutdown, error handling) |
+| Express Application | `src/app.js` | Integration tests (HTTP requests) |
+| Configuration Module | `src/config/index.js` | Unit tests (env parsing, defaults) |
+| Main Routes | `src/routes/main.routes.js` | Unit tests (structure) + Integration tests (behavior) |
+| Routes Index | `src/routes/index.js` | Unit tests (barrel export verification) |
+
+**Functions Requiring Tests**:
+
+| Function/Behavior | Source | Test Categories |
+|-------------------|--------|-----------------|
+| `app.listen(port, host, callback)` | `server.js` | Lifecycle - binding verification |
+| `console.log()` startup message | `server.js` | Lifecycle - output verification |
+| GET `/` handler | `src/routes/main.routes.js` | Integration - response validation |
+| GET `/evening` handler | `src/routes/main.routes.js` | Integration - response validation |
+| Config property exports | `src/config/index.js` | Unit - value validation |
+
+### 0.3.2 Existing Test Coverage Mapping
+
+| Source File | Existing Test File | Test Categories Present |
+|-------------|-------------------|-------------------------|
+| `server.js` | `tests/lifecycle/server.test.js` | Binding, logging, shutdown, EADDRINUSE |
+| `src/app.js` | `tests/integration/endpoints.test.js` | HTTP responses, status codes, headers |
+| `src/config/index.js` | `tests/unit/config.test.js` | Defaults, custom values, edge cases, types |
+| `src/routes/main.routes.js` | `tests/unit/routes.test.js` | Router export, route definitions, ordering |
+| `src/routes/index.js` | (Covered by routes.test.js) | Barrel export verification |
+
+### 0.3.3 Dependencies Requiring Mocking
+
+| Dependency | Mock Strategy | Location |
+|------------|---------------|----------|
+| `src/app` module | `jest.doMock()` with mock listen function | `tests/lifecycle/server.test.js` |
+| `src/config` module | `jest.doMock()` with test config object | `tests/lifecycle/server.test.js` |
+| `console.log` | `jest.spyOn(console, 'log').mockImplementation()` | `tests/lifecycle/server.test.js` |
+| `console.error` | `jest.spyOn(console, 'error').mockImplementation()` | `tests/lifecycle/server.test.js` |
+| `process.env` | Direct mutation with saved original | `tests/unit/config.test.js` |
+
+**External Services to Mock**: None (application has no external dependencies)
+**Database Interactions to Stub**: None (stateless application)
+**File System Operations to Virtualize**: None (no file I/O)
+
+### 0.3.4 Version Compatibility Research
+
+Based on the project's `package.json` and <cite index="9-9,9-10,9-11">"Jest 30 drops support for Node 14, 16, 19, and 21. The minimum supported Node versions are now 18.x."</cite>
+
+**Current Environment**: Node.js 20.20.0 (compatible)
+
+**Recommended Testing Stack**:
+
+| Component | Package | Version | Rationale |
+|-----------|---------|---------|-----------|
+| Testing Framework | jest | ^30.2.0 | Already installed, Jest 30 with performance improvements |
+| HTTP Testing | supertest | ^7.1.4 | Already installed, Express app testing |
+| Coverage | istanbul (Jest built-in) | N/A | Bundled with Jest |
+| Mocking | jest (built-in) | ^30.2.0 | `jest.fn()`, `jest.doMock()`, `jest.spyOn()` |
+
+**Version Compatibility Matrix**:
+
+| Dependency | Required Version | Installed Version | Status |
+|------------|-----------------|-------------------|--------|
+| Node.js | ≥18.x | 20.20.0 | ✓ Compatible |
+| npm | ≥8.x | 11.1.0 | ✓ Compatible |
+| Jest | ^30.2.0 | 30.2.0 | ✓ Installed |
+| Supertest | ^7.1.4 | 7.1.4 | ✓ Installed |
+| Express | ^5.1.0 | 5.1.0 | ✓ Installed |
+
+### 0.3.5 Gap Analysis
+
+| Test Gap | Current Status | Action Required |
+|----------|----------------|-----------------|
+| Server startup binding | ✓ Covered | Enhance with additional scenarios |
+| Custom configuration | ✓ Covered | Maintain existing tests |
+| Graceful shutdown | ✓ Covered | Verify callback invocation |
+| EADDRINUSE handling | ✓ Covered | Consider additional error types |
+| HTTP 200 responses | ✓ Covered | Maintain exact body validation |
+| HTTP 404 responses | ✓ Covered | Maintain error handling tests |
+| Content-Type headers | ✓ Covered | Maintain header assertions |
+| Query parameter tolerance | ✓ Covered | Maintain edge case tests |
+
+**Conclusion**: The existing test suite provides comprehensive coverage. The focus should be on **maintaining and enhancing** the current tests rather than adding entirely new test categories.
+
+## 0.4 Test Implementation Design
+
+### 0.4.1 Test Strategy Selection
+
+**Test Types to Implement**:
+
+| Test Type | Focus Area | Location |
+|-----------|------------|----------|
+| Unit Tests | Isolated module contracts, configuration parsing, router structure | `tests/unit/` |
+| Integration Tests | HTTP request/response cycles, endpoint behavior | `tests/integration/` |
+| Lifecycle Tests | Server binding, startup logging, shutdown, error events | `tests/lifecycle/` |
+
+### 0.4.2 Test Case Blueprint
+
+**Component: server.js (Server Entry Point)**
+
+```
+Component: server.js
+Test Categories:
+- Happy path: Server binds to configured host:port, logs startup message
+- Edge cases: Custom configuration values, callback timing variations
+- Error cases: EADDRINUSE, server binding failures
+- Configuration: Default vs custom host/port/env combinations
 ```
 
-The transformation preserves exact behavioral semantics while introducing framework-level abstractions for maintainability, testability, and scalability.
-
-## 0.2 Source Analysis
-
-### 0.2.1 Comprehensive Source File Discovery
-
-Based on the prompt, the Blitzy platform understands that the source analysis must identify all files participating in or affected by the Node.js to Express.js refactoring. The current repository already represents the **completed target state** of this refactoring, with comments in source files indicating the original raw Node.js structure.
-
-**Search Patterns Applied**:
-- Entry point files: `server.js`
-- Application configuration: `src/**/*.js`
-- Route handlers: `src/routes/**/*.js`
-- Configuration modules: `src/config/**/*.js`
-- Test suites: `tests/**/*.test.js`
-- Dependency manifests: `package.json`
-- Build configuration: `jest.config.js`
-
-**Current Repository Structure** (Post-Refactoring State):
+**Component: src/app.js (Express Application)**
 
 ```
-hello_world/
-├── server.js                          # Entry point - HTTP server binding
-├── package.json                       # Dependency manifest with Express 5.1.0
-├── jest.config.js                     # Test framework configuration
-├── README.md                          # Project documentation
-├── src/
-│   ├── app.js                         # Express application factory
-│   ├── config/
-│   │   └── index.js                   # Environment-driven configuration
-│   └── routes/
-│       ├── index.js                   # Route aggregator (Barrel pattern)
-│       └── main.routes.js             # Endpoint handlers (GET /, GET /evening)
-└── tests/
-    ├── integration/
-    │   └── endpoints.test.js          # HTTP endpoint integration tests
-    ├── lifecycle/
-    │   └── server.test.js             # Server startup/shutdown tests
-    └── unit/
-        ├── config.test.js             # Configuration module unit tests
-        └── routes.test.js             # Route handler unit tests
+Component: src/app.js
+Test Categories:
+- Happy path: GET / returns 200 with "Hello, World!\n", GET /evening returns 200 with "Good evening"
+- Edge cases: Query parameters ignored, path normalization
+- Error cases: 404 for undefined routes, 404 for unsupported methods
+- Headers: Content-Type validation (text/html; charset=utf-8)
 ```
 
-### 0.2.2 Source File Inventory
-
-| File Path | Lines | Refactoring Role | Transformation |
-|-----------|-------|------------------|----------------|
-| `server.js` | 17 | Entry point | Extract from monolithic → HTTP binding only |
-| `src/app.js` | 29 | Application factory | NEW - Express app creation extracted |
-| `src/config/index.js` | 25 | Configuration module | NEW - Environment config externalized |
-| `src/routes/index.js` | 16 | Route aggregator | NEW - Barrel pattern implementation |
-| `src/routes/main.routes.js` | 30 | Endpoint handlers | Extracted from original server.js inline handlers |
-| `package.json` | 22 | Dependencies | UPDATE - Add Express 5.1.0 dependency |
-| `jest.config.js` | 13 | Test config | UPDATE - Configure coverage for new structure |
-| `tests/integration/endpoints.test.js` | 93 | Integration tests | UPDATE - Test against Express endpoints |
-| `tests/lifecycle/server.test.js` | 92 | Lifecycle tests | UPDATE - Test Express server lifecycle |
-| `tests/unit/config.test.js` | 90 | Config tests | NEW - Unit tests for config module |
-| `tests/unit/routes.test.js` | 62 | Route tests | NEW - Unit tests for route handlers |
-| `README.md` | 67 | Documentation | UPDATE - Document Express.js architecture |
-
-### 0.2.3 Original Node.js Server Reconstruction
-
-Based on code comments in `src/routes/main.routes.js` (lines 8-14), the original raw Node.js server structure has been reconstructed:
-
-**Conceptual Original Structure** (Pre-Refactoring):
+**Component: src/config/index.js (Configuration Module)**
 
 ```
-hello_world_original/
-└── server.js                          # Monolithic server with all logic
+Component: src/config/index.js
+Test Categories:
+- Happy path: Reads HOST, PORT, NODE_ENV from environment
+- Defaults: 127.0.0.1, 3000, development when not set
+- Edge cases: Invalid PORT strings, empty values, whitespace handling
+- Type checking: port is number, host and env are strings
 ```
 
-**Original server.js Characteristics**:
-- Single file containing all server logic
-- Raw `http.createServer()` implementation
-- Inline URL routing via `req.url` conditionals
-- Manual HTTP header management
-- Hardcoded port and host values
-- Manual request method validation
-
-The refactoring extracted this monolithic structure into a modular Express.js architecture with clear separation of concerns.
-
-## 0.3 Target Design
-
-### 0.3.1 Refactored Structure Planning
-
-Based on the prompt, the Blitzy platform understands that the target structure must implement Express.js 5.x best practices while maintaining all original functionality. The target architecture implements a **Layered Monolithic Architecture** optimized for tutorial-grade simplicity.
-
-**Target Architecture**:
+**Component: src/routes/main.routes.js (Route Handlers)**
 
 ```
-hello_world/
-├── server.js                          # Entry Point Layer - HTTP binding
-├── package.json                       # Updated with Express 5.1.0
-├── jest.config.js                     # Test configuration
-├── README.md                          # Updated documentation
-├── src/
-│   ├── app.js                         # Application Core Layer - Express factory
-│   ├── config/
-│   │   └── index.js                   # Configuration management (Twelve-Factor)
-│   └── routes/
-│       ├── index.js                   # Route aggregator (Barrel pattern)
-│       └── main.routes.js             # Routing Layer - endpoint handlers
-└── tests/
-    ├── integration/
-    │   └── endpoints.test.js          # HTTP integration tests
-    ├── lifecycle/
-    │   └── server.test.js             # Server lifecycle tests
-    └── unit/
-        ├── config.test.js             # Configuration unit tests
-        └── routes.test.js             # Route handler unit tests
+Component: src/routes/main.routes.js
+Test Categories:
+- Happy path: Router exports defined, routes registered correctly
+- Structure: Two routes at "/" and "/evening", GET method handlers
+- Ordering: Root route registered before /evening route
+- Handler validation: Each route has handler functions attached
 ```
 
-### 0.3.2 Web Search Research Conducted
+### 0.4.3 Existing Test Extension Strategy
 
-Research was conducted on Express.js 5.x best practices and migration patterns to inform the target design:
-
-**Best Practices Applied**:
-
-| Practice | Source | Implementation |
-|----------|--------|----------------|
-| <cite index="1-1">Modular folder structure: /src /routes /controllers /models /middleware /utils</cite> | 2025 Express.js Best Practices | Applied `/src/routes` structure |
-| <cite index="9-37,9-38">Separating the app and server allows you to unit test your app without initializing the server</cite> | Treblle REST API Guide | Factory pattern in `src/app.js` |
-| <cite index="1-12,1-13">Don't dump everything into a single server.js file. This separation ensures your codebase grows without becoming unmanageable</cite> | Scalable APIs Guide | Layered architecture |
-| <cite index="11-5">To install this version, you need to have a Node.js version 18 or higher</cite> | Express.js Migration Guide | Node.js v20.x compatibility verified |
-
-**Express.js 5.x Migration Considerations**:
-
-| Consideration | Implementation Decision |
-|---------------|-------------------------|
-| <cite index="17-8">Express 5 brings a host of changes that improve the framework's overall performance, security, and ease of use</cite> | Adopt Express 5.1.0 for latest features |
-| <cite index="14-34">Migrating to Express 5 requires diligence, but the payoff is worth it: better performance, modern JavaScript support, and improved error handling</cite> | Full Express 5 adoption |
-| <cite index="11-21,11-22">In Express 5, the app.listen method will invoke the user-provided callback function when the server receives an error event. In Express 4, such errors would be thrown</cite> | Error callback in `server.js` |
-
-### 0.3.3 Design Pattern Applications
-
-**Implemented Patterns**:
-
-| Pattern | Location | Purpose |
-|---------|----------|---------|
-| **Factory Pattern** | `src/app.js` | Creates Express app without starting server, enabling unit testing without HTTP binding |
-| **Barrel Pattern** | `src/routes/index.js` | Centralized route exports for clean import structure and easy expansion |
-| **Twelve-Factor App** | `src/config/index.js` | Environment-driven configuration with sensible defaults for deployment flexibility |
-| **Separation of Concerns** | `server.js` ↔ `src/app.js` | Server binding logic isolated from application configuration |
-| **Router-based Routing** | `src/routes/main.routes.js` | Declarative route definitions using Express Router |
-
-**Architecture Decision Rationale**:
-
-<cite index="2-16,2-17">For small apps use Layered Architecture. If your app is medium to large, use Modular Architecture.</cite> Given this project's tutorial-grade scope, the Layered Architecture provides optimal simplicity while demonstrating professional patterns.
-
-### 0.3.4 Layer Responsibilities
-
-| Layer | Component | Responsibility |
-|-------|-----------|----------------|
-| Entry Point Layer | `server.js` | HTTP server binding, port configuration, startup logging |
-| Application Core Layer | `src/app.js` | Express factory creation, route mounting, middleware configuration |
-| Configuration Layer | `src/config/index.js` | Environment variable parsing, default values, config export |
-| Routing Layer | `src/routes/` | Route aggregation, endpoint handler implementation |
-
-```mermaid
-flowchart TB
-    subgraph EntryLayer["Entry Point Layer"]
-        ServerJS["server.js\nHTTP Binding"]
-    end
-    
-    subgraph CoreLayer["Application Core Layer"]
-        AppJS["src/app.js\nExpress Factory"]
-        ConfigJS["src/config/index.js\nConfiguration"]
-    end
-    
-    subgraph RouteLayer["Routing Layer"]
-        RouteIndex["src/routes/index.js\nRoute Aggregator"]
-        MainRoutes["src/routes/main.routes.js\nEndpoint Handlers"]
-    end
-    
-    ServerJS -->|"requires"| AppJS
-    ServerJS -->|"requires"| ConfigJS
-    AppJS -->|"mounts routes"| RouteIndex
-    RouteIndex -->|"exports"| MainRoutes
-```
-
-## 0.4 Transformation Mapping
-
-### 0.4.1 File-by-File Transformation Plan
-
-Based on the prompt, the Blitzy platform understands that this section provides the comprehensive file transformation mapping for the Node.js to Express.js refactoring. Every target file is mapped to its source with explicit transformation details.
-
-**File Transformation Modes**:
-- **UPDATE** - Modify an existing file
-- **CREATE** - Create a new file
-- **REFERENCE** - Use as an example to reflect existing patterns
-
-| Target File | Transformation | Source File | Key Changes |
-|-------------|----------------|-------------|-------------|
-| `server.js` | UPDATE | `server.js` | Replace `http.createServer()` with Express `app.listen()`, import app factory and config module, add error handling callback |
-| `src/app.js` | CREATE | `server.js` | Extract Express application factory, implement middleware mounting, export unconfigured app instance |
-| `src/config/index.js` | CREATE | `server.js` | Extract hardcoded host/port values to environment-driven configuration with defaults |
-| `src/routes/index.js` | CREATE | N/A | New barrel pattern aggregator for route exports |
-| `src/routes/main.routes.js` | CREATE | `server.js` | Extract inline route handlers to Express Router implementation |
-| `package.json` | UPDATE | `package.json` | Add express ^5.1.0 dependency, update test scripts |
-| `jest.config.js` | UPDATE | `jest.config.js` | Configure coverage for new modular structure |
-| `README.md` | UPDATE | `README.md` | Document Express.js architecture and new file structure |
-| `tests/integration/endpoints.test.js` | UPDATE | `tests/integration/endpoints.test.js` | Update imports to use app factory, verify same endpoint behavior |
-| `tests/lifecycle/server.test.js` | UPDATE | `tests/lifecycle/server.test.js` | Test Express server lifecycle with new architecture |
-| `tests/unit/config.test.js` | CREATE | N/A | New unit tests for configuration module |
-| `tests/unit/routes.test.js` | CREATE | N/A | New unit tests for route handlers |
-
-### 0.4.2 Detailed Transformation Specifications
-
-**Entry Point Transformation (`server.js`)**:
-
-```javascript
-// BEFORE: Raw Node.js
-const http = require('http');
-const server = http.createServer((req, res) => { /* ... */ });
-server.listen(3000, '127.0.0.1', () => { /* ... */ });
-
-// AFTER: Express.js
-const app = require('./src/app');
-const config = require('./src/config');
-const server = app.listen(config.port, config.host, () => { /* ... */ });
-```
-
-**Route Handler Transformation (`src/routes/main.routes.js`)**:
-
-```javascript
-// BEFORE: Inline conditionals
-if (req.url === '/' && req.method === 'GET') {
-  res.end('Hello, World!\n');
-}
-
-// AFTER: Express Router
-router.get('/', (req, res) => {
-  res.send('Hello, World!\n');
-});
-```
-
-### 0.4.3 Cross-File Dependencies
-
-**Import Statement Updates**:
-
-| File | Old Import | New Import |
-|------|------------|------------|
-| `server.js` | `require('http')` | `require('./src/app')`, `require('./src/config')` |
-| `src/app.js` | N/A (new file) | `require('express')`, `require('./routes')` |
-| `src/routes/index.js` | N/A (new file) | `require('./main.routes')` |
-| `tests/integration/endpoints.test.js` | Direct HTTP testing | `require('../../src/app')` via supertest |
-| `tests/unit/config.test.js` | N/A (new file) | `require('../../src/config')` |
-| `tests/unit/routes.test.js` | N/A (new file) | `require('../../src/routes')` |
-
-**Module Export Structure**:
-
-```mermaid
-flowchart LR
-    subgraph Exports["Module Exports"]
-        Config["config/index.js\nexports { host, port, env }"]
-        MainRoutes["routes/main.routes.js\nexports Router"]
-        RouteIndex["routes/index.js\nexports { mainRoutes }"]
-        App["app.js\nexports Express app"]
-        Server["server.js\nexports HTTP server"]
-    end
-    
-    MainRoutes --> RouteIndex
-    RouteIndex --> App
-    Config --> Server
-    App --> Server
-```
-
-### 0.4.4 Wildcard Patterns
-
-**Source Files Affected by Refactoring**:
-- `server.js` - UPDATE (entry point restructuring)
-- `src/**/*.js` - CREATE (new modular structure)
-- `tests/**/*.test.js` - UPDATE/CREATE (test adaptations)
-- `*.json` - UPDATE (dependency manifest)
-- `*.md` - UPDATE (documentation)
-
-### 0.4.5 One-Phase Execution
-
-The entire refactoring is executed in **ONE phase**. All files are transformed simultaneously to maintain consistency:
-
-- **Phase 1 (Single Phase)**: Complete Node.js to Express.js transformation
-  - Create new directory structure (`src/`, `src/config/`, `src/routes/`)
-  - Generate all new files
-  - Update all existing files
-  - Verify all tests pass (41 tests, 100% coverage)
-
-## 0.5 Dependency Inventory
-
-### 0.5.1 Key Private and Public Packages
-
-Based on the prompt, the Blitzy platform understands that the dependency inventory must capture all packages relevant to this refactoring exercise with exact versions from the dependency manifest.
-
-**Production Dependencies**:
-
-| Registry | Package Name | Version | Purpose |
-|----------|--------------|---------|---------|
-| npm | `express` | ^5.1.0 | Web application framework - core refactoring target |
-
-**Development Dependencies**:
-
-| Registry | Package Name | Version | Purpose |
-|----------|--------------|---------|---------|
-| npm | `jest` | ^30.2.0 | JavaScript testing framework |
-| npm | `supertest` | ^7.1.4 | HTTP assertion library for Express testing |
-
-### 0.5.2 Express.js 5.x Transitive Dependencies
-
-The Express 5.1.0 package includes the following transitive dependencies (automatically installed):
-
-| Dependency | Version | Purpose |
-|------------|---------|---------|
-| `body-parser` | ^2.2.0 | Request body parsing middleware |
-| `content-disposition` | ^1.0.0 | Content-Disposition header handling |
-| `content-type` | ^1.0.5 | Content-Type header parsing |
-| `cookie` | ^0.7.2 | Cookie parsing and serialization |
-| `cookie-signature` | ^1.2.2 | Signed cookie support |
-| `debug` | ^4.4.0 | Debug logging utility |
-| `encodeurl` | ^2.0.0 | URL encoding utility |
-| `finalhandler` | ^2.1.0 | Final HTTP responder |
-| `fresh` | ^2.0.0 | HTTP response freshness testing |
-| `http-errors` | ^2.0.0 | HTTP error creation |
-| `merge-descriptors` | ^2.0.0 | Object descriptor merging |
-| `mime-types` | ^3.0.1 | MIME type determination |
-| `once` | ^1.4.0 | Ensure function runs once |
-| `parseurl` | ^1.3.3 | URL parsing |
-| `proxy-addr` | ^2.0.7 | Proxy address determination |
-| `qs` | ^6.14.0 | Query string parsing |
-| `router` | ^2.2.0 | Express routing engine |
-| `send` | ^1.2.0 | Static file serving |
-| `serve-static` | ^2.2.0 | Static file middleware |
-| `statuses` | ^2.0.1 | HTTP status code utilities |
-| `type-is` | ^2.0.1 | Content-Type checking |
-| `utils-merge` | ^1.0.1 | Object merging utility |
-| `vary` | ^1.1.2 | Vary header manipulation |
-
-### 0.5.3 Dependency Updates
-
-**Import Refactoring Required**:
-
-| File Pattern | Import Updates Required |
-|--------------|-------------------------|
-| `server.js` | Add: `require('./src/app')`, `require('./src/config')` |
-| `src/app.js` | Add: `require('express')`, `require('./routes')` |
-| `src/routes/index.js` | Add: `require('./main.routes')` |
-| `src/routes/main.routes.js` | Add: `require('express').Router()` |
-| `tests/**/*.test.js` | Update: Import paths to new module structure |
-
-**Import Transformation Rules**:
-
-```javascript
-// server.js transformation
-// Old: const http = require('http');
-// New:
-const app = require('./src/app');
-const config = require('./src/config');
-
-// src/app.js (new file)
-const express = require('express');
-const routes = require('./routes');
-
-// src/routes/main.routes.js (new file)
-const { Router } = require('express');
-const router = Router();
-```
-
-### 0.5.4 External Reference Updates
-
-**Configuration Files**:
-
-| File | Update Required |
-|------|-----------------|
-| `package.json` | Add `express: ^5.1.0` to dependencies |
-| `jest.config.js` | Configure `collectCoverageFrom` for new structure |
-
-**Documentation Files**:
-
-| File | Update Required |
-|------|-----------------|
-| `README.md` | Document Express.js architecture, installation, usage |
-
-**Package.json Updates**:
-
-```json
-{
-  "dependencies": {
-    "express": "^5.1.0"
-  },
-  "devDependencies": {
-    "jest": "^30.2.0",
-    "supertest": "^7.1.4"
-  }
-}
-```
-
-### 0.5.5 Runtime Requirements
-
-| Requirement | Specification | Rationale |
-|-------------|---------------|-----------|
-| Node.js | >= 18.0.0 | Express 5.x requires Node.js 18+ |
-| npm | >= 10.0.0 | Modern package management |
-| OS | Linux/macOS/Windows | Cross-platform compatibility |
-
-**Version Verification**:
-- Current Node.js version: v20.20.0 ✓
-- Current npm version: 11.1.0 ✓
-- Express 5.1.0 compatibility: Verified ✓
-
-## 0.6 Scope Boundaries
-
-### 0.6.1 Exhaustively In Scope
-
-Based on the prompt, the Blitzy platform understands that scope boundaries must be clearly defined to ensure complete coverage while preventing scope creep.
-
-**Source Transformations**:
-- `server.js` - Restructure entry point for Express.js app import
-- `src/app.js` - Create Express application factory
-- `src/config/index.js` - Create configuration module
-- `src/routes/index.js` - Create route aggregator
-- `src/routes/main.routes.js` - Create endpoint handlers
-
-**Test Updates**:
-- `tests/integration/endpoints.test.js` - Update for Express.js endpoint testing
-- `tests/lifecycle/server.test.js` - Update for Express server lifecycle
-- `tests/unit/config.test.js` - Create configuration unit tests
-- `tests/unit/routes.test.js` - Create route handler unit tests
-
-**Configuration Updates**:
-- `package.json` - Add Express.js dependency
-- `jest.config.js` - Update coverage configuration
-
-**Documentation Updates**:
-- `README.md` - Document new Express.js architecture
-
-**Import Corrections**:
-- All files containing module imports must be updated for new structure
-- All test files must reference new module paths
-
-**Scope Summary Table**:
-
-| Category | Pattern | Files Included |
-|----------|---------|----------------|
-| Entry Point | `server.js` | 1 file |
-| Application Core | `src/app.js` | 1 file |
-| Configuration | `src/config/*.js` | 1 file |
-| Routes | `src/routes/*.js` | 2 files |
-| Integration Tests | `tests/integration/*.test.js` | 1 file |
-| Lifecycle Tests | `tests/lifecycle/*.test.js` | 1 file |
-| Unit Tests | `tests/unit/*.test.js` | 2 files |
-| Dependencies | `package.json` | 1 file |
-| Test Config | `jest.config.js` | 1 file |
-| Documentation | `README.md` | 1 file |
-| **TOTAL** | | **12 files** |
-
-### 0.6.2 Explicitly Out of Scope
-
-**User-Requested Exclusions**:
-- None explicitly specified
-
-**Structural Exclusions** (per tutorial-grade design):
-- No middleware implementation (beyond Express built-in)
-- No database integration or persistence layer
-- No authentication/authorization mechanisms
-- No session management
-- No external API integrations
-- No logging framework integration
-- No error monitoring/APM integration
-- No containerization files (Dockerfile, docker-compose)
-- No CI/CD pipeline configuration
-- No infrastructure-as-code files
-
-**Behavioral Exclusions**:
-- No new endpoints (only GET `/` and GET `/evening` preserved)
-- No response body modifications
-- No status code changes
-- No Content-Type header modifications
-- No feature additions or enhancements
-
-**Technology Exclusions**:
-- No TypeScript migration
-- No ES Modules migration (remain CommonJS)
-- No transpilation/bundling setup
-- No additional npm packages beyond Express, Jest, Supertest
-
-### 0.6.3 Scope Validation Matrix
-
-| Requirement | In Scope | Validation |
-|-------------|----------|------------|
-| Express.js 5.x migration | ✓ | package.json updated |
-| Modular architecture | ✓ | src/ directory structure |
-| Factory pattern | ✓ | src/app.js implementation |
-| Configuration externalization | ✓ | src/config/index.js |
-| Router-based routing | ✓ | src/routes/main.routes.js |
-| Test coverage maintenance | ✓ | 100% coverage verified |
-| Behavioral equivalence | ✓ | All 41 tests passing |
-| Database integration | ✗ | Out of scope |
-| Authentication | ✗ | Out of scope |
-| New features | ✗ | Out of scope |
-
-### 0.6.4 Boundary Enforcement
-
-**Invariants That Must Be Preserved**:
-
-| Invariant | Verification Method |
+| Test File | Enhancement Strategy |
 |-----------|---------------------|
-| GET `/` returns "Hello, World!\n" with 200 status | Integration test assertion |
-| GET `/evening` returns "Good evening" with 200 status | Integration test assertion |
-| Undefined routes return 404 | Integration test assertion |
-| Content-Type is text/html; charset=utf-8 | Integration test assertion |
-| Server starts on configured host:port | Lifecycle test assertion |
-| Graceful shutdown supported | Lifecycle test assertion |
+| `tests/lifecycle/server.test.js` | Enhance with additional error scenarios if needed |
+| `tests/integration/endpoints.test.js` | Maintain current comprehensive coverage |
+| `tests/unit/config.test.js` | Maintain PORT parsing edge cases |
+| `tests/unit/routes.test.js` | Maintain router introspection tests |
 
-**Test-Driven Boundary Verification**:
+### 0.4.4 Test Data and Fixtures Design
 
-```bash
-# Verify all boundaries via test suite
+**Required Test Data Structures**:
 
-npm test
+| Data Type | Structure | Usage |
+|-----------|-----------|-------|
+| `DEFAULT_CONFIG` | `{ host: '127.0.0.1', port: 3000, env: 'test' }` | Baseline configuration |
+| Custom Config | `{ host: '0.0.0.0', port: 8080, env: 'production' }` | Override testing |
+| Mock Server | `{ close, on, address }` methods | Server lifecycle simulation |
+| Expected Bodies | `'Hello, World!\n'`, `'Good evening'` | Response validation |
 
-#### Expected output: 41 tests passing, 100% coverage
+**Fixture Organization Strategy**:
 
-#### All files: server.js, src/app.js, src/config/index.js,
+| Fixture Type | Implementation | Location |
+|--------------|----------------|----------|
+| Config Constants | Inline `const DEFAULT_CONFIG` | Top of test file |
+| Mock Factories | Helper functions `createMockServer()` | Top of test file |
+| Response Expectations | Inline string literals | Test assertions |
+| Environment Overrides | Direct `process.env` manipulation | Test setup |
 
-##            src/routes/index.js, src/routes/main.routes.js
-
-```
-
-## 0.7 Refactoring Rules
-
-### 0.7.1 Mandatory Refactoring Rules
-
-Based on the prompt, the Blitzy platform understands that specific refactoring rules must be enforced to ensure the transformation maintains exact behavioral equivalence while implementing the Express.js architecture.
-
-**Behavioral Preservation Rules**:
-
-| Rule ID | Rule Description | Enforcement |
-|---------|------------------|-------------|
-| R-001 | All public API contracts must remain unchanged | Integration tests verify exact responses |
-| R-002 | All existing functionality must be preserved | 41 tests must pass post-refactoring |
-| R-003 | All tests must continue passing without modification to assertions | CI/CD validation |
-| R-004 | Response strings must be character-for-character identical | String comparison in tests |
-| R-005 | HTTP status codes must remain identical for all scenarios | Status code assertions |
-| R-006 | Content-Type headers must maintain exact formatting | Header assertions |
-
-**Structural Rules**:
-
-| Rule ID | Rule Description | Implementation |
-|---------|------------------|----------------|
-| R-007 | Use Factory Pattern for Express app creation | `src/app.js` exports app without binding |
-| R-008 | Use Barrel Pattern for route aggregation | `src/routes/index.js` centralizes exports |
-| R-009 | Use Twelve-Factor App for configuration | `src/config/index.js` uses env vars |
-| R-010 | Maintain CommonJS module system | All files use `require`/`module.exports` |
-| R-011 | Separate server binding from app logic | `server.js` only handles `app.listen()` |
-
-**Code Quality Rules**:
-
-| Rule ID | Rule Description | Verification |
-|---------|------------------|--------------|
-| R-012 | Maintain 100% test coverage | Jest coverage report |
-| R-013 | No console.log in production code (except startup message) | Code review |
-| R-014 | Use strict mode implicitly via Node.js defaults | Runtime verification |
-| R-015 | Export server instance for graceful shutdown | `server.js` exports server |
-
-### 0.7.2 Express.js Specific Rules
-
-**Route Handler Rules**:
+**Mock Object Specifications**:
 
 ```javascript
-// R-016: Use Express Router for all routes
-const { Router } = require('express');
-const router = Router();
+// MockServer interface
+{
+  close: jest.fn((cb) => cb && cb()),
+  on: jest.fn((event, handler) => mockServer),
+  address: jest.fn(() => ({ address, port }))
+}
 
-// R-017: Use res.send() for text responses (not res.end())
-router.get('/', (req, res) => {
-  res.send('Hello, World!\n');  // Correct
-  // NOT: res.end('Hello, World!\n');
-});
-
-// R-018: Export router instance (not handler functions)
-module.exports = router;
+// MockListen interface
+jest.fn((port, host, callback) => {
+  callback && callback();
+  return mockServer;
+})
 ```
 
-**Configuration Rules**:
+**Test State Management**:
 
-```javascript
-// R-019: Configuration must be a frozen object
-const config = Object.freeze({
-  host: process.env.HOST || '127.0.0.1',
-  port: parseInt(process.env.PORT, 10) || 3000,
-  env: process.env.NODE_ENV || 'development'
-});
+| State Concern | Management Approach |
+|---------------|---------------------|
+| Module Cache | `jest.resetModules()` in `beforeEach` |
+| Environment | Save/restore `process.env` |
+| Console Spies | `jest.restoreAllMocks()` in `afterEach` |
+| Mock Functions | `jest.clearAllMocks()` in `afterAll` |
 
-// R-020: Port must be parsed as integer with fallback
-port: parseInt(process.env.PORT, 10) || 3000
+### 0.4.5 Test Architecture Diagram
+
+```mermaid
+flowchart TD
+    subgraph TestExecution["Test Execution Flow"]
+        Setup["beforeEach: Reset modules, save env"]
+        Execute["Test: Load module, run assertions"]
+        Teardown["afterEach: Restore mocks"]
+        Final["afterAll: Restore original env"]
+    end
+    
+    subgraph MockLayer["Mock Layer"]
+        MockApp["Mock src/app"]
+        MockConfig["Mock src/config"]
+        ConsoleSpy["Spy console.log"]
+    end
+    
+    subgraph Assertions["Assertion Types"]
+        BindAssert["Verify listen() args"]
+        LogAssert["Verify startup message"]
+        ShutdownAssert["Verify close() callback"]
+        ErrorAssert["Verify error handling"]
+    end
+    
+    Setup --> MockApp
+    Setup --> MockConfig
+    Setup --> ConsoleSpy
+    MockApp --> Execute
+    MockConfig --> Execute
+    ConsoleSpy --> Execute
+    Execute --> BindAssert
+    Execute --> LogAssert
+    Execute --> ShutdownAssert
+    Execute --> ErrorAssert
+    BindAssert --> Teardown
+    LogAssert --> Teardown
+    ShutdownAssert --> Teardown
+    ErrorAssert --> Teardown
+    Teardown --> Final
 ```
 
-**Server Lifecycle Rules**:
+## 0.5 Test File Transformation Mapping
 
-```javascript
-// R-021: Server must support graceful shutdown
-const server = app.listen(config.port, config.host, (err) => {
-  if (err) { /* handle error */ }
-});
-module.exports = server;
+### 0.5.1 File-by-File Test Plan
 
-// R-022: Startup message must include URL
-console.log(`Server running at http://${config.host}:${config.port}/`);
+**Test Transformation Modes**:
+- **CREATE** - Create a new test file
+- **UPDATE** - Update an existing test file  
+- **DELETE** - Remove an obsolete test file
+- **REFERENCE** - Use as an example for test patterns and styles
+
+| Target Test File | Transformation | Source File/Test | Purpose/Changes |
+|------------------|----------------|------------------|-----------------|
+| `tests/lifecycle/server.test.js` | REFERENCE | `server.js` | Reference for lifecycle test patterns, mock factories, and module isolation |
+| `tests/integration/endpoints.test.js` | REFERENCE | `src/app.js` | Reference for Supertest HTTP testing patterns and assertion helpers |
+| `tests/unit/config.test.js` | REFERENCE | `src/config/index.js` | Reference for environment variable testing and module reset patterns |
+| `tests/unit/routes.test.js` | REFERENCE | `src/routes/main.routes.js` | Reference for Express Router introspection patterns |
+
+### 0.5.2 Existing Test Files Detail
+
+**tests/lifecycle/server.test.js** - Server Entry Point Lifecycle Tests
+
+| Test Category | Tests Included | Coverage Focus |
+|---------------|----------------|----------------|
+| Binding Configuration | `should bind to configured host and port` | Verify listen() arguments |
+| Startup Logging | `should log startup message with server URL` | Console output format |
+| Custom Configuration | `should use custom configuration values` | Override scenarios |
+| Graceful Shutdown | `should provide server object that supports graceful shutdown` | close() callback |
+| Error Handling | `should handle EADDRINUSE error` | Error event handling |
+
+- **Mock Dependencies**: `src/app`, `src/config`, `console.log`, `console.error`
+- **Assertions Focus**: Argument verification, callback execution, error non-throwing
+
+**tests/integration/endpoints.test.js** - HTTP Endpoint Integration Tests
+
+| Test Category | Tests Included | Coverage Focus |
+|---------------|----------------|----------------|
+| GET / | Status 200, body, Content-Type | Root endpoint contract |
+| GET /evening | Status 200, body, Content-Type | Evening endpoint contract |
+| Error Handling | 404 for invalid routes, unsupported methods | Error response format |
+| Edge Cases | Query parameters, double-slash paths | Tolerance testing |
+
+- **Integration Points**: Express app via Supertest
+- **Test Data Requirements**: Expected response strings with exact whitespace
+
+**tests/unit/config.test.js** - Configuration Module Unit Tests
+
+| Test Category | Tests Included | Coverage Focus |
+|---------------|----------------|----------------|
+| Default Values | HOST, PORT, NODE_ENV defaults | Fallback behavior |
+| Custom Values | Environment variable reading | Override behavior |
+| Edge Cases | Invalid PORT, empty strings, whitespace | Robust parsing |
+| Type Checking | Number/string type assertions | Contract validation |
+
+- **Fixture Types**: Environment variable overrides via process.env manipulation
+- **Module Reset**: `jest.resetModules()` for fresh evaluation
+
+**tests/unit/routes.test.js** - Routes Module Unit Tests
+
+| Test Category | Tests Included | Coverage Focus |
+|---------------|----------------|----------------|
+| Router Export | Defined, callable, has stack | Export contract |
+| Route Definitions | Two routes, correct paths, GET methods | Route registration |
+| Handler Validation | Handler functions attached | Handler wiring |
+| Route Ordering | `/` before `/evening` | Registration order |
+
+- **Introspection Target**: Express Router `stack` array
+- **Helper Functions**: `getRouteLayers()`, `getRoutePaths()`
+
+### 0.5.3 Test Configuration Updates
+
+| Config File | Current State | Required Updates |
+|-------------|---------------|------------------|
+| `jest.config.js` | ✓ Fully configured | None required |
+| `package.json` | ✓ Test scripts defined | None required |
+
+**Jest Configuration Summary** (`jest.config.js`):
+
+| Setting | Value | Purpose |
+|---------|-------|---------|
+| `testEnvironment` | `'node'` | Node.js execution context |
+| `testMatch` | `['**/tests/**/*.test.js']` | Test discovery pattern |
+| `collectCoverage` | `true` | Enable coverage collection |
+| `coverageThreshold` | 75% branches, 90% functions, 80% lines/statements | Quality gates |
+| `verbose` | `true` | Detailed test output |
+| `testTimeout` | `10000` | 10-second timeout |
+
+### 0.5.4 Cross-File Test Dependencies
+
+**Shared Patterns and Utilities**:
+
+| Pattern/Utility | Location | Usage |
+|-----------------|----------|-------|
+| Mock Server Factory | `tests/lifecycle/server.test.js` | Creates mock server with close/on/address |
+| Mock Listen Factory | `tests/lifecycle/server.test.js` | Creates mock app.listen() function |
+| Setup Mocks Helper | `tests/lifecycle/server.test.js` | Configures jest.doMock for modules |
+| HTTP GET Helper | `tests/integration/endpoints.test.js` | Wraps request(app).get() |
+| Success Assertion | `tests/integration/endpoints.test.js` | assertSuccessfulHtmlResponse() |
+| 404 Assertion | `tests/integration/endpoints.test.js` | assert404Response() |
+| Config Loader | `tests/unit/config.test.js` | loadConfigWithEnv(), loadConfigWithoutEnv() |
+| Route Layer Extractor | `tests/unit/routes.test.js` | getRouteLayers(), getRoutePaths() |
+
+**Import Updates Required**: None - all test files use relative imports that are already correct.
+
+### 0.5.5 Complete Test File Inventory
+
+| Test File Path | Source Under Test | Test Count | Status |
+|----------------|-------------------|------------|--------|
+| `tests/lifecycle/server.test.js` | `server.js` | 5 tests | ✓ Complete |
+| `tests/integration/endpoints.test.js` | `src/app.js` | 12 tests | ✓ Complete |
+| `tests/unit/config.test.js` | `src/config/index.js` | 14 tests | ✓ Complete |
+| `tests/unit/routes.test.js` | `src/routes/main.routes.js` | 7 tests | ✓ Complete |
+| **Total** | | **41 tests** | **✓ All Pass** |
+
+## 0.6 Dependency Inventory
+
+### 0.6.1 Testing Dependencies
+
+All testing packages are already installed and configured in the repository. The versions below are extracted from `package.json` and verified via `npm ls`.
+
+| Registry | Package Name | Version | Purpose |
+|----------|--------------|---------|---------|
+| npm | jest | ^30.2.0 | Testing framework - test runner, assertions, coverage, mocking |
+| npm | supertest | ^7.1.4 | HTTP endpoint testing library for Express applications |
+| npm | istanbul | Built-in | Code coverage instrumentation (bundled with Jest) |
+
+### 0.6.2 Runtime Dependencies (Application Under Test)
+
+| Registry | Package Name | Version | Purpose |
+|----------|--------------|---------|---------|
+| npm | express | ^5.1.0 | Web framework providing HTTP handling and routing |
+
+### 0.6.3 Development Environment Requirements
+
+| Requirement | Minimum Version | Installed Version | Status |
+|-------------|-----------------|-------------------|--------|
+| Node.js | 18.x | 20.20.0 | ✓ Compatible |
+| npm | 8.x | 11.1.0 | ✓ Compatible |
+
+### 0.6.4 Jest 30.x Feature Dependencies
+
+Based on <cite index="9-12">"The minimum TypeScript version is now 5.4"</cite> for TypeScript users. This project uses plain JavaScript (CommonJS), so TypeScript requirements do not apply.
+
+| Jest 30 Feature | Status | Usage in Project |
+|-----------------|--------|------------------|
+| Module Mocking | ✓ Available | `jest.doMock()`, `jest.resetModules()` |
+| Function Spies | ✓ Available | `jest.spyOn(console, 'log')` |
+| Mock Functions | ✓ Available | `jest.fn()` for callbacks |
+| Coverage Collection | ✓ Available | Automatic Istanbul integration |
+| Node Test Environment | ✓ Configured | `testEnvironment: 'node'` |
+| Verbose Output | ✓ Configured | `verbose: true` |
+
+### 0.6.5 Package Lock Verification
+
+The `package-lock.json` (lockfile v3) pins the complete dependency graph to ensure deterministic installs. Key locked versions:
+
+| Package | Locked Version | Integrity Verified |
+|---------|----------------|--------------------|
+| jest | 30.2.0 | ✓ SHA-512 hash |
+| supertest | 7.1.4 | ✓ SHA-512 hash |
+| express | 5.1.0 | ✓ SHA-512 hash |
+
+### 0.6.6 Import Structure Analysis
+
+**Test File Imports**:
+
+| Test File | Imports | Import Style |
+|-----------|---------|--------------|
+| `tests/lifecycle/server.test.js` | `server.js`, `src/app`, `src/config` | CommonJS `require()` via mocks |
+| `tests/integration/endpoints.test.js` | `supertest`, `src/app` | CommonJS `require()` |
+| `tests/unit/config.test.js` | `src/config` | CommonJS `require()` with reset |
+| `tests/unit/routes.test.js` | `src/routes/main.routes` | CommonJS `require()` |
+
+**Module Resolution**:
+
+| Import Pattern | Resolution Path | Notes |
+|----------------|-----------------|-------|
+| `require('../../server')` | `server.js` | Entry point |
+| `require('../../src/app')` | `src/app.js` | Express application |
+| `require('../../src/config')` | `src/config/index.js` | Configuration module |
+| `require('../../src/routes/main.routes')` | `src/routes/main.routes.js` | Router module |
+| `require('supertest')` | `node_modules/supertest` | HTTP testing library |
+
+### 0.6.7 No Additional Dependencies Required
+
+The existing test infrastructure is complete. No new packages need to be installed to achieve comprehensive server.js testing:
+
+| Capability | Provided By | Already Installed |
+|------------|-------------|-------------------|
+| Test Framework | Jest 30.2.0 | ✓ Yes |
+| HTTP Testing | Supertest 7.1.4 | ✓ Yes |
+| Mocking | Jest built-in | ✓ Yes |
+| Coverage | Jest/Istanbul | ✓ Yes |
+| Assertions | Jest expect API | ✓ Yes |
+| Module Isolation | Jest resetModules | ✓ Yes |
+
+## 0.7 Coverage and Quality Targets
+
+### 0.7.1 Coverage Metrics
+
+**Current Coverage Status** (verified via `npm test`):
+
+| File | Statements | Branches | Functions | Lines |
+|------|------------|----------|-----------|-------|
+| `server.js` | 100% | 100% | 100% | 100% |
+| `src/app.js` | 100% | 100% | 100% | 100% |
+| `src/config/index.js` | 100% | 100% | 100% | 100% |
+| `src/routes/index.js` | 100% | 100% | 100% | 100% |
+| `src/routes/main.routes.js` | 100% | 100% | 100% | 100% |
+| **All Files** | **100%** | **100%** | **100%** | **100%** |
+
+### 0.7.2 Configured Coverage Thresholds
+
+From `jest.config.js`:
+
+| Metric | Threshold | Current | Status |
+|--------|-----------|---------|--------|
+| Branches | ≥ 75% | 100% | ✓ Exceeds |
+| Functions | ≥ 90% | 100% | ✓ Exceeds |
+| Lines | ≥ 80% | 100% | ✓ Exceeds |
+| Statements | ≥ 80% | 100% | ✓ Exceeds |
+
+### 0.7.3 Target Coverage Requirements
+
+**Based on Best Practices and Project Standards**:
+
+| Metric | Minimum Target | Stretch Target | Rationale |
+|--------|----------------|----------------|-----------|
+| Line Coverage | 80% | 100% | Maintain existing excellence |
+| Branch Coverage | 75% | 100% | All conditionals tested |
+| Function Coverage | 90% | 100% | All functions invoked |
+| Statement Coverage | 80% | 100% | Comprehensive execution |
+
+### 0.7.4 Coverage Gaps Analysis
+
+**Focus Areas for Comprehensive Testing**:
+
+| Component | Current Coverage | Gap Analysis |
+|-----------|------------------|--------------|
+| `server.js` startup | ✓ 100% | No gaps - listen() args verified |
+| `server.js` logging | ✓ 100% | No gaps - message format validated |
+| `server.js` shutdown | ✓ 100% | No gaps - close() callback tested |
+| `server.js` errors | ✓ 100% | No gaps - EADDRINUSE handled |
+| HTTP responses | ✓ 100% | No gaps - exact body validation |
+| HTTP headers | ✓ 100% | No gaps - Content-Type verified |
+| HTTP errors | ✓ 100% | No gaps - 404 coverage complete |
+| Config defaults | ✓ 100% | No gaps - all defaults tested |
+| Config parsing | ✓ 100% | No gaps - edge cases covered |
+
+### 0.7.5 Test Quality Criteria
+
+| Criterion | Requirement | Implementation |
+|-----------|-------------|----------------|
+| **Assertion Density** | ≥2 assertions per test | Tests include multiple related assertions |
+| **Test Isolation** | No shared mutable state | `jest.resetModules()` + env restoration |
+| **Test Independence** | Can run in any order | Parallel execution enabled |
+| **Performance** | < 10 seconds per test | `testTimeout: 10000` configured |
+| **Naming Convention** | `should + [behavior]` | Consistent across all tests |
+| **Documentation** | JSDoc on helpers | Type annotations on factories/helpers |
+
+### 0.7.6 Test Suite Statistics
+
+| Metric | Value | Target |
+|--------|-------|--------|
+| Total Tests | 41 | Maintain or increase |
+| Test Files | 4 | Sufficient for scope |
+| Pass Rate | 100% | Maintain 100% |
+| Average Test Duration | < 1 second | Acceptable |
+| Full Suite Duration | ~1 second | Excellent |
+
+### 0.7.7 Coverage Report Generation
+
+**Available Coverage Commands**:
+
+| Command | Output | Purpose |
+|---------|--------|---------|
+| `npm test` | Console summary | Quick feedback |
+| `npm run test:coverage` | Full report + HTML | Detailed analysis |
+| `npm run test:ci` | Console + lcov | CI integration |
+
+**Coverage Report Locations**:
+
+| Format | Location | Usage |
+|--------|----------|-------|
+| Text | Console output | Immediate feedback |
+| HTML | `coverage/lcov-report/index.html` | Visual browsing |
+| LCOV | `coverage/lcov.info` | CI tool integration |
+
+### 0.7.8 Quality Gate Enforcement
+
+```mermaid
+flowchart TD
+    subgraph TestRun["Test Execution"]
+        Run["npm test / npm run test:ci"]
+        Execute["Jest executes all tests"]
+    end
+    
+    subgraph Gates["Quality Gates"]
+        AllPass["All 41 tests pass?"]
+        LineCov["Lines ≥ 80%?"]
+        BranchCov["Branches ≥ 75%?"]
+        FuncCov["Functions ≥ 90%?"]
+        StmtCov["Statements ≥ 80%?"]
+    end
+    
+    subgraph Outcome["Outcome"]
+        Success["✓ Exit Code 0<br/>Build Passes"]
+        Failure["✗ Exit Code 1<br/>Build Fails"]
+    end
+    
+    Run --> Execute
+    Execute --> AllPass
+    AllPass -->|Yes| LineCov
+    AllPass -->|No| Failure
+    LineCov -->|Yes| BranchCov
+    LineCov -->|No| Failure
+    BranchCov -->|Yes| FuncCov
+    BranchCov -->|No| Failure
+    FuncCov -->|Yes| StmtCov
+    FuncCov -->|No| Failure
+    StmtCov -->|Yes| Success
+    StmtCov -->|No| Failure
 ```
 
-### 0.7.3 Testing Rules
+## 0.8 Scope Boundaries
 
-| Rule ID | Rule Description | Implementation |
-|---------|------------------|----------------|
-| R-023 | Integration tests use supertest with app factory | `const request = require('supertest')(app)` |
-| R-024 | Unit tests test modules in isolation | Mock dependencies where needed |
-| R-025 | Lifecycle tests verify server binding behavior | Test actual `app.listen()` |
-| R-026 | All edge cases from original tests preserved | No test case removal |
+### 0.8.1 Exhaustively In Scope
 
-### 0.7.4 Migration Rules
+**Test Files (with trailing patterns)**:
 
-| Rule ID | Rule Description | Rationale |
-|---------|------------------|-----------|
-| R-027 | No breaking changes to CLI interface | `npm start` must work unchanged |
-| R-028 | No breaking changes to environment variables | HOST, PORT, NODE_ENV unchanged |
-| R-029 | No additional required dependencies | Only Express, Jest, Supertest |
-| R-030 | No build step required | Direct `node server.js` execution |
+| Category | Pattern | Description |
+|----------|---------|-------------|
+| Unit Tests | `tests/unit/**/*.test.js` | All unit test files |
+| Integration Tests | `tests/integration/**/*.test.js` | All integration test files |
+| Lifecycle Tests | `tests/lifecycle/**/*.test.js` | All lifecycle test files |
 
-### 0.7.5 Rule Compliance Verification
+**Specific Test Files**:
 
-**Automated Verification**:
+| Test File | Status | Purpose |
+|-----------|--------|---------|
+| `tests/lifecycle/server.test.js` | ✓ In Scope | Server startup, shutdown, error handling |
+| `tests/integration/endpoints.test.js` | ✓ In Scope | HTTP responses, status codes, headers |
+| `tests/unit/config.test.js` | ✓ In Scope | Configuration defaults, parsing, edge cases |
+| `tests/unit/routes.test.js` | ✓ In Scope | Router structure, route definitions |
 
-```bash
-# Verify all rules via test suite
+**Source Files Under Test**:
 
-npm test
+| Source File | Test Coverage |
+|-------------|---------------|
+| `server.js` | Lifecycle tests |
+| `src/app.js` | Integration tests |
+| `src/config/index.js` | Unit tests |
+| `src/routes/index.js` | Unit tests (indirectly) |
+| `src/routes/main.routes.js` | Unit + Integration tests |
 
-#### Expected: 41 tests passing with 100% coverage
+**Test Configuration Files**:
 
-#### Rules R-001 through R-030 validated
+| Config File | Status | Purpose |
+|-------------|--------|---------|
+| `jest.config.js` | ✓ In Scope | Jest test runner configuration |
+| `package.json` | ✓ In Scope | Test scripts and dependencies |
 
+**Test Categories In Scope**:
+
+| Category | Test Scenarios |
+|----------|----------------|
+| HTTP Responses | Response body validation with exact whitespace |
+| Status Codes | 200 OK, 404 Not Found verification |
+| Headers | Content-Type header matching |
+| Server Startup | `app.listen()` binding verification |
+| Server Shutdown | `server.close()` graceful termination |
+| Error Handling | EADDRINUSE and server error events |
+| Edge Cases | Query parameters, path normalization, method restrictions |
+| Configuration | Default values, custom overrides, type validation |
+| Module Structure | Router exports, route registration, handler wiring |
+
+### 0.8.2 Explicitly Out of Scope
+
+**Source Code Modifications**:
+
+| Exclusion | Rationale |
+|-----------|-----------|
+| Modifying `server.js` | Tests should validate existing behavior, not change it |
+| Modifying `src/app.js` | No source changes for testability |
+| Modifying `src/config/index.js` | Configuration is stable |
+| Modifying `src/routes/**` | Route handlers are stable |
+
+**Testing Categories Not Applicable**:
+
+| Category | Reason |
+|----------|--------|
+| UI/Browser Testing | No frontend/UI components |
+| Database Testing | Stateless application, no database |
+| Authentication Testing | No authentication implemented |
+| Authorization Testing | No access controls |
+| Security Penetration Testing | Out of scope for tutorial |
+| Performance/Load Testing | Not production-grade requirements |
+| E2E Multi-Service Testing | Single-service architecture |
+
+**Files Not Relevant**:
+
+| File/Pattern | Reason |
+|--------------|--------|
+| `node_modules/**` | Third-party dependencies |
+| `coverage/**` | Generated output |
+| `.git/**` | Version control |
+| `blitzy/**` | Documentation only |
+| `README.md` | Documentation (testing section informational only) |
+| `.gitignore` | Git configuration |
+
+**Unrelated Test Files**:
+
+| Exclusion | Rationale |
+|-----------|-----------|
+| New feature tests | No new features being added |
+| Deprecated module tests | No deprecated modules exist |
+| Performance benchmark tests | Out of scope |
+| Security audit tests | Out of scope |
+
+### 0.8.3 Scope Summary Diagram
+
+```mermaid
+flowchart TD
+    subgraph InScope["✓ IN SCOPE"]
+        TestFiles["Test Files<br/>tests/**/*.test.js"]
+        JestConfig["Jest Configuration<br/>jest.config.js"]
+        SourceFiles["Source Under Test<br/>server.js, src/**/*.js"]
+        TestDeps["Test Dependencies<br/>jest, supertest"]
+    end
+    
+    subgraph OutScope["✗ OUT OF SCOPE"]
+        SourceMods["Source Code Changes"]
+        NodeModules["node_modules/"]
+        UITests["UI/Browser Tests"]
+        DBTests["Database Tests"]
+        AuthTests["Auth Tests"]
+        PerfTests["Performance Tests"]
+    end
+    
+    subgraph Focus["Primary Focus"]
+        ServerTests["server.js lifecycle tests"]
+        HTTPTests["HTTP endpoint tests"]
+        ConfigTests["Configuration tests"]
+        RouteTests["Route structure tests"]
+    end
+    
+    InScope --> Focus
 ```
 
-**Manual Verification Checklist**:
+### 0.8.4 Boundary Clarifications
 
-- [ ] `npm start` launches server on configured port
-- [ ] GET `/` returns "Hello, World!\n"
-- [ ] GET `/evening` returns "Good evening"
-- [ ] Unknown routes return 404
-- [ ] Server logs startup URL
-- [ ] Server supports graceful shutdown
-- [ ] All 41 tests pass
-- [ ] 100% code coverage achieved
+| Boundary | Decision | Rationale |
+|----------|----------|-----------|
+| Test utilities | In Scope | Helper functions in test files |
+| Mock factories | In Scope | Part of test infrastructure |
+| Coverage thresholds | In Scope | Quality enforcement |
+| CI scripts | Reference Only | `npm run test:ci` documented |
+| Documentation updates | Minimal | Testing section in README is informational |
 
-## 0.8 References
+## 0.9 Execution Parameters
 
-### 0.8.1 Repository Files Analyzed
+### 0.9.1 Test Execution Commands
 
-The following files were comprehensively analyzed to derive the conclusions in this Agent Action Plan:
+**Primary Test Commands**:
 
-| File Path | Purpose | Lines |
-|-----------|---------|-------|
-| `server.js` | Entry point - HTTP server binding | 17 |
-| `src/app.js` | Express application factory | 29 |
-| `src/config/index.js` | Environment-driven configuration | 25 |
-| `src/routes/index.js` | Route aggregator (Barrel pattern) | 16 |
-| `src/routes/main.routes.js` | Endpoint handlers (GET /, GET /evening) | 30 |
-| `package.json` | Dependency manifest | 22 |
-| `jest.config.js` | Test framework configuration | 13 |
-| `README.md` | Project documentation | 67 |
-| `tests/integration/endpoints.test.js` | HTTP endpoint integration tests | 93 |
-| `tests/lifecycle/server.test.js` | Server startup/shutdown tests | 92 |
-| `tests/unit/config.test.js` | Configuration module unit tests | 90 |
-| `tests/unit/routes.test.js` | Route handler unit tests | 62 |
+| Purpose | Command | Description |
+|---------|---------|-------------|
+| Run all tests | `npm test` | Execute full test suite with coverage |
+| Watch mode | `npm run test:watch` | Re-run tests on file changes |
+| Coverage report | `npm run test:coverage` | Generate detailed coverage reports |
+| CI execution | `npm run test:ci` | Optimized for CI/CD pipelines |
 
-### 0.8.2 Folders Explored
+### 0.9.2 Single Test Execution Patterns
 
-| Folder Path | Contents | Purpose |
-|-------------|----------|---------|
-| `/` (root) | server.js, package.json, jest.config.js, README.md | Project root files |
-| `src/` | app.js | Application core |
-| `src/config/` | index.js | Configuration module |
-| `src/routes/` | index.js, main.routes.js | Routing layer |
-| `tests/` | integration/, lifecycle/, unit/ | Test suites |
-| `tests/integration/` | endpoints.test.js | Integration tests |
-| `tests/lifecycle/` | server.test.js | Lifecycle tests |
-| `tests/unit/` | config.test.js, routes.test.js | Unit tests |
+| Purpose | Command Pattern |
+|---------|-----------------|
+| Run specific file | `npx jest tests/lifecycle/server.test.js` |
+| Run by pattern | `npx jest --testPathPatterns="config"` |
+| Run by name | `npx jest -t "should bind to configured host"` |
+| Run unit tests only | `npx jest tests/unit/` |
+| Run integration tests only | `npx jest tests/integration/` |
+| Run lifecycle tests only | `npx jest tests/lifecycle/` |
 
-### 0.8.3 Technical Specification Sections Retrieved
+### 0.9.3 Coverage Measurement Commands
 
-| Section | Purpose |
+| Purpose | Command |
 |---------|---------|
-| 1.1 Executive Summary | Project overview and purpose |
-| 3.2 PROGRAMMING LANGUAGES | Language and runtime specifications |
-| Express.js 5.x Feature Utilization | Express.js feature documentation |
-| 5.1 HIGH-LEVEL ARCHITECTURE | System architecture overview |
+| Generate all reports | `npm run test:coverage` |
+| View HTML report | `open coverage/lcov-report/index.html` |
+| CI coverage | `npm run test:ci` |
 
-### 0.8.4 External Research Sources
+### 0.9.4 Debug Mode Execution
 
-| Source | Topic | Key Insight |
-|--------|-------|-------------|
-| Medium - Scalable APIs Guide (2025) | Express.js best practices | Modular folder structure recommendations |
-| Treblle REST API Guide | Express.js structure | App/server separation for testability |
-| expressjs.com Migration Guide | Express 5 migration | Node.js 18+ requirement, API changes |
-| DEV Community - Design Patterns | Express.js patterns | Feature-based vs Layered architecture |
-| LogRocket Blog | Express 5 migration | Migration steps and breaking changes |
-| GitHub expressjs/express Wiki | Express migration | Historical migration patterns |
+| Purpose | Command |
+|---------|---------|
+| Debug in Node | `node --inspect-brk node_modules/.bin/jest --runInBand` |
+| Verbose output | `npx jest --verbose` |
+| No coverage | `npx jest --coverage=false` |
+| Show individual test times | `npx jest --verbose --showSeed` |
 
-### 0.8.5 User-Provided Attachments
+### 0.9.5 Environment Setup Requirements
 
-**Attachments**: None provided
+**Required Environment Variables**: None required (all have defaults)
 
-**Figma URLs**: None provided
+**Optional Environment Overrides for Testing**:
 
-**Setup Instructions**: None provided
+| Variable | Default | Test Override Purpose |
+|----------|---------|----------------------|
+| `HOST` | `127.0.0.1` | Test custom host binding |
+| `PORT` | `3000` | Test custom port binding |
+| `NODE_ENV` | `development` | Test environment-specific behavior |
 
-**Environment Variables**: None provided
+### 0.9.6 Test File Patterns
 
-### 0.8.6 Test Verification Results
+**Jest Configuration** (`jest.config.js`):
 
-**Test Suite Execution**:
+| Setting | Value | Purpose |
+|---------|-------|---------|
+| `testMatch` | `['**/tests/**/*.test.js']` | Test file discovery |
+| `testEnvironment` | `'node'` | Node.js execution context |
+| `testTimeout` | `10000` | 10-second timeout per test |
 
+### 0.9.7 Excluded Test Categories
+
+Per project design, the following test categories are not applicable:
+
+| Category | Status | Reason |
+|----------|--------|--------|
+| Skip marked tests | None | No `.skip` tests in codebase |
+| Focus tests | None | No `.only` tests allowed in CI |
+| Snapshot tests | Not Used | Response validation via string comparison |
+| Async timeout tests | Not Needed | Simple sync operations |
+
+### 0.9.8 Test Execution Flow
+
+```mermaid
+flowchart TD
+    subgraph Trigger["Trigger"]
+        NPM["npm test"]
+        CI["npm run test:ci"]
+        Watch["npm run test:watch"]
+    end
+    
+    subgraph Discovery["Test Discovery"]
+        Pattern["Match: **/tests/**/*.test.js"]
+        Files["4 test files found"]
+    end
+    
+    subgraph Setup["Environment Setup"]
+        NodeEnv["testEnvironment: 'node'"]
+        Timeout["testTimeout: 10000ms"]
+    end
+    
+    subgraph Execution["Parallel Execution"]
+        Unit["tests/unit/*.test.js"]
+        Integration["tests/integration/*.test.js"]
+        Lifecycle["tests/lifecycle/*.test.js"]
+    end
+    
+    subgraph Results["Results"]
+        Pass["41 tests passed"]
+        Coverage["100% coverage"]
+        ExitCode["Exit code 0"]
+    end
+    
+    NPM --> Pattern
+    CI --> Pattern
+    Watch --> Pattern
+    Pattern --> Files
+    Files --> NodeEnv
+    NodeEnv --> Timeout
+    Timeout --> Unit
+    Timeout --> Integration
+    Timeout --> Lifecycle
+    Unit --> Pass
+    Integration --> Pass
+    Lifecycle --> Pass
+    Pass --> Coverage
+    Coverage --> ExitCode
 ```
+
+### 0.9.9 Repository Test Patterns to Follow
+
+Based on existing test files, the following patterns should be maintained:
+
+| Pattern | Implementation |
+|---------|----------------|
+| File Header | `'use strict';` directive at top |
+| JSDoc Documentation | Type definitions for test utilities |
+| Describe Blocks | Nested by feature/category |
+| Test Naming | `should + [expected behavior]` format |
+| Setup/Teardown | `beforeEach`, `afterEach`, `afterAll` hooks |
+| Module Isolation | `jest.resetModules()` for fresh imports |
+| Mock Restoration | `jest.restoreAllMocks()` after each test |
+| Environment Restoration | Save/restore `process.env` |
+
+### 0.9.10 Expected Test Output
+
+**Successful Test Run**:
+```
+PASS tests/unit/config.test.js
+PASS tests/unit/routes.test.js
+PASS tests/lifecycle/server.test.js
+PASS tests/integration/endpoints.test.js
+
 Test Suites: 4 passed, 4 total
 Tests:       41 passed, 41 total
 Snapshots:   0 total
-Time:        0.963 s
-
-Coverage:    100% Statements
-             100% Branches
-             100% Functions
-             100% Lines
+Time:        ~1s
 ```
 
-**Verified Functionality**:
+**Coverage Summary**:
+```
+-------------------|---------|----------|---------|---------|
+File               | % Stmts | % Branch | % Funcs | % Lines |
+-------------------|---------|----------|---------|---------|
+All files          |     100 |      100 |     100 |     100 |
+-------------------|---------|----------|---------|---------|
+```
 
-| Endpoint | Method | Status | Response |
-|----------|--------|--------|----------|
-| `/` | GET | 200 | "Hello, World!\n" |
-| `/evening` | GET | 200 | "Good evening" |
-| `/invalid` | GET | 404 | Not Found |
-| `/` | POST | 404 | Not Found |
+## 0.10 Special Instructions for Testing
 
-### 0.8.7 Environment Verification
+### 0.10.1 Testing-Specific Requirements
 
-| Component | Version | Status |
-|-----------|---------|--------|
-| Node.js | v20.20.0 | ✓ Compatible (Express 5 requires 18+) |
-| npm | 11.1.0 | ✓ Compatible |
-| Express | ^5.1.0 | ✓ Installed |
-| Jest | ^30.2.0 | ✓ Installed |
-| Supertest | ^7.1.4 | ✓ Installed |
+Based on the user's request and repository analysis, the following special instructions apply to this testing task:
 
-### 0.8.8 Document Metadata
+| Instruction | Implementation |
+|-------------|----------------|
+| **Use Jest or Mocha** | Jest 30.2.0 is already configured and should be used (not Mocha) |
+| **Test HTTP responses** | Use Supertest with exact body string matching including whitespace |
+| **Test status codes** | Assert 200 for valid routes, 404 for invalid routes/methods |
+| **Test headers** | Validate `Content-Type: text/html; charset=utf-8` pattern |
+| **Test server startup** | Mock `app.listen()` and verify binding arguments |
+| **Test shutdown** | Verify `server.close()` callback invocation |
+| **Test error handling** | Simulate EADDRINUSE and verify non-throwing behavior |
+| **Test edge cases** | Query parameters, path variations, method restrictions |
 
-| Property | Value |
-|----------|-------|
-| Document Type | Agent Action Plan |
-| Project | hello_world |
-| Refactoring Type | Node.js HTTP → Express.js 5.x |
-| Architecture | Layered Monolithic |
-| Test Coverage | 100% |
-| Total Files | 12 |
-| Total Tests | 41 |
+### 0.10.2 Code Modification Guidelines
+
+**CRITICAL CONSTRAINTS**:
+
+| Constraint | Directive |
+|------------|-----------|
+| Source Code | **DO NOT modify** `server.js` or any source files |
+| Test Files | **REFERENCE** existing patterns, enhance if needed |
+| Configuration | **DO NOT modify** `jest.config.js` unless absolutely necessary |
+| Dependencies | **DO NOT add** new test dependencies |
+
+### 0.10.3 Test Pattern Requirements
+
+**Follow Existing Repository Patterns**:
+
+| Pattern | Reference File | Implementation |
+|---------|----------------|----------------|
+| Mock Server Factory | `tests/lifecycle/server.test.js` | `createMockServer(config)` |
+| Mock Listen Factory | `tests/lifecycle/server.test.js` | `createMockListen(mockServer, executeCallback)` |
+| Setup Mocks Helper | `tests/lifecycle/server.test.js` | `setupMocks(mockListen, config)` |
+| HTTP GET Helper | `tests/integration/endpoints.test.js` | `get(path)` wrapper |
+| Success Assertion | `tests/integration/endpoints.test.js` | `assertSuccessfulHtmlResponse(response, body)` |
+| 404 Assertion | `tests/integration/endpoints.test.js` | `assert404Response(response)` |
+
+### 0.10.4 Test Isolation Requirements
+
+| Requirement | Implementation |
+|-------------|----------------|
+| Module Isolation | Use `jest.resetModules()` in `beforeEach` |
+| Environment Isolation | Save/restore `process.env` reference |
+| Mock Cleanup | Use `jest.restoreAllMocks()` in `afterEach` |
+| Final Cleanup | Use `jest.clearAllMocks()` in `afterAll` |
+| Parallel Safety | No shared mutable state between tests |
+
+### 0.10.5 Mocking Strategy Requirements
+
+**Use Existing Mocking Patterns**:
+
+| Mock Target | Strategy | Example |
+|-------------|----------|---------|
+| `src/app` module | `jest.doMock('../../src/app', () => ({ listen: mockListen }))` | Lifecycle tests |
+| `src/config` module | `jest.doMock('../../src/config', () => ({ ...config }))` | Lifecycle tests |
+| `console.log` | `jest.spyOn(console, 'log').mockImplementation(() => {})` | Startup logging |
+| `console.error` | `jest.spyOn(console, 'error').mockImplementation(() => {})` | Error handling |
+| `process.env` | Direct mutation with saved original | Config tests |
+
+### 0.10.6 Naming Convention Requirements
+
+**Test File Naming**:
+
+| Pattern | Example |
+|---------|---------|
+| Unit tests | `*.test.js` in `tests/unit/` |
+| Integration tests | `*.test.js` in `tests/integration/` |
+| Lifecycle tests | `*.test.js` in `tests/lifecycle/` |
+
+**Test Case Naming**:
+
+| Pattern | Example |
+|---------|---------|
+| Positive behavior | `should return 200 status code` |
+| Default behavior | `should default host to 127.0.0.1 when HOST not set` |
+| Error handling | `should handle EADDRINUSE error when port is already in use` |
+| Edge cases | `should handle multiple query parameters on root endpoint` |
+
+### 0.10.7 Code Style Requirements
+
+| Requirement | Standard |
+|-------------|----------|
+| Strict Mode | `'use strict';` at file top |
+| Documentation | JSDoc type annotations for helpers |
+| Semicolons | Required (repository standard) |
+| Quotes | Single quotes for strings |
+| Indentation | 2 spaces |
+| Line Endings | LF (Unix-style) |
+
+### 0.10.8 Quality Assurance Checklist
+
+Before considering tests complete, verify:
+
+| Checkpoint | Verification |
+|------------|--------------|
+| All tests pass | `npm test` exits with code 0 |
+| Coverage maintained | All metrics at 100% |
+| No skipped tests | No `.skip()` in test files |
+| No focused tests | No `.only()` in test files |
+| Proper cleanup | All mocks restored after tests |
+| Documentation | JSDoc on helper functions |
+| Naming consistent | `should + [behavior]` format |
+| Isolation verified | Tests can run in any order |
+
+### 0.10.9 Summary of User Requirements
+
+The user requested:
+
+> "Create comprehensive unit tests for server.js using Jest or Mocha. Test HTTP responses, status codes, headers, server startup/shutdown, error handling, and edge cases."
+
+**Resolution**:
+
+| Requirement | Status | Implementation |
+|-------------|--------|----------------|
+| Comprehensive tests | ✓ Complete | 41 tests across 4 files |
+| Jest or Mocha | ✓ Jest | Jest 30.2.0 already configured |
+| HTTP responses | ✓ Covered | `tests/integration/endpoints.test.js` |
+| Status codes | ✓ Covered | 200, 404 assertions |
+| Headers | ✓ Covered | Content-Type validation |
+| Server startup | ✓ Covered | `tests/lifecycle/server.test.js` |
+| Server shutdown | ✓ Covered | close() callback testing |
+| Error handling | ✓ Covered | EADDRINUSE handling |
+| Edge cases | ✓ Covered | Query params, paths, methods |
+
+The existing test suite already provides comprehensive coverage for all requested test scenarios. The tests should be **maintained and referenced** as the authoritative implementation of the user's testing requirements.
 
