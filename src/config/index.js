@@ -1,8 +1,3 @@
-/**
- * Load environment variables from .env file
- * This MUST be the first executable line to ensure environment
- * variables are available before any process.env access
- */
 require('dotenv').config();
 
 /**
@@ -11,6 +6,10 @@ require('dotenv').config();
  * This module centralizes all application configuration values with environment
  * variable support following the Twelve-Factor App methodology for configuration
  * externalization.
+ * 
+ * Integrates with dotenv to load environment variables from .env file at module
+ * initialization, enabling local development configuration without modifying
+ * system environment variables.
  * 
  * Default values preserve backward compatibility with original server.js implementation:
  * - host: '127.0.0.1' (from original server.js line 3)
@@ -50,6 +49,7 @@ module.exports = {
 
   /**
    * Logging level for Winston
+   * Determines the minimum severity of log messages to record.
    * @type {string}
    * @default 'info' in production, 'debug' in development
    */
@@ -57,6 +57,8 @@ module.exports = {
 
   /**
    * Morgan log format
+   * Specifies the format for HTTP request logging.
+   * Common formats: 'combined', 'common', 'dev', 'short', 'tiny'
    * @type {string}
    * @default 'combined'
    */
