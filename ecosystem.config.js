@@ -1,199 +1,157 @@
 /**
  * PM2 Ecosystem Configuration
- *
- * This configuration file defines how PM2 process manager runs the application
- * in production environments. It enables cluster mode for load balancing across
- * all available CPU cores, automatic restart on failure, and zero-downtime reloads.
- *
- * Features:
- *   - Cluster mode: Utilizes all available CPU cores
- *   - Auto-restart: Restarts on crash or memory threshold exceeded
- *   - Zero-downtime reloads: SIGTERM handling for graceful shutdowns
- *   - Environment-aware: Separate configs for development and production
- *   - Centralized logging: Merged logs from all cluster instances
- *
+ * 
+ * This file configures PM2 process manager for production deployment.
+ * PM2 provides:
+ * - Cluster mode for load balancing across CPU cores
+ * - Automatic crash recovery
+ * - Zero-downtime reloads
+ * - Process monitoring and logging
+ * 
  * Usage:
- *   pm2 start ecosystem.config.js                    # Start in development
- *   pm2 start ecosystem.config.js --env production   # Start in production
- *   pm2 reload ecosystem.config.js                   # Zero-downtime reload
- *   pm2 stop ecosystem.config.js                     # Stop all instances
- *   pm2 delete ecosystem.config.js                   # Remove from PM2
- *   pm2 monit                                        # Monitor processes
- *   pm2 logs                                         # View logs
- *
+ *   npm run start:pm2    - Start the application with PM2
+ *   npm run stop:pm2     - Stop all PM2 processes
+ *   npm run restart:pm2  - Restart PM2 processes
+ *   npm run reload:pm2   - Zero-downtime reload
+ *   npm run logs:pm2     - View logs
+ *   npm run monit:pm2    - Monitoring dashboard
+ * 
+ * Or using PM2 directly:
+ *   pm2 start ecosystem.config.js
+ *   pm2 start ecosystem.config.js --env production
+ *   pm2 stop ecosystem.config.js
+ *   pm2 reload ecosystem.config.js
+ * 
  * @see https://pm2.keymetrics.io/docs/usage/application-declaration/
- * @module ecosystem.config
  */
 
-'use strict';
-
 module.exports = {
-  /**
-   * Application configurations array.
-   * Each object defines settings for a single application process.
-   * @type {Array<Object>}
-   */
   apps: [
     {
       /**
-       * Application name displayed in PM2 process list.
-       * Used for identifying and managing the process.
-       * @type {string}
+       * Application name displayed in PM2 process list
        */
       name: 'hello-world',
 
       /**
-       * Entry point script to execute.
-       * Path relative to ecosystem.config.js location.
-       * @type {string}
+       * Entry point script
        */
       script: 'server.js',
 
       /**
-       * Number of instances to spawn.
-       * 'max' uses all available CPU cores for optimal performance.
-       * Can also be a specific number (e.g., 2, 4) for controlled scaling.
-       * @type {string|number}
+       * Number of instances to run
+       * 'max' = use all available CPU cores
+       * Can also be a specific number: 2, 4, etc.
        */
       instances: 'max',
 
       /**
-       * Execution mode for the application.
-       * 'cluster' enables Node.js cluster module for load balancing.
-       * 'fork' runs as a single process (default).
-       * @type {string}
+       * Execution mode
+       * 'cluster' enables load balancing between instances
+       * 'fork' runs a single instance (default PM2 behavior)
        */
       exec_mode: 'cluster',
 
       /**
-       * File watching configuration.
-       * Disabled in production to prevent unintended restarts.
-       * Enable only in development with specific watch paths.
-       * @type {boolean}
+       * Working directory (defaults to current directory)
+       */
+      cwd: './',
+
+      /**
+       * Disable file watching in production
+       * Set to true only for development with nodemon-like behavior
        */
       watch: false,
 
       /**
-       * Maximum memory threshold before automatic restart.
-       * Prevents memory leaks from consuming all available memory.
-       * Format: '500M' for megabytes, '1G' for gigabytes.
-       * @type {string}
+       * Auto-restart if memory exceeds threshold
+       * Prevents memory leaks from crashing the server
        */
       max_memory_restart: '500M',
 
       /**
-       * Minimum uptime before considering the app successfully started.
-       * Prevents restart loops if the app crashes immediately.
-       * @type {string}
-       */
-      min_uptime: '5s',
-
-      /**
-       * Maximum number of consecutive restarts within min_uptime window.
-       * After this limit, PM2 stops trying to restart the app.
-       * @type {number}
-       */
-      max_restarts: 10,
-
-      /**
-       * Graceful shutdown timeout in milliseconds.
-       * Time allowed for the app to handle SIGTERM before SIGKILL.
-       * Should match the server's graceful shutdown timeout.
-       * @type {number}
-       */
-      kill_timeout: 5000,
-
-      /**
-       * Wait for ready signal before considering the app online.
-       * When true, the app must call process.send('ready').
-       * @type {boolean}
-       */
-      wait_ready: false,
-
-      /**
-       * Listen timeout for cluster mode.
-       * Maximum time to wait for the app to start listening.
-       * @type {number}
-       */
-      listen_timeout: 8000,
-
-      // =========================================================================
-      // Logging Configuration
-      // =========================================================================
-
-      /**
-       * Date format for PM2 log entries.
-       * Applied to both stdout and stderr log files.
-       * @type {string}
+       * Log timestamp format
        */
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
 
       /**
-       * Path to the error log file.
-       * Contains stderr output from all cluster instances.
-       * @type {string}
+       * PM2 error log file location
+       * Note: Application errors go to Winston logs/error.log
        */
       error_file: 'logs/pm2-error.log',
 
       /**
-       * Path to the output log file.
-       * Contains stdout output from all cluster instances.
-       * @type {string}
+       * PM2 output log file location
+       * Note: Application output goes to Winston logs/combined.log
        */
       out_file: 'logs/pm2-out.log',
 
       /**
-       * Merge logs from all cluster instances into single files.
-       * When false, creates separate log files per instance.
-       * @type {boolean}
+       * Merge logs from all cluster instances into single files
        */
       merge_logs: true,
 
       /**
-       * Append to log files instead of overwriting on restart.
-       * Recommended for production to preserve log history.
-       * @type {boolean}
+       * Delay between automatic restarts (ms)
+       * Prevents rapid restart loops
        */
-      append: true,
-
-      // =========================================================================
-      // Environment Configuration
-      // =========================================================================
+      restart_delay: 1000,
 
       /**
-       * Default environment variables (development mode).
-       * Applied when starting without --env flag.
-       * HOST binds to localhost for security in development.
-       * @type {Object}
+       * Maximum number of restart attempts before giving up
+       * Set to 0 for unlimited retries
+       */
+      max_restarts: 10,
+
+      /**
+       * Minimum uptime to consider application started successfully
+       */
+      min_uptime: '5s',
+
+      /**
+       * Signal sent to process for graceful shutdown
+       * SIGINT allows graceful shutdown handler to execute
+       */
+      kill_timeout: 10000,
+
+      /**
+       * Wait for process to be ready before considering it online
+       */
+      wait_ready: false,
+
+      /**
+       * Default environment variables (development)
        */
       env: {
         NODE_ENV: 'development',
+        HOST: '127.0.0.1',
         PORT: 3000,
-        HOST: '127.0.0.1'
+        LOG_LEVEL: 'debug',
+        LOG_FORMAT: 'dev'
       },
 
       /**
-       * Production environment variables.
-       * Applied when starting with: pm2 start ecosystem.config.js --env production
-       * HOST binds to all interfaces for external access.
-       * @type {Object}
+       * Production environment variables
+       * Use: pm2 start ecosystem.config.js --env production
        */
       env_production: {
         NODE_ENV: 'production',
+        HOST: '0.0.0.0',
         PORT: 3000,
-        HOST: '0.0.0.0'
+        LOG_LEVEL: 'info',
+        LOG_FORMAT: 'combined'
       },
 
       /**
-       * Test environment variables.
-       * Applied when starting with: pm2 start ecosystem.config.js --env test
-       * Uses different port to avoid conflicts during testing.
-       * @type {Object}
+       * Test environment variables
+       * Use: pm2 start ecosystem.config.js --env test
        */
       env_test: {
         NODE_ENV: 'test',
+        HOST: '127.0.0.1',
         PORT: 3001,
-        HOST: '127.0.0.1'
+        LOG_LEVEL: 'warn',
+        LOG_FORMAT: 'dev'
       }
     }
   ]
