@@ -202,3 +202,190 @@ describe('Server Entry Point', () => {
     consoleErrorSpy.mockRestore();
   });
 });
+
+/**
+ * @description Tests for graceful shutdown signal handling
+ * These tests verify that the server properly handles SIGTERM and SIGINT
+ * signals for PM2 zero-downtime reloads and clean shutdown during deployments.
+ */
+describe('Graceful Shutdown', () => {
+  /** @type {jest.Mock} */
+  let mockListen;
+  
+  /** @type {MockServer} */
+  let mockServer;
+  
+  /** @type {jest.SpyInstance} */
+  let consoleSpy;
+  
+  /** @type {jest.SpyInstance} */
+  let consoleErrorSpy;
+  
+  /** @type {jest.SpyInstance} */
+  let processSpy;
+  
+  /** @type {jest.SpyInstance} */
+  let processExitSpy;
+  
+  /** @type {Object.<string, Function>} */
+  let signalHandlers;
+
+  beforeEach(() => {
+    jest.resetModules();
+    
+    // Initialize signal handlers storage
+    signalHandlers = {};
+    
+    // Mock console methods to prevent output during tests
+    consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    
+    // Mock process.on to capture signal handlers
+    processSpy = jest.spyOn(process, 'on').mockImplementation((signal, handler) => {
+      signalHandlers[signal] = handler;
+      return process;
+    });
+    
+    // Mock process.exit to prevent actual process termination
+    processExitSpy = jest.spyOn(process, 'exit').mockImplementation(() => {});
+    
+    // Setup mock server and listen function
+    mockServer = createMockServer();
+    mockListen = createMockListen(mockServer);
+    setupMocks(mockListen);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    jest.clearAllTimers();
+  });
+
+  afterAll(() => {
+    jest.clearAllMocks();
+  });
+
+  test('should register SIGTERM handler for graceful shutdown', () => {
+    require('../../server');
+    
+    expect(signalHandlers.SIGTERM).toBeDefined();
+    expect(typeof signalHandlers.SIGTERM).toBe('function');
+  });
+
+  test('should register SIGINT handler for graceful shutdown', () => {
+    require('../../server');
+    
+    expect(signalHandlers.SIGINT).toBeDefined();
+    expect(typeof signalHandlers.SIGINT).toBe('function');
+  });
+
+  test('should close server properly when SIGTERM received', () => {
+    jest.useFakeTimers();
+    
+    require('../../server');
+    
+    // Verify handler was registered
+    expect(signalHandlers.SIGTERM).toBeDefined();
+    
+    // Trigger the SIGTERM signal handler
+    signalHandlers.SIGTERM();
+    
+    // Verify server.close() was called
+    expect(mockServer.close).toHaveBeenCalled();
+    
+    // Verify shutdown message was logged
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.stringContaining('SIGTERM received')
+    );
+    
+    jest.useRealTimers();
+  });
+
+  test('should close server properly when SIGINT received', () => {
+    jest.useFakeTimers();
+    
+    require('../../server');
+    
+    // Verify handler was registered
+    expect(signalHandlers.SIGINT).toBeDefined();
+    
+    // Trigger the SIGINT signal handler
+    signalHandlers.SIGINT();
+    
+    // Verify server.close() was called
+    expect(mockServer.close).toHaveBeenCalled();
+    
+    // Verify shutdown message was logged
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.stringContaining('SIGINT received')
+    );
+    
+    jest.useRealTimers();
+  });
+
+  test('should exit with code 0 after successful server close', () => {
+    jest.useFakeTimers();
+    
+    require('../../server');
+    
+    // Trigger SIGTERM to initiate shutdown
+    signalHandlers.SIGTERM();
+    
+    // Verify process.exit(0) was called (from server.close callback)
+    expect(processExitSpy).toHaveBeenCalledWith(0);
+    
+    jest.useRealTimers();
+  });
+
+  test('should force exit after timeout if graceful shutdown fails', () => {
+    jest.useFakeTimers();
+    
+    // Create a mock server that doesn't call the close callback
+    const slowMockServer = {
+      close: jest.fn(), // Does not execute callback
+      on: jest.fn().mockReturnThis(),
+      address: jest.fn(() => ({
+        address: DEFAULT_CONFIG.host,
+        port: DEFAULT_CONFIG.port
+      }))
+    };
+    
+    const slowMockListen = jest.fn((port, host, callback) => {
+      if (typeof callback === 'function') {
+        callback();
+      }
+      return slowMockServer;
+    });
+    
+    jest.resetModules();
+    signalHandlers = {};
+    
+    consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    processSpy = jest.spyOn(process, 'on').mockImplementation((signal, handler) => {
+      signalHandlers[signal] = handler;
+      return process;
+    });
+    processExitSpy = jest.spyOn(process, 'exit').mockImplementation(() => {});
+    
+    jest.doMock('../../src/app', () => ({ listen: slowMockListen }));
+    jest.doMock('../../src/config', () => ({ ...DEFAULT_CONFIG }));
+    
+    require('../../server');
+    
+    // Trigger SIGTERM to initiate shutdown
+    signalHandlers.SIGTERM();
+    
+    // Fast-forward past the timeout (10 seconds)
+    jest.advanceTimersByTime(10000);
+    
+    // Verify forced exit message was logged
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Forcefully shutting down')
+    );
+    
+    // Verify process.exit(1) was called for forced shutdown
+    expect(processExitSpy).toHaveBeenCalledWith(1);
+    
+    jest.useRealTimers();
+  });
+});
