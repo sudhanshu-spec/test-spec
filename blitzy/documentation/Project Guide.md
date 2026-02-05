@@ -1,421 +1,360 @@
-# Project Guide: Node.js HTTP to Express.js 5.x Refactoring
+# Security Hardening Implementation - Project Guide
 
 ## Executive Summary
 
-**Project**: hello_world Express.js Tutorial Server  
-**Refactoring Type**: Raw Node.js HTTP → Express.js 5.x Framework Migration  
-**Branch**: `blitzy-2bf3c902-805f-47b1-8290-5859f470b0bd`
+**Project Completion: 80% (49 hours completed out of 61 total hours)**
 
-### Completion Status
+This project implements comprehensive security hardening for a Node.js/Express application. All development work specified in the Agent Action Plan has been completed, tested, and validated. The implementation includes HTTP security headers (helmet.js), rate limiting (express-rate-limit), CORS policy enforcement (cors), input validation middleware (express-validator), and HTTPS server support.
 
-**94% Complete** (23 hours completed out of 24.5 total hours)
+### Key Achievements
+- ✅ All 15 in-scope files created/updated as specified
+- ✅ 146 tests passing (100% pass rate)
+- ✅ 100% code coverage across all source files
+- ✅ Zero npm audit vulnerabilities
+- ✅ All security headers verified working in runtime
+- ✅ Graceful HTTPS fallback to HTTP implemented
 
-This project has successfully completed all in-scope refactoring work as defined in the Agent Action Plan. The raw Node.js HTTP server has been transformed into a modular Express.js 5.x application with:
-
-- ✅ All 12 in-scope files created/modified
-- ✅ 41/41 tests passing (100% pass rate)
-- ✅ 100% code coverage across all metrics
-- ✅ Server runs correctly with verified endpoints
-- ✅ Behavioral equivalence maintained
-- ✅ Zero compilation errors
-- ✅ Zero unresolved issues
-
-The remaining 6% (1.5 hours) represents standard human review tasks before production deployment.
+### Hours Calculation
+- **Completed Hours:** 49h (security middleware: 13h, config: 3h, HTTPS: 2h, tests: 20h, docs: 5h, fixes: 6h)
+- **Remaining Hours:** 12h (SSL setup: 2h, production config: 2h, CORS config: 1h, rate tuning: 1h, infrastructure: 2h, security review: 2h, deployment: 2h)
+- **Total Project Hours:** 61h
+- **Completion Percentage:** 49/61 = 80.3% ≈ 80%
 
 ---
 
 ## Validation Results Summary
 
-### Dependencies
-| Package | Version | Status |
-|---------|---------|--------|
-| Express.js | 5.1.0 | ✅ Installed |
-| Jest | 30.2.0 | ✅ Installed |
-| Supertest | 7.1.4 | ✅ Installed |
-| Node.js | v20.20.0 | ✅ Compatible |
-
-### Code Compilation
-| File | Status |
-|------|--------|
-| server.js | ✅ Clean |
-| src/app.js | ✅ Clean |
-| src/config/index.js | ✅ Clean |
-| src/routes/index.js | ✅ Clean |
-| src/routes/main.routes.js | ✅ Clean |
-
-### Test Execution
+### 1. Dependency Audit
 ```
-Test Suites: 4 passed, 4 total
-Tests:       41 passed, 41 total
-Coverage:    100% (Statements, Branches, Functions, Lines)
+npm audit: found 0 vulnerabilities ✓
 ```
 
-| Test Suite | Tests | Status |
-|------------|-------|--------|
-| tests/integration/endpoints.test.js | 14 | ✅ Pass |
-| tests/lifecycle/server.test.js | 5 | ✅ Pass |
-| tests/unit/config.test.js | 17 | ✅ Pass |
-| tests/unit/routes.test.js | 7 | ✅ Pass |
+### 2. Test Execution
+```
+Test Suites: 6 passed, 6 total ✓
+Tests:       146 passed, 146 total ✓
+Coverage:    100% statements, 100% branches, 100% functions, 100% lines ✓
+```
 
-### Runtime Validation
-| Endpoint | Expected | Actual | Status |
-|----------|----------|--------|--------|
-| GET `/` | "Hello, World!\n" (200) | "Hello, World!\n" (200) | ✅ Pass |
-| GET `/evening` | "Good evening" (200) | "Good evening" (200) | ✅ Pass |
-| GET `/invalid` | 404 | 404 | ✅ Pass |
+### 3. Runtime Verification
+- Server starts successfully at http://127.0.0.1:3000/
+- Security headers present in all responses
+- Rate limiting active (RateLimit-* headers)
+- CORS configured (Access-Control-* headers)
+- Endpoints functional: GET / and GET /evening
+
+### 4. Security Headers Verified
+| Header | Value | Status |
+|--------|-------|--------|
+| Content-Security-Policy | default-src 'self'; ... | ✅ Present |
+| X-Frame-Options | SAMEORIGIN | ✅ Present |
+| X-Content-Type-Options | nosniff | ✅ Present |
+| Strict-Transport-Security | max-age=31536000; includeSubDomains | ✅ Present |
+| Cross-Origin-Opener-Policy | same-origin | ✅ Present |
+| Cross-Origin-Resource-Policy | same-origin | ✅ Present |
+| X-Powered-By | (removed) | ✅ Removed |
+
+### 5. Fixes Applied
+- Added 4 HTTPS server lifecycle tests to achieve 100% code coverage
+- Fixed express-validator 7.x compatibility issues
 
 ---
 
 ## Project Hours Breakdown
 
-### Visual Representation
-
 ```mermaid
 pie title Project Hours Breakdown
-    "Completed Work" : 23
-    "Remaining Work" : 1.5
+    "Completed Work" : 49
+    "Remaining Work" : 12
 ```
 
-### Completed Hours Detail (23 hours)
-
+### Completed Work Details (49 hours)
 | Component | Hours | Description |
 |-----------|-------|-------------|
-| Entry Point (server.js) | 2.0 | Express app import, error handling |
-| Application Factory (app.js) | 2.0 | Factory pattern, route mounting |
-| Configuration Module | 1.5 | Twelve-Factor App config |
-| Route Aggregator | 0.5 | Barrel pattern implementation |
-| Route Handlers | 1.5 | Express Router, GET handlers |
-| Package Updates | 0.5 | Dependencies, scripts |
-| Jest Configuration | 1.0 | Test setup, coverage config |
-| Documentation | 2.0 | README, JSDoc comments |
-| Integration Tests | 3.0 | 14 HTTP endpoint tests |
-| Lifecycle Tests | 3.0 | 5 server lifecycle tests |
-| Config Unit Tests | 2.0 | 17 configuration tests |
-| Routes Unit Tests | 1.5 | 7 route handler tests |
-| Setup & Debugging | 2.0 | Installation, validation |
-| **Total Completed** | **23.0** | |
+| Security Middleware (security.js) | 6h | Helmet, CORS, rate limiter configuration |
+| Validation Middleware (validation.js) | 6h | Express-validator integration |
+| Middleware Barrel (index.js) | 1h | Export consolidation |
+| App.js Integration | 2h | Security pipeline integration |
+| Config Updates | 3h | Security configuration options |
+| Server.js HTTPS | 2h | HTTPS server with fallback |
+| Package Updates | 0.5h | Dependency additions |
+| Security Integration Tests | 6h | 18 security-focused tests |
+| Middleware Unit Tests | 12h | 79 comprehensive unit tests |
+| HTTPS Lifecycle Tests | 2h | 4 HTTPS coverage tests |
+| README Documentation | 3h | Security configuration section |
+| .env.example | 1.5h | Environment template |
+| Bug Fixes | 2h | Validator compatibility |
+| Validation & Debug | 2h | Runtime verification |
 
-### Remaining Hours Detail (1.5 hours)
-
+### Remaining Work Details (12 hours)
 | Task | Hours | Priority | Description |
 |------|-------|----------|-------------|
-| Code Review | 0.5 | High | Human review of implementation |
-| Manual Testing | 0.5 | High | Final verification |
-| PR Merge Prep | 0.5 | Medium | Cleanup and merge |
-| **Total Remaining** | **1.5** | | |
-
-**Completion Calculation**: 23 hours / (23 + 1.5 hours) = **94% complete**
+| SSL Certificate Setup | 2h | High | Production certificate provisioning |
+| Production Environment Config | 2h | High | Create production .env file |
+| CORS Origin Configuration | 1h | High | Configure allowed origins whitelist |
+| Rate Limit Tuning | 1h | Medium | Analyze traffic and tune limits |
+| Infrastructure Review | 2h | Medium | Reverse proxy consideration |
+| Security Audit Review | 2h | Medium | Manual security verification |
+| Production Deployment | 2h | Medium | Deploy and verify in production |
+| **Total Remaining** | **12h** | | |
 
 ---
 
-## Development Guide
+## Human Tasks Remaining
+
+| # | Task | Priority | Severity | Hours | Description |
+|---|------|----------|----------|-------|-------------|
+| 1 | SSL Certificate Provisioning | High | Critical | 2h | Obtain and configure SSL certificates for production HTTPS. Use Let's Encrypt for free certificates or purchase from trusted CA. |
+| 2 | Production Environment Setup | High | High | 2h | Create production .env file with appropriate values: NODE_ENV=production, strict CORS origins, rate limits. |
+| 3 | CORS Allowed Origins | High | High | 1h | Configure CORS_ALLOWED_ORIGINS with comma-separated list of allowed frontend domains for production. |
+| 4 | Rate Limit Tuning | Medium | Medium | 1h | Analyze expected traffic patterns and adjust RATE_LIMIT_WINDOW_MS and RATE_LIMIT_MAX for production workload. |
+| 5 | Infrastructure Review | Medium | Medium | 2h | Evaluate using reverse proxy (nginx) for TLS termination vs direct HTTPS, especially for containerized deployments. |
+| 6 | Security Audit | Medium | Medium | 2h | Perform manual security review of configuration and test common attack vectors before production launch. |
+| 7 | Production Deployment | Medium | Medium | 2h | Deploy to production environment and verify all security features are working correctly. |
+| | **Total** | | | **12h** | |
+
+---
+
+## Comprehensive Development Guide
 
 ### System Prerequisites
 
-| Requirement | Minimum | Recommended |
-|-------------|---------|-------------|
+| Requirement | Minimum Version | Recommended Version |
+|-------------|-----------------|---------------------|
 | Node.js | 18.x | 20.19.x (LTS) |
 | npm | 8.x | 10.8.x |
-| OS | Linux/macOS/Windows | Any |
+| Operating System | Linux, macOS, Windows | Ubuntu 22.04 LTS |
 
-Verify installation:
+### Verify Prerequisites
 ```bash
-node --version    # Expected: v18.x.x or higher
-npm --version     # Expected: 8.x.x or higher
+# Check Node.js version
+node --version
+# Expected: v20.x.x or higher
+
+# Check npm version
+npm --version
+# Expected: 10.x.x or higher
 ```
 
-### Environment Setup
-
-1. **Clone the repository**:
+### Step 1: Clone and Navigate
 ```bash
 git clone <repository-url>
-cd hao-backprop-test
+cd <repository-directory>
+git checkout blitzy-5f7f49e9-c426-4cbf-addf-6553abac5e11
 ```
 
-2. **Checkout the feature branch**:
+### Step 2: Install Dependencies
 ```bash
-git checkout blitzy-2bf3c902-805f-47b1-8290-5859f470b0bd
-```
+# Clean install (recommended for CI/production)
+npm ci
 
-### Dependency Installation
-
-```bash
+# Or standard install
 npm install
 ```
 
-**Expected Output**:
+**Expected output:**
 ```
-added 66 packages in 2s
+added 282 packages in 4s
+found 0 vulnerabilities
 ```
 
-**Installed Packages**:
-- `express@5.1.0` - Web application framework
-- `jest@30.2.0` - Testing framework (dev)
-- `supertest@7.1.4` - HTTP assertion library (dev)
-
-### Application Startup
-
-**Default Configuration**:
+### Step 3: Verify Security Audit
 ```bash
+npm audit
+```
+
+**Expected output:**
+```
+found 0 vulnerabilities
+```
+
+### Step 4: Run Tests
+```bash
+# Run all tests with coverage
+CI=true npm test -- --watchAll=false --ci --coverage
+```
+
+**Expected output:**
+```
+Test Suites: 6 passed, 6 total
+Tests:       146 passed, 146 total
+Coverage:    100% across all files
+```
+
+### Step 5: Start the Server
+```bash
+# Default (HTTP)
 npm start
-```
 
-**Expected Output**:
-```
-Server running at http://127.0.0.1:3000/
-```
-
-**Custom Configuration**:
-```bash
-# Custom host and port
+# With custom configuration
 HOST=0.0.0.0 PORT=8080 npm start
 
 # Production mode
 NODE_ENV=production npm start
 ```
 
-### Verification Steps
-
-1. **Verify server is running**:
-```bash
-curl http://127.0.0.1:3000/
-# Expected: Hello, World!
+**Expected output:**
+```
+Server running at http://127.0.0.1:3000/
 ```
 
-2. **Test evening endpoint**:
+### Step 6: Verify Security Headers
 ```bash
+# Check response headers
+curl -I http://127.0.0.1:3000/
+
+# Verify specific security headers
+curl -sI http://127.0.0.1:3000/ | grep -E "Content-Security-Policy|X-Frame-Options|X-Content-Type-Options"
+```
+
+**Expected headers:**
+```
+Content-Security-Policy: default-src 'self'; ...
+X-Frame-Options: SAMEORIGIN
+X-Content-Type-Options: nosniff
+```
+
+### Step 7: Verify Endpoints
+```bash
+# Test root endpoint
+curl http://127.0.0.1:3000/
+# Expected: Hello, World!
+
+# Test evening endpoint
 curl http://127.0.0.1:3000/evening
 # Expected: Good evening
 ```
 
-3. **Test 404 handling**:
+### Step 8: HTTPS Configuration (Optional)
 ```bash
-curl -o /dev/null -w "%{http_code}" http://127.0.0.1:3000/invalid
-# Expected: 404
+# Generate self-signed certificate for development
+mkdir -p certs
+openssl req -x509 -newkey rsa:4096 -keyout certs/server.key -out certs/server.cert -days 365 -nodes -subj "/CN=localhost"
+
+# Start with HTTPS
+HTTPS_ENABLED=true SSL_KEY_PATH=./certs/server.key SSL_CERT_PATH=./certs/server.cert npm start
+
+# Expected output:
+# HTTPS Server running at https://127.0.0.1:3000/
 ```
 
-4. **Run test suite**:
+### Environment Variables Reference
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| HOST | 127.0.0.1 | Server binding address |
+| PORT | 3000 | Server port |
+| NODE_ENV | development | Environment (development/production/test) |
+| RATE_LIMIT_WINDOW_MS | 900000 | Rate limit window (15 min) |
+| RATE_LIMIT_MAX | 100 | Max requests per window |
+| CORS_ALLOWED_ORIGINS | * | Allowed origins (comma-separated) |
+| HTTPS_ENABLED | false | Enable HTTPS server |
+| SSL_KEY_PATH | ./certs/server.key | Path to SSL private key |
+| SSL_CERT_PATH | ./certs/server.cert | Path to SSL certificate |
+
+### Troubleshooting
+
+**Issue: Port already in use**
 ```bash
-npm test
-# Expected: 41 passing tests
+# Find process using port 3000
+lsof -i :3000
+# Kill the process
+kill -9 <PID>
 ```
 
-5. **Run with coverage**:
+**Issue: SSL certificate errors**
 ```bash
-npm run test:coverage
-# Expected: 100% coverage
+# Verify certificate files exist and are readable
+ls -la certs/
+# Check certificate validity
+openssl x509 -in certs/server.cert -text -noout
 ```
 
-### Example Usage
-
-**Basic Server Start**:
+**Issue: Rate limiting too aggressive**
 ```bash
-npm start
-# Server running at http://127.0.0.1:3000/
+# Increase rate limit for development
+RATE_LIMIT_MAX=1000 npm start
 ```
-
-**Test All Endpoints**:
-```bash
-# Root endpoint
-curl -s http://127.0.0.1:3000/
-# Output: Hello, World!
-
-# Evening endpoint
-curl -s http://127.0.0.1:3000/evening
-# Output: Good evening
-
-# Headers verification
-curl -I http://127.0.0.1:3000/
-# Content-Type: text/html; charset=utf-8
-```
-
----
-
-## Human Tasks Remaining
-
-### Task Table
-
-| # | Task | Priority | Severity | Hours | Action Steps |
-|---|------|----------|----------|-------|--------------|
-| 1 | Code Review | High | Low | 0.5 | Review all source files for code quality, patterns, and best practices |
-| 2 | Manual Integration Testing | High | Low | 0.5 | Manually test all endpoints in target environment |
-| 3 | PR Merge and Cleanup | Medium | Low | 0.5 | Approve PR, merge to main, clean up feature branch |
-| | **Total** | | | **1.5** | |
-
-### Task Details
-
-#### Task 1: Code Review (0.5 hours)
-**Priority**: High | **Severity**: Low
-
-**Action Steps**:
-1. Review `server.js` for proper error handling
-2. Verify `src/app.js` factory pattern implementation
-3. Check `src/config/index.js` for environment variable handling
-4. Validate route implementations in `src/routes/`
-5. Ensure JSDoc comments are accurate
-6. Verify test coverage is meaningful (not just for coverage sake)
-
-#### Task 2: Manual Integration Testing (0.5 hours)
-**Priority**: High | **Severity**: Low
-
-**Action Steps**:
-1. Start server with `npm start`
-2. Test GET `/` returns "Hello, World!\n"
-3. Test GET `/evening` returns "Good evening"
-4. Verify 404 for undefined routes
-5. Test with environment variable overrides
-6. Verify graceful startup/shutdown behavior
-
-#### Task 3: PR Merge and Cleanup (0.5 hours)
-**Priority**: Medium | **Severity**: Low
-
-**Action Steps**:
-1. Review PR description for accuracy
-2. Approve and merge pull request
-3. Delete feature branch if no longer needed
-4. Verify main branch has all changes
-5. Tag release if appropriate
 
 ---
 
 ## Risk Assessment
 
-### Risk Matrix
+### Technical Risks
 
-| Risk Category | Risk | Severity | Likelihood | Mitigation |
-|---------------|------|----------|------------|------------|
-| Technical | None identified | - | - | All tests passing |
-| Security | Tutorial-grade security | Low | Low | Add security middleware for production |
-| Operational | No monitoring | Low | Medium | Add health check endpoint for production |
-| Integration | None | - | - | Self-contained application |
+| Risk | Severity | Likelihood | Impact | Mitigation |
+|------|----------|------------|--------|------------|
+| SSL certificate expiration | High | Medium | Service disruption | Implement auto-renewal with Let's Encrypt |
+| Rate limit bypass via IP spoofing | Medium | Low | DoS vulnerability | Use X-Forwarded-For header validation behind proxy |
+| CSP too restrictive | Low | Medium | Broken functionality | Test CSP thoroughly before production |
 
-### Risk Details
+### Security Risks
 
-#### Low Severity Risks
+| Risk | Severity | Likelihood | Impact | Mitigation |
+|------|----------|------------|--------|------------|
+| Missing CORS origins | Medium | Medium | Unauthorized access | Configure explicit whitelist before production |
+| HTTPS not enabled in production | High | Medium | Data interception | Enforce HTTPS via reverse proxy or HSTS |
+| Weak rate limits | Medium | Low | DoS attacks | Monitor traffic and adjust limits |
 
-1. **Tutorial-Grade Security** (Low Severity, Low Likelihood)
-   - **Description**: Application has no authentication, rate limiting, or security headers
-   - **Impact**: Acceptable for tutorial/demo purposes; insufficient for production
-   - **Mitigation**: If deploying to production, add `helmet` for security headers and implement rate limiting
-   - **Status**: Out of scope per Agent Action Plan
+### Operational Risks
 
-2. **No Production Monitoring** (Low Severity, Medium Likelihood)
-   - **Description**: No health check endpoint or monitoring hooks
-   - **Impact**: Harder to detect issues in production
-   - **Mitigation**: Add `/health` endpoint and integrate with monitoring system
-   - **Status**: Out of scope per Agent Action Plan
+| Risk | Severity | Likelihood | Impact | Mitigation |
+|------|----------|------------|--------|------------|
+| Environment misconfiguration | High | Medium | Security bypass | Use .env.example as template, validate before deploy |
+| Certificate management | Medium | Medium | Service disruption | Document certificate renewal process |
+| Rate limit alerting | Low | Low | Missed attacks | Add monitoring for 429 responses |
 
-### Blockers
-**None** - All blocking issues have been resolved.
+### Integration Risks
 
----
-
-## Architecture Overview
-
-### Directory Structure
-
-```
-hello_world/
-├── server.js                    # Entry Point Layer
-├── src/
-│   ├── app.js                   # Application Core Layer
-│   ├── config/
-│   │   └── index.js             # Configuration Layer
-│   └── routes/
-│       ├── index.js             # Route Aggregator
-│       └── main.routes.js       # Routing Layer
-├── tests/
-│   ├── integration/
-│   │   └── endpoints.test.js    # HTTP Integration Tests
-│   ├── lifecycle/
-│   │   └── server.test.js       # Server Lifecycle Tests
-│   └── unit/
-│       ├── config.test.js       # Config Unit Tests
-│       └── routes.test.js       # Routes Unit Tests
-├── package.json                 # Dependencies
-├── jest.config.js               # Test Configuration
-└── README.md                    # Documentation
-```
-
-### Design Patterns Applied
-
-| Pattern | Location | Purpose |
-|---------|----------|---------|
-| Factory Pattern | `src/app.js` | Creates Express app without binding |
-| Barrel Pattern | `src/routes/index.js` | Centralized route exports |
-| Twelve-Factor App | `src/config/index.js` | Environment-driven config |
-| Separation of Concerns | `server.js` ↔ `src/app.js` | Isolates binding from logic |
-
-### Layer Responsibilities
-
-```mermaid
-flowchart TB
-    subgraph Entry["Entry Point Layer"]
-        Server["server.js<br/>HTTP Binding"]
-    end
-    
-    subgraph Core["Application Core Layer"]
-        App["src/app.js<br/>Express Factory"]
-        Config["src/config/index.js<br/>Configuration"]
-    end
-    
-    subgraph Routes["Routing Layer"]
-        Index["src/routes/index.js<br/>Aggregator"]
-        Main["src/routes/main.routes.js<br/>Handlers"]
-    end
-    
-    Server -->|requires| App
-    Server -->|requires| Config
-    App -->|mounts| Index
-    Index -->|exports| Main
-```
+| Risk | Severity | Likelihood | Impact | Mitigation |
+|------|----------|------------|--------|------------|
+| CORS blocking legitimate clients | Medium | Medium | Client failures | Test all frontend origins thoroughly |
+| Reverse proxy header conflicts | Medium | Low | Security bypass | Configure trust proxy settings in Express |
 
 ---
 
-## Git Statistics
+## Files Modified/Created
 
-| Metric | Value |
-|--------|-------|
-| Total Commits | 52 |
-| Files Changed | 16 |
-| Lines Added | 8,090 |
-| Lines Deleted | 15 |
-| Net Lines | +8,075 |
+### Source Files
+| File | Status | Lines | Purpose |
+|------|--------|-------|---------|
+| src/app.js | Updated | 78 | Security middleware pipeline |
+| src/config/index.js | Updated | 133 | Security configuration |
+| src/middleware/security.js | Created | 219 | Helmet, CORS, rate limiter |
+| src/middleware/validation.js | Created | 329 | Express-validator integration |
+| src/middleware/index.js | Created | 97 | Middleware barrel exports |
+| server.js | Updated | 115 | HTTPS server support |
 
-### Key Commits
+### Test Files
+| File | Status | Lines | Tests |
+|------|--------|-------|-------|
+| tests/integration/security.test.js | Created | 308 | 18 tests |
+| tests/unit/middleware.test.js | Created | 868 | 79 tests |
+| tests/lifecycle/server.test.js | Updated | 423 | +4 HTTPS tests |
 
-1. `865ed65` - Setup: Install Express.js 5.1.0
-2. `7231f52` - Migrate server from native HTTP to Express.js
-3. `a58c345` - Refactor: Apply Express.js best practices
-4. `ea93a6b` - Setup Jest testing infrastructure
-5. `5c07571` - Refactor: Clean up test files
+### Configuration Files
+| File | Status | Purpose |
+|------|--------|---------|
+| package.json | Updated | Security dependencies |
+| .env.example | Created | Environment template |
+| README.md | Updated | Security documentation |
 
 ---
 
-## Appendix
+## Conclusion
 
-### Environment Variables
+The security hardening implementation is **production-ready** with all development work complete and validated. The application now includes:
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| HOST | 127.0.0.1 | Server bind address |
-| PORT | 3000 | Server port number |
-| NODE_ENV | development | Application environment |
+1. **Comprehensive HTTP security headers** via helmet.js protecting against XSS, clickjacking, and MIME sniffing attacks
+2. **Rate limiting** preventing DoS attacks with configurable thresholds
+3. **CORS policy enforcement** with environment-specific configurations
+4. **Input validation middleware** ready for route-level validation
+5. **HTTPS support** with graceful HTTP fallback
 
-### NPM Scripts
+**Remaining work (12 hours)** consists of operational configuration tasks for human developers:
+- SSL certificate provisioning for production
+- Production environment configuration
+- CORS origin whitelist setup
+- Rate limit tuning based on traffic analysis
 
-| Script | Command | Description |
-|--------|---------|-------------|
-| `start` | `node server.js` | Start the server |
-| `test` | `jest` | Run all tests |
-| `test:watch` | `jest --watch` | Run tests in watch mode |
-| `test:coverage` | `jest --coverage` | Run tests with coverage |
-| `test:ci` | `jest --ci --coverage` | Run tests in CI mode |
-
-### API Endpoints
-
-| Method | Path | Response | Status |
-|--------|------|----------|--------|
-| GET | `/` | `Hello, World!\n` | 200 |
-| GET | `/evening` | `Good evening` | 200 |
-| * | `/*` (undefined) | Not Found | 404 |
+All code is tested (146 tests, 100% coverage), documented, and follows security best practices.
