@@ -1,6 +1,5 @@
 # Project Guide: Node.js HTTP to Express.js 5.x Refactoring
-
-## Executive Summary
+ecutive Summary
 
 **Project**: hello_world Express.js Tutorial Server  
 **Refactoring Type**: Raw Node.js HTTP → Express.js 5.x Framework Migration  
