@@ -1,3 +1,35 @@
+1. Purpose
+
+This guide defines a controlled approach to intentionally create merge conflicts in pull requests (PRs).
+It is intended for:
+
+Testing conflict resolution workflows
+
+Training engineers on Git conflict handling
+
+Validating CI/CD conflict detection behavior
+
+Demo environments (not production)
+
+2. Scope
+
+This spec applies only to:
+
+Test or sandbox repositories
+
+Non-production branches
+
+Training or QA environments
+
+❌ Out of Scope
+
+Production branches
+
+Release branches
+
+Live customer-facing code
+
+
 # Project Guide: Node.js HTTP to Express.js 5.x Refactoring
 
 ## Executive Summary
