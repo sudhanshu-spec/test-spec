@@ -62,7 +62,7 @@ const notFoundHandler = (req, res, next) => {
  * @param {import('express').NextFunction} next - Express next function (required for error handler signature)
  */
 const errorHandler = (err, req, res, next) => {
-  // Log the error with stack trace
+  // Log the error with stack trace and request context
   logger.error(err.message, {
     stack: err.stack,
     url: req.url,
