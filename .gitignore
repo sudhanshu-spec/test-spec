@@ -2,13 +2,18 @@
 node_modules/
 
 # Environment variables
-.env
-.env.local
+# Ignore all .env files except .env.example template
+.env*
+!.env.example
 
 # Logs
 logs/
 *.log
 npm-debug.log*
+pm2-*.log
+
+# Test coverage
+coverage/
 
 # OS files
 .DS_Store
