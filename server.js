@@ -3,6 +3,9 @@
  *
  * This module binds the Express application to an HTTP server.
  * Configuration is separated from app creation for better testability.
+ * Morgan HTTP request logging is mounted here (rather than in the app
+ * factory) to keep Supertest integration test output clean. Startup
+ * messages are routed through Winston's structured logging system.
  *
  * Architecture:
  *   - src/app.js       → Express app factory (routes & middleware)
