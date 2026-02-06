@@ -4,22 +4,22 @@
  * @fileoverview Express Application Configuration Module
  *
  * This module initializes and exports the configured Express app instance
- * with a full production middleware pipeline. It separates application
+ * with a production-grade middleware pipeline. It separates application
  * configuration from HTTP server initialization (which remains in server.js),
  * enabling unit testing without starting the actual server.
  *
- * Middleware pipeline order:
+ * Middleware pipeline order (following Express.js production best practices):
  *   1. helmet()        — Security headers (CSP, HSTS, X-Frame-Options, etc.)
  *   2. cors()          — Cross-origin resource sharing policy
- *   3. express.json()  — JSON body parsing
- *   4. mainRoutes      — GET / and GET /evening
- *   5. healthRoutes    — GET /health
- *   6. errorHandler    — Centralized error handling (must be last)
+ *   3. express.json()  — JSON request body parsing
+ *   4. Route handlers  — Application routes (mainRoutes, healthRoutes)
+ *   5. errorHandler    — Centralized error-handling middleware (must be last)
  *
- * Note: Morgan request logging is intentionally mounted in server.js
- * (not here) to keep Supertest integration test output clean.
+ * Note: Morgan HTTP request logging middleware is intentionally mounted in
+ * server.js (not here) to keep test output clean when Supertest uses the
+ * app factory directly.
  *
- * Design pattern: Factory pattern - creates configured Express app
+ * Design pattern: Factory pattern — creates configured Express app
  *
  * @module src/app
  */
@@ -32,59 +32,48 @@ const errorHandler = require('./middleware/error.middleware');
 
 const app = express();
 
-// ============================================================================
-// Security Middleware
-// ============================================================================
+// --- Middleware Pipeline ---
+// Middleware is mounted in a specific order following production best practices:
+// security hardening first, then CORS policy, then body parsing, then routes,
+// and finally the centralized error handler.
 
-/**
- * Mount Helmet for security-related HTTP response headers.
- * Sets Content-Security-Policy, Strict-Transport-Security, X-Frame-Options,
- * X-Content-Type-Options, and other hardening headers.
- */
+// 1. Security headers — sets Content-Security-Policy, Strict-Transport-Security,
+//    X-Frame-Options, X-Content-Type-Options, and other protective headers
 app.use(helmet());
 
-/**
- * Mount CORS middleware for cross-origin resource sharing.
- * Uses restrictive defaults; configure options as needed for specific origins.
- */
+// 2. CORS policy — configures cross-origin resource sharing headers to control
+//    which origins can access the API endpoints
 app.use(cors());
 
-// ============================================================================
-// Body Parsing Middleware
-// ============================================================================
-
-/**
- * Mount JSON body parser for incoming request payloads.
- * Parses application/json Content-Type bodies into req.body.
- */
+// 3. JSON body parsing — parses incoming requests with JSON payloads and
+//    makes the parsed data available on req.body
 app.use(express.json());
 
-// ============================================================================
-// Route Mounting
-// ============================================================================
+// --- Route Mounting ---
 
 /**
  * Mount main routes at root path.
  * Preserves the original route paths:
- * - GET '/' -> mainRoutes handles this
- * - GET '/evening' -> mainRoutes handles this
+ *   - GET '/'        -> mainRoutes handles the Hello World response
+ *   - GET '/evening' -> mainRoutes handles the Good Evening response
  */
 app.use('/', mainRoutes);
 
 /**
- * Mount health-check route at /health path.
- * - GET /health -> healthRoutes handles this
+ * Mount health-check routes at /health prefix.
+ * Provides operational monitoring and load-balancer readiness probes:
+ *   - GET '/health' -> healthRoutes returns JSON status with uptime and timestamp
  */
 app.use('/health', healthRoutes);
 
-// ============================================================================
-// Error Handling Middleware (must be last)
-// ============================================================================
+// --- Error Handling ---
 
 /**
- * Mount centralized error-handling middleware.
- * Catches all unhandled errors from the route pipeline and returns
- * structured JSON error responses. Must be the last middleware mounted.
+ * Centralized error-handling middleware (must be the last middleware mounted).
+ * Express identifies this as an error handler by its 4-argument signature
+ * (err, req, res, next). Catches all unhandled errors from the route pipeline,
+ * logs them via Winston, and returns structured JSON error responses.
+ * In production, stack traces are omitted from responses for security.
  */
 app.use(errorHandler);
 
