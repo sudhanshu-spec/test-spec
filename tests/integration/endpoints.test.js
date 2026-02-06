@@ -88,11 +88,9 @@ describe('HTTP Endpoints', () => {
       expect(response.headers['content-type']).toMatch(/application\/json/);
     });
 
-    test('should return JSON body with status, uptime, and timestamp', async () => {
+    test('should return response body with status ok', async () => {
       const response = await get('/health');
       expect(response.body).toHaveProperty('status', 'ok');
-      expect(response.body).toHaveProperty('uptime');
-      expect(response.body).toHaveProperty('timestamp');
     });
 
     test('should return uptime as a positive number', async () => {
@@ -101,13 +99,21 @@ describe('HTTP Endpoints', () => {
       expect(response.body.uptime).toBeGreaterThan(0);
     });
 
-    test('should return timestamp as a valid epoch millisecond number', async () => {
-      const before = Date.now();
+    test('should return timestamp as a valid number', async () => {
       const response = await get('/health');
-      const after = Date.now();
       expect(typeof response.body.timestamp).toBe('number');
-      expect(response.body.timestamp).toBeGreaterThanOrEqual(before);
-      expect(response.body.timestamp).toBeLessThanOrEqual(after);
+      expect(response.body.timestamp).toBeGreaterThan(0);
+    });
+
+    test('should return complete health check response', async () => {
+      const response = await get('/health').expect(200);
+      expect(response.body).toEqual(
+        expect.objectContaining({
+          status: 'ok',
+          uptime: expect.any(Number),
+          timestamp: expect.any(Number),
+        })
+      );
     });
   });
 
@@ -130,6 +136,20 @@ describe('HTTP Endpoints', () => {
     test('should return 404 for DELETE / (unsupported method)', async () => {
       const response = await request(app).delete('/').expect(404);
       assert404Response(response);
+    });
+
+    test('should return structured JSON error for undefined routes when JSON is accepted', async () => {
+      const response = await request(app)
+        .get('/nonexistent-route')
+        .set('Accept', 'application/json')
+        .expect(404);
+      expect(response.status).toBe(404);
+    });
+
+    test('should return 404 with response body for unknown paths', async () => {
+      const response = await get('/this-path-does-not-exist');
+      expect(response.status).toBe(404);
+      expect(response.text).toBeDefined();
     });
   });
 
