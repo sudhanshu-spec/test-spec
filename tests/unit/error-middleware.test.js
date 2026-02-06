@@ -1,133 +1,100 @@
 /**
- * @fileoverview Unit tests for the centralized error-handling middleware
- * (src/middleware/error.middleware.js)
+ * @fileoverview Unit tests for the error-handling middleware (src/middleware/error.middleware.js)
+ *
+ * Tests the centralized Express error-handling middleware for correct error
+ * response structure, HTTP status code propagation, Winston logger integration,
+ * production safety (stack trace suppression), and headers-already-sent delegation.
+ *
  * @module tests/unit/error-middleware
  */
 
 'use strict';
 
-describe('Error Handling Middleware', () => {
+// Mock the Winston logger module before requiring error middleware.
+// This prevents actual logger side effects in tests and enables
+// verification of logger.error() calls with expected arguments.
+jest.mock('../../src/utils/logger', () => ({
+  error: jest.fn(),
+  info: jest.fn(),
+  warn: jest.fn(),
+  debug: jest.fn(),
+  http: jest.fn()
+}));
+
+const errorHandler = require('../../src/middleware/error.middleware');
+const logger = require('../../src/utils/logger');
+
+/**
+ * Creates a mock Express request object with standard properties.
+ * @returns {{ method: string, originalUrl: string, headers: Object }} Mock request
+ */
+function createMockReq() {
+  return {
+    method: 'GET',
+    originalUrl: '/test',
+    headers: {}
+  };
+}
+
+/**
+ * Creates a mock Express response object with chainable status() and json() methods.
+ * @returns {{ status: jest.Mock, json: jest.Mock, headersSent: boolean }} Mock response
+ */
+function createMockRes() {
+  return {
+    status: jest.fn().mockReturnThis(),
+    json: jest.fn().mockReturnThis(),
+    headersSent: false
+  };
+}
+
+/**
+ * Creates a mock Express next function.
+ * @returns {jest.Mock} Mock next function
+ */
+function createMockNext() {
+  return jest.fn();
+}
+
+describe('Error Middleware', () => {
   /** @type {NodeJS.ProcessEnv} */
   const originalEnv = process.env;
 
-  /** @type {Function} */
-  let errorHandler;
-
-  /** @type {import('winston').Logger} */
-  let logger;
-
-  /** @type {import('express').Request} */
+  /** @type {Object} */
   let mockReq;
-
-  /** @type {import('express').Response} */
+  /** @type {Object} */
   let mockRes;
-
-  /** @type {import('express').NextFunction} */
+  /** @type {jest.Mock} */
   let mockNext;
 
   beforeEach(() => {
-    jest.resetModules();
-    process.env = { ...originalEnv };
-
-    // Load fresh instances
-    logger = require('../../src/utils/logger');
-    jest.spyOn(logger, 'error').mockImplementation(() => {});
-    errorHandler = require('../../src/middleware/error.middleware');
-
-    // Create mock request
-    mockReq = {
-      originalUrl: '/test-path',
-      method: 'GET'
-    };
-
-    // Create mock response with chaining
-    mockRes = {
-      status: jest.fn().mockReturnThis(),
-      json: jest.fn().mockReturnThis(),
-      headersSent: false
-    };
-
-    // Create mock next function
-    mockNext = jest.fn();
-  });
-
-  afterEach(() => {
-    jest.restoreAllMocks();
+    jest.clearAllMocks();
+    mockReq = createMockReq();
+    mockRes = createMockRes();
+    mockNext = createMockNext();
   });
 
   afterAll(() => {
     process.env = originalEnv;
   });
 
-  describe('Function Signature', () => {
+  describe('Export', () => {
     test('should export a function', () => {
       expect(typeof errorHandler).toBe('function');
     });
 
-    test('should have 4 parameters (Express error middleware signature)', () => {
+    test('should have error middleware signature (4 arguments)', () => {
       expect(errorHandler.length).toBe(4);
     });
   });
 
-  describe('Error Logging', () => {
-    test('should log the error via Winston logger.error', () => {
-      const error = new Error('Test error');
-      errorHandler(error, mockReq, mockRes, mockNext);
-
-      expect(logger.error).toHaveBeenCalledTimes(1);
-      expect(logger.error).toHaveBeenCalledWith(
-        'Test error',
-        expect.objectContaining({
-          stack: expect.any(String),
-          statusCode: 500,
-          url: '/test-path',
-          method: 'GET'
-        })
-      );
-    });
-
-    test('should log with the error status code when provided', () => {
-      const error = new Error('Not Found');
-      error.status = 404;
-      errorHandler(error, mockReq, mockRes, mockNext);
-
-      expect(logger.error).toHaveBeenCalledWith(
-        'Not Found',
-        expect.objectContaining({
-          statusCode: 404
-        })
-      );
-    });
-  });
-
   describe('Error Response', () => {
-    test('should respond with 500 status code for generic errors', () => {
-      const error = new Error('Something went wrong');
-      errorHandler(error, mockReq, mockRes, mockNext);
+    test('should return structured JSON error response', () => {
+      const err = new Error('Test error');
+
+      errorHandler(err, mockReq, mockRes, mockNext);
 
       expect(mockRes.status).toHaveBeenCalledWith(500);
-    });
-
-    test('should use error.status when provided', () => {
-      const error = new Error('Not Found');
-      error.status = 404;
-      errorHandler(error, mockReq, mockRes, mockNext);
-
-      expect(mockRes.status).toHaveBeenCalledWith(404);
-    });
-
-    test('should use error.statusCode when provided', () => {
-      const error = new Error('Bad Request');
-      error.statusCode = 400;
-      errorHandler(error, mockReq, mockRes, mockNext);
-
-      expect(mockRes.status).toHaveBeenCalledWith(400);
-    });
-
-    test('should return structured JSON response body', () => {
-      const error = new Error('Test error');
-      errorHandler(error, mockReq, mockRes, mockNext);
-
       expect(mockRes.json).toHaveBeenCalledWith(
         expect.objectContaining({
           status: 'error',
@@ -137,75 +104,194 @@ describe('Error Handling Middleware', () => {
       );
     });
 
-    test('should return "Internal Server Error" when error has no message', () => {
-      const error = new Error();
-      errorHandler(error, mockReq, mockRes, mockNext);
+    test('should use default message for errors without message', () => {
+      const err = new Error();
+      err.message = '';
 
-      const jsonCall = mockRes.json.mock.calls[0][0];
-      expect(jsonCall.statusCode).toBe(500);
-    });
-  });
+      errorHandler(err, mockReq, mockRes, mockNext);
 
-  describe('Stack Trace Exposure', () => {
-    test('should include stack trace in non-production environment', () => {
-      jest.resetModules();
-      process.env = { ...originalEnv, NODE_ENV: 'development' };
-      logger = require('../../src/utils/logger');
-      jest.spyOn(logger, 'error').mockImplementation(() => {});
-      errorHandler = require('../../src/middleware/error.middleware');
-
-      const error = new Error('Dev error');
-      errorHandler(error, mockReq, mockRes, mockNext);
-
-      const jsonCall = mockRes.json.mock.calls[0][0];
-      expect(jsonCall.stack).toBeDefined();
-      expect(typeof jsonCall.stack).toBe('string');
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: 'error',
+          statusCode: 500,
+          message: 'Internal Server Error'
+        })
+      );
     });
 
-    test('should NOT include stack trace in production environment', () => {
-      jest.resetModules();
-      process.env = { ...originalEnv, NODE_ENV: 'production' };
-      logger = require('../../src/utils/logger');
-      jest.spyOn(logger, 'error').mockImplementation(() => {});
-      errorHandler = require('../../src/middleware/error.middleware');
-
-      const error = new Error('Production error');
-      errorHandler(error, mockReq, mockRes, mockNext);
-
-      const jsonCall = mockRes.json.mock.calls[0][0];
-      expect(jsonCall.stack).toBeUndefined();
-    });
-  });
-
-  describe('Edge Cases', () => {
-    test('should handle error with both status and statusCode properties', () => {
-      const error = new Error('Conflict');
-      error.status = 409;
-      error.statusCode = 400;
-      errorHandler(error, mockReq, mockRes, mockNext);
-
-      // status takes precedence over statusCode
-      expect(mockRes.status).toHaveBeenCalledWith(409);
-    });
-
-    test('should handle error without stack property', () => {
-      const error = { message: 'Custom error object', status: 500 };
-      expect(() => errorHandler(error, mockReq, mockRes, mockNext)).not.toThrow();
-      expect(mockRes.status).toHaveBeenCalledWith(500);
-    });
-
-    test('should delegate to next(err) when headers are already sent', () => {
+    test('should delegate to next when headers already sent', () => {
+      const err = new Error('Stream error');
       mockRes.headersSent = true;
 
-      const error = new Error('Stream error after headers sent');
-      errorHandler(error, mockReq, mockRes, mockNext);
+      errorHandler(err, mockReq, mockRes, mockNext);
 
       // When headers are already sent, Express's built-in error handler
       // should be invoked via next(err) to gracefully close the connection
-      expect(mockNext).toHaveBeenCalledWith(error);
+      expect(mockNext).toHaveBeenCalledWith(err);
       // Should NOT attempt to send a new response
       expect(mockRes.status).not.toHaveBeenCalled();
       expect(mockRes.json).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Status Code Propagation', () => {
+    test('should use err.status when provided', () => {
+      const err = new Error('Not Found');
+      err.status = 404;
+
+      errorHandler(err, mockReq, mockRes, mockNext);
+
+      expect(mockRes.status).toHaveBeenCalledWith(404);
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          statusCode: 404
+        })
+      );
+    });
+
+    test('should use err.statusCode when provided', () => {
+      const err = new Error('Forbidden');
+      err.statusCode = 403;
+
+      errorHandler(err, mockReq, mockRes, mockNext);
+
+      expect(mockRes.status).toHaveBeenCalledWith(403);
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          statusCode: 403
+        })
+      );
+    });
+
+    test('should default to 500 when no status code provided', () => {
+      const err = new Error('Generic error');
+
+      errorHandler(err, mockReq, mockRes, mockNext);
+
+      expect(mockRes.status).toHaveBeenCalledWith(500);
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          statusCode: 500
+        })
+      );
+    });
+
+    test('should prefer err.status over err.statusCode', () => {
+      const err = new Error('Conflict');
+      err.status = 409;
+      err.statusCode = 422;
+
+      errorHandler(err, mockReq, mockRes, mockNext);
+
+      // err.status takes precedence due to short-circuit evaluation
+      expect(mockRes.status).toHaveBeenCalledWith(409);
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          statusCode: 409
+        })
+      );
+    });
+  });
+
+  describe('Logging', () => {
+    test('should log error via Winston logger', () => {
+      const err = new Error('Test error');
+
+      errorHandler(err, mockReq, mockRes, mockNext);
+
+      expect(logger.error).toHaveBeenCalledTimes(1);
+    });
+
+    test('should log error message', () => {
+      const err = new Error('Specific error message');
+
+      errorHandler(err, mockReq, mockRes, mockNext);
+
+      expect(logger.error).toHaveBeenCalledWith(
+        'Specific error message',
+        expect.objectContaining({
+          statusCode: 500,
+          url: '/test',
+          method: 'GET'
+        })
+      );
+    });
+
+    test('should include error stack in log metadata', () => {
+      const err = new Error('Error with stack');
+
+      errorHandler(err, mockReq, mockRes, mockNext);
+
+      expect(logger.error).toHaveBeenCalledWith(
+        'Error with stack',
+        expect.objectContaining({
+          stack: expect.any(String)
+        })
+      );
+    });
+
+    test('should log even when headers already sent', () => {
+      const err = new Error('Late error');
+      mockRes.headersSent = true;
+
+      errorHandler(err, mockReq, mockRes, mockNext);
+
+      // Logger should always be called regardless of headersSent state
+      expect(logger.error).toHaveBeenCalledTimes(1);
+      expect(logger.error).toHaveBeenCalledWith(
+        'Late error',
+        expect.objectContaining({
+          statusCode: 500,
+          url: '/test',
+          method: 'GET'
+        })
+      );
+    });
+  });
+
+  describe('Production Safety', () => {
+    beforeEach(() => {
+      jest.resetModules();
+      process.env = { ...originalEnv };
+    });
+
+    test('should NOT include stack trace in response when NODE_ENV is production', () => {
+      process.env.NODE_ENV = 'production';
+
+      // Re-require modules after resetting to pick up new NODE_ENV value.
+      // The jest.mock() registration persists across resetModules, so the
+      // logger module remains mocked with fresh jest.fn() instances.
+      const freshErrorHandler = require('../../src/middleware/error.middleware');
+      const freshRes = createMockRes();
+      const err = new Error('Production error');
+
+      freshErrorHandler(err, createMockReq(), freshRes, createMockNext());
+
+      const responseBody = freshRes.json.mock.calls[0][0];
+      expect(responseBody).not.toHaveProperty('stack');
+      expect(responseBody).toEqual(
+        expect.objectContaining({
+          status: 'error',
+          statusCode: 500,
+          message: 'Production error'
+        })
+      );
+    });
+
+    test('should include stack trace in response when NODE_ENV is development', () => {
+      process.env.NODE_ENV = 'development';
+
+      // Re-require modules after resetting to pick up new NODE_ENV value
+      const freshErrorHandler = require('../../src/middleware/error.middleware');
+      const freshRes = createMockRes();
+      const err = new Error('Development error');
+
+      freshErrorHandler(err, createMockReq(), freshRes, createMockNext());
+
+      const responseBody = freshRes.json.mock.calls[0][0];
+      expect(responseBody).toHaveProperty('stack');
+      expect(typeof responseBody.stack).toBe('string');
+      expect(responseBody.stack).toContain('Development error');
     });
   });
 });
