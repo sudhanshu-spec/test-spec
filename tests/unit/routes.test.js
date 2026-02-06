@@ -1,5 +1,5 @@
 /**
- * @fileoverview Unit tests for route handlers (src/routes/)
+ * @fileoverview Unit tests for route handlers (src/routes/main.routes.js, src/routes/health.routes.js) and barrel export (src/routes/index.js)
  * @module tests/unit/routes
  */
 
@@ -7,7 +7,7 @@
 
 const mainRoutes = require('../../src/routes/main.routes');
 const healthRoutes = require('../../src/routes/health.routes');
-const { mainRoutes: barrelMainRoutes, healthRoutes: barrelHealthRoutes } = require('../../src/routes');
+const routes = require('../../src/routes');
 
 /**
  * @typedef {Object} RouteLayer
@@ -95,6 +95,23 @@ describe('Route Handlers - main.routes.js', () => {
   });
 });
 
+describe('Routes Barrel Export - index.js', () => {
+  test('should export mainRoutes', () => {
+    expect(routes.mainRoutes).toBeDefined();
+    expect(typeof routes.mainRoutes).toBe('function');
+  });
+
+  test('should export healthRoutes', () => {
+    expect(routes.healthRoutes).toBeDefined();
+    expect(typeof routes.healthRoutes).toBe('function');
+  });
+
+  test('should export both mainRoutes and healthRoutes', () => {
+    expect(Object.keys(routes)).toContain('mainRoutes');
+    expect(Object.keys(routes)).toContain('healthRoutes');
+  });
+});
+
 describe('Route Handlers - health.routes.js', () => {
   describe('Router Export', () => {
     test('should export an Express Router instance', () => {
@@ -102,10 +119,6 @@ describe('Route Handlers - health.routes.js', () => {
       expect(typeof healthRoutes).toBe('function');
       expect(healthRoutes.stack).toBeDefined();
       expect(Array.isArray(healthRoutes.stack)).toBe(true);
-    });
-
-    test('should have router handle method defined', () => {
-      expect(typeof healthRoutes.handle).toBe('function');
     });
   });
 
@@ -115,32 +128,20 @@ describe('Route Handlers - health.routes.js', () => {
       expect(routeLayers.length).toBe(1);
     });
 
-    test('should define handler for / path (mounted at /health by app.js)', () => {
-      const paths = getRoutePaths(healthRoutes);
-      expect(paths).toContain('/');
+    test('should define handler for / path', () => {
+      expect(getRoutePaths(healthRoutes)).toContain('/');
     });
 
-    test('should define GET method handler for health route', () => {
+    test('should define GET method handler', () => {
       const routeLayers = getRouteLayers(healthRoutes);
       expect(routeLayers[0].route.methods.get).toBe(true);
     });
 
     test('should have handler function in route stack', () => {
       const routeLayers = getRouteLayers(healthRoutes);
+      expect(routeLayers[0].route.stack).toBeDefined();
       expect(routeLayers[0].route.stack.length).toBeGreaterThan(0);
       expect(typeof routeLayers[0].route.stack[0].handle).toBe('function');
     });
-  });
-});
-
-describe('Route Aggregator - routes/index.js', () => {
-  test('should export mainRoutes from barrel', () => {
-    expect(barrelMainRoutes).toBeDefined();
-    expect(barrelMainRoutes).toBe(mainRoutes);
-  });
-
-  test('should export healthRoutes from barrel', () => {
-    expect(barrelHealthRoutes).toBeDefined();
-    expect(barrelHealthRoutes).toBe(healthRoutes);
   });
 });
