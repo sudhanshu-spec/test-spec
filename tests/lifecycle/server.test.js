@@ -19,16 +19,36 @@
  * @property {string} host - Server host
  * @property {number} port - Server port
  * @property {string} env - Environment name
- * @property {string} logLevel - Log level
  */
 
 /** @type {TestConfig} */
 const DEFAULT_CONFIG = {
   host: '127.0.0.1',
   port: 3000,
-  env: 'test',
-  logLevel: 'info'
+  env: 'test'
 };
+
+/**
+ * Mock Winston logger singleton with tracked method calls.
+ * Defined at module level so all tests share the same reference when
+ * registered via jest.doMock. Mock methods are cleared in beforeEach
+ * to ensure test isolation between test cases.
+ * @type {{ info: jest.Mock, error: jest.Mock, http: jest.Mock, stream: { write: jest.Mock } }}
+ */
+const mockLogger = {
+  info: jest.fn(),
+  error: jest.fn(),
+  http: jest.fn(),
+  stream: { write: jest.fn() }
+};
+
+/**
+ * Mock Morgan middleware — no-op function that calls next() to continue
+ * the middleware chain. Used to verify that server.js mounts Morgan via
+ * app.use(morganMiddleware) before calling app.listen().
+ * @type {jest.Mock}
+ */
+const mockMorganMiddleware = jest.fn((req, res, next) => next());
 
 /**
  * Creates a mock server object with standard methods.
@@ -73,44 +93,17 @@ function createMockListen(mockServer, executeCallback = true) {
 }
 
 /**
- * Creates a mock Express app with use and listen methods.
- * @param {jest.Mock} mockListen - Mock listen function
- * @returns {Object} Mock app instance
- */
-function createMockApp(mockListen) {
-  return {
-    listen: mockListen,
-    use: jest.fn()
-  };
-}
-
-/**
- * Creates a mock Winston logger.
- * @returns {Object} Mock logger instance
- */
-function createMockLogger() {
-  return {
-    info: jest.fn(),
-    error: jest.fn(),
-    warn: jest.fn(),
-    debug: jest.fn(),
-    http: jest.fn(),
-    stream: { write: jest.fn() }
-  };
-}
-
-/**
  * Sets up mocks for app, config, logger, and morgan middleware modules.
- * @param {Object} mockApp - Mock app object
+ * Registers jest.doMock for all four modules that server.js imports.
+ * @param {jest.Mock} mockListen - Mock listen function
+ * @param {jest.Mock} mockUse - Mock use function for mounting middleware
  * @param {TestConfig} [config=DEFAULT_CONFIG] - Configuration values
- * @param {Object} [mockLogger] - Mock logger
- * @param {Function} [mockMorgan] - Mock morgan middleware function
  */
-function setupMocks(mockApp, config = DEFAULT_CONFIG, mockLogger = null, mockMorgan = null) {
-  jest.doMock('../../src/app', () => mockApp);
+function setupMocks(mockListen, mockUse, config = DEFAULT_CONFIG) {
+  jest.doMock('../../src/app', () => ({ listen: mockListen, use: mockUse }));
   jest.doMock('../../src/config', () => ({ ...config }));
-  jest.doMock('../../src/utils/logger', () => mockLogger || createMockLogger());
-  jest.doMock('../../src/middleware/morgan.middleware', () => mockMorgan || jest.fn());
+  jest.doMock('../../src/utils/logger', () => mockLogger);
+  jest.doMock('../../src/middleware/morgan.middleware', () => mockMorganMiddleware);
 }
 
 describe('Server Entry Point', () => {
@@ -120,23 +113,25 @@ describe('Server Entry Point', () => {
   /** @type {MockServer} */
   let mockServer;
 
-  /** @type {Object} */
-  let mockApp;
-
-  /** @type {Object} */
-  let mockLogger;
+  /** @type {jest.SpyInstance} */
+  let consoleSpy;
 
   /** @type {jest.Mock} */
-  let mockMorgan;
+  let mockUse;
 
   beforeEach(() => {
     jest.resetModules();
+    consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
     mockServer = createMockServer();
     mockListen = createMockListen(mockServer);
-    mockLogger = createMockLogger();
-    mockMorgan = jest.fn();
-    mockApp = createMockApp(mockListen);
-    setupMocks(mockApp, DEFAULT_CONFIG, mockLogger, mockMorgan);
+    mockUse = jest.fn();
+    // Clear mock logger and morgan calls from previous tests to ensure isolation
+    mockLogger.info.mockClear();
+    mockLogger.error.mockClear();
+    mockLogger.http.mockClear();
+    mockLogger.stream.write.mockClear();
+    mockMorganMiddleware.mockClear();
+    setupMocks(mockListen, mockUse);
   });
 
   afterEach(() => {
@@ -156,35 +151,45 @@ describe('Server Entry Point', () => {
     expect(typeof mockListen.mock.calls[0][2]).toBe('function');
   });
 
-  test('should log startup message with Winston logger.info', () => {
+  test('should log startup message with server URL', () => {
     require('../../server');
 
     const expectedMessage = `Server running at http://${DEFAULT_CONFIG.host}:${DEFAULT_CONFIG.port}/`;
     expect(mockLogger.info).toHaveBeenCalledWith(expectedMessage);
   });
 
-  test('should mount Morgan middleware via app.use', () => {
+  test('should mount Morgan middleware', () => {
     require('../../server');
 
-    expect(mockApp.use).toHaveBeenCalledWith(mockMorgan);
+    expect(mockUse).toHaveBeenCalled();
+    expect(mockUse).toHaveBeenCalledWith(mockMorganMiddleware);
+  });
+
+  test('should use Winston logger instead of console.log for startup', () => {
+    require('../../server');
+
+    expect(mockLogger.info).toHaveBeenCalledTimes(1);
+    expect(mockLogger.info).toHaveBeenCalledWith(
+      expect.stringContaining('Server running at')
+    );
   });
 
   test('should use custom configuration values from config module', () => {
     jest.resetModules();
+    consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+    mockLogger.info.mockClear();
 
     /** @type {TestConfig} */
     const customConfig = {
       host: '0.0.0.0',
       port: 8080,
-      env: 'production',
-      logLevel: 'warn'
+      env: 'production'
     };
 
     const customMockServer = createMockServer(customConfig);
     const customMockListen = createMockListen(customMockServer);
-    const customMockLogger = createMockLogger();
-    const customMockApp = createMockApp(customMockListen);
-    setupMocks(customMockApp, customConfig, customMockLogger);
+    const customMockUse = jest.fn();
+    setupMocks(customMockListen, customMockUse, customConfig);
 
     require('../../server');
 
@@ -192,7 +197,7 @@ describe('Server Entry Point', () => {
     expect(customMockListen.mock.calls[0][1]).toBe(customConfig.host);
 
     const expectedMessage = `Server running at http://${customConfig.host}:${customConfig.port}/`;
-    expect(customMockLogger.info).toHaveBeenCalledWith(expectedMessage);
+    expect(mockLogger.info).toHaveBeenCalledWith(expectedMessage);
   });
 
   test('should provide server object that supports graceful shutdown', () => {
@@ -210,6 +215,9 @@ describe('Server Entry Point', () => {
   test('should handle EADDRINUSE error when port is already in use', () => {
     jest.resetModules();
 
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+
     /** @type {Function|null} */
     let errorHandler = null;
 
@@ -222,9 +230,8 @@ describe('Server Entry Point', () => {
     });
 
     const errorMockListen = createMockListen(errorMockServer, false);
-    const errorMockLogger = createMockLogger();
-    const errorMockApp = createMockApp(errorMockListen);
-    setupMocks(errorMockApp, DEFAULT_CONFIG, errorMockLogger);
+    const errorMockUse = jest.fn();
+    setupMocks(errorMockListen, errorMockUse);
 
     require('../../server');
 
@@ -246,5 +253,7 @@ describe('Server Entry Point', () => {
       DEFAULT_CONFIG.host,
       expect.any(Function)
     );
+
+    consoleErrorSpy.mockRestore();
   });
 });
