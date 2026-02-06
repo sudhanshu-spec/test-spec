@@ -1,6 +1,9 @@
 # Dependencies
 node_modules/
 
+# Test coverage
+coverage/
+
 # Environment variables
 .env
 .env.local
