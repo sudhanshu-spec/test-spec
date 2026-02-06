@@ -43,7 +43,8 @@ describe('Error Handling Middleware', () => {
     // Create mock response with chaining
     mockRes = {
       status: jest.fn().mockReturnThis(),
-      json: jest.fn().mockReturnThis()
+      json: jest.fn().mockReturnThis(),
+      headersSent: false
     };
 
     // Create mock next function
@@ -191,6 +192,20 @@ describe('Error Handling Middleware', () => {
       const error = { message: 'Custom error object', status: 500 };
       expect(() => errorHandler(error, mockReq, mockRes, mockNext)).not.toThrow();
       expect(mockRes.status).toHaveBeenCalledWith(500);
+    });
+
+    test('should delegate to next(err) when headers are already sent', () => {
+      mockRes.headersSent = true;
+
+      const error = new Error('Stream error after headers sent');
+      errorHandler(error, mockReq, mockRes, mockNext);
+
+      // When headers are already sent, Express's built-in error handler
+      // should be invoked via next(err) to gracefully close the connection
+      expect(mockNext).toHaveBeenCalledWith(error);
+      // Should NOT attempt to send a new response
+      expect(mockRes.status).not.toHaveBeenCalled();
+      expect(mockRes.json).not.toHaveBeenCalled();
     });
   });
 });
