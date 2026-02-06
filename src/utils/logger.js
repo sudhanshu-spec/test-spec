@@ -22,7 +22,9 @@ const config = require('../config');
 
 /**
  * Resolve the effective log level based on configuration and environment.
- * Uses config.logLevel if available, otherwise defaults based on NODE_ENV.
+ * Uses config.logLevel if available, otherwise defaults based on NODE_ENV:
+ * - production: 'info'
+ * - development/test: 'debug'
  *
  * @type {string}
  */
@@ -38,7 +40,7 @@ const transports = [];
 
 // Console transport — active in all environments
 if (config.env !== 'production') {
-  // Development: colorized, human-readable output
+  // Development/test: colorized, human-readable output for easier debugging
   transports.push(
     new winston.transports.Console({
       format: winston.format.combine(
@@ -48,18 +50,20 @@ if (config.env !== 'production') {
     })
   );
 } else {
-  // Production: structured JSON output on console
+  // Production: structured JSON output on console (inherits logger-level format)
   transports.push(new winston.transports.Console());
 }
 
-// File transports — production only
+// File transports — production only to avoid polluting dev/test environments
 if (config.env === 'production') {
+  // Error-level messages go to a dedicated error log file
   transports.push(
     new winston.transports.File({
       filename: 'logs/error.log',
       level: 'error'
     })
   );
+  // All log levels are captured in the combined log file
   transports.push(
     new winston.transports.File({
       filename: 'logs/all.log'
@@ -69,7 +73,11 @@ if (config.env === 'production') {
 
 /**
  * Winston logger singleton instance.
- * All modules should import and use this same logger instance.
+ *
+ * Created with environment-aware log level, JSON formatting with timestamps,
+ * stack trace capture for errors, and conditionally configured transports.
+ * All modules should import and use this same logger instance; Node.js module
+ * caching guarantees singleton behavior across the application.
  *
  * @type {winston.Logger}
  */
@@ -85,8 +93,13 @@ const logger = winston.createLogger({
 
 /**
  * Stream interface for Morgan HTTP request logging integration.
+ *
  * Morgan writes request log lines through this stream, which pipes them
- * to Winston at the 'http' log level.
+ * to Winston at the 'http' log level. The trailing newline from Morgan's
+ * output is trimmed before passing to Winston to prevent blank lines in logs.
+ *
+ * Usage in Morgan middleware:
+ *   morgan('combined', { stream: logger.stream })
  *
  * @type {{ write: Function }}
  */
