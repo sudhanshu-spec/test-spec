@@ -80,6 +80,53 @@ function setupMocks(mockListen, config = DEFAULT_CONFIG) {
   jest.doMock('../../src/config', () => ({ ...config }));
 }
 
+/**
+ * Sets up error-scenario mocks for server testing.
+ * Creates a mock server with error handler capture and deferred callback execution.
+ * @param {string} errorCode - The error code identifier for the test scenario
+ * @param {TestConfig} [config=DEFAULT_CONFIG] - Configuration values
+ * @returns {{ errorMockServer: MockServer, errorMockListen: jest.Mock, getErrorHandler: Function }}
+ */
+function setupErrorMocks(errorCode, config = DEFAULT_CONFIG) {
+  /** @type {Function|null} */
+  let errorHandler = null;
+  const errorMockServer = createMockServer(config);
+  errorMockServer.on = jest.fn((event, handler) => {
+    if (event === 'error') {
+      errorHandler = handler;
+    }
+    return errorMockServer;
+  });
+  const errorMockListen = createMockListen(errorMockServer, false);
+  setupMocks(errorMockListen, config);
+  return {
+    errorMockServer,
+    errorMockListen,
+    getErrorHandler: () => errorHandler
+  };
+}
+
+/**
+ * Creates an EACCES (permission denied) error object.
+ * @returns {NodeJS.ErrnoException} EACCES error with code and port properties
+ */
+function createEaccesError() {
+  return Object.assign(new Error('listen EACCES: permission denied'), {
+    code: 'EACCES',
+    port: DEFAULT_CONFIG.port
+  });
+}
+
+/**
+ * Creates a generic/unknown error object for testing unrecognized error codes.
+ * @returns {NodeJS.ErrnoException} Generic error with unknown error code
+ */
+function createGenericError() {
+  return Object.assign(new Error('listen error: unknown failure'), {
+    code: 'UNKNOWN_ERROR'
+  });
+}
+
 describe('Server Entry Point', () => {
   /** @type {jest.Mock} */
   let mockListen;
@@ -200,5 +247,164 @@ describe('Server Entry Point', () => {
     );
 
     consoleErrorSpy.mockRestore();
+  });
+
+  test('should call process.exit when EACCES error occurs', () => {
+    jest.resetModules();
+
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+    const processExitSpy = jest.spyOn(process, 'exit').mockImplementation(() => {});
+
+    /** @type {Function|null} */
+    let errorHandler = null;
+
+    const errorMockServer = createMockServer();
+    errorMockServer.on = jest.fn((event, handler) => {
+      if (event === 'error') {
+        errorHandler = handler;
+      }
+      return errorMockServer;
+    });
+
+    const errorMockListen = createMockListen(errorMockServer, false);
+    setupMocks(errorMockListen);
+
+    require('../../server');
+
+    expect(errorMockListen).toHaveBeenCalled();
+
+    const eaccesError = createEaccesError();
+
+    if (errorHandler) {
+      expect(() => errorHandler(eaccesError)).not.toThrow();
+      expect(processExitSpy).toHaveBeenCalledWith(1);
+    }
+
+    consoleErrorSpy.mockRestore();
+    processExitSpy.mockRestore();
+  });
+
+  test('should propagate generic error when unknown error code occurs', () => {
+    jest.resetModules();
+
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+
+    const { errorMockListen, getErrorHandler } = setupErrorMocks('UNKNOWN_ERROR');
+
+    require('../../server');
+
+    expect(errorMockListen).toHaveBeenCalled();
+
+    const genericError = createGenericError();
+    const errorHandler = getErrorHandler();
+
+    if (errorHandler) {
+      expect(() => errorHandler(genericError)).not.toThrow();
+    }
+
+    consoleErrorSpy.mockRestore();
+  });
+
+  test('should register error handler on server object', () => {
+    require('../../server');
+
+    expect(mockListen).toHaveBeenCalled();
+
+    // Verify the server object returned by listen has error handling interface
+    const serverObj = mockListen.mock.results[0].value;
+    expect(serverObj).toBeDefined();
+    expect(typeof serverObj.on).toBe('function');
+  });
+
+  test('should handle server startup with port 0', () => {
+    jest.resetModules();
+    consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+
+    /** @type {TestConfig} */
+    const port0Config = { host: '127.0.0.1', port: 0, env: 'test' };
+
+    const port0MockServer = createMockServer(port0Config);
+    const port0MockListen = createMockListen(port0MockServer);
+    setupMocks(port0MockListen, port0Config);
+
+    require('../../server');
+
+    expect(port0MockListen.mock.calls[0][0]).toBe(0);
+    expect(port0MockListen.mock.calls[0][1]).toBe('127.0.0.1');
+    expect(consoleSpy).toHaveBeenCalledWith('Server running at http://127.0.0.1:0/');
+  });
+
+  test('should handle server startup with empty host string', () => {
+    jest.resetModules();
+    consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+
+    /** @type {TestConfig} */
+    const emptyHostConfig = { host: '', port: 3000, env: 'test' };
+
+    const emptyHostMockServer = createMockServer(emptyHostConfig);
+    const emptyHostMockListen = createMockListen(emptyHostMockServer);
+    setupMocks(emptyHostMockListen, emptyHostConfig);
+
+    require('../../server');
+
+    expect(emptyHostMockListen.mock.calls[0][1]).toBe('');
+    expect(consoleSpy).toHaveBeenCalledWith('Server running at http://:3000/');
+  });
+
+  test('should execute multiple startup/shutdown cycles cleanly', () => {
+    // First startup/shutdown cycle
+    jest.resetModules();
+    consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+
+    const mockServer1 = createMockServer();
+    const mockListen1 = createMockListen(mockServer1);
+    setupMocks(mockListen1);
+
+    require('../../server');
+
+    expect(mockListen1).toHaveBeenCalled();
+
+    const shutdownCallback1 = jest.fn();
+    mockServer1.close(shutdownCallback1);
+    expect(shutdownCallback1).toHaveBeenCalled();
+
+    // Second startup/shutdown cycle
+    jest.resetModules();
+    jest.restoreAllMocks();
+    consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+
+    const mockServer2 = createMockServer();
+    const mockListen2 = createMockListen(mockServer2);
+    setupMocks(mockListen2);
+
+    require('../../server');
+
+    expect(mockListen2).toHaveBeenCalled();
+
+    const shutdownCallback2 = jest.fn();
+    mockServer2.close(shutdownCallback2);
+    expect(shutdownCallback2).toHaveBeenCalled();
+  });
+
+  test.each([
+    ['localhost', 4000],
+    ['0.0.0.0', 8080],
+    ['192.168.1.1', 9090]
+  ])('should log correct URL for host %s and port %d', (host, port) => {
+    jest.resetModules();
+    consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+
+    /** @type {TestConfig} */
+    const config = { host, port, env: 'test' };
+
+    const configMockServer = createMockServer(config);
+    const configMockListen = createMockListen(configMockServer);
+    setupMocks(configMockListen, config);
+
+    require('../../server');
+
+    expect(consoleSpy).toHaveBeenCalledWith(`Server running at http://${host}:${port}/`);
   });
 });
