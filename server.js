@@ -43,7 +43,7 @@
 /**
  * Pre-configured Express application instance.
  * Routes and middleware are already mounted in src/app.js.
- * @type {import('express').Application}
+ * @type {express.Application}
  * @see module:src/app
  */
 // Factory Pattern: The Express app is created and configured in src/app.js without

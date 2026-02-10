@@ -1,7 +1,7 @@
 {
   "source": {
     "include": ["."],
-    "exclude": ["node_modules", "tests", "coverage", "blitzy"],
+    "exclude": ["node_modules", "tests", "coverage", "blitzy", "jest.config.js"],
     "includePattern": ".+\\.js$"
   },
   "opts": {
