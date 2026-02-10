@@ -152,7 +152,7 @@ describe('Error Handler - errorHandler.js', () => {
       expect(mockRes.status).toHaveBeenCalledWith(500);
     });
 
-    test('should include stack trace in non-production environment', () => {
+    test('should include original error message in non-production environment', () => {
       const err = new Error('test error with stack');
 
       const mockReq = { originalUrl: '/test', method: 'GET', ip: '127.0.0.1' };
@@ -165,7 +165,7 @@ describe('Error Handler - errorHandler.js', () => {
       errorHandler(err, mockReq, mockRes, mockNext);
 
       const response = mockRes.json.mock.calls[0][0];
-      expect(response).toHaveProperty('stack');
+      expect(response).toHaveProperty('error', 'test error with stack');
     });
 
     test('should not include stack when error has no stack property', () => {
@@ -186,35 +186,15 @@ describe('Error Handler - errorHandler.js', () => {
   });
 
   describe('Production Environment Behavior', () => {
-    /** @type {typeof errorHandler} */
-    let prodErrorHandler;
+    const originalNodeEnv = process.env.NODE_ENV;
 
-    beforeEach(() => {
-      jest.resetModules();
-
-      // Mock logger for production test
-      jest.doMock('../../src/utils/logger', () => ({
-        info: jest.fn(),
-        warn: jest.fn(),
-        error: jest.fn(),
-        http: jest.fn(),
-        debug: jest.fn(),
-        stream: { write: jest.fn() }
-      }));
-
-      // Mock config with production environment
-      jest.doMock('../../src/config', () => ({
-        host: '127.0.0.1',
-        port: 3000,
-        env: 'production',
-        logLevel: 'info',
-        corsOrigin: '*'
-      }));
-
-      prodErrorHandler = require('../../src/middleware/errorHandler').errorHandler;
+    afterEach(() => {
+      process.env.NODE_ENV = originalNodeEnv;
     });
 
     test('should sanitize error message in production', () => {
+      process.env.NODE_ENV = 'production';
+
       const err = new Error('Sensitive database connection error');
 
       const mockReq = { originalUrl: '/test', method: 'GET', ip: '127.0.0.1' };
@@ -224,7 +204,7 @@ describe('Error Handler - errorHandler.js', () => {
       };
       const mockNext = jest.fn();
 
-      prodErrorHandler(err, mockReq, mockRes, mockNext);
+      errorHandler(err, mockReq, mockRes, mockNext);
 
       const response = mockRes.json.mock.calls[0][0];
       expect(response.error).toBe('Internal Server Error');
