@@ -1,6 +1,6 @@
 # hao-backprop-test
 
-A Node.js tutorial server demonstrating Express.js integration with multiple HTTP endpoints.
+An Express.js web application built on Express 5.1.0, demonstrating modern framework architecture patterns including the Factory Pattern, Router Pattern, and Barrel Pattern with multiple HTTP endpoints.
 
 > **Note**: This is a test project for backprop integration.
 
@@ -127,38 +127,38 @@ curl -s http://127.0.0.1:3000/evening && echo " - Evening OK"
 
 ```
 hao-backprop-test/
-├── server.js                    # Entry point - HTTP server binding
-├── package.json                 # npm manifest and dependencies
-├── package-lock.json            # Dependency lockfile
+├── server.js                    # Entry point — Express app binding to host:port
+├── package.json                 # npm manifest — express@^5.1.0, jest@^30.2.0, supertest@^7.1.4
+├── package-lock.json            # Lockfile — deterministic dependency resolution
 ├── README.md                    # Project documentation (this file)
-├── .gitignore                   # Git ignore patterns
-├── jest.config.js               # Jest test framework configuration
+├── .gitignore                   # Git ignore — node_modules, coverage, .env, logs
+├── jest.config.js               # Jest config — node environment, coverage thresholds
 ├── src/                         # Application source root
-│   ├── app.js                   # Express application factory
-│   ├── config/                  # Configuration module
-│   │   └── index.js             # Environment variable management
-│   └── routes/                  # Routing surface
-│       ├── index.js             # Route aggregator (barrel pattern)
-│       └── main.routes.js       # Route handlers implementation
-└── tests/                       # Test suite root
-    ├── unit/                    # Isolated module tests
-    │   ├── config.test.js       # Configuration module tests
-    │   └── routes.test.js       # Route handler tests
+│   ├── app.js                   # Express application factory (Factory Pattern)
+│   ├── config/                  # Configuration layer
+│   │   └── index.js             # Twelve-Factor env config — exports {host, port, env}
+│   └── routes/                  # Express routing surface
+│       ├── index.js             # Route barrel — re-exports {mainRoutes} (Barrel Pattern)
+│       └── main.routes.js       # Express Router — GET / and GET /evening (Router Pattern)
+└── tests/                       # Jest test suite root
+    ├── unit/                    # Module contract tests
+    │   ├── config.test.js       # Config defaults, custom values, edge cases
+    │   └── routes.test.js       # Router export shape, route verification
     ├── integration/             # HTTP endpoint tests
-    │   └── endpoints.test.js    # API endpoint contract tests
+    │   └── endpoints.test.js    # Supertest-based API contract tests
     └── lifecycle/               # Server lifecycle tests
-        └── server.test.js       # Startup/shutdown tests
+        └── server.test.js       # Binding, logging, shutdown, error handling
 ```
 
 ### File Descriptions
 
-| File | Purpose |
-|------|---------|
-| `server.js` | Entry point that imports the Express app and binds it to the configured host/port |
-| `src/app.js` | Express application factory - creates and exports configured Express app with mounted routes |
-| `src/config/index.js` | Configuration module - exports `{ host, port, env }` from environment variables |
-| `src/routes/index.js` | Route aggregator using barrel pattern - centralizes route exports |
-| `src/routes/main.routes.js` | Route handlers - implements GET `/` and GET `/evening` endpoints |
+| File | Purpose | Design Pattern |
+|------|---------|----------------|
+| `server.js` | Entry point — imports the Express app and binds it to the configured host/port | Separation of Concerns |
+| `src/app.js` | Creates and configures the Express app with route mounting via `app.use('/', mainRoutes)` | Factory Pattern |
+| `src/config/index.js` | Synchronously exports `{ host, port, env }` from environment variables with safe defaults | Twelve-Factor Config |
+| `src/routes/index.js` | Aggregates and re-exports route modules as `{ mainRoutes }` for clean imports | Barrel Pattern |
+| `src/routes/main.routes.js` | Implements GET `/` and GET `/evening` endpoint handlers using `express.Router()` | Router Pattern |
 
 ## Environment Variables
 
@@ -192,22 +192,46 @@ PORT=8080 npm start
 
 ## Architecture
 
-This project follows a modular Express.js architecture with separation of concerns:
+This project follows a layered Express.js architecture with clear separation of concerns across four distinct layers:
 
 ```
 Request Flow:
 Client → server.js → Express App (src/app.js) → Router (src/routes/) → Response
-                           ↑
-                     Configuration
-                   (src/config/index.js)
+              ↑              ↑
+              |        Route Barrel
+              |     (src/routes/index.js)
+              |
+        Configuration
+      (src/config/index.js)
+```
+
+```
+Layer Diagram:
+┌─────────────────────────────────────────────────────┐
+│  Entry Point Layer          server.js                │
+│  app.listen(port, host, callback)                    │
+├─────────────────────────────────────────────────────┤
+│  Application Layer          src/app.js               │
+│  express() + app.use('/', router)                    │
+├─────────────────────────────────────────────────────┤
+│  Routing Layer              src/routes/              │
+│  express.Router() + barrel exports                   │
+├─────────────────────────────────────────────────────┤
+│  Configuration Layer        src/config/index.js      │
+│  Twelve-Factor env config with defaults              │
+└─────────────────────────────────────────────────────┘
 ```
 
 ### Design Patterns Used
 
-- **Factory Pattern**: `src/app.js` exports a configured Express app without starting the server, enabling testability
-- **Barrel Pattern**: `src/routes/index.js` aggregates route exports for clean imports
-- **CommonJS Modules**: Uses `require`/`module.exports` for Node.js compatibility
-- **Twelve-Factor App**: Configuration externalized to environment variables
+| Pattern | Location | Description |
+|---------|----------|-------------|
+| **Factory Pattern** | `src/app.js` | Creates and exports a configured Express app without calling `listen()`, enabling Supertest-based testing |
+| **Router Pattern** | `src/routes/main.routes.js` | Uses `express.Router()` to define route handlers separately from the app, enabling modular route composition |
+| **Barrel Pattern** | `src/routes/index.js` | Aggregates route modules into a single import surface for clean `require()` calls |
+| **Separation of Concerns** | `server.js` vs `src/app.js` | Server binding is isolated from app configuration, enabling independent testing and deployment |
+| **Twelve-Factor Config** | `src/config/index.js` | Configuration externalized to environment variables (`HOST`, `PORT`, `NODE_ENV`) with safe defaults |
+| **CommonJS Modules** | All `*.js` files | Consistent `require()`/`module.exports` pattern across the entire codebase |
 
 ## Dependencies
 
@@ -334,4 +358,4 @@ hao-backprop-test contributors
 
 ---
 
-*This is a tutorial project demonstrating Node.js server development with Express.js framework.*
+*This is a tutorial project demonstrating Express.js web application development with modern framework architecture patterns.*
