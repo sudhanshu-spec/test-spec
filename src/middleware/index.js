@@ -1,17 +1,19 @@
 /**
- * Middleware Pipeline Aggregator
- * 
+ * @fileoverview Middleware Pipeline Aggregator — Express Middleware Orchestrator
+ *
  * This module orchestrates the Express middleware pipeline, registering
  * security, parsing, and logging middleware in the correct order before
- * route handlers execute.
- * 
+ * route handlers execute. It exports a single applyMiddleware(app) function
+ * that is consumed by src/app.js to centrally apply all middleware to the
+ * Express application instance.
+ *
  * Middleware ordering (critical for security and correctness):
- * 1. helmet() - Security headers applied first to protect all responses
- * 2. cors() - CORS policy applied early for preflight handling
- * 3. express.json() - JSON body parsing for POST/PUT/PATCH requests
- * 4. express.urlencoded() - URL-encoded body parsing
- * 5. Morgan request logger - Logs all incoming requests after body parsing
- * 
+ * 1. helmet() — Security headers applied first to protect all responses
+ * 2. cors({ origin }) — CORS policy applied early for preflight handling
+ * 3. express.json() — JSON body parsing for POST/PUT/PATCH requests
+ * 4. express.urlencoded({ extended: true }) — URL-encoded body parsing
+ * 5. requestLogger (Morgan) — Logs all incoming requests after body parsing
+ *
  * @module src/middleware
  */
 
