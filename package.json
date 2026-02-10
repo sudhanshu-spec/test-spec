@@ -5,7 +5,14 @@
     "main": "server.js",
     "scripts": {
         "start": "node server.js",
-        "test": "echo \"Error: no test specified\" && exit 1"
+        "start:dev": "node server.js",
+        "start:prod": "NODE_ENV=production node server.js",
+        "test": "jest",
+        "test:watch": "jest --watch",
+        "test:coverage": "jest --coverage",
+        "test:ci": "jest --ci --coverage --reporters=default",
+        "pm2:start": "pm2 start ecosystem.config.js",
+        "pm2:stop": "pm2 stop ecosystem.config.js"
     },
     "author": "hxu",
     "license": "MIT",
