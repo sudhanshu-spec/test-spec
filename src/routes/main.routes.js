@@ -1,14 +1,14 @@
 /**
  * Main Application Routes Module
- * 
- * This module defines the main GET route handlers using Express Router.
- * Routes are extracted from original server.js lines 8-14 with exact
- * behavioral preservation.
- * 
- * Route contracts preserved:
- * - GET '/' returns 'Hello, World!\n' (with trailing newline)
- * - GET '/evening' returns 'Good evening' (no trailing newline)
- * 
+ *
+ * Defines the primary GET route handlers for the Express.js application
+ * using the Express Router pattern. Each handler is a synchronous arrow
+ * function that sends an exact text/html response via res.send().
+ *
+ * Route contracts:
+ * - GET '/' returns 'Hello, World!\n' (14 characters, trailing newline)
+ * - GET '/evening' returns 'Good evening' (12 characters, no trailing newline)
+ *
  * @module src/routes/main.routes
  */
 
@@ -18,8 +18,9 @@ const router = express.Router();
 
 /**
  * Root route handler
- * Responds with 'Hello, World!\n' - exact match to original server.js line 9
- * 
+ * Responds with 'Hello, World!\n' including trailing newline character.
+ * Express res.send() sets Content-Type to text/html; charset=utf-8 automatically.
+ *
  * @route GET /
  * @returns {string} 'Hello, World!\n'
  */
@@ -29,8 +30,9 @@ router.get('/', (req, res) => {
 
 /**
  * Evening route handler
- * Responds with 'Good evening' - exact match to original server.js line 13
- * 
+ * Responds with 'Good evening' without trailing newline character.
+ * Express res.send() sets Content-Type to text/html; charset=utf-8 automatically.
+ *
  * @route GET /evening
  * @returns {string} 'Good evening'
  */
