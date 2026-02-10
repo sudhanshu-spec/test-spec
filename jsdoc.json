@@ -1,0 +1,16 @@
+{
+  "source": {
+    "include": ["."],
+    "exclude": ["node_modules", "tests", "coverage", "blitzy", "jest.config.js"],
+    "includePattern": ".+\\.js$"
+  },
+  "opts": {
+    "destination": "./docs",
+    "recurse": true,
+    "readme": "./README.md"
+  },
+  "tags": {
+    "allowUnknownTags": true
+  },
+  "plugins": []
+}
