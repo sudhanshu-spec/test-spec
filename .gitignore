@@ -10,6 +10,9 @@ logs/
 *.log
 npm-debug.log*
 
+# PM2
+ecosystem.config.js
+
 # OS files
 .DS_Store
 Thumbs.db
