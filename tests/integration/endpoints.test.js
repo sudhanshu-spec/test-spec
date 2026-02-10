@@ -1,5 +1,8 @@
 /**
  * @fileoverview HTTP endpoint integration tests using Supertest
+ * Tests the Express.js application's HTTP endpoint contracts including
+ * response status codes, body content, Content-Type headers, error handling
+ * for undefined routes and unsupported methods, and edge case resilience.
  * @module tests/integration/endpoints
  */
 
@@ -13,18 +16,21 @@ const app = require('../../src/app');
  */
 
 /**
- * Makes a GET request and returns the response.
- * @param {string} path - Request path
- * @returns {Promise<SupertestResponse>} Supertest response
+ * Makes a GET request to the Express application and returns the response.
+ * Centralizes GET request creation through Supertest's request(app) binding.
+ * @param {string} path - Request path to send the GET request to
+ * @returns {Promise<SupertestResponse>} Supertest response promise
  */
 function get(path) {
   return request(app).get(path);
 }
 
 /**
- * Asserts standard successful HTML response.
- * @param {SupertestResponse} response - Supertest response object
- * @param {string} expectedBody - Expected response body
+ * Asserts that a response is a successful HTML response with expected body.
+ * Validates HTTP 200 status, exact body text match, Content-Type text/html,
+ * and charset=utf-8 encoding in the Content-Type header.
+ * @param {SupertestResponse} response - Supertest response object to validate
+ * @param {string} expectedBody - Expected response body text (exact match)
  */
 function assertSuccessfulHtmlResponse(response, expectedBody) {
   expect(response.status).toBe(200);
@@ -34,8 +40,9 @@ function assertSuccessfulHtmlResponse(response, expectedBody) {
 }
 
 /**
- * Asserts 404 error response.
- * @param {SupertestResponse} response - Supertest response object
+ * Asserts that a response is a 404 error with a defined response body.
+ * Validates HTTP 404 status and that the response text is present.
+ * @param {SupertestResponse} response - Supertest response object to validate
  */
 function assert404Response(response) {
   expect(response.status).toBe(404);
