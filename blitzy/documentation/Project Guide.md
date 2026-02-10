@@ -1,933 +1,439 @@
-# Express.js Migration - Comprehensive Project Guide
+# Project Guide — Hello World Tutorial Server: Production Enhancement
 
-## Executive Summary
+## 1. Executive Summary
 
-### Project Completion Status
+This project enhances the existing Hello World Tutorial Server — a minimal Express.js 5.x application — into a production-ready HTTP server with enterprise-grade middleware, structured logging, externalized environment configuration, and PM2 process management.
 
-**Completion: 87% (10 hours completed out of 11.5 total hours)**
-
-This Express.js migration project has achieved full technical completion with all implementation requirements met and validated. The migration from vanilla Node.js HTTP server to Express.js 5.1.0 framework has been successfully completed, tested, and verified as production-ready.
-
-**Hours Breakdown:**
-- **Completed Work:** 10 hours
-  - Dependency installation & configuration: 2 hours
-  - Server refactoring (server.js): 4 hours
-  - Validation & endpoint testing: 3 hours
-  - Code review & documentation: 1 hour
-- **Remaining Work:** 1.5 hours
-  - Final human code review: 1 hour
-  - Documentation verification & sign-off: 0.5 hours
-- **Total Project Hours:** 11.5 hours
-
-**Formula:** 10 completed hours / (10 + 1.5) total hours = 10 / 11.5 = **87.0% complete**
+**55 hours of development work have been completed out of an estimated 65 total hours required, representing 84.6% project completion.**
 
 ### Key Achievements
+- All 23 planned source, test, configuration, and documentation files were created or modified as specified in the Agent Action Plan
+- 111 tests pass across 7 test suites with **100% code coverage** (statements, branches, functions, lines)
+- All three endpoints verified at runtime: `GET /` → `"Hello, World!\n"`, `GET /evening` → `"Good evening"`, `GET /health` → JSON status
+- Full production middleware pipeline operational: Helmet → CORS → JSON parsing → Routes → Error handler
+- Winston structured logging and Morgan HTTP request logging fully integrated
+- PM2 ecosystem configuration ready for cluster-mode production deployment
+- Zero unresolved compilation, test, or runtime errors
 
-✅ **Express.js 5.1.0 Framework Integration**
-- Successfully migrated from native `http.createServer()` to Express.js application pattern
-- Added Express.js ^5.1.0 as project dependency (69 total packages installed)
-- Zero vulnerabilities detected in security audit
-
-✅ **Complete Server Refactoring (server.js)**
-- Transformed 15-line HTTP server into 19-line Express.js application
-- Implemented route-based architecture with explicit path handlers
-- Maintained identical external behavior for existing root endpoint
-
-✅ **Dual Endpoint Implementation**
-- GET `/` endpoint: Returns "Hello, World!\n" (preserved existing functionality)
-- GET `/evening` endpoint: Returns "Good evening" (new feature)
-- Both endpoints tested and verified working correctly
-
-✅ **Configuration Updates (package.json)**
-- Corrected "main" field from "index.js" to "server.js"
-- Added "start" script enabling `npm start` command
-- Added "dependencies" section with Express.js declaration
-
-✅ **100% Validation Success**
-- ✅ Dependency installation: Express.js 5.1.0 installed successfully
-- ✅ Code compilation: Syntax check passed with zero errors
-- ✅ Application runtime: Server starts and runs without errors
-- ✅ Endpoint verification: All routes return expected responses
-- ✅ Security audit: 0 vulnerabilities found
-- ✅ Git integrity: All changes committed, working tree clean
-
-### Critical Unresolved Issues
-
-**None.** All implementation requirements have been completed successfully. The validation process found zero compilation errors, zero runtime errors, and zero security vulnerabilities.
-
-### Recommended Next Steps
-
-1. **Human Code Review** (1 hour) - Senior developer review and approval of Express.js migration approach
-2. **Final Documentation Sign-off** (0.5 hours) - Verify all documentation requirements met
+### Remaining Work (10 hours)
+The remaining 10 hours consist of human-driven production deployment tasks: code review, production environment configuration, PM2 cluster validation, security header customization, CORS policy restriction, and production smoke testing.
 
 ---
 
-## Validation Results Summary
+## 2. Validation Results Summary
 
-### Final Validator Accomplishments
+### 2.1 Test Execution Results
+| Metric | Result |
+|--------|--------|
+| Test Suites | 7 passed, 7 total (100%) |
+| Test Cases | 111 passed, 111 total (100%) |
+| Snapshots | 0 total |
+| Execution Time | ~1.6 seconds |
 
-The Final Validator agent completed comprehensive validation with **100% success across all production-readiness gates**:
+### 2.2 Code Coverage
+| Metric | Result | Threshold | Status |
+|--------|--------|-----------|--------|
+| Statements | 100% | ≥ 80% | ✅ Exceeded |
+| Branches | 100% | ≥ 75% | ✅ Exceeded |
+| Functions | 100% | ≥ 90% | ✅ Exceeded |
+| Lines | 100% | ≥ 80% | ✅ Exceeded |
 
-**GATE 1: Dependency Installation ✅**
-- Express.js 5.1.0 installed successfully
-- 68 transitive dependencies installed correctly
-- Verification: `npm list express` → express@5.1.0 ✅
-- Security: 0 vulnerabilities
+### 2.3 Coverage by Source File
+| File | Statements | Branches | Functions | Lines |
+|------|-----------|----------|-----------|-------|
+| server.js | 100% | 100% | 100% | 100% |
+| src/app.js | 100% | 100% | 100% | 100% |
+| src/config/index.js | 100% | 100% | 100% | 100% |
+| src/middleware/error.middleware.js | 100% | 100% | 100% | 100% |
+| src/middleware/morgan.middleware.js | 100% | 100% | 100% | 100% |
+| src/routes/health.routes.js | 100% | 100% | 100% | 100% |
+| src/routes/index.js | 100% | 100% | 100% | 100% |
+| src/routes/main.routes.js | 100% | 100% | 100% | 100% |
+| src/utils/logger.js | 100% | 100% | 100% | 100% |
 
-**GATE 2: Code Compilation ✅**
-- Syntax validation: `node -c server.js` passed
-- Zero compilation errors
-- Express.js API usage verified correct
+### 2.4 Runtime Validation
+| Endpoint | Expected | Actual | Status |
+|----------|----------|--------|--------|
+| `GET /` | 200, `"Hello, World!\n"` | 200, `"Hello, World!\n"` | ✅ Pass |
+| `GET /evening` | 200, `"Good evening"` | 200, `"Good evening"` | ✅ Pass |
+| `GET /health` | 200, JSON `{status, uptime, timestamp}` | 200, JSON `{status:"ok", uptime, timestamp}` | ✅ Pass |
+| `GET /nonexistent` | 404 | 404 | ✅ Pass |
 
-**GATE 3: Test Suite Execution ✅**
-- Status: N/A (no test suite present in tutorial project)
-- Default npm test placeholder present
-- No test failures (as expected for this project scope)
+### 2.5 Dependency Status
+All 531 packages installed successfully via `npm ci`. Installed runtime and dev dependencies:
 
-**GATE 4: Application Runtime ✅**
-- Server startup: Successful with both `npm start` and `node server.js`
-- Console output: "Server running at http://127.0.0.1:3000/" ✅
-- Endpoint testing results:
-  - `GET /` → "Hello, World!\n" ✅ (exact match including newline)
-  - `GET /evening` → "Good evening" ✅ (exact match, no newline)
-  - `GET /nonexistent` → Express.js 404 HTML response ✅
-- Runtime errors: Zero errors during execution
+| Package | Version | Type |
+|---------|---------|------|
+| express | 5.1.0 | Runtime |
+| cors | 2.8.6 | Runtime |
+| dotenv | 17.2.4 | Runtime |
+| helmet | 8.1.0 | Runtime |
+| morgan | 1.10.1 | Runtime |
+| winston | 3.19.0 | Runtime |
+| jest | 30.2.0 | Dev |
+| pm2 | 6.0.14 | Dev |
+| supertest | 7.2.2 | Dev |
 
-### Compilation Results by Component
+### 2.6 Fixes Applied During Validation
+- `server.js`: Formatting and readability improvements — moved `'use strict'` to line 1, added `@fileoverview` JSDoc, condensed verbose comments (57 lines, zero functionality changes)
+- `.gitignore`: Restored `coverage/` exclusion pattern and added `logs/*.log` pattern
+- `tests/unit/error-middleware.test.js`: Added `headersSent` edge case test to achieve 100% branch coverage
 
-| Component | Status | Details |
-|-----------|--------|---------|
-| server.js | ✅ PASS | Express.js syntax validated, all routes compile correctly |
-| package.json | ✅ PASS | Valid JSON, all fields properly structured |
-| Dependencies | ✅ PASS | Express.js 5.1.0 + 68 packages installed, 0 vulnerabilities |
-
-### Test Execution Summary
-
-**Test Suite:** Not applicable (tutorial project with no automated tests)
-
-**Manual Endpoint Testing:**
-- ✅ Root endpoint (GET /): Returns "Hello, World!\n" as expected
-- ✅ Evening endpoint (GET /evening): Returns "Good evening" as expected  
-- ✅ 404 handling: Undefined routes return Express.js default 404 page
-
-**Test Coverage:** Manual verification complete for all implemented endpoints
-
-### Runtime Validation Results
-
-**Server Startup:**
-```bash
-npm start
-> hello_world@1.0.0 start
-> node server.js
-Server running at http://127.0.0.1:3000/
-```
-✅ Server starts successfully on 127.0.0.1:3000
-
-**Endpoint Responses:**
-```bash
-curl http://127.0.0.1:3000/
-Hello, World!
-
-curl http://127.0.0.1:3000/evening
-Good evening
-```
-✅ All endpoints return expected responses
-
-**Security Audit:**
-```bash
-npm audit
-found 0 vulnerabilities
-```
-✅ No security vulnerabilities detected
-
-### Dependency Status
-
-**Primary Dependency:**
-- express@5.1.0 ✅ Installed and verified
-
-**Transitive Dependencies:**
-- 68 packages installed successfully
-- All compatibility requirements met (Node.js v20.19.5 satisfies Express 5.x requirement of Node 18+)
-
-### Fixes Applied During Validation
-
-**Issues Found:** 0  
-**Issues Fixed:** 0  
-**Issues Remaining:** 0
-
-The validation process found no errors or issues. The implementation by previous agents (Setup Agent and Implementation Agent) was complete and correct, requiring no fixes or modifications.
+### 2.7 Production-Readiness Gates
+- [✅] GATE 1: 100% test pass rate (111/111, zero failures, zero skipped)
+- [✅] GATE 2: Application runtime validated (starts, serves all endpoints correctly)
+- [✅] GATE 3: Zero unresolved errors (compilation, test, and runtime all clean)
+- [✅] GATE 4: All in-scope files validated and working
 
 ---
 
-## Project Hours Breakdown
+## 3. Hours Breakdown and Completion Assessment
 
-### Visual Representation
+### 3.1 Hours Calculation
+
+**Completed Hours: 55h**
+
+| Component | Files | Lines | Hours |
+|-----------|-------|-------|-------|
+| Configuration Foundation (dotenv, .env, .env.example, .gitignore) | 4 | 67 | 3.5 |
+| Logging Infrastructure (Winston logger, Morgan middleware) | 2 | 174 | 6 |
+| Middleware Pipeline (error handler, app.js restructure) | 2 | 164 | 6 |
+| Routing Expansion (health route, barrel export) | 2 | 57 | 2 |
+| Server Entry Point (Morgan/Winston integration) | 1 | 57 | 2 |
+| PM2 Deployment Configuration | 2 | 247 | 4 |
+| Test Suite (7 files, 111 test cases) | 7 | 1,453 | 20 |
+| Documentation (README, JSDoc comments) | 1 | 616 | 6 |
+| Integration, Debugging, Validation | — | — | 5 |
+| Jest Configuration | 1 | 29 | 0.5 |
+| **Total Completed** | **22** | **2,864** | **55** |
+
+**Remaining Hours: 10h**
+
+| Task | Base Hours | After Multipliers |
+|------|-----------|-------------------|
+| Code Review and Approval | 2 | 2 |
+| Production .env Configuration | 0.5 | 1 |
+| CORS Policy Customization | 0.5 | 1 |
+| PM2 Production Cluster Validation | 1.5 | 2 |
+| Helmet Security Headers Review | 0.5 | 1 |
+| Production Smoke Testing | 1.5 | 2 |
+| npm Audit Vulnerability Review | 0.5 | 1 |
+| **Total Remaining** | **7** | **10** |
+
+*Enterprise multipliers applied: 1.15 (compliance) × 1.25 (uncertainty) ≈ 1.43× on remaining tasks*
+
+### 3.2 Completion Calculation
+
+- **Completed**: 55 hours
+- **Remaining**: 10 hours
+- **Total**: 65 hours
+- **Completion**: 55 / 65 = **84.6%**
+
+### 3.3 Visual Representation
 
 ```mermaid
-pie title Project Hours Breakdown (Total: 11.5 hours)
-    "Completed Work" : 10
-    "Remaining Work" : 1.5
+pie title Project Hours Breakdown
+    "Completed Work" : 55
+    "Remaining Work" : 10
 ```
-
-### Detailed Hours Analysis
-
-**Completed Work: 10 hours (87%)**
-
-| Category | Hours | Description |
-|----------|-------|-------------|
-| Dependency Installation & Configuration | 2.0 | Express.js 5.x compatibility research, npm installation, package.json updates (main, scripts, dependencies) |
-| Server Refactoring | 4.0 | Analysis of HTTP server implementation, Express.js pattern refactoring, route handler implementation (GET / and GET /evening) |
-| Validation & Testing | 3.0 | Syntax validation, runtime testing, endpoint verification, security audit, git verification |
-| Code Review & Documentation | 1.0 | Inline code review, commit messages, agent logs preparation |
-| **Total Completed** | **10.0** | **All technical implementation complete** |
-
-**Remaining Work: 1.5 hours (13%)**
-
-| Category | Hours | Description |
-|----------|-------|-------------|
-| Final Human Code Review | 1.0 | Senior developer review of Express.js migration approach and implementation quality |
-| Documentation Verification | 0.5 | Final verification of README preservation and package.json metadata accuracy |
-| **Total Remaining** | **1.5** | **Human review and sign-off only** |
-
-**Total Project Hours: 11.5**
 
 ---
 
-## Detailed Task Table for Human Developers
+## 4. Implemented Features vs. Agent Action Plan
 
-### Remaining Tasks Summary
+### 4.1 Feature Completion Matrix
 
-All technical implementation is complete. The following tasks represent final human review and sign-off activities required before production deployment.
+| Planned Feature | Status | Evidence |
+|----------------|--------|----------|
+| Express.js middleware pipeline (Helmet, CORS, JSON, error handler) | ✅ Complete | `src/app.js` — 80 lines, full pipeline |
+| Health-check endpoint (`GET /health`) | ✅ Complete | `src/routes/health.routes.js` — returns JSON status |
+| Barrel route export update | ✅ Complete | `src/routes/index.js` — exports `mainRoutes` + `healthRoutes` |
+| Dotenv environment configuration | ✅ Complete | `src/config/index.js` — `require('dotenv').config()` at top |
+| `.env` and `.env.example` files | ✅ Complete | Both files created with HOST, PORT, NODE_ENV, LOG_LEVEL |
+| Winston logger singleton | ✅ Complete | `src/utils/logger.js` — 112 lines, environment-aware |
+| Morgan-to-Winston bridge middleware | ✅ Complete | `src/middleware/morgan.middleware.js` — 62 lines |
+| Centralized error handler | ✅ Complete | `src/middleware/error.middleware.js` — 84 lines |
+| Server.js Morgan + Winston integration | ✅ Complete | `server.js` — Morgan mounted, logger.info for startup |
+| PM2 ecosystem configuration | ✅ Complete | `ecosystem.config.js` — 226 lines, cluster mode |
+| PM2 npm scripts | ✅ Complete | `package.json` — pm2:start/stop/restart/logs |
+| New runtime dependencies | ✅ Complete | cors, dotenv, helmet, morgan, winston installed |
+| PM2 dev dependency | ✅ Complete | pm2@6.0.14 in devDependencies |
+| Jest config coverage expansion | ✅ Complete | `jest.config.js` — includes middleware + utils paths |
+| .gitignore updates | ✅ Complete | `.env`, `logs/`, `logs/*.log` patterns added |
+| README.md documentation | ✅ Complete | 616 lines — middleware, logging, PM2 docs |
+| `logs/` directory + `.gitkeep` | ✅ Complete | Directory created with placeholder |
+| Unit tests for logger | ✅ Complete | `tests/unit/logger.test.js` — 306 lines, 27 tests |
+| Unit tests for error middleware | ✅ Complete | `tests/unit/error-middleware.test.js` — 297 lines, 15 tests |
+| Unit tests for Morgan middleware | ✅ Complete | `tests/unit/morgan-middleware.test.js` — 94 lines, 6 tests |
+| Updated config tests | ✅ Complete | `tests/unit/config.test.js` — 171 lines, 16 tests |
+| Updated routes tests | ✅ Complete | `tests/unit/routes.test.js` — 147 lines, 15 tests |
+| Updated integration tests | ✅ Complete | `tests/integration/endpoints.test.js` — 179 lines, 21 tests |
+| Updated lifecycle tests | ✅ Complete | `tests/lifecycle/server.test.js` — 259 lines, 7 tests |
+| Backward compatibility preserved | ✅ Complete | `GET /` and `GET /evening` return identical responses |
+| All 41+ original tests pass | ✅ Complete | All 111 tests pass (expanded from original 41) |
+| Coverage thresholds maintained | ✅ Complete | 100% across all metrics, exceeding all thresholds |
 
-| # | Task Description | Action Steps | Priority | Severity | Hours |
-|---|------------------|--------------|----------|----------|-------|
-| 1 | **Final Code Review** | Review server.js Express.js implementation for code quality, best practices adherence, and maintainability. Verify route handlers follow Express.js conventions. Approve migration approach. | High | Low | 1.0 |
-| 2 | **Documentation Verification** | Verify README.md preserved unchanged per requirements. Review package.json metadata (name, version, description, author, license) for accuracy. Confirm start script works correctly. | Medium | Low | 0.5 |
-| **TOTAL REMAINING HOURS** | | | | | **1.5** |
-
-### Task Details
-
-#### Task 1: Final Code Review (1.0 hour)
-
-**Description:** Conduct comprehensive code review of the Express.js migration implementation.
-
-**Action Steps:**
-1. Review server.js implementation (19 lines)
-   - Verify Express.js import and app initialization
-   - Check route handler implementations (GET / and GET /evening)
-   - Confirm proper use of res.send() method
-   - Validate app.listen() configuration
-2. Verify code quality standards
-   - Consistent 2-space indentation maintained
-   - Template literals used appropriately
-   - Constants preserved (hostname, port)
-   - Console.log message format preserved
-3. Assess Express.js best practices adherence
-   - Route definitions use explicit HTTP methods (app.get)
-   - Response handling follows Express.js conventions
-   - Error handling relies on Express.js defaults (acceptable for tutorial project)
-4. Approve migration approach
-   - Confirm lift-and-shift pattern appropriately applied
-   - Verify backward compatibility for root endpoint
-   - Validate new /evening endpoint functionality
-5. Sign off on implementation quality
-
-**Priority:** High  
-**Severity:** Low (no blocking issues, quality assurance only)  
-**Estimated Hours:** 1.0  
-**Dependencies:** None  
-**Assigned To:** Senior Developer / Tech Lead
-
-#### Task 2: Documentation Verification (0.5 hours)
-
-**Description:** Verify all documentation requirements met and metadata accurate.
-
-**Action Steps:**
-1. Verify README.md preservation
-   - Confirm README.md content unchanged (contains "Do not touch!" directive)
-   - Validate file is byte-for-byte identical to original
-2. Review package.json metadata
-   - Verify "main": "server.js" (corrected from "index.js")
-   - Verify "scripts.start": "node server.js" added
-   - Verify "dependencies": {"express": "^5.1.0"} present
-   - Check name, version, description, author, license fields for accuracy
-3. Test start script
-   - Execute `npm start` to confirm it launches server correctly
-   - Verify console output matches expected format
-4. Sign off on documentation completeness
-
-**Priority:** Medium  
-**Severity:** Low (documentation verification, non-blocking)  
-**Estimated Hours:** 0.5  
-**Dependencies:** Task 1 (Code Review)  
-**Assigned To:** Technical Writer / Senior Developer
+**Result: 26/26 planned deliverables completed (100% of in-scope items)**
 
 ---
 
-## Complete Development Guide
+## 5. Detailed Human Task List
 
-### System Prerequisites
+### 5.1 Task Table
 
-**Required Software:**
+| # | Task | Description | Priority | Severity | Hours | Confidence |
+|---|------|-------------|----------|----------|-------|------------|
+| 1 | Code Review and Approval | Review all 23 modified files for code quality, patterns, and production readiness. Verify middleware ordering, error handling edge cases, and Winston transport configuration. | High | Medium | 2 | High |
+| 2 | Production .env Configuration | Create production `.env` file with real HOST (0.0.0.0), PORT, NODE_ENV=production, and LOG_LEVEL=info. Ensure `.env` is not committed to version control. | High | High | 1 | High |
+| 3 | CORS Policy Customization | Replace default permissive CORS configuration in `src/app.js` with specific allowed origins, methods, and headers for production API consumers. Update `cors()` call with options object. | Medium | High | 1 | High |
+| 4 | PM2 Production Cluster Validation | Deploy with `npx pm2 start ecosystem.config.js --env production` on target server. Validate cluster-mode spawning, graceful restarts, and memory-bounded operation. Test `pm2 reload` for zero-downtime deployment. | Medium | Medium | 2 | Medium |
+| 5 | Helmet Security Headers Review | Review default Helmet CSP and security header configuration. Customize Content-Security-Policy directives if frontend assets are served. Verify X-Frame-Options and HSTS settings match organizational security policy. | Medium | Medium | 1 | High |
+| 6 | Production Smoke Testing | Execute end-to-end smoke tests against all three endpoints (`/`, `/evening`, `/health`) in the target production environment. Verify Winston file transport writes to `logs/error.log` and `logs/all.log`. Confirm Morgan combined-format logging in production mode. | Medium | Medium | 2 | Medium |
+| 7 | npm Audit Vulnerability Review | Review 2 npm audit findings: body-parser moderate severity DoS (fixable via `npm audit fix`) and pm2 low severity ReDoS (no fix available). Assess risk for production deployment and document accepted risks. | Low | Low | 1 | High |
+| | **Total Remaining Hours** | | | | **10** | |
 
-| Software | Minimum Version | Purpose | Installation |
-|----------|----------------|---------|--------------|
-| Node.js | 18.0.0+ | JavaScript runtime (Express 5.x requirement) | https://nodejs.org/ |
-| npm | 7.0.0+ | Package manager | Included with Node.js |
-| curl | Any | API testing (optional) | Pre-installed on macOS/Linux, Windows: https://curl.se/ |
+### 5.2 Task Dependency Order
 
-**System Requirements:**
-- Operating System: macOS, Linux, or Windows
-- RAM: 256 MB minimum
-- Disk Space: 100 MB (includes node_modules)
-- Network: Internet connection required for initial npm install
+1. **Code Review and Approval** (Task 1) — prerequisite for all other tasks
+2. **Production .env Configuration** (Task 2) — required before deployment tasks
+3. **CORS Policy Customization** (Task 3) and **Helmet Security Headers Review** (Task 5) — can be parallelized
+4. **PM2 Production Cluster Validation** (Task 4) — requires Tasks 2, 3, 5 complete
+5. **Production Smoke Testing** (Task 6) — final validation after all configuration
+6. **npm Audit Vulnerability Review** (Task 7) — can be done at any time
 
-**Current Environment Verified:**
-- Node.js: v20.19.5 ✅ (satisfies requirement)
-- npm: 10.8.2 ✅
-- Express.js: 5.1.0 ✅
+---
 
-### Environment Setup
+## 6. Development Guide
 
-**Step 1: Verify Node.js Installation**
+### 6.1 System Prerequisites
 
-```bash
-node --version
-# Expected output: v18.0.0 or higher (v20.19.5 recommended)
+| Requirement | Minimum Version | Recommended Version | Verified In This Build |
+|-------------|-----------------|---------------------|----------------------|
+| Node.js | 18.x | 20.19.x (LTS) | v20.20.0 |
+| npm | 8.x | 10.x+ | 11.1.0 |
+| Git | 2.x | 2.30+ | Available |
 
-npm --version
-# Expected output: v7.0.0 or higher (v10.8.2 recommended)
-```
+### 6.2 Environment Setup
 
-**Step 2: Navigate to Project Directory**
-
-```bash
-cd /path/to/hello_world
-# Replace /path/to/hello_world with your actual project path
-```
-
-**Step 3: Verify Project Files Present**
+**Step 1: Clone the repository and switch to the feature branch**
 
 ```bash
-ls -la
-# Expected files:
-# - README.md (73 bytes)
-# - package.json (345 bytes)
-# - package-lock.json (34,769 bytes)
-# - server.js (348 bytes)
-# - .gitignore (172 bytes)
+git clone <repository-url>
+cd <repository-name>
+git checkout blitzy-a1ecb8ea-866c-4b58-9d59-10aeb3dd46f3
 ```
 
-**Environment Variables:**
-
-No environment variables required. The server uses hard-coded configuration:
-- Hostname: 127.0.0.1 (localhost)
-- Port: 3000
-
-To customize, edit server.js lines 3-4:
-```javascript
-const hostname = '127.0.0.1';  // Change to '0.0.0.0' for external access
-const port = 3000;              // Change to desired port number
-```
-
-### Dependency Installation
-
-**Step 1: Install Express.js and Dependencies**
+**Step 2: Create the environment configuration file**
 
 ```bash
-npm install
+cp .env.example .env
 ```
 
-**Expected Output:**
+The default `.env` values are suitable for local development:
 ```
-added 69 packages, and audited 69 packages in 2s
-
-12 packages are looking for funding
-  run `npm fund` for details
-
-found 0 vulnerabilities
+HOST=127.0.0.1
+PORT=3000
+NODE_ENV=development
+LOG_LEVEL=info
 ```
 
-**Verification:**
-```bash
-npm list express
-# Expected output:
-# hello_world@1.0.0 /path/to/project
-# └── express@5.1.0
-```
-
-**Step 2: Verify Dependency Installation**
+### 6.3 Dependency Installation
 
 ```bash
-ls -la node_modules/ | wc -l
-# Expected output: ~70 (68 packages + 2 directory entries)
-
-npm audit
-# Expected output: found 0 vulnerabilities
+npm ci
 ```
 
-**Troubleshooting Dependency Installation:**
+**Expected output** (final lines):
+```
+added 531 packages, and audited 532 packages in Xs
+```
 
-| Issue | Solution |
-|-------|----------|
-| `npm install` fails with permission error | Run with `sudo npm install` (Linux/macOS) or run terminal as Administrator (Windows) |
-| `Cannot find module 'express'` after install | Delete node_modules and package-lock.json, then run `npm install` again |
-| Slow installation speed | Try `npm install --verbose` to see progress, or use `npm install --registry https://registry.npmjs.org/` |
+All 9 direct dependencies will be installed:
+- Runtime: express@5.1.0, cors@2.8.6, dotenv@17.2.4, helmet@8.1.0, morgan@1.10.1, winston@3.19.0
+- Dev: jest@30.2.0, pm2@6.0.14, supertest@7.2.2
 
-### Application Startup
+### 6.4 Running Tests
 
-**Method 1: Using npm start (Recommended)**
+**Run the full test suite with coverage:**
+
+```bash
+CI=true npx jest --ci --coverage --watchAll=false
+```
+
+**Expected output:**
+```
+Test Suites: 7 passed, 7 total
+Tests:       111 passed, 111 total
+```
+
+Coverage table should show 100% across all source files and all metrics (Statements, Branches, Functions, Lines).
+
+**Run tests in watch mode during development:**
+
+```bash
+npm run test:watch
+```
+
+### 6.5 Application Startup
+
+**Start the server:**
 
 ```bash
 npm start
 ```
 
-**Expected Output:**
-```
-> hello_world@1.0.0 start
-> node server.js
-
-Server running at http://127.0.0.1:3000/
-```
-
-**Method 2: Direct Node.js Execution**
-
-```bash
-node server.js
-```
-
-**Expected Output:**
+**Expected output:**
 ```
 Server running at http://127.0.0.1:3000/
 ```
 
-**Background Execution (Optional):**
+The server binds to the HOST and PORT values from `.env` (defaults: 127.0.0.1:3000).
+
+**Start with custom configuration:**
 
 ```bash
-# Start server in background
-npm start &
-# or
-node server.js &
-
-# Check if server is running
-ps aux | grep node
-
-# Stop background server
-pkill -f "node server.js"
+HOST=0.0.0.0 PORT=8080 NODE_ENV=production npm start
 ```
 
-**Server Startup Sequence:**
+### 6.6 Verification Steps
 
-1. Node.js loads server.js
-2. Express module imported (`require('express')`)
-3. Express application initialized (`express()`)
-4. Routes registered:
-   - GET / → "Hello, World!\n"
-   - GET /evening → "Good evening"
-5. Server binds to 127.0.0.1:3000
-6. Console displays startup message
-7. Server ready to accept requests
+After starting the server, verify all endpoints:
 
-### Verification Steps
-
-**Step 1: Verify Server is Running**
-
-Check console output for:
-```
-Server running at http://127.0.0.1:3000/
-```
-
-**Step 2: Test Root Endpoint**
-
-Using curl:
 ```bash
+# Root endpoint
 curl http://127.0.0.1:3000/
-# Expected output: Hello, World!
-```
+# Expected: Hello, World!
 
-Using browser:
-- Open http://127.0.0.1:3000/ in web browser
-- Expected display: `Hello, World!` (with newline)
-
-**Step 3: Test Evening Endpoint**
-
-Using curl:
-```bash
+# Evening endpoint
 curl http://127.0.0.1:3000/evening
-# Expected output: Good evening
+# Expected: Good evening
+
+# Health check endpoint
+curl http://127.0.0.1:3000/health
+# Expected: {"status":"ok","uptime":<number>,"timestamp":<number>}
 ```
 
-Using browser:
-- Open http://127.0.0.1:3000/evening in web browser
-- Expected display: `Good evening`
+### 6.7 PM2 Production Deployment
 
-**Step 4: Test 404 Handling**
+**Start with PM2 (development mode):**
 
 ```bash
-curl http://127.0.0.1:3000/nonexistent
-# Expected output: Express.js default 404 HTML error page
+npm run pm2:start
 ```
 
-**Step 5: Verify No Errors in Console**
-
-Check terminal running the server for any error messages. Expected: No errors logged.
-
-**Comprehensive Verification Checklist:**
-
-- ✅ `npm start` launches server without errors
-- ✅ Console displays "Server running at http://127.0.0.1:3000/"
-- ✅ `curl http://127.0.0.1:3000/` returns "Hello, World!\n"
-- ✅ `curl http://127.0.0.1:3000/evening` returns "Good evening"
-- ✅ `curl http://127.0.0.1:3000/other` returns Express 404 page
-- ✅ No error messages in server console
-- ✅ Server responds within reasonable time (<100ms)
-
-### Example Usage
-
-**Basic API Testing with curl:**
+**Start with PM2 (production cluster mode):**
 
 ```bash
-# Test root endpoint
-curl -v http://127.0.0.1:3000/
-# Response: Hello, World!\n
-# Status: 200 OK
-# Content-Type: text/html; charset=utf-8
-
-# Test evening endpoint
-curl -v http://127.0.0.1:3000/evening
-# Response: Good evening
-# Status: 200 OK
-# Content-Type: text/html; charset=utf-8
-
-# Test undefined route (404)
-curl -v http://127.0.0.1:3000/undefined
-# Response: Express.js HTML 404 error page
-# Status: 404 Not Found
+npx pm2 start ecosystem.config.js --env production
 ```
 
-**Browser Testing:**
-
-1. Start server: `npm start`
-2. Open browser to http://127.0.0.1:3000/
-3. Verify page displays: "Hello, World!"
-4. Navigate to http://127.0.0.1:3000/evening
-5. Verify page displays: "Good evening"
-
-**Automated Testing Script:**
+**Other PM2 commands:**
 
 ```bash
-#!/bin/bash
-# test-server.sh - Automated endpoint testing
-
-echo "Starting server..."
-npm start &
-SERVER_PID=$!
-sleep 2
-
-echo "Testing root endpoint..."
-curl -s http://127.0.0.1:3000/ | grep -q "Hello, World" && echo "✅ Root endpoint OK" || echo "❌ Root endpoint FAILED"
-
-echo "Testing evening endpoint..."
-curl -s http://127.0.0.1:3000/evening | grep -q "Good evening" && echo "✅ Evening endpoint OK" || echo "❌ Evening endpoint FAILED"
-
-echo "Stopping server..."
-kill $SERVER_PID
-echo "Tests complete"
+npm run pm2:stop       # Stop the managed process(es)
+npm run pm2:restart    # Restart the managed process(es)
+npm run pm2:logs       # View PM2 log output
+npx pm2 list           # View running PM2 processes
+npx pm2 reload ecosystem.config.js  # Zero-downtime reload
 ```
 
-**Development Workflow:**
+### 6.8 Project Structure
 
-1. Make code changes to server.js
-2. Stop server (Ctrl+C in terminal)
-3. Restart server: `npm start`
-4. Test endpoints with curl or browser
-5. Verify expected behavior
-6. Commit changes: `git add . && git commit -m "Description"`
-
-**Production Considerations:**
-
-For production deployment, consider:
-- Change hostname from 127.0.0.1 to 0.0.0.0 for external access
-- Use environment variables for configuration (port, hostname)
-- Implement process manager (PM2, systemd)
-- Add logging middleware (morgan)
-- Configure reverse proxy (nginx, Apache)
-- Enable HTTPS/TLS encryption
+```
+├── server.js                          # HTTP entry point (Morgan + Winston integration)
+├── src/
+│   ├── app.js                         # Express factory (Helmet → CORS → JSON → Routes → Error)
+│   ├── config/
+│   │   └── index.js                   # Dotenv-backed config (host, port, env, logLevel)
+│   ├── middleware/
+│   │   ├── error.middleware.js        # Centralized error handler (4-arg Express middleware)
+│   │   └── morgan.middleware.js       # Morgan → Winston HTTP logging bridge
+│   ├── routes/
+│   │   ├── index.js                   # Barrel pattern aggregator
+│   │   ├── main.routes.js            # GET / and GET /evening
+│   │   └── health.routes.js          # GET /health (JSON status)
+│   └── utils/
+│       └── logger.js                  # Winston logger singleton
+├── tests/
+│   ├── unit/                          # 5 unit test files (config, routes, logger, error, morgan)
+│   ├── integration/                   # Endpoint integration tests via Supertest
+│   └── lifecycle/                     # Server startup/shutdown lifecycle tests
+├── ecosystem.config.js                # PM2 cluster-mode configuration
+├── .env                               # Local environment variables (not committed)
+├── .env.example                       # Environment variable template (committed)
+├── jest.config.js                     # Jest config with coverage thresholds
+├── package.json                       # Dependencies and npm scripts
+└── logs/                              # Winston file transport output (production)
+    └── .gitkeep
+```
 
 ---
 
-## Risk Assessment
+## 7. Risk Assessment
 
-### Risk Categories and Mitigation
+### 7.1 Technical Risks
 
-**Overall Risk Level: LOW** ✅
+| Risk | Severity | Likelihood | Mitigation |
+|------|----------|------------|------------|
+| PM2 ReDoS vulnerability (GHSA-x5gf-qvw8-r2rm) | Low | Low | PM2 is a dev dependency only; monitor for upstream fix; avoid untrusted input to PM2 CLI |
+| body-parser DoS vulnerability (GHSA-wqch-xfxh-vrr4) | Moderate | Low | Run `npm audit fix` to update body-parser to patched version; validate in tests |
+| Winston file transport disk exhaustion in production | Medium | Medium | Implement log rotation via `winston-daily-rotate-file` or OS-level `logrotate`; monitor disk usage |
 
-The project has achieved production-ready status with zero critical or high-severity risks. All remaining items are standard best practices for human review.
+### 7.2 Security Risks
 
-### Technical Risks
+| Risk | Severity | Likelihood | Mitigation |
+|------|----------|------------|------------|
+| Default CORS allows all origins | High | High | Configure specific allowed origins in `cors()` options before production deployment |
+| Default Helmet CSP may be too restrictive or too permissive | Medium | Medium | Review and customize CSP directives for specific application needs |
+| `.env` file containing secrets | Medium | Low | Already excluded from version control via `.gitignore`; use secret management for production |
+| Stack traces in non-production error responses | Low | Low | Error middleware already omits stack traces when `NODE_ENV=production`; verify env is set in production |
 
-| Risk ID | Description | Severity | Likelihood | Impact | Mitigation | Status |
-|---------|-------------|----------|------------|--------|------------|--------|
-| T-01 | Express.js version compatibility issues with future Node.js releases | Low | Low | Medium | Using semver caret notation (^5.1.0) allows compatible updates. Monitor Express.js release notes for breaking changes. | ✅ Mitigated |
-| T-02 | Localhost-only binding (127.0.0.1) prevents external access | Low | N/A | Low | This is intentional for tutorial project. For production, change hostname to '0.0.0.0' in server.js line 3. | ✅ By Design |
-| T-03 | No error handling middleware for unexpected errors | Low | Low | Low | Express.js 5.x provides automatic error handling for async operations. For tutorial project, default error handling is sufficient. | ✅ Acceptable |
+### 7.3 Operational Risks
 
-**Technical Risk Summary:** All technical risks are low severity. The implementation follows Express.js best practices for a tutorial-level application.
+| Risk | Severity | Likelihood | Mitigation |
+|------|----------|------------|------------|
+| No log rotation configured | Medium | High | Add `winston-daily-rotate-file` or configure OS-level log rotation before production |
+| No health check integration with load balancer | Medium | Medium | `/health` endpoint exists; configure load balancer to poll it at regular intervals |
+| No metrics/APM integration | Low | Medium | Consider adding Prometheus metrics endpoint or APM agent for production observability |
+| No graceful shutdown handler | Low | Low | PM2 handles SIGINT; consider adding explicit `process.on('SIGTERM')` for container deployments |
 
-### Security Risks
+### 7.4 Integration Risks
 
-| Risk ID | Description | Severity | Likelihood | Impact | Mitigation | Status |
-|---------|-------------|----------|------------|--------|------------|--------|
-| S-01 | No security vulnerabilities detected in dependencies | None | N/A | None | npm audit shows 0 vulnerabilities. All 69 packages are clean. | ✅ Resolved |
-| S-02 | No helmet.js security headers middleware | Low | N/A | Low | For tutorial project with localhost binding, security middleware is not required. For production, add helmet.js. | ✅ By Design |
-| S-03 | No rate limiting or DDoS protection | Low | Low | Low | Localhost binding limits exposure. For production, add express-rate-limit middleware. | ✅ By Design |
-
-**Security Risk Summary:** Zero security vulnerabilities found. The project is appropriate for its tutorial/learning scope. Production deployments should add standard security middleware.
-
-### Operational Risks
-
-| Risk ID | Description | Severity | Likelihood | Impact | Mitigation | Status |
-|---------|-------------|----------|------------|--------|------------|--------|
-| O-01 | No process manager for automatic restart | Low | N/A | Low | Tutorial project run manually. For production, use PM2 or systemd for process management. | ✅ By Design |
-| O-02 | No logging middleware for request tracking | Low | N/A | Low | Console.log provides startup confirmation. For production, add morgan or winston logging. | ✅ By Design |
-| O-03 | Manual server restart required after code changes | Low | N/A | Low | Expected for tutorial project. For development, add nodemon as devDependency. | ✅ By Design |
-
-**Operational Risk Summary:** All operational limitations are appropriate for a tutorial project. Production deployments should implement standard operational tooling.
-
-### Integration Risks
-
-| Risk ID | Description | Severity | Likelihood | Impact | Mitigation | Status |
-|---------|-------------|----------|------------|--------|------------|--------|
-| I-01 | No database integration or data persistence | None | N/A | None | Tutorial project returns static strings. No database required by design. | ✅ By Design |
-| I-02 | No external API integrations | None | N/A | None | Tutorial project is self-contained. No external services required. | ✅ By Design |
-| I-03 | No authentication or authorization | None | N/A | None | Tutorial project has public endpoints. Authentication not required by design. | ✅ By Design |
-
-**Integration Risk Summary:** No integration risks. The project is intentionally self-contained with no external dependencies.
-
-### Blockers and Dependencies
-
-**Current Blockers:** None
-
-**Dependencies for Remaining Tasks:**
-- Task 1 (Code Review): No dependencies
-- Task 2 (Documentation Verification): Depends on Task 1 completion (recommended)
-
-**Critical Path:** Code Review → Documentation Verification → Production Ready
+| Risk | Severity | Likelihood | Mitigation |
+|------|----------|------------|------------|
+| PM2 cluster mode untested on target hardware | Medium | Medium | Validate PM2 cluster behavior on production server before traffic routing |
+| Reverse proxy configuration required for HTTPS | Medium | High | Server is HTTP-only; configure Nginx/Caddy for TLS termination (explicitly out of scope) |
+| No CI/CD pipeline for automated testing | Low | Medium | Set up GitHub Actions or similar to run `npm test` on pull requests (explicitly out of scope) |
 
 ---
 
-## Git Repository Analysis
+## 8. Git Activity Summary
 
-### Commit History
-
-**Total Commits on Branch:** 3 (1 base + 2 feature commits)
-
-**Feature Commits:**
-1. `865ed65` - "Setup: Install Express.js 5.1.0 and update project configuration"
-   - Added .gitignore (21 lines)
-   - Added package-lock.json (829 lines)
-   - Modified package.json (+7 lines, -3 lines)
-   
-2. `7231f52` - "Migrate server from native HTTP module to Express.js framework"
-   - Modified server.js (+10 lines, -6 lines)
-
-**Base Commit:**
-3. `9c01295` - "Test existing product" (original repository state)
-
-### Files Modified
-
-**Summary Statistics:**
-- Files changed: 4
-- Lines added: 867
-- Lines removed: 9
-- Net lines changed: +858
-
-**File-by-File Breakdown:**
-
-| File | Lines Added | Lines Removed | Net Change | Status |
-|------|-------------|---------------|------------|--------|
-| .gitignore | 21 | 0 | +21 | Created |
-| package-lock.json | 829 | 0 | +829 | Created |
-| package.json | 7 | 3 | +4 | Modified |
-| server.js | 10 | 6 | +4 | Refactored |
-| **Total** | **867** | **9** | **+858** | |
-
-### Code Volume Analysis
-
-**Lines of Code by Type:**
-
-| Type | Lines | Percentage |
-|------|-------|------------|
-| Dependency Lock Data (package-lock.json) | 829 | 96.4% |
-| Configuration (.gitignore) | 21 | 2.4% |
-| Source Code (server.js) | 4 net | 0.5% |
-| Project Metadata (package.json) | 4 net | 0.5% |
-| **Total Net Change** | **858** | **100%** |
-
-**Source Code Statistics:**
-- server.js: 19 lines total (10 added, 6 removed from original 15 lines)
-- Two route handlers implemented
-- Express.js integration: 1 require statement, 1 app initialization, 3 method calls
-
-### Working Tree Status
-
-**Current Status:** Clean ✅
-
-```bash
-git status
-# Output: nothing to commit, working tree clean
-```
-
-All changes have been properly committed. No uncommitted modifications detected.
-
-### Branch Information
-
-**Current Branch:** `blitzy-983c0629-feb9-4ca8-93fb-1c4b17303882`
-
-**Branch Comparison:** Feature branch is 2 commits ahead of base commit `9c01295`
+| Metric | Value |
+|--------|-------|
+| Total commits on branch | 26 |
+| Files changed (source) | 23 |
+| Source lines added | 2,936 |
+| Source lines removed | 15 |
+| Net source change | +2,921 lines |
+| Source files (src/ + server.js) | 8 files, 503 lines |
+| Test files | 7 files, 1,453 lines |
+| Configuration files | 4 files, 908 lines |
+| Documentation | 1 file (README.md), 616 lines |
+| Working tree status | Clean (nothing to commit) |
 
 ---
 
-## Scope Compliance Verification
+## 9. Appendix: npm Scripts Reference
 
-### In-Scope Files (All Completed ✅)
-
-| File | Status | Requirements | Completion |
-|------|--------|--------------|------------|
-| server.js | ✅ Complete | Migrate from HTTP to Express.js, add two endpoints | 100% |
-| package.json | ✅ Complete | Update main, add start script, add dependencies | 100% |
-| package-lock.json | ✅ Complete | Auto-updated by npm during Express installation | 100% |
-| .gitignore | ✅ Complete | Added to exclude node_modules (not in scope but good practice) | 100% |
-
-### Out-of-Scope Files (Properly Preserved ✅)
-
-| File | Status | Requirements | Compliance |
-|------|--------|--------------|------------|
-| README.md | ✅ Preserved | Contains "Do not touch!" directive - must remain unchanged | 100% |
-
-**Verification:**
-```bash
-git diff 9c01295..7231f52 -- README.md
-# Output: (empty) - no changes to README.md ✅
-```
-
-### Features Implemented vs. Planned
-
-| Requirement | Agent Action Plan | Implementation | Status |
-|-------------|-------------------|----------------|--------|
-| Migrate to Express.js | Section 0.5 Group 2 | Commit 7231f52 | ✅ Complete |
-| Add Express dependency | Section 0.3 | Commit 865ed65 | ✅ Complete |
-| Root endpoint (GET /) | Section 0.5 Group 2 | server.js lines 8-10 | ✅ Complete |
-| Evening endpoint (GET /evening) | Section 0.5 Group 2 | server.js lines 12-14 | ✅ Complete |
-| Fix package.json main | Section 0.5 Group 1 | package.json line 5 | ✅ Complete |
-| Add start script | Section 0.5 Group 1 | package.json line 7 | ✅ Complete |
-| Preserve README | Section 0.6 Explicitly Out | No changes to README.md | ✅ Complete |
-
-**Scope Compliance: 100%** ✅
-
-All in-scope requirements implemented. All out-of-scope boundaries respected.
-
----
-
-## Production Deployment Readiness
-
-### Deployment Checklist
-
-**Prerequisites Complete:**
-- ✅ All dependencies installed (69 packages)
-- ✅ Zero security vulnerabilities
-- ✅ Code compiles without errors
-- ✅ Application runs successfully
-- ✅ All endpoints tested and verified
-- ✅ Git working tree clean
-
-**Ready for Production:** YES ✅ (with human review completion)
-
-### Deployment Commands
-
-**Option 1: Direct Node.js**
-```bash
-node server.js
-```
-
-**Option 2: npm start**
-```bash
-npm start
-```
-
-**Option 3: Production Process Manager (PM2)**
-```bash
-npm install -g pm2
-pm2 start server.js --name "hello-world-express"
-pm2 save
-pm2 startup
-```
-
-**Option 4: Docker Containerization**
-```dockerfile
-# Dockerfile (not included in project, example only)
-FROM node:20-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --only=production
-COPY server.js ./
-EXPOSE 3000
-CMD ["node", "server.js"]
-```
-
-### Environment Considerations
-
-**Development Environment:**
-- Hostname: 127.0.0.1 (localhost only)
-- Port: 3000
-- No external access
-
-**Production Environment (Recommendations):**
-- Change hostname to '0.0.0.0' for external access
-- Use environment variable for port: `process.env.PORT || 3000`
-- Implement reverse proxy (nginx/Apache)
-- Add HTTPS/TLS certificates
-- Configure process manager (PM2/systemd)
-- Enable monitoring and logging
-
----
-
-## Appendix
-
-### Express.js 5.x Features Used
-
-| Feature | Usage in Project | Documentation |
-|---------|------------------|---------------|
-| `express()` | Application initialization (line 6) | https://expressjs.com/en/5x/api.html#express |
-| `app.get()` | Route definition (lines 8, 12) | https://expressjs.com/en/5x/api.html#app.get.method |
-| `res.send()` | Response sending (lines 9, 13) | https://expressjs.com/en/5x/api.html#res.send |
-| `app.listen()` | Server binding (line 16) | https://expressjs.com/en/5x/api.html#app.listen |
-
-### Command Reference
-
-**Installation:**
-```bash
-npm install                 # Install all dependencies
-npm install express         # Install Express.js specifically
-npm list express           # Verify Express installation
-```
-
-**Execution:**
-```bash
-npm start                   # Start server using package.json script
-node server.js             # Start server directly
-node -c server.js          # Syntax check only (no execution)
-```
-
-**Testing:**
-```bash
-curl http://127.0.0.1:3000/              # Test root endpoint
-curl http://127.0.0.1:3000/evening       # Test evening endpoint
-curl -v http://127.0.0.1:3000/           # Verbose output with headers
-```
-
-**Maintenance:**
-```bash
-npm audit                   # Check for security vulnerabilities
-npm update                 # Update dependencies (respects semver)
-npm outdated               # Check for outdated packages
-```
-
-### File Structure
-
-```
-/tmp/blitzy/test-spec/blitzy983c0629f/
-├── .git/                   # Git repository metadata
-├── .gitignore              # Git ignore patterns (21 lines)
-├── node_modules/           # Installed dependencies (68 packages)
-├── README.md               # Project documentation (73 bytes, preserved)
-├── package.json            # Project manifest (345 bytes, modified)
-├── package-lock.json       # Dependency lock file (34,769 bytes, generated)
-└── server.js               # Express.js application (348 bytes, refactored)
-```
-
-### Package.json Final State
-
-```json
-{
-    "name": "hello_world",
-    "version": "1.0.0",
-    "description": "Hello world in Node.js",
-    "main": "server.js",
-    "scripts": {
-        "start": "node server.js",
-        "test": "echo \"Error: no test specified\" && exit 1"
-    },
-    "author": "hxu",
-    "license": "MIT",
-    "dependencies": {
-        "express": "^5.1.0"
-    }
-}
-```
-
-### server.js Final State
-
-```javascript
-const express = require('express');
-
-const hostname = '127.0.0.1';
-const port = 3000;
-
-const app = express();
-
-app.get('/', (req, res) => {
-  res.send('Hello, World!\n');
-});
-
-app.get('/evening', (req, res) => {
-  res.send('Good evening');
-});
-
-app.listen(port, hostname, () => {
-  console.log(`Server running at http://${hostname}:${port}/`);
-});
-```
-
-### Validation Commands Executed
-
-All commands executed successfully during validation:
-
-```bash
-git branch --show-current              # Verify branch name
-git status                             # Check working tree status
-npm list express                       # Verify Express installation
-node -c server.js                      # Syntax validation
-node server.js &                       # Start server for testing
-curl http://127.0.0.1:3000/           # Test root endpoint
-curl http://127.0.0.1:3000/evening    # Test evening endpoint
-curl http://127.0.0.1:3000/other      # Test 404 handling
-npm start                              # Verify start script
-npm audit                              # Security vulnerability check
-git log --oneline -5                   # Review commit history
-git diff HEAD~2 HEAD -- README.md      # Verify README unchanged
-```
-
-All commands returned expected results with zero errors.
-
----
-
-## Summary
-
-This Express.js migration project has achieved **87% completion (10 hours completed out of 11.5 total hours)** with full technical implementation and validation success. All production-readiness gates passed at 100%, with zero security vulnerabilities, zero compilation errors, and zero runtime errors.
-
-**Remaining work consists solely of human review activities (1.5 hours):**
-1. Final code review by senior developer (1 hour)
-2. Documentation verification and sign-off (0.5 hours)
-
-The project is **production-ready** and awaiting final human approval before deployment.
-
-**Key Success Metrics:**
-- ✅ 100% of in-scope features implemented
-- ✅ 100% validation success rate
-- ✅ 0 security vulnerabilities
-- ✅ 0 compilation or runtime errors
-- ✅ All endpoints tested and verified
-- ✅ Scope boundaries fully respected
-
-**Recommended Action:** Proceed with human code review (Task 1) and documentation verification (Task 2) to achieve 100% completion.
+| Script | Command | Purpose |
+|--------|---------|---------|
+| `npm start` | `node server.js` | Start HTTP server |
+| `npm test` | `jest` | Run test suite |
+| `npm run test:watch` | `jest --watch` | Run tests in watch mode |
+| `npm run test:coverage` | `jest --coverage` | Run tests with coverage report |
+| `npm run test:ci` | `jest --ci --coverage --reporters=default` | CI-mode test execution |
+| `npm run pm2:start` | `pm2 start ecosystem.config.js` | Start via PM2 |
+| `npm run pm2:stop` | `pm2 stop ecosystem.config.js` | Stop PM2-managed processes |
+| `npm run pm2:restart` | `pm2 restart ecosystem.config.js` | Restart PM2-managed processes |
+| `npm run pm2:logs` | `pm2 logs` | View PM2 log output |
