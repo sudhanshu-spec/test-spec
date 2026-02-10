@@ -39,9 +39,6 @@ describe('Route Handlers - api.routes.js', () => {
     test('should export an Express Router instance', () => {
       expect(apiRoutes).toBeDefined();
       expect(typeof apiRoutes).toBe('function');
-    });
-
-    test('should have stack array defined', () => {
       expect(apiRoutes.stack).toBeDefined();
       expect(Array.isArray(apiRoutes.stack)).toBe(true);
     });
