@@ -1,6 +1,6 @@
 # hao-backprop-test
 
-A Node.js tutorial server demonstrating Express.js integration with multiple HTTP endpoints.
+A Node.js tutorial server demonstrating Express.js integration with two HTTP GET endpoints.
 
 > **Note**: This is a test project for backprop integration.
 
@@ -86,7 +86,7 @@ curl -s http://127.0.0.1:3000/
 **Response:**
 - **Status Code:** 200 OK
 - **Content-Type:** text/html; charset=utf-8
-- **Body:** `Hello, World!\n` (14 characters, includes trailing newline)
+- **Body:** `Hello, World!\n` (14 bytes, includes trailing newline)
 
 **Example:**
 ```bash
@@ -106,7 +106,7 @@ curl -s http://127.0.0.1:3000/evening
 **Response:**
 - **Status Code:** 200 OK
 - **Content-Type:** text/html; charset=utf-8
-- **Body:** `Good evening` (12 characters, no trailing newline)
+- **Body:** `Good evening` (12 bytes, no trailing newline)
 
 **Example:**
 ```bash
