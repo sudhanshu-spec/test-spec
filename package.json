@@ -1,7 +1,7 @@
 {
     "name": "hello_world",
     "version": "1.0.0",
-    "description": "Hello world in Node.js",
+    "description": "Hello world in Express.js",
     "main": "server.js",
     "scripts": {
         "start": "node server.js",
