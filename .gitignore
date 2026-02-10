@@ -10,8 +10,8 @@ logs/
 *.log
 npm-debug.log*
 
-# PM2
-ecosystem.config.js
+# Test artifacts
+coverage/
 
 # OS files
 .DS_Store
