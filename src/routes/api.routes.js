@@ -1,10 +1,16 @@
+'use strict';
+
 /**
- * API Namespace Route Module
- * 
+ * @fileoverview API Namespace Route Module
+ *
  * This module defines the API namespace routes using Express Router.
  * Mounted at /api in app.js to establish a scalable routing hierarchy
  * for API endpoints.
- * 
+ *
+ * Route contracts:
+ * - GET /status returns JSON { status: 'running', environment: config.env }
+ *   (full path when mounted: GET /api/status)
+ *
  * @module src/routes/api.routes
  */
 
@@ -15,10 +21,10 @@ const router = express.Router();
 
 /**
  * API status route handler
- * Returns JSON with application status and current environment
- * 
- * @route GET /api/status (mounted at /api in app.js, so internal path is /status)
- * @returns {{ status: string, environment: string }} JSON API status
+ * Returns JSON with application running status and current environment
+ *
+ * @route GET /status
+ * @returns {{ status: string, environment: string }} JSON API status response
  */
 router.get('/status', (req, res) => {
   res.json({
