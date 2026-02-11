@@ -135,6 +135,57 @@ describe('Configuration Module', () => {
     });
   });
 
+  describe('New Configuration Properties - LOG_LEVEL', () => {
+    test('should default logLevel to info when LOG_LEVEL not set', () => {
+      const config = loadConfigWithoutEnv(['LOG_LEVEL']);
+      expect(config.logLevel).toBe('info');
+    });
+
+    test('should use LOG_LEVEL env var when set', () => {
+      const config = loadConfigWithEnv({ LOG_LEVEL: 'debug' });
+      expect(config.logLevel).toBe('debug');
+    });
+
+    test('should return logLevel as a string type', () => {
+      const config = loadConfigWithEnv({ LOG_LEVEL: 'warn' });
+      expect(typeof config.logLevel).toBe('string');
+    });
+  });
+
+  describe('New Configuration Properties - APP_NAME', () => {
+    test('should default appName to hello_world when APP_NAME not set', () => {
+      const config = loadConfigWithoutEnv(['APP_NAME']);
+      expect(config.appName).toBe('hello_world');
+    });
+
+    test('should use APP_NAME env var when set', () => {
+      const config = loadConfigWithEnv({ APP_NAME: 'my-app' });
+      expect(config.appName).toBe('my-app');
+    });
+
+    test('should return appName as a string type', () => {
+      const config = loadConfigWithEnv({ APP_NAME: 'test-app' });
+      expect(typeof config.appName).toBe('string');
+    });
+  });
+
+  describe('New Configuration Properties - CORS_ORIGIN', () => {
+    test('should default corsOrigin to * when CORS_ORIGIN not set', () => {
+      const config = loadConfigWithoutEnv(['CORS_ORIGIN']);
+      expect(config.corsOrigin).toBe('*');
+    });
+
+    test('should use CORS_ORIGIN env var when set', () => {
+      const config = loadConfigWithEnv({ CORS_ORIGIN: 'http://localhost:3000' });
+      expect(config.corsOrigin).toBe('http://localhost:3000');
+    });
+
+    test('should return corsOrigin as a string type', () => {
+      const config = loadConfigWithEnv({ CORS_ORIGIN: 'http://example.com' });
+      expect(typeof config.corsOrigin).toBe('string');
+    });
+  });
+
   describe('Type Checking', () => {
     test('should return port as a number type', () => {
       const config = loadConfigWithEnv({ PORT: '8080' });
@@ -168,7 +219,7 @@ describe('Configuration Module', () => {
   });
 
   describe('Configuration Object Structure', () => {
-    test('should export an object with all expected properties', () => {
+    test('should export an object with all expected configuration properties', () => {
       const config = require('../../src/config');
       expect(config).toHaveProperty('host');
       expect(config).toHaveProperty('port');
