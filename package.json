@@ -5,10 +5,10 @@
     "main": "server.js",
     "scripts": {
         "start": "node server.js",
-        "test": "jest --verbose",
+        "test": "jest",
         "test:watch": "jest --watch",
         "test:coverage": "jest --coverage",
-        "test:ci": "jest --ci --coverage --verbose",
+        "test:ci": "jest --ci --coverage --reporters=default",
         "start:prod": "NODE_ENV=production node server.js",
         "start:pm2": "pm2 start ecosystem.config.js"
     },
