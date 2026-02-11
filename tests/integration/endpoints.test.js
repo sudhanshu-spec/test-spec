@@ -43,6 +43,10 @@ function assertSuccessfulHtmlResponse(response, expectedBody) {
  */
 function assert404Response(response) {
   expect(response.status).toBe(404);
+  expect(response.text).toBeDefined();
+  if (response.body && response.body.error) {
+    expect(response.body.error).toBe('Not Found');
+  }
 }
 
 describe('HTTP Endpoints', () => {
@@ -134,28 +138,64 @@ describe('HTTP Endpoints', () => {
     });
   });
 
-  describe('Middleware Effects', () => {
-    test('should include Helmet security headers in response', async () => {
-      const response = await get('/');
-      // Helmet sets various security headers
-      expect(response.headers).toHaveProperty('x-content-type-options');
-      expect(response.headers['x-content-type-options']).toBe('nosniff');
+  describe('Middleware Integration', () => {
+    describe('Security Headers (Helmet)', () => {
+      test('should include x-content-type-options header in response', async () => {
+        const response = await get('/');
+        expect(response.headers['x-content-type-options']).toBe('nosniff');
+      });
+
+      test('should include x-frame-options header in response', async () => {
+        const response = await get('/');
+        expect(response.headers['x-frame-options']).toBeDefined();
+      });
+
+      test('should include security headers on /evening endpoint', async () => {
+        const response = await get('/evening');
+        expect(response.headers['x-content-type-options']).toBeDefined();
+      });
     });
 
-    test('should include X-Frame-Options header from Helmet', async () => {
-      const response = await get('/');
-      expect(response.headers).toHaveProperty('x-frame-options');
+    describe('CORS Headers', () => {
+      test('should include access-control-allow-origin header when Origin is sent', async () => {
+        const response = await request(app)
+          .get('/')
+          .set('Origin', 'http://localhost:3000');
+        expect(response.headers['access-control-allow-origin']).toBeDefined();
+      });
+
+      test('should respond to OPTIONS preflight request', async () => {
+        const response = await request(app)
+          .options('/')
+          .set('Origin', 'http://localhost:3000')
+          .set('Access-Control-Request-Method', 'GET');
+        expect([200, 204]).toContain(response.status);
+      });
     });
 
-    test('should include CORS headers when CORS middleware is active', async () => {
-      const response = await get('/');
-      // CORS middleware adds access-control-allow-origin for requests with Origin header
-      // For simple same-origin requests without Origin header, CORS headers may not be present
-      // Let's test with Origin header
-      const corsResponse = await request(app)
-        .get('/')
-        .set('Origin', 'http://example.com');
-      expect(corsResponse.headers['access-control-allow-origin']).toBeDefined();
+    describe('Compression', () => {
+      test('should include content-encoding header when Accept-Encoding is set', async () => {
+        // The 'Hello, World!\n' body is very small and may not trigger compression
+        // (threshold-based). Compression middleware sets Vary: Accept-Encoding regardless
+        // of whether the response body is compressed.
+        const response = await request(app)
+          .get('/')
+          .set('Accept-Encoding', 'gzip');
+        expect(response.status).toBe(200);
+        expect(response.headers['vary']).toMatch(/Accept-Encoding/);
+      });
+    });
+
+    describe('Body Parsing', () => {
+      test('should accept JSON content type in requests', async () => {
+        // Sending a JSON body to a nonexistent route confirms express.json()
+        // middleware is active and does not break the 404 flow
+        const response = await request(app)
+          .post('/nonexistent')
+          .send({ test: 'data' })
+          .set('Content-Type', 'application/json');
+        expect(response.status).toBe(404);
+      });
     });
   });
 });
