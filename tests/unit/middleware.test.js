@@ -201,6 +201,36 @@ describe('Middleware Modules', () => {
       expect(jsonCall).not.toHaveProperty('stack');
     });
 
+    test('should return JSON response with status and message properties', () => {
+      const req = createMockRequest();
+      const res = createMockResponse();
+      const next = createMockNext();
+      const err = new Error('Validation failed');
+      err.statusCode = 422;
+
+      errorHandler(err, req, res, next);
+
+      const jsonBody = res.json.mock.calls[0][0];
+      expect(jsonBody).toHaveProperty('status');
+      expect(jsonBody).toHaveProperty('message');
+      expect(jsonBody.status).toBe(422);
+      expect(jsonBody.message).toBe('Validation failed');
+    });
+
+    test('should delegate to Express default handler when headers already sent', () => {
+      const req = createMockRequest();
+      const res = createMockResponse();
+      res.headersSent = true;
+      const next = createMockNext();
+      const err = new Error('After headers sent');
+
+      errorHandler(err, req, res, next);
+
+      expect(next).toHaveBeenCalledWith(err);
+      expect(res.status).not.toHaveBeenCalled();
+      expect(res.json).not.toHaveBeenCalled();
+    });
+
     test('should default message to Internal Server Error when err.message is empty', () => {
       const req = createMockRequest();
       const res = createMockResponse();
