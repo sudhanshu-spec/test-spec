@@ -44,31 +44,39 @@ const config = require('../config');
  * @returns {void}
  */
 function errorHandler(err, req, res, next) {
-  // Determine the HTTP status code: use err.status, err.statusCode, or default to 500
-  const statusCode = err.status || err.statusCode || 500;
+  // If response headers have already been sent, delegate to Express's
+  // default error handler to avoid "Cannot set headers after they are sent"
+  if (res.headersSent) {
+    return next(err);
+  }
+
+  // Determine the HTTP status code: prefer err.statusCode (http-errors convention),
+  // then err.status (Express convention), defaulting to 500 (Internal Server Error)
+  const statusCode = err.statusCode || err.status || 500;
 
   // Determine the error message: use err.message or a generic fallback
   const message = err.message || 'Internal Server Error';
 
-  // Log the error with contextual information
+  // Log the error with contextual information for debugging and monitoring
   logger.error(`${statusCode} - ${message}`, {
     method: req.method,
     url: req.originalUrl,
     stack: err.stack
   });
 
-  // Build the response body
+  // Build the structured JSON response body
   const responseBody = {
     status: statusCode,
     message: message
   };
 
-  // In development mode, include the error stack trace for debugging
+  // In development mode, include the error stack trace for debugging purposes.
+  // In production, the stack is omitted to avoid leaking implementation details.
   if (config.env === 'development') {
     responseBody.stack = err.stack;
   }
 
-  // Send the JSON error response
+  // Send the JSON error response with the appropriate HTTP status code
   res.status(statusCode).json(responseBody);
 }
 
