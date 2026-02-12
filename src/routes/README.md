@@ -8,14 +8,18 @@ This module defines the HTTP routing surface for the application. It provides th
 |-------|--------|----------|
 | `/` | GET | `Hello, World!\n` (with trailing newline) |
 | `/evening` | GET | `Good evening` (no trailing newline) |
+| `/health` | GET | JSON: `{ status: 'ok', uptime: <seconds>, timestamp: <ms> }` |
 
 ## Files
 
 **index.js**  
-Route aggregator using the barrel pattern. This file imports all route modules and re-exports them in a single object. It exports `{ mainRoutes }` so that `src/app.js` can import everything with one clean statement.
+Route aggregator using the barrel pattern. This file imports all route modules and re-exports them in a single object. It exports `{ mainRoutes, healthRoutes }` so that `src/app.js` can import everything with one clean statement.
 
 **main.routes.js**  
 Route handler implementations using Express Router. This is where the actual GET handlers for `/` and `/evening` are defined. Each handler sends back a plain text response.
+
+**health.routes.js**  
+Health check endpoint using Express Router. Defines GET /health that returns a JSON response with application status ('ok'), process uptime in seconds, and current timestamp in milliseconds. Used by PM2 and load balancers for production readiness probing.
 
 ## Adding New Routes
 
