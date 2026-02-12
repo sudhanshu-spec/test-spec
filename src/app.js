@@ -29,7 +29,7 @@ const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
 const config = require('./config');
-const { mainRoutes } = require('./routes');
+const { mainRoutes, healthRoutes } = require('./routes');
 const morganMiddleware = require('./middleware/morgan.middleware');
 const { notFoundHandler, errorHandler } = require('./middleware/error.middleware');
 
@@ -73,6 +73,12 @@ app.use(morganMiddleware);
  * - GET '/evening' -> mainRoutes handles this
  */
 app.use('/', mainRoutes);
+
+/**
+ * Mount health check routes at root path
+ * - GET '/health' -> healthRoutes handles this
+ */
+app.use('/', healthRoutes);
 
 /**
  * 404 Not Found handler - catches all requests that did not match
