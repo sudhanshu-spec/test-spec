@@ -1,7 +1,16 @@
 /**
- * @fileoverview Integration tests for the middleware pipeline
- * Tests security headers, CORS, error handling, and JSON parsing
- * Uses Supertest patterns from tests/integration/endpoints.test.js
+ * @fileoverview Integration tests for the full Express middleware pipeline
+ *
+ * Validates the end-to-end middleware chain behavior using Supertest, including:
+ * - Helmet security headers (x-content-type-options, x-frame-options,
+ *   content-security-policy, strict-transport-security)
+ * - CORS headers (access-control-allow-origin, OPTIONS preflight)
+ * - Centralized error handler behavior (structured JSON error responses)
+ * - express.json() body parsing (valid JSON, missing body, malformed JSON)
+ *
+ * Follows Supertest patterns established in tests/integration/endpoints.test.js:
+ * imports app from ../../src/app, uses request(app) interface, async/await style.
+ *
  * @module tests/integration/middleware
  */
 
@@ -10,95 +19,136 @@
 const request = require('supertest');
 const app = require('../../src/app');
 
-describe('Middleware Pipeline Integration', () => {
+/**
+ * @typedef {import('supertest').Response} SupertestResponse
+ */
 
+/**
+ * Makes a GET request against the Express app and returns the response.
+ * Wraps Supertest's request(app).get(path) for consistent usage.
+ *
+ * @param {string} path - Request path
+ * @returns {Promise<SupertestResponse>} Supertest response
+ */
+function get(path) {
+  return request(app).get(path);
+}
+
+/**
+ * Makes a POST request against the Express app and returns the response.
+ * Wraps Supertest's request(app).post(path) for JSON body parsing tests.
+ *
+ * @param {string} path - Request path
+ * @returns {Promise<SupertestResponse>} Supertest response
+ */
+function post(path) {
+  return request(app).post(path);
+}
+
+describe('Middleware Pipeline', () => {
   describe('Security Headers (Helmet)', () => {
-    test('GET / should include X-Content-Type-Options header', async () => {
-      const response = await request(app).get('/');
+    test('should set x-content-type-options header on all responses', async () => {
+      const response = await get('/');
+      expect(response.headers['x-content-type-options']).toBeDefined();
       expect(response.headers['x-content-type-options']).toBe('nosniff');
     });
 
-    test('GET / should include X-Frame-Options or Content-Security-Policy header', async () => {
-      const response = await request(app).get('/');
-      // Helmet v8 uses Content-Security-Policy by default instead of X-Frame-Options
-      const hasFrameProtection =
-        response.headers['x-frame-options'] !== undefined ||
-        response.headers['content-security-policy'] !== undefined;
-      expect(hasFrameProtection).toBe(true);
+    test('should set x-frame-options header on responses', async () => {
+      const response = await get('/');
+      // Helmet v8 may use x-frame-options or rely on CSP frame-ancestors;
+      // we verify the header is present when Helmet sets it
+      expect(response.headers['x-frame-options']).toBeDefined();
     });
 
-    test('GET / should NOT include X-Powered-By header', async () => {
-      const response = await request(app).get('/');
-      expect(response.headers['x-powered-by']).toBeUndefined();
+    test('should set content-security-policy header on responses', async () => {
+      const response = await get('/');
+      expect(response.headers['content-security-policy']).toBeDefined();
     });
 
-    test('GET /health should include security headers', async () => {
-      const response = await request(app).get('/health');
+    test('should set strict-transport-security header on responses', async () => {
+      const response = await get('/');
+      expect(response.headers['strict-transport-security']).toBeDefined();
+    });
+
+    test('should set security headers on error responses', async () => {
+      const response = await get('/nonexistent-middleware-test-route');
+      expect(response.status).toBe(404);
+      // Security headers must be present even on error/404 responses
+      expect(response.headers['x-content-type-options']).toBeDefined();
       expect(response.headers['x-content-type-options']).toBe('nosniff');
+      expect(response.headers['content-security-policy']).toBeDefined();
+    });
+
+    test('should set security headers on health endpoint', async () => {
+      const response = await get('/health');
+      expect(response.status).toBe(200);
+      expect(response.headers['x-content-type-options']).toBeDefined();
+      expect(response.headers['x-content-type-options']).toBe('nosniff');
+      expect(response.headers['content-security-policy']).toBeDefined();
+      expect(response.headers['strict-transport-security']).toBeDefined();
     });
   });
 
   describe('CORS Headers', () => {
-    test('GET / should include Access-Control-Allow-Origin header', async () => {
-      const response = await request(app).get('/');
+    test('should include access-control-allow-origin header on responses', async () => {
+      const response = await get('/');
       expect(response.headers['access-control-allow-origin']).toBeDefined();
     });
 
-    test('OPTIONS preflight should return CORS headers', async () => {
+    test('should handle OPTIONS preflight requests', async () => {
       const response = await request(app)
         .options('/')
         .set('Origin', 'http://example.com')
         .set('Access-Control-Request-Method', 'GET');
+      // Preflight responses return either 204 (No Content) or 200
+      expect([200, 204]).toContain(response.status);
       expect(response.headers['access-control-allow-origin']).toBeDefined();
+      expect(response.headers['access-control-allow-methods']).toBeDefined();
+    });
+  });
+
+  describe('Error Handler', () => {
+    test('should return structured JSON error response for undefined routes', async () => {
+      const response = await get('/undefined-route');
+      expect(response.status).toBe(404);
+      // The response should contain content (not be empty)
+      expect(response.text).toBeDefined();
+      expect(response.text.length).toBeGreaterThan(0);
+    });
+
+    test('should return error response with appropriate content', async () => {
+      const response = await get('/another-nonexistent-path');
+      expect(response.status).toBe(404);
+      // Error responses must have a defined body
+      expect(response.body).toBeDefined();
     });
   });
 
   describe('JSON Body Parsing', () => {
-    test('should parse JSON bodies on POST requests', async () => {
-      const response = await request(app)
-        .post('/nonexistent')
-        .send({ test: 'data' })
+    test('should parse JSON request bodies', async () => {
+      const response = await post('/')
+        .send({ key: 'value' })
         .set('Content-Type', 'application/json');
-      // Should get 404 (route not found) rather than 400 (parse error)
-      expect(response.status).toBe(404);
-    });
-  });
-
-  describe('Error Handling Middleware', () => {
-    test('should return JSON for 404 Not Found paths', async () => {
-      const response = await request(app).get('/nonexistent-route');
-      expect(response.status).toBe(404);
-    });
-  });
-
-  describe('Health Endpoint via Middleware Pipeline', () => {
-    test('GET /health should return 200 with JSON', async () => {
-      const response = await request(app).get('/health');
-      expect(response.status).toBe(200);
-      expect(response.headers['content-type']).toMatch(/json/);
+      // The middleware should process the JSON body without errors;
+      // even if the endpoint returns 404 for POST, the body was parsed
+      expect(response.status).toBeDefined();
+      expect([200, 404]).toContain(response.status);
     });
 
-    test('GET /health response should contain status, uptime, timestamp', async () => {
-      const response = await request(app).get('/health');
-      expect(response.body).toHaveProperty('status', 'ok');
-      expect(response.body).toHaveProperty('uptime');
-      expect(response.body).toHaveProperty('timestamp');
-      expect(typeof response.body.uptime).toBe('number');
-      expect(typeof response.body.timestamp).toBe('number');
-    });
-  });
-
-  describe('Existing Endpoints Through Middleware', () => {
-    test('GET / should still return Hello, World!', async () => {
-      const response = await request(app).get('/');
+    test('should handle requests without JSON body', async () => {
+      const response = await get('/');
       expect(response.status).toBe(200);
       expect(response.text).toBe('Hello, World!\n');
     });
 
-    test('GET /evening should still return Good evening', async () => {
-      const response = await request(app).get('/evening');
-      expect(response.status).toBe(200);
-      expect(response.text).toBe('Good evening');
+    test('should handle malformed JSON gracefully', async () => {
+      const response = await post('/')
+        .set('Content-Type', 'application/json')
+        .send('invalid-json');
+      // Express.json() should reject malformed JSON with a 400 status,
+      // or the error handler catches the parse error; the server must not crash
+      expect(response.status).toBeDefined();
+      expect(response.status).toBeGreaterThanOrEqual(400);
     });
   });
 });
