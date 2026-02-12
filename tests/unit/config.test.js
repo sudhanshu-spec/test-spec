@@ -49,6 +49,23 @@ describe('Configuration Module', () => {
     process.env = originalEnv;
   });
 
+  describe('Dotenv Loading', () => {
+    test('should load dotenv before reading environment variables', () => {
+      jest.resetModules();
+      // Mock dotenv to verify it is required and .config() is called
+      const dotenvMock = { config: jest.fn() };
+      jest.mock('dotenv', () => dotenvMock);
+
+      // Re-require config so the module executes with the mocked dotenv
+      require('../../src/config');
+
+      expect(dotenvMock.config).toHaveBeenCalled();
+
+      // Clean up the dotenv mock for subsequent tests
+      jest.unmock('dotenv');
+    });
+  });
+
   describe('Default Values', () => {
     test('should default host to 127.0.0.1 when HOST not set', () => {
       const config = loadConfigWithoutEnv(['HOST']);
@@ -98,8 +115,8 @@ describe('Configuration Module', () => {
     });
 
     test('should use CORS_ORIGIN env var when set', () => {
-      const config = loadConfigWithEnv({ CORS_ORIGIN: 'https://example.com' });
-      expect(config.corsOrigin).toBe('https://example.com');
+      const config = loadConfigWithEnv({ CORS_ORIGIN: 'http://example.com' });
+      expect(config.corsOrigin).toBe('http://example.com');
     });
   });
 
@@ -142,12 +159,12 @@ describe('Configuration Module', () => {
     });
 
     test('should return logLevel as a string type', () => {
-      const config = loadConfigWithEnv({ LOG_LEVEL: 'error' });
+      const config = loadConfigWithEnv({ LOG_LEVEL: 'warn' });
       expect(typeof config.logLevel).toBe('string');
     });
 
     test('should return corsOrigin as a string type', () => {
-      const config = loadConfigWithEnv({ CORS_ORIGIN: 'http://localhost' });
+      const config = loadConfigWithEnv({ CORS_ORIGIN: '*' });
       expect(typeof config.corsOrigin).toBe('string');
     });
   });
