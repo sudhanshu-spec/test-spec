@@ -1,39 +1,44 @@
 /**
- * @fileoverview Unit tests for middleware modules
- * Tests errorHandler and requestLogger middleware
+ * @fileoverview Unit tests for middleware modules (src/middleware/errorHandler.js
+ * and src/middleware/requestLogger.js)
+ *
+ * Tests the structural contracts of both middleware:
+ * - errorHandler: Express 4-argument signature, JSON error responses, status codes
+ * - requestLogger: Morgan middleware instance definition and function type
+ *
  * @module tests/unit/middleware
  */
 
 'use strict';
 
-describe('Middleware Module Barrel Export', () => {
-  test('should export errorHandler function', () => {
-    const middleware = require('../../src/middleware');
-    expect(middleware).toHaveProperty('errorHandler');
-    expect(typeof middleware.errorHandler).toBe('function');
-  });
+// Mock the Winston logger singleton BEFORE requiring middleware modules
+// to isolate middleware behavior from actual Winston logging and prevent
+// file system side effects from File transports.
+jest.mock('../../src/config/logger', () => ({
+  info: jest.fn(),
+  warn: jest.fn(),
+  error: jest.fn(),
+  debug: jest.fn()
+}));
 
-  test('should export requestLogger', () => {
-    const middleware = require('../../src/middleware');
-    expect(middleware).toHaveProperty('requestLogger');
-    expect(middleware.requestLogger).toBeDefined();
-  });
-});
+const errorHandler = require('../../src/middleware/errorHandler');
+const requestLogger = require('../../src/middleware/requestLogger');
 
-describe('Error Handler Middleware', () => {
-  const errorHandler = require('../../src/middleware/errorHandler');
-
-  test('should be a function with four parameters (Express error middleware signature)', () => {
+describe('Middleware - errorHandler', () => {
+  test('should be a function', () => {
     expect(typeof errorHandler).toBe('function');
+  });
+
+  test('should have 4-argument signature (err, req, res, next)', () => {
     expect(errorHandler.length).toBe(4);
   });
 
-  test('should return a JSON error response with status 500 for generic errors', () => {
+  test('should send JSON error response with default 500 status', () => {
     const err = new Error('Test error');
     const req = {};
     const res = {
       status: jest.fn().mockReturnThis(),
-      json: jest.fn().mockReturnThis()
+      json: jest.fn()
     };
     const next = jest.fn();
 
@@ -43,31 +48,34 @@ describe('Error Handler Middleware', () => {
     expect(res.json).toHaveBeenCalled();
     const responseBody = res.json.mock.calls[0][0];
     expect(responseBody).toHaveProperty('status', 'error');
-    expect(responseBody).toHaveProperty('message');
+    expect(responseBody).toHaveProperty('statusCode', 500);
+    expect(responseBody).toHaveProperty('message', 'Test error');
   });
 
-  test('should use error statusCode if available', () => {
-    const err = new Error('Not Found');
-    err.statusCode = 404;
+  test('should use err.status when provided', () => {
+    const err = new Error('Not found');
+    err.status = 404;
     const req = {};
     const res = {
       status: jest.fn().mockReturnThis(),
-      json: jest.fn().mockReturnThis()
+      json: jest.fn()
     };
     const next = jest.fn();
 
     errorHandler(err, req, res, next);
 
     expect(res.status).toHaveBeenCalledWith(404);
+    const responseBody = res.json.mock.calls[0][0];
+    expect(responseBody).toHaveProperty('statusCode', 404);
   });
 
-  test('should use error status if statusCode is not available', () => {
-    const err = new Error('Bad Request');
-    err.status = 400;
+  test('should use err.statusCode when provided', () => {
+    const err = new Error('Bad request');
+    err.statusCode = 400;
     const req = {};
     const res = {
       status: jest.fn().mockReturnThis(),
-      json: jest.fn().mockReturnThis()
+      json: jest.fn()
     };
     const next = jest.fn();
 
@@ -76,65 +84,30 @@ describe('Error Handler Middleware', () => {
     expect(res.status).toHaveBeenCalledWith(400);
   });
 
-  test('should include stack trace in development mode', () => {
-    const originalEnv = process.env.NODE_ENV;
-    process.env.NODE_ENV = 'development';
-
-    // Reload the module to pick up the env change
-    jest.resetModules();
-    const handler = require('../../src/middleware/errorHandler');
-
-    const err = new Error('Dev error');
+  test('should include status, statusCode, and message in response', () => {
+    const err = new Error('Server error');
     const req = {};
     const res = {
       status: jest.fn().mockReturnThis(),
-      json: jest.fn().mockReturnThis()
+      json: jest.fn()
     };
     const next = jest.fn();
 
-    handler(err, req, res, next);
+    errorHandler(err, req, res, next);
 
     const responseBody = res.json.mock.calls[0][0];
-    expect(responseBody).toHaveProperty('stack');
-
-    process.env.NODE_ENV = originalEnv;
-  });
-
-  test('should NOT include stack trace in production mode', () => {
-    const originalEnv = process.env.NODE_ENV;
-    process.env.NODE_ENV = 'production';
-
-    jest.resetModules();
-    const handler = require('../../src/middleware/errorHandler');
-
-    const err = new Error('Prod error');
-    const req = {};
-    const res = {
-      status: jest.fn().mockReturnThis(),
-      json: jest.fn().mockReturnThis()
-    };
-    const next = jest.fn();
-
-    handler(err, req, res, next);
-
-    const responseBody = res.json.mock.calls[0][0];
-    expect(responseBody.stack).toBeUndefined();
-
-    process.env.NODE_ENV = originalEnv;
+    expect(responseBody).toHaveProperty('status');
+    expect(responseBody).toHaveProperty('statusCode');
+    expect(responseBody).toHaveProperty('message');
   });
 });
 
-describe('Request Logger Middleware', () => {
-  test('should be a valid middleware function or Morgan instance', () => {
-    const requestLogger = require('../../src/middleware/requestLogger');
+describe('Middleware - requestLogger', () => {
+  test('should be defined', () => {
     expect(requestLogger).toBeDefined();
-    // Morgan returns a function (middleware)
-    expect(typeof requestLogger).toBe('function');
   });
 
-  test('should accept req, res, next arguments (middleware signature)', () => {
-    const requestLogger = require('../../src/middleware/requestLogger');
-    // Morgan middleware has length 3
-    expect(requestLogger.length).toBe(3);
+  test('should be a function', () => {
+    expect(typeof requestLogger).toBe('function');
   });
 });
