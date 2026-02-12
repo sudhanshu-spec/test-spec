@@ -1,5 +1,6 @@
 /**
- * @fileoverview Unit tests for the configuration module (src/config/index.js)
+ * @fileoverview Unit tests for the configuration module (src/config/index.js).
+ * Covers host, port, env, logLevel, corsOrigin, and nodeEnv properties.
  * @module tests/unit/config
  */
 
@@ -64,6 +65,21 @@ describe('Configuration Module', () => {
       const config = loadConfigWithoutEnv(['NODE_ENV']);
       expect(config.env).toBe('development');
     });
+
+    test('should default logLevel to info when LOG_LEVEL not set', () => {
+      const config = loadConfigWithoutEnv(['LOG_LEVEL']);
+      expect(config.logLevel).toBe('info');
+    });
+
+    test('should default corsOrigin to * when CORS_ORIGIN not set', () => {
+      const config = loadConfigWithoutEnv(['CORS_ORIGIN']);
+      expect(config.corsOrigin).toBe('*');
+    });
+
+    test('should default nodeEnv to development when NODE_ENV not set', () => {
+      const config = loadConfigWithoutEnv(['NODE_ENV']);
+      expect(config.nodeEnv).toBe('development');
+    });
   });
 
   describe('Custom Values', () => {
@@ -80,6 +96,21 @@ describe('Configuration Module', () => {
     test('should use NODE_ENV env var when set', () => {
       const config = loadConfigWithEnv({ NODE_ENV: 'production' });
       expect(config.env).toBe('production');
+    });
+
+    test('should use LOG_LEVEL env var when set', () => {
+      const config = loadConfigWithEnv({ LOG_LEVEL: 'debug' });
+      expect(config.logLevel).toBe('debug');
+    });
+
+    test('should use CORS_ORIGIN env var when set', () => {
+      const config = loadConfigWithEnv({ CORS_ORIGIN: 'http://localhost:3000' });
+      expect(config.corsOrigin).toBe('http://localhost:3000');
+    });
+
+    test('should use NODE_ENV env var for nodeEnv when set', () => {
+      const config = loadConfigWithEnv({ NODE_ENV: 'production' });
+      expect(config.nodeEnv).toBe('production');
     });
   });
 
@@ -120,14 +151,32 @@ describe('Configuration Module', () => {
       const config = loadConfigWithEnv({ NODE_ENV: 'test' });
       expect(typeof config.env).toBe('string');
     });
+
+    test('should return logLevel as a string type', () => {
+      const config = loadConfigWithEnv({ LOG_LEVEL: 'warn' });
+      expect(typeof config.logLevel).toBe('string');
+    });
+
+    test('should return corsOrigin as a string type', () => {
+      const config = loadConfigWithEnv({ CORS_ORIGIN: '*' });
+      expect(typeof config.corsOrigin).toBe('string');
+    });
+
+    test('should return nodeEnv as a string type', () => {
+      const config = loadConfigWithEnv({ NODE_ENV: 'test' });
+      expect(typeof config.nodeEnv).toBe('string');
+    });
   });
 
   describe('Configuration Object Structure', () => {
-    test('should export an object with host, port, and env properties', () => {
+    test('should export an object with all six configuration properties', () => {
       const config = require('../../src/config');
       expect(config).toHaveProperty('host');
       expect(config).toHaveProperty('port');
       expect(config).toHaveProperty('env');
+      expect(config).toHaveProperty('logLevel');
+      expect(config).toHaveProperty('corsOrigin');
+      expect(config).toHaveProperty('nodeEnv');
     });
 
     test('should not have undefined values for any configuration property', () => {
@@ -135,6 +184,9 @@ describe('Configuration Module', () => {
       expect(config.host).toBeDefined();
       expect(config.port).toBeDefined();
       expect(config.env).toBeDefined();
+      expect(config.logLevel).toBeDefined();
+      expect(config.corsOrigin).toBeDefined();
+      expect(config.nodeEnv).toBeDefined();
     });
   });
 });

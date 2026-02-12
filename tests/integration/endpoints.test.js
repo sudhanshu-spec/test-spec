@@ -42,6 +42,18 @@ function assert404Response(response) {
   expect(response.text).toBeDefined();
 }
 
+/**
+ * Asserts standard health check JSON response.
+ * @param {SupertestResponse} response - Supertest response object
+ */
+function assertHealthResponse(response) {
+  expect(response.status).toBe(200);
+  expect(response.headers['content-type']).toMatch(/application\/json/);
+  expect(response.body.status).toBe('ok');
+  expect(typeof response.body.uptime).toBe('number');
+  expect(typeof response.body.timestamp).toBe('number');
+}
+
 describe('HTTP Endpoints', () => {
   describe('GET /', () => {
     test('should return 200 status code', async () => {
@@ -74,6 +86,38 @@ describe('HTTP Endpoints', () => {
     test('should return text/html Content-Type header', async () => {
       const response = await get('/evening').expect('Content-Type', /text\/html/);
       expect(response.headers['content-type']).toMatch(/charset=utf-8/i);
+    });
+  });
+
+  describe('GET /health', () => {
+    test('should return 200 status code', async () => {
+      const response = await get('/health').expect(200);
+      expect(response.status).toBe(200);
+    });
+
+    test('should return application/json Content-Type', async () => {
+      const response = await get('/health');
+      expect(response.headers['content-type']).toMatch(/application\/json/);
+    });
+
+    test('should return status field equal to ok', async () => {
+      const response = await get('/health');
+      expect(response.body.status).toBe('ok');
+    });
+
+    test('should return uptime as a number', async () => {
+      const response = await get('/health');
+      expect(typeof response.body.uptime).toBe('number');
+    });
+
+    test('should return timestamp as a number', async () => {
+      const response = await get('/health');
+      expect(typeof response.body.timestamp).toBe('number');
+    });
+
+    test('should return complete health response', async () => {
+      const response = await get('/health');
+      assertHealthResponse(response);
     });
   });
 
@@ -120,6 +164,32 @@ describe('HTTP Endpoints', () => {
       const response = await get('//');
       expect(response.status).toBeDefined();
       expect([200, 404]).toContain(response.status);
+    });
+  });
+
+  describe('Middleware Headers', () => {
+    describe('Security Headers (Helmet)', () => {
+      test('should include x-content-type-options header on GET / response', async () => {
+        const response = await get('/');
+        expect(response.headers['x-content-type-options']).toBeDefined();
+      });
+
+      test('should include x-frame-options header on GET / response', async () => {
+        const response = await get('/');
+        expect(response.headers['x-frame-options']).toBeDefined();
+      });
+
+      test('should include content-security-policy header on GET / response', async () => {
+        const response = await get('/');
+        expect(response.headers['content-security-policy']).toBeDefined();
+      });
+    });
+
+    describe('CORS Headers', () => {
+      test('should include access-control-allow-origin header on responses', async () => {
+        const response = await get('/');
+        expect(response.headers['access-control-allow-origin']).toBeDefined();
+      });
     });
   });
 });
