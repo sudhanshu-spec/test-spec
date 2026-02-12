@@ -19,6 +19,7 @@ module.exports = {
   collectCoverageFrom: [
     'server.js',
     'src/**/*.js',
+    'src/middleware/**/*.js',
     '!node_modules/**'
   ],
   coveragePathIgnorePatterns: ['/node_modules/'],

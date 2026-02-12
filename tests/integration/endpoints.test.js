@@ -1,5 +1,7 @@
 /**
- * @fileoverview HTTP endpoint integration tests using Supertest
+ * @fileoverview HTTP endpoint integration tests and security header verification using Supertest.
+ * Validates HTTP endpoint behavior, security response headers (Helmet), rate limit headers
+ * (express-rate-limit), and CORS headers (cors middleware).
  * @module tests/integration/endpoints
  */
 
@@ -121,5 +123,77 @@ describe('HTTP Endpoints', () => {
       expect(response.status).toBeDefined();
       expect([200, 404]).toContain(response.status);
     });
+  });
+});
+
+describe('Security Headers', () => {
+  test('should include content-security-policy header on GET /', async () => {
+    const response = await get('/');
+    expect(response.headers['content-security-policy']).toBeDefined();
+  });
+
+  test('should include strict-transport-security header on GET /', async () => {
+    const response = await get('/');
+    expect(response.headers['strict-transport-security']).toBeDefined();
+  });
+
+  test('should include x-content-type-options header with value nosniff', async () => {
+    const response = await get('/');
+    expect(response.headers['x-content-type-options']).toBe('nosniff');
+  });
+
+  test('should include x-frame-options header on GET /', async () => {
+    const response = await get('/');
+    expect(response.headers['x-frame-options']).toBeDefined();
+  });
+
+  test('should NOT include x-powered-by header (removed by Helmet)', async () => {
+    const response = await get('/');
+    expect(response.headers['x-powered-by']).toBeUndefined();
+  });
+
+  test('should include security headers on GET /evening', async () => {
+    const response = await get('/evening');
+    expect(response.headers['content-security-policy']).toBeDefined();
+    expect(response.headers['strict-transport-security']).toBeDefined();
+    expect(response.headers['x-content-type-options']).toBe('nosniff');
+    expect(response.headers['x-frame-options']).toBeDefined();
+    expect(response.headers['x-powered-by']).toBeUndefined();
+  });
+});
+
+describe('Rate Limit Headers', () => {
+  test('should include ratelimit-policy header on responses', async () => {
+    const response = await get('/');
+    expect(response.headers['ratelimit-policy']).toBeDefined();
+  });
+
+  test('should include ratelimit header on responses', async () => {
+    const response = await get('/');
+    expect(response.headers['ratelimit']).toBeDefined();
+  });
+
+  test('should include rate limit headers on /evening endpoint', async () => {
+    const response = await get('/evening');
+    expect(response.headers['ratelimit-policy']).toBeDefined();
+    expect(response.headers['ratelimit']).toBeDefined();
+  });
+});
+
+describe('CORS Headers', () => {
+  test('should include access-control-allow-origin header when Origin is set', async () => {
+    const response = await request(app)
+      .get('/')
+      .set('Origin', 'http://localhost:3000');
+    expect(response.headers['access-control-allow-origin']).toBeDefined();
+  });
+
+  test('should return CORS headers on OPTIONS preflight request', async () => {
+    const response = await request(app)
+      .options('/')
+      .set('Origin', 'http://localhost:3000')
+      .set('Access-Control-Request-Method', 'GET');
+    expect(response.headers['access-control-allow-origin']).toBeDefined();
+    expect(response.headers['access-control-allow-methods']).toBeDefined();
   });
 });

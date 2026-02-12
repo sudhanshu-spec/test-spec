@@ -128,6 +128,14 @@ describe('Configuration Module', () => {
       expect(config).toHaveProperty('host');
       expect(config).toHaveProperty('port');
       expect(config).toHaveProperty('env');
+      // Security configuration properties
+      expect(config).toHaveProperty('corsOrigin');
+      expect(config).toHaveProperty('rateLimitWindowMs');
+      expect(config).toHaveProperty('rateLimitMax');
+      expect(config).toHaveProperty('httpsEnabled');
+      expect(config).toHaveProperty('sslKeyPath');
+      expect(config).toHaveProperty('sslCertPath');
+      expect(config).toHaveProperty('trustProxy');
     });
 
     test('should not have undefined values for any configuration property', () => {
@@ -135,6 +143,129 @@ describe('Configuration Module', () => {
       expect(config.host).toBeDefined();
       expect(config.port).toBeDefined();
       expect(config.env).toBeDefined();
+      // Security configuration properties
+      expect(config.corsOrigin).toBeDefined();
+      expect(config.rateLimitWindowMs).toBeDefined();
+      expect(config.rateLimitMax).toBeDefined();
+      expect(config.httpsEnabled).toBeDefined();
+      expect(config.sslKeyPath).toBeDefined();
+      expect(config.sslCertPath).toBeDefined();
+      expect(config.trustProxy).toBeDefined();
+    });
+  });
+
+  // =========================================================================
+  // Security Configuration Tests
+  // =========================================================================
+
+  describe('Security Configuration Defaults', () => {
+    test('should default corsOrigin to http://localhost:3000 when CORS_ORIGIN not set', () => {
+      const config = loadConfigWithoutEnv(['CORS_ORIGIN']);
+      expect(config.corsOrigin).toBe('http://localhost:3000');
+    });
+
+    test('should default rateLimitWindowMs to 900000 when RATE_LIMIT_WINDOW_MS not set', () => {
+      const config = loadConfigWithoutEnv(['RATE_LIMIT_WINDOW_MS']);
+      expect(config.rateLimitWindowMs).toBe(900000);
+    });
+
+    test('should default rateLimitMax to 100 when RATE_LIMIT_MAX not set', () => {
+      const config = loadConfigWithoutEnv(['RATE_LIMIT_MAX']);
+      expect(config.rateLimitMax).toBe(100);
+    });
+
+    test('should default httpsEnabled to false when HTTPS_ENABLED not set', () => {
+      const config = loadConfigWithoutEnv(['HTTPS_ENABLED']);
+      expect(config.httpsEnabled).toBe(false);
+    });
+
+    test('should default sslKeyPath to empty string when SSL_KEY_PATH not set', () => {
+      const config = loadConfigWithoutEnv(['SSL_KEY_PATH']);
+      expect(config.sslKeyPath).toBe('');
+    });
+
+    test('should default sslCertPath to empty string when SSL_CERT_PATH not set', () => {
+      const config = loadConfigWithoutEnv(['SSL_CERT_PATH']);
+      expect(config.sslCertPath).toBe('');
+    });
+
+    test('should default trustProxy to false when TRUST_PROXY not set', () => {
+      const config = loadConfigWithoutEnv(['TRUST_PROXY']);
+      expect(config.trustProxy).toBe(false);
+    });
+  });
+
+  describe('Security Configuration Custom Values', () => {
+    test('should use CORS_ORIGIN env var when set', () => {
+      const config = loadConfigWithEnv({ CORS_ORIGIN: 'https://example.com' });
+      expect(config.corsOrigin).toBe('https://example.com');
+    });
+
+    test('should use RATE_LIMIT_WINDOW_MS env var as integer when set', () => {
+      const config = loadConfigWithEnv({ RATE_LIMIT_WINDOW_MS: '600000' });
+      expect(config.rateLimitWindowMs).toBe(600000);
+    });
+
+    test('should use RATE_LIMIT_MAX env var as integer when set', () => {
+      const config = loadConfigWithEnv({ RATE_LIMIT_MAX: '50' });
+      expect(config.rateLimitMax).toBe(50);
+    });
+
+    test('should set httpsEnabled to true when HTTPS_ENABLED is "true"', () => {
+      const config = loadConfigWithEnv({ HTTPS_ENABLED: 'true' });
+      expect(config.httpsEnabled).toBe(true);
+    });
+
+    test('should use SSL_KEY_PATH env var when set', () => {
+      const config = loadConfigWithEnv({ SSL_KEY_PATH: '/etc/ssl/key.pem' });
+      expect(config.sslKeyPath).toBe('/etc/ssl/key.pem');
+    });
+
+    test('should use SSL_CERT_PATH env var when set', () => {
+      const config = loadConfigWithEnv({ SSL_CERT_PATH: '/etc/ssl/cert.pem' });
+      expect(config.sslCertPath).toBe('/etc/ssl/cert.pem');
+    });
+
+    test('should set trustProxy to true when TRUST_PROXY is "true"', () => {
+      const config = loadConfigWithEnv({ TRUST_PROXY: 'true' });
+      expect(config.trustProxy).toBe(true);
+    });
+  });
+
+  describe('Security Configuration Type Checking', () => {
+    test('should return corsOrigin as a string type', () => {
+      const config = loadConfigWithEnv({ CORS_ORIGIN: 'https://example.com' });
+      expect(typeof config.corsOrigin).toBe('string');
+    });
+
+    test('should return rateLimitWindowMs as a number type', () => {
+      const config = loadConfigWithEnv({ RATE_LIMIT_WINDOW_MS: '600000' });
+      expect(typeof config.rateLimitWindowMs).toBe('number');
+    });
+
+    test('should return rateLimitMax as a number type', () => {
+      const config = loadConfigWithEnv({ RATE_LIMIT_MAX: '50' });
+      expect(typeof config.rateLimitMax).toBe('number');
+    });
+
+    test('should return httpsEnabled as a boolean type', () => {
+      const config = loadConfigWithEnv({ HTTPS_ENABLED: 'true' });
+      expect(typeof config.httpsEnabled).toBe('boolean');
+    });
+
+    test('should return sslKeyPath as a string type', () => {
+      const config = loadConfigWithEnv({ SSL_KEY_PATH: '/path/to/key.pem' });
+      expect(typeof config.sslKeyPath).toBe('string');
+    });
+
+    test('should return sslCertPath as a string type', () => {
+      const config = loadConfigWithEnv({ SSL_CERT_PATH: '/path/to/cert.pem' });
+      expect(typeof config.sslCertPath).toBe('string');
+    });
+
+    test('should return trustProxy as a boolean type', () => {
+      const config = loadConfigWithEnv({ TRUST_PROXY: 'true' });
+      expect(typeof config.trustProxy).toBe('boolean');
     });
   });
 });
