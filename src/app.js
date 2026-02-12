@@ -2,20 +2,21 @@
  * Express Application Configuration Module
  *
  * This module initializes and exports the configured Express app instance
- * with a comprehensive middleware pipeline for production readiness.
- * It separates application configuration from HTTP server initialization
- * (which remains in server.js), enabling unit testing without starting
- * the actual server.
+ * with a production-grade middleware pipeline. It separates application
+ * configuration from HTTP server initialization (which remains in server.js),
+ * enabling unit testing without starting the actual server.
  *
  * Middleware pipeline execution order:
- *   1. Helmet — Security headers
- *   2. CORS — Cross-origin resource sharing
- *   3. Morgan/Winston — HTTP request logging
- *   4. express.json() — JSON body parsing
- *   5. Routes — Application route handlers
- *   6. Error Handler — Centralized error handling (must be last)
+ *   1. helmet()          — Security headers (CSP, HSTS, X-Content-Type-Options, etc.)
+ *   2. cors()            — CORS headers (Access-Control-Allow-Origin)
+ *   3. requestLogger     — HTTP request logging (Morgan piped through Winston)
+ *   4. express.json()    — JSON body parsing
+ *   5. Route handlers    — mainRoutes and healthRoutes
+ *   6. errorHandler      — Centralized error-handling middleware (4-arg signature)
  *
- * Design pattern: Factory pattern - creates configured Express app
+ * Design pattern: Factory pattern - creates configured Express app without
+ * calling listen(), allowing Supertest-based integration testing without
+ * port allocation.
  *
  * @module src/app
  */
@@ -29,62 +30,52 @@ const { mainRoutes, healthRoutes } = require('./routes');
 
 const app = express();
 
-// =============================================================================
-// Middleware Pipeline (order matters)
-// =============================================================================
-
 /**
- * Security headers middleware.
- * Sets 13 HTTP security headers including CSP, HSTS, and X-Content-Type-Options.
- * Registered first to ensure security headers are applied to all responses.
+ * Security middleware — sets 13 HTTP response headers including
+ * Content-Security-Policy, Strict-Transport-Security, and
+ * X-Content-Type-Options. Registered first to ensure security
+ * headers are applied to all responses.
  */
 app.use(helmet());
 
 /**
- * CORS middleware.
- * Sets Access-Control-Allow-Origin and related headers for cross-origin requests.
- * Origin is driven by the CORS_ORIGIN environment variable via config.
+ * CORS middleware — sets Access-Control-Allow-Origin and related
+ * response headers for cross-origin request handling. Origin is
+ * configured via config.corsOrigin (defaults to '*').
  */
 app.use(cors({ origin: config.corsOrigin }));
 
 /**
- * HTTP request logging middleware.
- * Morgan configured with Winston write stream for structured access logging.
+ * HTTP request logging middleware — Morgan configured with combined
+ * format and a custom write stream piped through Winston logger.
  */
 app.use(requestLogger);
 
 /**
- * JSON body parser middleware.
- * Parses incoming JSON request bodies (default 100kb limit).
+ * JSON body parser — parses incoming requests with JSON payloads
+ * and populates req.body.
  */
 app.use(express.json());
 
-// =============================================================================
-// Route Mounting
-// =============================================================================
-
 /**
- * Mount main routes at root path.
- * Preserves the original route paths:
+ * Mount main routes at root path
+ * This preserves the original route paths:
  * - GET '/' -> mainRoutes handles this
  * - GET '/evening' -> mainRoutes handles this
  */
 app.use('/', mainRoutes);
 
 /**
- * Mount health check routes at root path.
- * - GET /health -> healthRoutes handles this
+ * Mount health check routes at root path
+ * - GET '/health' -> healthRoutes handles this (PM2 monitoring and production readiness)
  */
 app.use('/', healthRoutes);
 
-// =============================================================================
-// Error Handling (must be registered after all routes)
-// =============================================================================
-
 /**
- * Centralized error-handling middleware.
- * Catches unhandled errors, logs via Winston, and returns structured JSON.
- * Must be the last middleware registered (Express requirement for 4-arg handlers).
+ * Centralized error-handling middleware — must be registered AFTER all
+ * routes. Express identifies this as an error handler by its 4-argument
+ * signature (err, req, res, next). Logs errors via Winston and returns
+ * structured JSON error responses.
  */
 app.use(errorHandler);
 
