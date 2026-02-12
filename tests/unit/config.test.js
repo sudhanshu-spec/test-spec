@@ -137,4 +137,73 @@ describe('Configuration Module', () => {
       expect(config.env).toBeDefined();
     });
   });
+
+  describe('Extended Configuration Properties', () => {
+    test('should export logLevel property', () => {
+      const config = require('../../src/config');
+      expect(config).toHaveProperty('logLevel');
+    });
+
+    test('should export corsOrigin property', () => {
+      const config = require('../../src/config');
+      expect(config).toHaveProperty('corsOrigin');
+    });
+
+    test('should export nodeEnv property', () => {
+      const config = require('../../src/config');
+      expect(config).toHaveProperty('nodeEnv');
+    });
+
+    test('should default logLevel to info when LOG_LEVEL not set', () => {
+      const config = loadConfigWithoutEnv(['LOG_LEVEL']);
+      expect(config.logLevel).toBe('info');
+    });
+
+    test('should use LOG_LEVEL env var when set', () => {
+      const config = loadConfigWithEnv({ LOG_LEVEL: 'debug' });
+      expect(config.logLevel).toBe('debug');
+    });
+
+    test('should default corsOrigin to * when CORS_ORIGIN not set', () => {
+      const config = loadConfigWithoutEnv(['CORS_ORIGIN']);
+      expect(config.corsOrigin).toBe('*');
+    });
+
+    test('should use CORS_ORIGIN env var when set', () => {
+      const config = loadConfigWithEnv({ CORS_ORIGIN: 'https://example.com' });
+      expect(config.corsOrigin).toBe('https://example.com');
+    });
+
+    test('should default nodeEnv to development when NODE_ENV not set', () => {
+      const config = loadConfigWithoutEnv(['NODE_ENV']);
+      expect(config.nodeEnv).toBe('development');
+    });
+
+    test('should use NODE_ENV env var for nodeEnv when set', () => {
+      const config = loadConfigWithEnv({ NODE_ENV: 'production' });
+      expect(config.nodeEnv).toBe('production');
+    });
+
+    test('should return logLevel as string type', () => {
+      const config = require('../../src/config');
+      expect(typeof config.logLevel).toBe('string');
+    });
+
+    test('should return corsOrigin as string type', () => {
+      const config = require('../../src/config');
+      expect(typeof config.corsOrigin).toBe('string');
+    });
+
+    test('should return nodeEnv as string type', () => {
+      const config = require('../../src/config');
+      expect(typeof config.nodeEnv).toBe('string');
+    });
+
+    test('should have all six configuration properties', () => {
+      const config = require('../../src/config');
+      expect(Object.keys(config)).toEqual(
+        expect.arrayContaining(['host', 'port', 'env', 'logLevel', 'corsOrigin', 'nodeEnv'])
+      );
+    });
+  });
 });
