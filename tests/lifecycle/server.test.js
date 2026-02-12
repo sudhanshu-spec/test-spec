@@ -201,43 +201,98 @@ describe('Server Entry Point', () => {
     expect(closeCallback).toHaveBeenCalled();
   });
 
-  test('should register SIGTERM signal handler', () => {
+  test('should handle graceful shutdown via SIGTERM signal', () => {
+    const processExitSpy = jest.spyOn(process, 'exit').mockImplementation(() => {});
+
     require('../../server');
+
+    // Verify SIGTERM handler was registered
     expect(signalHandlers['SIGTERM']).toBeDefined();
     expect(typeof signalHandlers['SIGTERM']).toBe('function');
-  });
 
-  test('should register SIGINT signal handler', () => {
-    require('../../server');
-    expect(signalHandlers['SIGINT']).toBeDefined();
-    expect(typeof signalHandlers['SIGINT']).toBe('function');
-  });
+    // Clear startup logger.info call to isolate shutdown assertions
+    mockLogger.info.mockClear();
+    mockServer.close.mockClear();
 
-  test('should log and close server on SIGTERM', () => {
-    const mockExit = jest.spyOn(process, 'exit').mockImplementation(() => {});
-    require('../../server');
-
-    // Trigger SIGTERM handler
+    // Invoke the captured SIGTERM handler
     signalHandlers['SIGTERM']();
 
     expect(mockLogger.info).toHaveBeenCalledWith('SIGTERM received. Shutting down gracefully...');
-    expect(mockServer.close).toHaveBeenCalled();
+    expect(mockServer.close).toHaveBeenCalledTimes(1);
     expect(mockLogger.info).toHaveBeenCalledWith('Server closed.');
+    expect(processExitSpy).toHaveBeenCalledWith(0);
 
-    mockExit.mockRestore();
+    processExitSpy.mockRestore();
   });
 
-  test('should log and close server on SIGINT', () => {
-    const mockExit = jest.spyOn(process, 'exit').mockImplementation(() => {});
+  test('should handle graceful shutdown via SIGINT signal', () => {
+    const processExitSpy = jest.spyOn(process, 'exit').mockImplementation(() => {});
+
     require('../../server');
 
-    // Trigger SIGINT handler
+    // Verify SIGINT handler was registered
+    expect(signalHandlers['SIGINT']).toBeDefined();
+    expect(typeof signalHandlers['SIGINT']).toBe('function');
+
+    // Clear startup logger.info call to isolate shutdown assertions
+    mockLogger.info.mockClear();
+    mockServer.close.mockClear();
+
+    // Invoke the captured SIGINT handler
     signalHandlers['SIGINT']();
 
     expect(mockLogger.info).toHaveBeenCalledWith('SIGINT received. Shutting down gracefully...');
-    expect(mockServer.close).toHaveBeenCalled();
+    expect(mockServer.close).toHaveBeenCalledTimes(1);
     expect(mockLogger.info).toHaveBeenCalledWith('Server closed.');
+    expect(processExitSpy).toHaveBeenCalledWith(0);
 
-    mockExit.mockRestore();
+    processExitSpy.mockRestore();
+  });
+
+  test('should handle EADDRINUSE error when port is already in use', () => {
+    jest.resetModules();
+
+    const errorMockLogger = createMockLogger();
+
+    /** @type {Function|null} */
+    let errorHandler = null;
+
+    const errorMockServer = createMockServer();
+    errorMockServer.on = jest.fn((event, handler) => {
+      if (event === 'error') {
+        errorHandler = handler;
+      }
+      return errorMockServer;
+    });
+
+    const errorMockListen = createMockListen(errorMockServer, false);
+
+    jest.spyOn(process, 'on').mockImplementation((event, handler) => {
+      signalHandlers[event] = handler;
+      return process;
+    });
+
+    setupMocks(errorMockListen, errorMockLogger);
+
+    require('../../server');
+
+    expect(errorMockListen).toHaveBeenCalled();
+
+    const eaddrinuseError = new Error('listen EADDRINUSE: address already in use');
+    /** @type {NodeJS.ErrnoException} */
+    const errnoException = Object.assign(eaddrinuseError, {
+      code: 'EADDRINUSE',
+      port: DEFAULT_CONFIG.port
+    });
+
+    if (errorHandler) {
+      expect(() => errorHandler(errnoException)).not.toThrow();
+    }
+
+    expect(errorMockListen).toHaveBeenCalledWith(
+      DEFAULT_CONFIG.port,
+      DEFAULT_CONFIG.host,
+      expect.any(Function)
+    );
   });
 });
