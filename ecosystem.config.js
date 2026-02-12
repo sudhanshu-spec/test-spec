@@ -5,13 +5,19 @@
  * Supports cluster mode for multi-core utilization, environment-specific
  * settings, and centralized log file management.
  *
+ * The application is stateless and inherently cluster-safe, allowing PM2
+ * to run multiple instances across CPU cores for improved throughput.
+ *
  * Usage:
  *   pm2 start ecosystem.config.js                     # Development
  *   pm2 start ecosystem.config.js --env production     # Production
  *   npm run start:prod                                 # Via npm script
  *
  * @see https://pm2.keymetrics.io/docs/usage/application-declaration/
+ * @module ecosystem.config
  */
+
+'use strict';
 
 module.exports = {
   apps: [{
