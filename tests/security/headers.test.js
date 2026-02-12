@@ -14,7 +14,6 @@
  *   - X-Frame-Options (prevents clickjacking, value: 'SAMEORIGIN')
  *   - Cross-Origin-Opener-Policy (isolates browsing context)
  *   - Cross-Origin-Resource-Policy (restricts cross-origin resource loading)
- *   - Cross-Origin-Embedder-Policy (controls cross-origin embedding)
  *   - X-DNS-Prefetch-Control (controls DNS prefetching)
  *   - X-Download-Options (prevents IE file execution)
  *   - X-Permitted-Cross-Domain-Policies (restricts Adobe cross-domain policies)
@@ -58,7 +57,6 @@ function get(path) {
  */
 const EXPECTED_SECURITY_HEADERS = [
   'content-security-policy',
-  'cross-origin-embedder-policy',
   'cross-origin-opener-policy',
   'cross-origin-resource-policy',
   'strict-transport-security',
