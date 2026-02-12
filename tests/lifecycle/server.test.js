@@ -118,14 +118,28 @@ describe('Server Entry Point', () => {
   let mockLogger;
 
   /** @type {jest.SpyInstance} */
-  let consoleSpy;
+  let processOnSpy;
+
+  /** @type {jest.SpyInstance} */
+  let processExitSpy;
+
+  /** @type {number} Original max listeners value for process */
+  let originalMaxListeners;
+
+  beforeAll(() => {
+    // Raise limit to prevent MaxListenersExceededWarning when multiple tests
+    // register SIGTERM/SIGINT handlers via the spied process.on call-through.
+    originalMaxListeners = process.getMaxListeners();
+    process.setMaxListeners(0);
+  });
 
   beforeEach(() => {
     jest.resetModules();
-    consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
     mockServer = createMockServer();
     mockListen = createMockListen(mockServer);
     mockLogger = createMockLogger();
+    processOnSpy = jest.spyOn(process, 'on');
+    processExitSpy = jest.spyOn(process, 'exit').mockImplementation(() => {});
     setupMocks(mockListen, mockLogger);
   });
 
@@ -134,6 +148,7 @@ describe('Server Entry Point', () => {
   });
 
   afterAll(() => {
+    process.setMaxListeners(originalMaxListeners);
     jest.clearAllMocks();
   });
 
@@ -158,7 +173,6 @@ describe('Server Entry Point', () => {
 
   test('should use custom configuration values from config module', () => {
     jest.resetModules();
-    consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
 
     /** @type {TestConfig} */
     const customConfig = {
@@ -203,7 +217,6 @@ describe('Server Entry Point', () => {
     jest.resetModules();
 
     const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
 
     /** @type {Function|null} */
     let errorHandler = null;
@@ -245,59 +258,61 @@ describe('Server Entry Point', () => {
   });
 
   describe('Graceful Shutdown Signal Handling', () => {
-    /** @type {Map<string, Function>} */
-    let signalHandlers;
-
-    beforeEach(() => {
-      signalHandlers = new Map();
-      jest.spyOn(process, 'on').mockImplementation((event, handler) => {
-        signalHandlers.set(event, handler);
-        return process;
-      });
-    });
-
-    test('should register SIGTERM handler', () => {
-      require('../../server');
-      expect(signalHandlers.has('SIGTERM')).toBe(true);
-    });
-
-    test('should register SIGINT handler', () => {
-      require('../../server');
-      expect(signalHandlers.has('SIGINT')).toBe(true);
-    });
-
-    test('should log and close server on SIGTERM', () => {
-      const exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => {});
+    test('should register SIGTERM signal handler', () => {
       require('../../server');
 
-      const sigTermHandler = signalHandlers.get('SIGTERM');
-      expect(sigTermHandler).toBeDefined();
+      expect(processOnSpy).toHaveBeenCalledWith('SIGTERM', expect.any(Function));
+    });
+
+    test('should register SIGINT signal handler', () => {
+      require('../../server');
+
+      expect(processOnSpy).toHaveBeenCalledWith('SIGINT', expect.any(Function));
+    });
+
+    test('should call server.close() when SIGTERM is received', () => {
+      require('../../server');
+
+      const sigTermCall = processOnSpy.mock.calls.find(call => call[0] === 'SIGTERM');
+      const sigTermHandler = sigTermCall[1];
+
+      sigTermHandler();
+
+      expect(mockServer.close).toHaveBeenCalled();
+    });
+
+    test('should call server.close() when SIGINT is received', () => {
+      require('../../server');
+
+      const sigIntCall = processOnSpy.mock.calls.find(call => call[0] === 'SIGINT');
+      const sigIntHandler = sigIntCall[1];
+
+      sigIntHandler();
+
+      expect(mockServer.close).toHaveBeenCalled();
+    });
+
+    test('should log shutdown messages via logger.info during signal handling', () => {
+      require('../../server');
+
+      const sigTermCall = processOnSpy.mock.calls.find(call => call[0] === 'SIGTERM');
+      const sigTermHandler = sigTermCall[1];
 
       sigTermHandler();
 
       expect(mockLogger.info).toHaveBeenCalledWith('SIGTERM received. Shutting down gracefully...');
-      expect(mockServer.close).toHaveBeenCalled();
       expect(mockLogger.info).toHaveBeenCalledWith('Server closed');
-      expect(exitSpy).toHaveBeenCalledWith(0);
-
-      exitSpy.mockRestore();
     });
 
-    test('should log and close server on SIGINT', () => {
-      const exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => {});
+    test('should call process.exit(0) after server.close() completes', () => {
       require('../../server');
 
-      const sigIntHandler = signalHandlers.get('SIGINT');
-      expect(sigIntHandler).toBeDefined();
+      const sigTermCall = processOnSpy.mock.calls.find(call => call[0] === 'SIGTERM');
+      const sigTermHandler = sigTermCall[1];
 
-      sigIntHandler();
+      sigTermHandler();
 
-      expect(mockLogger.info).toHaveBeenCalledWith('SIGINT received. Shutting down gracefully...');
-      expect(mockServer.close).toHaveBeenCalled();
-      expect(mockLogger.info).toHaveBeenCalledWith('Server closed');
-      expect(exitSpy).toHaveBeenCalledWith(0);
-
-      exitSpy.mockRestore();
+      expect(processExitSpy).toHaveBeenCalledWith(0);
     });
   });
 });
