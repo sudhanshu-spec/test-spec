@@ -1,46 +1,70 @@
 /**
  * @fileoverview Unit tests for middleware modules
  * (src/middleware/morgan.middleware.js, src/middleware/error.middleware.js)
+ *
+ * Validates that the Morgan middleware exports a valid Express middleware
+ * function, and that the error middleware exports notFoundHandler
+ * (3-parameter middleware that creates 404 errors) and errorHandler
+ * (4-parameter Express error-handling middleware that logs errors and
+ * sends JSON responses).
+ *
  * @module tests/unit/middleware
  */
 
 'use strict';
 
-describe('Morgan Middleware Module', () => {
-  test('should export a function (middleware)', () => {
-    const morganMiddleware = require('../../src/middleware/morgan.middleware');
-    expect(typeof morganMiddleware).toBe('function');
+describe('Middleware Modules', () => {
+  /** @type {NodeJS.ProcessEnv} */
+  const originalEnv = process.env;
+
+  beforeEach(() => {
+    jest.resetModules();
+    process.env = { ...originalEnv };
   });
 
-  test('should be a valid Express middleware with correct arity', () => {
-    const morganMiddleware = require('../../src/middleware/morgan.middleware');
-    // Morgan middleware functions have arity of 3 (req, res, next)
-    expect(morganMiddleware.length).toBe(3);
+  afterAll(() => {
+    process.env = originalEnv;
   });
-});
 
-describe('Error Middleware Module', () => {
-  describe('Module Exports', () => {
+  describe('Morgan Middleware', () => {
+    test('should export a function', () => {
+      const morganMiddleware = require('../../src/middleware/morgan.middleware');
+      expect(morganMiddleware).toBeDefined();
+      expect(typeof morganMiddleware).toBe('function');
+    });
+
+    test('should be a valid Express middleware (callable function)', () => {
+      const morganMiddleware = require('../../src/middleware/morgan.middleware');
+      expect(typeof morganMiddleware).toBe('function');
+      // Standard Express middleware has a 3-parameter signature (req, res, next)
+      expect(morganMiddleware.length).toBe(3);
+    });
+  });
+
+  describe('Error Middleware', () => {
     test('should export notFoundHandler function', () => {
-      const errorMiddleware = require('../../src/middleware/error.middleware');
-      expect(errorMiddleware).toHaveProperty('notFoundHandler');
-      expect(typeof errorMiddleware.notFoundHandler).toBe('function');
+      const { notFoundHandler } = require('../../src/middleware/error.middleware');
+      expect(notFoundHandler).toBeDefined();
+      expect(typeof notFoundHandler).toBe('function');
     });
 
     test('should export errorHandler function', () => {
-      const errorMiddleware = require('../../src/middleware/error.middleware');
-      expect(errorMiddleware).toHaveProperty('errorHandler');
-      expect(typeof errorMiddleware.errorHandler).toBe('function');
+      const { errorHandler } = require('../../src/middleware/error.middleware');
+      expect(errorHandler).toBeDefined();
+      expect(typeof errorHandler).toBe('function');
     });
-  });
 
-  describe('notFoundHandler', () => {
-    test('should have 3-parameter middleware signature', () => {
+    test('notFoundHandler should have 3-parameter middleware signature', () => {
       const { notFoundHandler } = require('../../src/middleware/error.middleware');
-      expect(notFoundHandler.length).toBe(3);
+      expect(notFoundHandler.length).toBe(3); // (req, res, next)
     });
 
-    test('should call next with a 404 error', () => {
+    test('errorHandler should have 4-parameter error middleware signature', () => {
+      const { errorHandler } = require('../../src/middleware/error.middleware');
+      expect(errorHandler.length).toBe(4); // (err, req, res, next)
+    });
+
+    test('notFoundHandler should call next with 404 error', () => {
       const { notFoundHandler } = require('../../src/middleware/error.middleware');
       const req = {};
       const res = {};
@@ -51,92 +75,118 @@ describe('Error Middleware Module', () => {
       expect(next).toHaveBeenCalledTimes(1);
       const error = next.mock.calls[0][0];
       expect(error).toBeInstanceOf(Error);
-      expect(error.message).toBe('Not Found');
       expect(error.status).toBe(404);
     });
-  });
 
-  describe('errorHandler', () => {
-    test('should have 4-parameter Express error-handling signature', () => {
-      const { errorHandler } = require('../../src/middleware/error.middleware');
-      expect(errorHandler.length).toBe(4);
-    });
-
-    test('should send JSON error response with correct status code', () => {
-      const { errorHandler } = require('../../src/middleware/error.middleware');
-      const err = new Error('Test Error');
-      err.status = 400;
-
-      const req = { originalUrl: '/test', method: 'GET' };
-      const jsonMock = jest.fn();
-      const statusMock = jest.fn(() => ({ json: jsonMock }));
-      const res = { status: statusMock };
+    test('notFoundHandler should create error with "Not Found" message', () => {
+      const { notFoundHandler } = require('../../src/middleware/error.middleware');
+      const req = {};
+      const res = {};
       const next = jest.fn();
 
-      errorHandler(err, req, res, next);
+      notFoundHandler(req, res, next);
 
-      expect(statusMock).toHaveBeenCalledWith(400);
-      expect(jsonMock).toHaveBeenCalledWith(
+      const error = next.mock.calls[0][0];
+      expect(error.message).toBe('Not Found');
+    });
+
+    test('errorHandler should send JSON error response', () => {
+      const { errorHandler } = require('../../src/middleware/error.middleware');
+      const req = {};
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+      const next = jest.fn();
+      const testError = new Error('Test error');
+      testError.status = 500;
+
+      errorHandler(testError, req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalled();
+      const responseBody = res.json.mock.calls[0][0];
+      expect(responseBody).toHaveProperty('status');
+      expect(responseBody).toHaveProperty('message');
+    });
+
+    test('errorHandler should include error status and message in response body', () => {
+      const { errorHandler } = require('../../src/middleware/error.middleware');
+      const req = { originalUrl: '/test', method: 'GET' };
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+      const next = jest.fn();
+      const testError = new Error('Bad Request');
+      testError.status = 400;
+
+      errorHandler(testError, req, res, next);
+
+      expect(res.json).toHaveBeenCalledWith(
         expect.objectContaining({
           status: 'error',
           statusCode: 400,
-          message: 'Test Error'
+          message: 'Bad Request'
         })
       );
     });
 
-    test('should default to 500 status code when err.status is not set', () => {
+    test('errorHandler should default to 500 when error has no status', () => {
       const { errorHandler } = require('../../src/middleware/error.middleware');
-      const err = new Error('Internal Error');
-
-      const req = { originalUrl: '/test', method: 'GET' };
-      const jsonMock = jest.fn();
-      const statusMock = jest.fn(() => ({ json: jsonMock }));
-      const res = { status: statusMock };
+      const req = { originalUrl: '/unknown', method: 'POST' };
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
       const next = jest.fn();
+      const testError = new Error('Internal failure');
 
-      errorHandler(err, req, res, next);
+      errorHandler(testError, req, res, next);
 
-      expect(statusMock).toHaveBeenCalledWith(500);
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: 'error',
+          statusCode: 500,
+          message: 'Internal failure'
+        })
+      );
     });
 
-    test('should include stack trace in non-production environment', () => {
-      jest.resetModules();
+    test('errorHandler should use err.statusCode when err.status is not set', () => {
+      const { errorHandler } = require('../../src/middleware/error.middleware');
+      const req = { originalUrl: '/test', method: 'PUT' };
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+      const next = jest.fn();
+      const testError = new Error('Unprocessable');
+      testError.statusCode = 422;
+
+      errorHandler(testError, req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(422);
+    });
+
+    test('errorHandler should include stack trace in non-production environment', () => {
       process.env.NODE_ENV = 'development';
 
       const { errorHandler } = require('../../src/middleware/error.middleware');
-      const err = new Error('Dev Error');
-      err.status = 400;
-
-      const req = { originalUrl: '/test', method: 'GET' };
-      const jsonMock = jest.fn();
-      const statusMock = jest.fn(() => ({ json: jsonMock }));
-      const res = { status: statusMock };
+      const req = { originalUrl: '/dev-path', method: 'GET' };
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
       const next = jest.fn();
+      const testError = new Error('Dev error');
+      testError.status = 400;
 
-      errorHandler(err, req, res, next);
+      errorHandler(testError, req, res, next);
 
-      const responseBody = jsonMock.mock.calls[0][0];
+      const responseBody = res.json.mock.calls[0][0];
       expect(responseBody).toHaveProperty('stack');
     });
 
-    test('should NOT include stack trace in production environment', () => {
-      jest.resetModules();
+    test('errorHandler should NOT include stack trace in production environment', () => {
       process.env.NODE_ENV = 'production';
 
       const { errorHandler } = require('../../src/middleware/error.middleware');
-      const err = new Error('Prod Error');
-      err.status = 400;
-
-      const req = { originalUrl: '/test', method: 'GET' };
-      const jsonMock = jest.fn();
-      const statusMock = jest.fn(() => ({ json: jsonMock }));
-      const res = { status: statusMock };
+      const req = { originalUrl: '/prod-path', method: 'GET' };
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
       const next = jest.fn();
+      const testError = new Error('Prod error');
+      testError.status = 400;
 
-      errorHandler(err, req, res, next);
+      errorHandler(testError, req, res, next);
 
-      const responseBody = jsonMock.mock.calls[0][0];
+      const responseBody = res.json.mock.calls[0][0];
       expect(responseBody).not.toHaveProperty('stack');
     });
   });
