@@ -12,7 +12,9 @@
  *   2. GET /evening  — Happy path: 200 status, exact body ('Good evening'), headers
  *   3. 404 Not Found — Error handling for undefined routes
  *   4. Unsupported HTTP Methods — POST, PUT, DELETE on defined routes
- *   5. Edge Cases    — Query strings on valid routes
+ *   5. Edge Cases    — Query strings, trailing slashes, case sensitivity
+ *
+ * @module tests/app
  */
 
 const request = require('supertest');
@@ -162,6 +164,24 @@ describe('Express Application (src/app.js)', () => {
     it('should handle query strings on /evening', async () => {
       const response = await request(app).get('/evening?time=now');
 
+      expect(response.status).toBe(200);
+      expect(response.text).toBe(GOOD_EVENING_RESPONSE);
+    });
+
+    it('should handle trailing slash on /evening/', async () => {
+      const response = await request(app).get('/evening/');
+
+      // Express Router with strict: false (default) treats trailing slash
+      // as optional, so /evening/ matches the /evening route handler
+      expect(response.status).toBe(200);
+      expect(response.text).toBe(GOOD_EVENING_RESPONSE);
+    });
+
+    it('should handle case-different route /Evening', async () => {
+      const response = await request(app).get('/Evening');
+
+      // Express Router with caseSensitive: false (default) performs
+      // case-insensitive route matching, so /Evening matches /evening
       expect(response.status).toBe(200);
       expect(response.text).toBe(GOOD_EVENING_RESPONSE);
     });
