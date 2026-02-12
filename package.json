@@ -8,15 +8,24 @@
         "test": "jest",
         "test:watch": "jest --watch",
         "test:coverage": "jest --coverage",
-        "test:ci": "jest --ci --coverage --reporters=default"
+        "test:ci": "jest --ci --coverage --reporters=default",
+        "pm2:start": "pm2 start ecosystem.config.js",
+        "pm2:stop": "pm2 stop ecosystem.config.js",
+        "pm2:restart": "pm2 restart ecosystem.config.js"
     },
     "author": "hxu",
     "license": "MIT",
     "dependencies": {
-        "express": "^5.1.0"
+        "cors": "^2.8.6",
+        "dotenv": "^16.4.7",
+        "express": "^5.1.0",
+        "helmet": "^8.1.0",
+        "morgan": "^1.10.1",
+        "winston": "^3.19.0"
     },
     "devDependencies": {
         "jest": "^30.2.0",
+        "pm2": "^6.0.14",
         "supertest": "^7.1.4"
     }
 }
