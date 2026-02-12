@@ -40,6 +40,8 @@ function assertSuccessfulHtmlResponse(response, expectedBody) {
 function assert404Response(response) {
   expect(response.status).toBe(404);
   expect(response.text).toBeDefined();
+  expect(response.body.status).toBe('error');
+  expect(response.body.statusCode).toBe(404);
 }
 
 describe('HTTP Endpoints', () => {
@@ -97,6 +99,14 @@ describe('HTTP Endpoints', () => {
       const response = await request(app).delete('/').expect(404);
       assert404Response(response);
     });
+
+    test('should return JSON error response for 404', async () => {
+      const response = await get('/nonexistent');
+      expect(response.status).toBe(404);
+      expect(response.body).toHaveProperty('status', 'error');
+      expect(response.body).toHaveProperty('statusCode', 404);
+      expect(response.body).toHaveProperty('message', 'Not Found');
+    });
   });
 
   describe('Edge Cases', () => {
@@ -120,6 +130,41 @@ describe('HTTP Endpoints', () => {
       const response = await get('//');
       expect(response.status).toBeDefined();
       expect([200, 404]).toContain(response.status);
+    });
+  });
+
+  describe('Middleware Security Headers', () => {
+    test('should include Content-Security-Policy header from Helmet', async () => {
+      const response = await get('/');
+      expect(response.headers['content-security-policy']).toBeDefined();
+    });
+
+    test('should include X-Content-Type-Options header from Helmet', async () => {
+      const response = await get('/');
+      expect(response.headers['x-content-type-options']).toBe('nosniff');
+    });
+
+    test('should include Cross-Origin-Opener-Policy header from Helmet', async () => {
+      const response = await get('/');
+      expect(response.headers['cross-origin-opener-policy']).toBeDefined();
+    });
+
+    test('should include X-DNS-Prefetch-Control header from Helmet', async () => {
+      const response = await get('/');
+      expect(response.headers['x-dns-prefetch-control']).toBeDefined();
+    });
+  });
+
+  describe('CORS Headers', () => {
+    test('should include Access-Control-Allow-Origin header', async () => {
+      const response = await get('/');
+      expect(response.headers['access-control-allow-origin']).toBeDefined();
+      expect(response.headers['access-control-allow-origin']).toBe('*');
+    });
+
+    test('should respond to OPTIONS preflight request', async () => {
+      const response = await request(app).options('/');
+      expect(response.headers['access-control-allow-origin']).toBeDefined();
     });
   });
 });
