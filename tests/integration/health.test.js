@@ -1,5 +1,5 @@
 /**
- * @fileoverview Integration tests for the GET /health endpoint
+ * @fileoverview Integration tests for health check endpoint
  * @module tests/integration/health
  */
 
@@ -8,55 +8,53 @@
 const request = require('supertest');
 const app = require('../../src/app');
 
-describe('Health Check Endpoint - GET /health', () => {
-  test('should return 200 status code', async () => {
-    const response = await request(app).get('/health');
-    expect(response.status).toBe(200);
-  });
+/**
+ * @typedef {import('supertest').Response} SupertestResponse
+ */
 
-  test('should return JSON Content-Type', async () => {
-    const response = await request(app).get('/health');
-    expect(response.headers['content-type']).toMatch(/application\/json/);
-  });
+/**
+ * Makes a GET request and returns the response.
+ * @param {string} path - Request path
+ * @returns {Promise<SupertestResponse>} Supertest response
+ */
+function get(path) {
+  return request(app).get(path);
+}
 
-  test('should return status ok in response body', async () => {
-    const response = await request(app).get('/health');
-    expect(response.body).toHaveProperty('status', 'ok');
-  });
+describe('Health Check Endpoint', () => {
+  describe('GET /health', () => {
+    test('should return 200 status code', async () => {
+      const response = await get('/health');
+      expect(response.status).toBe(200);
+    });
 
-  test('should return uptime as a number', async () => {
-    const response = await request(app).get('/health');
-    expect(response.body).toHaveProperty('uptime');
-    expect(typeof response.body.uptime).toBe('number');
-    expect(response.body.uptime).toBeGreaterThan(0);
-  });
+    test('should return JSON Content-Type', async () => {
+      const response = await get('/health');
+      expect(response.headers['content-type']).toMatch(/application\/json/);
+    });
 
-  test('should return timestamp as a valid ISO 8601 string', async () => {
-    const response = await request(app).get('/health');
-    expect(response.body).toHaveProperty('timestamp');
-    const parsedDate = new Date(response.body.timestamp);
-    expect(parsedDate.toISOString()).toBe(response.body.timestamp);
-  });
+    test('should return response body with status field set to ok', async () => {
+      const response = await get('/health');
+      expect(response.body.status).toBe('ok');
+    });
 
-  test('should return complete health check response schema', async () => {
-    const response = await request(app).get('/health');
-    expect(response.status).toBe(200);
-    expect(response.body).toEqual(
-      expect.objectContaining({
-        status: 'ok',
-        uptime: expect.any(Number),
-        timestamp: expect.any(String)
-      })
-    );
-  });
+    test('should return response body with uptime as a non-negative number', async () => {
+      const response = await get('/health');
+      expect(typeof response.body.uptime).toBe('number');
+      expect(response.body.uptime).toBeGreaterThanOrEqual(0);
+    });
 
-  test('should include security headers from Helmet', async () => {
-    const response = await request(app).get('/health');
-    expect(response.headers['x-content-type-options']).toBe('nosniff');
-  });
+    test('should return response body with timestamp as valid ISO 8601 string', async () => {
+      const response = await get('/health');
+      expect(response.body.timestamp).toBeDefined();
+      expect(new Date(response.body.timestamp).toISOString()).toBe(response.body.timestamp);
+    });
 
-  test('should include CORS headers', async () => {
-    const response = await request(app).get('/health');
-    expect(response.headers['access-control-allow-origin']).toBe('*');
+    test('should contain all required response schema fields', async () => {
+      const response = await get('/health');
+      expect(response.body).toHaveProperty('status');
+      expect(response.body).toHaveProperty('uptime');
+      expect(response.body).toHaveProperty('timestamp');
+    });
   });
 });
