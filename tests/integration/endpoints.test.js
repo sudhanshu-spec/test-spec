@@ -122,4 +122,69 @@ describe('HTTP Endpoints', () => {
       expect([200, 404]).toContain(response.status);
     });
   });
+
+  // =========================================================================
+  // Security Header Integration Tests
+  // =========================================================================
+
+  describe('Security Headers', () => {
+    test('should include Content-Security-Policy header on GET /', async () => {
+      const response = await get('/');
+      expect(response.headers['content-security-policy']).toBeDefined();
+    });
+
+    test('should include X-Content-Type-Options header set to nosniff on GET /', async () => {
+      const response = await get('/');
+      expect(response.headers['x-content-type-options']).toBe('nosniff');
+    });
+
+    test('should not expose X-Powered-By header on GET /', async () => {
+      const response = await get('/');
+      expect(response.headers['x-powered-by']).toBeUndefined();
+    });
+
+    test('should include security headers on GET /evening', async () => {
+      const response = await get('/evening');
+      expect(response.headers['content-security-policy']).toBeDefined();
+      expect(response.headers['x-content-type-options']).toBe('nosniff');
+      expect(response.headers['x-powered-by']).toBeUndefined();
+    });
+
+    test('should include Cross-Origin-Opener-Policy header', async () => {
+      const response = await get('/');
+      expect(response.headers['cross-origin-opener-policy']).toBeDefined();
+    });
+
+    test('should include Cross-Origin-Resource-Policy header', async () => {
+      const response = await get('/');
+      expect(response.headers['cross-origin-resource-policy']).toBeDefined();
+    });
+
+    test('should include X-DNS-Prefetch-Control header', async () => {
+      const response = await get('/');
+      expect(response.headers['x-dns-prefetch-control']).toBeDefined();
+    });
+
+    test('should include X-Frame-Options header', async () => {
+      const response = await get('/');
+      expect(response.headers['x-frame-options']).toBeDefined();
+    });
+
+    test('should include security headers on 404 responses', async () => {
+      const response = await get('/nonexistent');
+      expect(response.headers['x-content-type-options']).toBe('nosniff');
+      expect(response.headers['x-powered-by']).toBeUndefined();
+    });
+  });
+
+  describe('Rate Limit Headers', () => {
+    test('should include rate limit headers on GET /', async () => {
+      const response = await get('/');
+      // express-rate-limit v8 uses standard IETF RateLimit headers
+      const hasRateLimit = response.headers['ratelimit-limit'] ||
+                           response.headers['x-ratelimit-limit'] ||
+                           response.headers['ratelimit-policy'];
+      expect(hasRateLimit).toBeDefined();
+    });
+  });
 });

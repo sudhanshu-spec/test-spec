@@ -74,17 +74,28 @@ if (config.httpsEnabled && config.sslKeyPath && config.sslCertPath) {
    * and both SSL key and certificate file paths are provided in configuration.
    *
    * Reads TLS credentials synchronously at startup since the server cannot
-   * accept connections without valid certificates.
+   * accept connections without valid certificates. Falls back to HTTP if
+   * certificate files are missing or unreadable.
    */
-  const key = fs.readFileSync(config.sslKeyPath);
-  const cert = fs.readFileSync(config.sslCertPath);
+  try {
+    const key = fs.readFileSync(config.sslKeyPath);
+    const cert = fs.readFileSync(config.sslCertPath);
 
-  server = https.createServer({ key, cert }, app);
+    server = https.createServer({ key, cert }, app);
 
-  server.listen(config.port, config.host, () => {
-    // Display startup confirmation with the HTTPS server URL
-    console.log(`HTTPS Server running at https://${config.host}:${config.port}/`);
-  });
+    server.listen(config.port, config.host, () => {
+      // Display startup confirmation with the HTTPS server URL
+      console.log(`HTTPS Server running at https://${config.host}:${config.port}/`);
+    });
+  } catch (err) {
+    // Log the certificate read error and fall back to HTTP
+    console.error(`Failed to read SSL certificate files: ${err.message}`);
+    console.error('Falling back to HTTP server.');
+
+    server = app.listen(config.port, config.host, () => {
+      console.log(`Server running at http://${config.host}:${config.port}/`);
+    });
+  }
 } else {
   /**
    * HTTP server path (default): Binds the Express app to a standard HTTP server.
