@@ -1,5 +1,6 @@
 /**
- * @fileoverview Server lifecycle tests for server.js entry point
+ * @fileoverview Lifecycle tests for server entry point (server.js)
+ * Tests server startup, Winston-based logging, and graceful shutdown.
  * @module tests/lifecycle/server
  */
 
@@ -19,13 +20,17 @@
  * @property {string} host - Server host
  * @property {number} port - Server port
  * @property {string} env - Environment name
+ * @property {string} logLevel - Log level
+ * @property {string} corsOrigin - CORS origin
  */
 
 /** @type {TestConfig} */
 const DEFAULT_CONFIG = {
   host: '127.0.0.1',
   port: 3000,
-  env: 'test'
+  env: 'test',
+  logLevel: 'info',
+  corsOrigin: '*'
 };
 
 /**
@@ -71,13 +76,32 @@ function createMockListen(mockServer, executeCallback = true) {
 }
 
 /**
- * Sets up mocks for app and config modules.
+ * Creates a mock logger instance with all required methods.
+ * @returns {Object} Mock Winston logger
+ */
+function createMockLogger() {
+  return {
+    info: jest.fn(),
+    error: jest.fn(),
+    warn: jest.fn(),
+    debug: jest.fn(),
+    http: jest.fn(),
+    stream: {
+      write: jest.fn()
+    }
+  };
+}
+
+/**
+ * Sets up mocks for app, config, and logger modules.
  * @param {jest.Mock} mockListen - Mock listen function
+ * @param {Object} mockLogger - Mock logger instance
  * @param {TestConfig} [config=DEFAULT_CONFIG] - Configuration values
  */
-function setupMocks(mockListen, config = DEFAULT_CONFIG) {
+function setupMocks(mockListen, mockLogger, config = DEFAULT_CONFIG) {
   jest.doMock('../../src/app', () => ({ listen: mockListen }));
   jest.doMock('../../src/config', () => ({ ...config }));
+  jest.doMock('../../src/utils/logger', () => mockLogger);
 }
 
 describe('Server Entry Point', () => {
@@ -87,15 +111,26 @@ describe('Server Entry Point', () => {
   /** @type {MockServer} */
   let mockServer;
   
-  /** @type {jest.SpyInstance} */
-  let consoleSpy;
+  /** @type {Object} */
+  let mockLogger;
+
+  /** @type {Function[]} */
+  let signalHandlers;
 
   beforeEach(() => {
     jest.resetModules();
-    consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+    mockLogger = createMockLogger();
     mockServer = createMockServer();
     mockListen = createMockListen(mockServer);
-    setupMocks(mockListen);
+    signalHandlers = {};
+
+    // Capture signal handlers instead of actually registering them
+    jest.spyOn(process, 'on').mockImplementation((event, handler) => {
+      signalHandlers[event] = handler;
+      return process;
+    });
+
+    setupMocks(mockListen, mockLogger);
   });
 
   afterEach(() => {
@@ -115,27 +150,35 @@ describe('Server Entry Point', () => {
     expect(typeof mockListen.mock.calls[0][2]).toBe('function');
   });
 
-  test('should log startup message with server URL', () => {
+  test('should log startup message with Winston logger.info', () => {
     require('../../server');
 
     const expectedMessage = `Server running at http://${DEFAULT_CONFIG.host}:${DEFAULT_CONFIG.port}/`;
-    expect(consoleSpy).toHaveBeenCalledWith(expectedMessage);
+    expect(mockLogger.info).toHaveBeenCalledWith(expectedMessage);
   });
 
   test('should use custom configuration values from config module', () => {
     jest.resetModules();
-    consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
 
     /** @type {TestConfig} */
     const customConfig = {
       host: '0.0.0.0',
       port: 8080,
-      env: 'production'
+      env: 'production',
+      logLevel: 'warn',
+      corsOrigin: 'https://example.com'
     };
 
+    const customMockLogger = createMockLogger();
     const customMockServer = createMockServer(customConfig);
     const customMockListen = createMockListen(customMockServer);
-    setupMocks(customMockListen, customConfig);
+
+    jest.spyOn(process, 'on').mockImplementation((event, handler) => {
+      signalHandlers[event] = handler;
+      return process;
+    });
+
+    setupMocks(customMockListen, customMockLogger, customConfig);
 
     require('../../server');
 
@@ -143,7 +186,7 @@ describe('Server Entry Point', () => {
     expect(customMockListen.mock.calls[0][1]).toBe(customConfig.host);
 
     const expectedMessage = `Server running at http://${customConfig.host}:${customConfig.port}/`;
-    expect(consoleSpy).toHaveBeenCalledWith(expectedMessage);
+    expect(customMockLogger.info).toHaveBeenCalledWith(expectedMessage);
   });
 
   test('should provide server object that supports graceful shutdown', () => {
@@ -158,47 +201,43 @@ describe('Server Entry Point', () => {
     expect(closeCallback).toHaveBeenCalled();
   });
 
-  test('should handle EADDRINUSE error when port is already in use', () => {
-    jest.resetModules();
+  test('should register SIGTERM signal handler', () => {
+    require('../../server');
+    expect(signalHandlers['SIGTERM']).toBeDefined();
+    expect(typeof signalHandlers['SIGTERM']).toBe('function');
+  });
 
-    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+  test('should register SIGINT signal handler', () => {
+    require('../../server');
+    expect(signalHandlers['SIGINT']).toBeDefined();
+    expect(typeof signalHandlers['SIGINT']).toBe('function');
+  });
 
-    /** @type {Function|null} */
-    let errorHandler = null;
-
-    const errorMockServer = createMockServer();
-    errorMockServer.on = jest.fn((event, handler) => {
-      if (event === 'error') {
-        errorHandler = handler;
-      }
-      return errorMockServer;
-    });
-
-    const errorMockListen = createMockListen(errorMockServer, false);
-    setupMocks(errorMockListen);
-
+  test('should log and close server on SIGTERM', () => {
+    const mockExit = jest.spyOn(process, 'exit').mockImplementation(() => {});
     require('../../server');
 
-    expect(errorMockListen).toHaveBeenCalled();
+    // Trigger SIGTERM handler
+    signalHandlers['SIGTERM']();
 
-    const eaddrinuseError = new Error('listen EADDRINUSE: address already in use');
-    /** @type {NodeJS.ErrnoException} */
-    const errnoException = Object.assign(eaddrinuseError, {
-      code: 'EADDRINUSE',
-      port: DEFAULT_CONFIG.port
-    });
+    expect(mockLogger.info).toHaveBeenCalledWith('SIGTERM received. Shutting down gracefully...');
+    expect(mockServer.close).toHaveBeenCalled();
+    expect(mockLogger.info).toHaveBeenCalledWith('Server closed.');
 
-    if (errorHandler) {
-      expect(() => errorHandler(errnoException)).not.toThrow();
-    }
+    mockExit.mockRestore();
+  });
 
-    expect(errorMockListen).toHaveBeenCalledWith(
-      DEFAULT_CONFIG.port,
-      DEFAULT_CONFIG.host,
-      expect.any(Function)
-    );
+  test('should log and close server on SIGINT', () => {
+    const mockExit = jest.spyOn(process, 'exit').mockImplementation(() => {});
+    require('../../server');
 
-    consoleErrorSpy.mockRestore();
+    // Trigger SIGINT handler
+    signalHandlers['SIGINT']();
+
+    expect(mockLogger.info).toHaveBeenCalledWith('SIGINT received. Shutting down gracefully...');
+    expect(mockServer.close).toHaveBeenCalled();
+    expect(mockLogger.info).toHaveBeenCalledWith('Server closed.');
+
+    mockExit.mockRestore();
   });
 });

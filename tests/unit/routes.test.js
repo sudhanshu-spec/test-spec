@@ -1,5 +1,6 @@
 /**
  * @fileoverview Unit tests for route handlers (src/routes/main.routes.js)
+ * and route barrel exports (src/routes/index.js)
  * @module tests/unit/routes
  */
 
@@ -90,5 +91,32 @@ describe('Route Handlers - main.routes.js', () => {
       
       expect(rootIndex).toBeLessThan(eveningIndex);
     });
+  });
+});
+
+describe('Route Barrel Exports - index.js', () => {
+  test('should export mainRoutes from barrel file', () => {
+    const routes = require('../../src/routes');
+    expect(routes).toHaveProperty('mainRoutes');
+    expect(typeof routes.mainRoutes).toBe('function');
+  });
+
+  test('should export healthRoutes from barrel file', () => {
+    const routes = require('../../src/routes');
+    expect(routes).toHaveProperty('healthRoutes');
+    expect(typeof routes.healthRoutes).toBe('function');
+  });
+
+  test('healthRoutes should be an Express Router instance', () => {
+    const { healthRoutes } = require('../../src/routes');
+    expect(healthRoutes.stack).toBeDefined();
+    expect(Array.isArray(healthRoutes.stack)).toBe(true);
+  });
+
+  test('healthRoutes should define GET /health route', () => {
+    const { healthRoutes } = require('../../src/routes');
+    const routeLayers = healthRoutes.stack.filter(layer => layer.route);
+    const paths = routeLayers.map(layer => layer.route.path);
+    expect(paths).toContain('/health');
   });
 });

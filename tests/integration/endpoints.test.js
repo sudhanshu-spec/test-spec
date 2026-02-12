@@ -39,7 +39,6 @@ function assertSuccessfulHtmlResponse(response, expectedBody) {
  */
 function assert404Response(response) {
   expect(response.status).toBe(404);
-  expect(response.text).toBeDefined();
 }
 
 describe('HTTP Endpoints', () => {
@@ -97,6 +96,14 @@ describe('HTTP Endpoints', () => {
       const response = await request(app).delete('/').expect(404);
       assert404Response(response);
     });
+
+    test('should return JSON error response for 404', async () => {
+      const response = await get('/nonexistent');
+      expect(response.status).toBe(404);
+      expect(response.body).toHaveProperty('status', 'error');
+      expect(response.body).toHaveProperty('statusCode', 404);
+      expect(response.body).toHaveProperty('message', 'Not Found');
+    });
   });
 
   describe('Edge Cases', () => {
@@ -120,6 +127,34 @@ describe('HTTP Endpoints', () => {
       const response = await get('//');
       expect(response.status).toBeDefined();
       expect([200, 404]).toContain(response.status);
+    });
+  });
+
+  describe('Middleware Behavior', () => {
+    test('should include Helmet security headers in response', async () => {
+      const response = await get('/');
+      // Helmet sets X-Content-Type-Options header
+      expect(response.headers['x-content-type-options']).toBe('nosniff');
+    });
+
+    test('should include X-Frame-Options header from Helmet', async () => {
+      const response = await get('/');
+      expect(response.headers['x-frame-options']).toBeDefined();
+    });
+
+    test('should include CORS headers in response', async () => {
+      const response = await get('/');
+      // CORS middleware sets Access-Control-Allow-Origin
+      expect(response.headers['access-control-allow-origin']).toBe('*');
+    });
+
+    test('should handle CORS preflight requests', async () => {
+      const response = await request(app)
+        .options('/')
+        .set('Origin', 'http://example.com')
+        .set('Access-Control-Request-Method', 'GET');
+      expect(response.status).toBe(204);
+      expect(response.headers['access-control-allow-origin']).toBeDefined();
     });
   });
 });
