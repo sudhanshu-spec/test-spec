@@ -5,11 +5,14 @@
     "main": "server.js",
     "scripts": {
         "start": "node server.js",
-        "test": "echo \"Error: no test specified\" && exit 1"
+        "test": "jest --verbose --forceExit --testTimeout=30000"
     },
     "author": "hxu",
     "license": "MIT",
     "dependencies": {
         "express": "^5.1.0"
+    },
+    "devDependencies": {
+        "jest": "^30.2.0"
     }
 }
