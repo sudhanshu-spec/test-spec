@@ -13,6 +13,8 @@
  * - HOST: Override default host binding
  * - PORT: Override default port number
  * - NODE_ENV: Set application environment (development, production, test)
+ * - LOG_LEVEL: Set Winston logging level (info, warn, error, debug)
+ * - CORS_ORIGIN: Set allowed CORS origin(s)
  * 
  * @module src/config
  */
@@ -37,5 +39,26 @@ module.exports = {
    * @type {string}
    * @default 'development'
    */
-  env: process.env.NODE_ENV || 'development'
+  env: process.env.NODE_ENV || 'development',
+
+  /**
+   * Winston logging level
+   * @type {string}
+   * @default 'info'
+   */
+  logLevel: process.env.LOG_LEVEL || 'info',
+
+  /**
+   * Allowed CORS origin(s)
+   * @type {string}
+   * @default '*'
+   */
+  corsOrigin: process.env.CORS_ORIGIN || '*',
+
+  /**
+   * Explicit Node environment identifier
+   * @type {string}
+   * @default 'development'
+   */
+  nodeEnv: process.env.NODE_ENV || 'development'
 };
