@@ -84,13 +84,26 @@ function createMockListen(mockServer, executeCallback = true) {
 }
 
 /**
- * Sets up mocks for app and config modules.
+ * Sets up mocks for app, config, and optionally https and fs modules.
+ * When HTTPS tests are executed, the options parameter allows mocking
+ * the Node.js built-in https and fs modules alongside the standard
+ * app and config mocks.
  * @param {jest.Mock} mockListen - Mock listen function
  * @param {TestConfig} [config=DEFAULT_CONFIG] - Configuration values
+ * @param {Object} [options={}] - Additional module mock options for HTTPS tests
+ * @param {Object} [options.mockHttps] - Mock https module (e.g., { createServer: jest.fn() })
+ * @param {Object} [options.mockFs] - Mock fs module (e.g., { readFileSync: jest.fn() })
  */
-function setupMocks(mockListen, config = DEFAULT_CONFIG) {
+function setupMocks(mockListen, config = DEFAULT_CONFIG, options = {}) {
   jest.doMock('../../src/app', () => ({ listen: mockListen }));
   jest.doMock('../../src/config', () => ({ ...config }));
+
+  if (options.mockHttps) {
+    jest.doMock('https', () => options.mockHttps);
+  }
+  if (options.mockFs) {
+    jest.doMock('fs', () => options.mockFs);
+  }
 }
 
 describe('Server Entry Point', () => {
@@ -143,10 +156,7 @@ describe('Server Entry Point', () => {
     const customConfig = {
       host: '0.0.0.0',
       port: 8080,
-      env: 'production',
-      httpsEnabled: false,
-      sslKeyPath: '',
-      sslCertPath: ''
+      env: 'production'
     };
 
     const customMockServer = createMockServer(customConfig);
@@ -239,52 +249,49 @@ describe('Server Entry Point', () => {
 
       const httpsMockServer = createMockServer(httpsConfig);
 
-      // Mock fs.readFileSync to return mock key/cert content
-      jest.doMock('fs', () => ({
-        readFileSync: jest.fn((filePath) => {
-          if (filePath === '/path/to/key.pem') return 'mock-key-content';
-          if (filePath === '/path/to/cert.pem') return 'mock-cert-content';
-          throw new Error(`ENOENT: no such file or directory, open '${filePath}'`);
-        })
-      }));
+      /** @type {jest.Mock} - Mock fs.readFileSync returning key/cert content */
+      const mockReadFileSync = jest.fn((filePath) => {
+        if (filePath === '/path/to/key.pem') return 'mock-key-content';
+        if (filePath === '/path/to/cert.pem') return 'mock-cert-content';
+        throw new Error(`ENOENT: no such file or directory, open '${filePath}'`);
+      });
 
-      // Mock https.createServer to return a mock HTTPS server
-      jest.doMock('https', () => ({
-        createServer: jest.fn(() => httpsMockServer)
-      }));
+      /** @type {jest.Mock} - Mock https.createServer returning HTTPS mock server */
+      const mockCreateServer = jest.fn(() => httpsMockServer);
 
-      // Mock app and config
-      const mockApp = { listen: jest.fn() };
-      jest.doMock('../../src/app', () => mockApp);
-      jest.doMock('../../src/config', () => ({ ...httpsConfig }));
+      // Use extended setupMocks with https and fs module mocks
+      setupMocks(jest.fn(), httpsConfig, {
+        mockHttps: { createServer: mockCreateServer },
+        mockFs: { readFileSync: mockReadFileSync }
+      });
 
       require('../../server');
 
-      const mockedFs = require('fs');
-      const mockedHttps = require('https');
+      // Retrieve the mocked app module for reference comparison in createServer assertion
+      const mockedApp = require('../../src/app');
 
-      // Assert fs.readFileSync was called with the correct paths
-      expect(mockedFs.readFileSync).toHaveBeenCalledWith('/path/to/key.pem');
-      expect(mockedFs.readFileSync).toHaveBeenCalledWith('/path/to/cert.pem');
+      // Assert fs.readFileSync was called with the correct certificate paths
+      expect(mockReadFileSync).toHaveBeenCalledWith('/path/to/key.pem');
+      expect(mockReadFileSync).toHaveBeenCalledWith('/path/to/cert.pem');
 
       // Assert https.createServer was called with key, cert, and the app
-      expect(mockedHttps.createServer).toHaveBeenCalledTimes(1);
-      expect(mockedHttps.createServer).toHaveBeenCalledWith(
+      expect(mockCreateServer).toHaveBeenCalledTimes(1);
+      expect(mockCreateServer).toHaveBeenCalledWith(
         expect.objectContaining({
           key: 'mock-key-content',
           cert: 'mock-cert-content'
         }),
-        mockApp
+        mockedApp
       );
 
-      // Assert the HTTPS server's listen was called
+      // Assert the HTTPS mock server's listen was called with port, host, and callback
       expect(httpsMockServer.listen).toHaveBeenCalledWith(
         httpsConfig.port,
         httpsConfig.host,
         expect.any(Function)
       );
 
-      // Assert startup log message includes https://
+      // Assert startup log message includes 'https://' protocol prefix
       expect(consoleSpy).toHaveBeenCalledWith(
         `HTTPS Server running at https://${httpsConfig.host}:${httpsConfig.port}/`
       );
@@ -294,6 +301,7 @@ describe('Server Entry Point', () => {
       jest.resetModules();
       consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
 
+      /** @type {TestConfig} */
       const httpConfig = {
         ...DEFAULT_CONFIG,
         httpsEnabled: false
@@ -302,15 +310,15 @@ describe('Server Entry Point', () => {
       const httpMockServer = createMockServer(httpConfig);
       const httpMockListen = createMockListen(httpMockServer);
 
-      jest.doMock('../../src/app', () => ({ listen: httpMockListen }));
-      jest.doMock('../../src/config', () => ({ ...httpConfig }));
+      // Use setupMocks with default HTTP configuration (no HTTPS options needed)
+      setupMocks(httpMockListen, httpConfig);
 
       require('../../server');
 
-      // Assert app.listen was called (HTTP behavior)
+      // Assert app.listen was called (existing HTTP behavior preserved)
       expect(httpMockListen).toHaveBeenCalledTimes(1);
 
-      // Assert startup log message includes http:// (not https://)
+      // Assert startup log message includes 'http://' protocol prefix (not 'https://')
       expect(consoleSpy).toHaveBeenCalledWith(
         `Server running at http://${httpConfig.host}:${httpConfig.port}/`
       );
@@ -325,6 +333,7 @@ describe('Server Entry Point', () => {
       const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
       consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
 
+      /** @type {TestConfig} */
       const httpsConfig = {
         ...DEFAULT_CONFIG,
         httpsEnabled: true,
@@ -332,25 +341,25 @@ describe('Server Entry Point', () => {
         sslCertPath: '/invalid/cert.pem'
       };
 
-      // Mock fs.readFileSync to throw ENOENT error
-      jest.doMock('fs', () => ({
-        readFileSync: jest.fn(() => {
-          const err = new Error("ENOENT: no such file or directory, open '/invalid/key.pem'");
-          err.code = 'ENOENT';
-          throw err;
-        })
-      }));
+      /** @type {jest.Mock} - Mock fs.readFileSync that throws ENOENT error */
+      const mockReadFileSync = jest.fn(() => {
+        const err = new Error("ENOENT: no such file or directory, open '/invalid/key.pem'");
+        err.code = 'ENOENT';
+        throw err;
+      });
 
       const fallbackMockServer = createMockServer();
       const fallbackMockListen = createMockListen(fallbackMockServer);
 
-      jest.doMock('../../src/app', () => ({ listen: fallbackMockListen }));
-      jest.doMock('../../src/config', () => ({ ...httpsConfig }));
+      // Use extended setupMocks with fs mock that throws on readFileSync
+      setupMocks(fallbackMockListen, httpsConfig, {
+        mockFs: { readFileSync: mockReadFileSync }
+      });
 
       // Require should NOT throw — graceful error handling with fallback to HTTP
       expect(() => require('../../server')).not.toThrow();
 
-      // Assert console.error was called with certificate error message
+      // Assert console.error was called with appropriate certificate error message
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         expect.stringContaining('Failed to read SSL certificate files')
       );
@@ -358,7 +367,7 @@ describe('Server Entry Point', () => {
         expect.stringContaining('Falling back to HTTP server')
       );
 
-      // Assert it fell back to HTTP
+      // Assert it fell back to HTTP server after certificate read failure
       expect(fallbackMockListen).toHaveBeenCalledTimes(1);
 
       consoleErrorSpy.mockRestore();
