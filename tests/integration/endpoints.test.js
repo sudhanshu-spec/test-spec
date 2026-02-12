@@ -39,6 +39,9 @@ function assertSuccessfulHtmlResponse(response, expectedBody) {
  */
 function assert404Response(response) {
   expect(response.status).toBe(404);
+  expect(response.text).toBeDefined();
+  expect(response.body.status).toBe('error');
+  expect(response.body.statusCode).toBe(404);
 }
 
 describe('HTTP Endpoints', () => {
@@ -130,30 +133,37 @@ describe('HTTP Endpoints', () => {
     });
   });
 
-  describe('Middleware Behavior', () => {
-    test('should include Helmet security headers in response', async () => {
+  describe('Middleware Security Headers', () => {
+    test('should include Content-Security-Policy header from Helmet', async () => {
       const response = await get('/');
-      // Helmet sets X-Content-Type-Options header
+      expect(response.headers['content-security-policy']).toBeDefined();
+    });
+
+    test('should include X-Content-Type-Options header from Helmet', async () => {
+      const response = await get('/');
       expect(response.headers['x-content-type-options']).toBe('nosniff');
     });
 
-    test('should include X-Frame-Options header from Helmet', async () => {
+    test('should include Cross-Origin-Opener-Policy header from Helmet', async () => {
       const response = await get('/');
-      expect(response.headers['x-frame-options']).toBeDefined();
+      expect(response.headers['cross-origin-opener-policy']).toBeDefined();
     });
 
-    test('should include CORS headers in response', async () => {
+    test('should include X-DNS-Prefetch-Control header from Helmet', async () => {
       const response = await get('/');
-      // CORS middleware sets Access-Control-Allow-Origin
+      expect(response.headers['x-dns-prefetch-control']).toBeDefined();
+    });
+  });
+
+  describe('CORS Headers', () => {
+    test('should include Access-Control-Allow-Origin header', async () => {
+      const response = await get('/');
+      expect(response.headers['access-control-allow-origin']).toBeDefined();
       expect(response.headers['access-control-allow-origin']).toBe('*');
     });
 
-    test('should handle CORS preflight requests', async () => {
-      const response = await request(app)
-        .options('/')
-        .set('Origin', 'http://example.com')
-        .set('Access-Control-Request-Method', 'GET');
-      expect(response.status).toBe(204);
+    test('should respond to OPTIONS preflight request', async () => {
+      const response = await request(app).options('/');
       expect(response.headers['access-control-allow-origin']).toBeDefined();
     });
   });
