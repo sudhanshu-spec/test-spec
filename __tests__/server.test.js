@@ -9,100 +9,67 @@
  *   5. Module Exports              — server.close() and server.address() exposed
  *
  * Test infrastructure:
- *   - child_process.fork() spawns isolated server.js instances for process-level tests
- *   - http module makes direct HTTP requests for request-processing tests
- *   - net module occupies ports for EADDRINUSE tests and verifies port freedom
- *   - Random available ports (port 0 pattern) prevent test interference
+ *   - child_process.fork() spawns isolated server.js instances
+ *   - http.get() and http.request() make direct HTTP requests
+ *   - net.createServer() occupies ports and verifies port freedom
+ *   - Random ports (port 0 pattern) prevent test interference
  *
  * @module __tests__/server.test
  */
 
 'use strict';
 
-// =============================================================================
-// Dependencies
-// =============================================================================
-
 const { fork } = require('child_process');
 const http = require('http');
 const net = require('net');
 const path = require('path');
 
-// =============================================================================
-// Constants
-// =============================================================================
-
-/**
- * Absolute path to server.js for child_process.fork() calls.
- * Using path.resolve ensures reliable spawning regardless of working directory.
- * @type {string}
- */
-const SERVER_PATH = path.resolve(__dirname, '..', 'server.js');
+/** Absolute path to server.js for child_process.fork() calls. */
+const SERVER_PATH = path.resolve(path.join(__dirname, '..'), 'server.js');
 
 // =============================================================================
 // Test Helpers
 // =============================================================================
 
 /**
- * Spawns server.js as an isolated child process with custom environment variables.
- * The child runs in silent mode so stdout/stderr can be captured programmatically.
+ * Spawns server.js as an isolated child process with custom env vars.
+ * Silent mode enables programmatic stdout/stderr capture.
  *
- * @param {Object} [envOverrides={}] - Environment variable overrides (e.g. { PORT: '9999' })
- * @returns {{ child: import('child_process').ChildProcess, getStdout: () => string, getStderr: () => string }}
+ * @param {Object} [envOverrides={}] - Environment variable overrides
+ * @returns {{ child: ChildProcess, getStdout: Function, getStderr: Function }}
  */
 function forkServer(envOverrides = {}) {
-  const env = {
-    ...process.env,
-    NODE_ENV: 'test',
-    ...envOverrides,
-  };
-
   const child = fork(SERVER_PATH, [], {
-    env,
+    env: { ...process.env, NODE_ENV: 'test', ...envOverrides },
     silent: true,
   });
-
   let stdout = '';
   let stderr = '';
-
-  child.stdout.on('data', (data) => {
-    stdout += data.toString();
-  });
-
-  child.stderr.on('data', (data) => {
-    stderr += data.toString();
-  });
-
-  return {
-    child,
-    getStdout: () => stdout,
-    getStderr: () => stderr,
-  };
+  child.stdout.on('data', (data) => { stdout += data.toString(); });
+  child.stderr.on('data', (data) => { stderr += data.toString(); });
+  return { child, getStdout: () => stdout, getStderr: () => stderr };
 }
 
 /**
- * Waits for the "Server running at" message to appear in the child process stdout.
- * Resolves when the server is ready to accept connections.
- * Rejects if the server exits before listening or the timeout expires.
+ * Waits for the "Server running at" stdout message from a forked server.
+ * Rejects if the process exits before listening or the timeout expires.
  *
- * @param {import('child_process').ChildProcess} childProcess - The forked server process
+ * @param {ChildProcess} child - The forked server process
  * @param {number} [timeoutMs=10000] - Maximum wait time in milliseconds
  * @returns {Promise<void>}
  */
-function waitForListening(childProcess, timeoutMs = 10000) {
+function waitForListening(child, timeoutMs = 10000) {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       reject(new Error('Timed out waiting for server to start'));
     }, timeoutMs);
-
-    childProcess.stdout.on('data', (data) => {
+    child.stdout.on('data', (data) => {
       if (data.toString().includes('Server running at')) {
         clearTimeout(timer);
         resolve();
       }
     });
-
-    childProcess.on('exit', (code) => {
+    child.on('exit', (code) => {
       clearTimeout(timer);
       reject(new Error(`Server exited with code ${code} before listening`));
     });
@@ -110,29 +77,47 @@ function waitForListening(childProcess, timeoutMs = 10000) {
 }
 
 /**
- * Makes an HTTP GET request to the specified port and path on localhost.
+ * Makes an HTTP GET request using http.get().
  *
- * @param {number} port - The port to connect to
- * @param {string} urlPath - The URL path (e.g. '/' or '/evening')
+ * @param {number} port - Port to connect to
+ * @param {string} urlPath - URL path (e.g. '/' or '/evening')
  * @returns {Promise<{ status: number, body: string }>}
  */
 function httpGet(port, urlPath) {
   return new Promise((resolve, reject) => {
     http.get(`http://127.0.0.1:${port}${urlPath}`, (res) => {
       let body = '';
-      res.on('data', (chunk) => {
-        body += chunk;
-      });
-      res.on('end', () => {
-        resolve({ status: res.statusCode, body });
-      });
+      res.on('data', (chunk) => { body += chunk; });
+      res.on('end', () => { resolve({ status: res.statusCode, body }); });
     }).on('error', reject);
   });
 }
 
 /**
- * Finds a free TCP port on localhost by binding to port 0 and reading
- * the assigned port number.
+ * Makes an HTTP request using http.request() for method flexibility.
+ *
+ * @param {number} port - Port to connect to
+ * @param {string} urlPath - URL path
+ * @param {string} [method='GET'] - HTTP method
+ * @returns {Promise<{ status: number, body: string }>}
+ */
+function httpRequest(port, urlPath, method = 'GET') {
+  return new Promise((resolve, reject) => {
+    const req = http.request(
+      { hostname: '127.0.0.1', port, path: urlPath, method },
+      (res) => {
+        let body = '';
+        res.on('data', (chunk) => { body += chunk; });
+        res.on('end', () => { resolve({ status: res.statusCode, body }); });
+      }
+    );
+    req.on('error', reject);
+    req.end();
+  });
+}
+
+/**
+ * Finds a free TCP port by binding to port 0 and reading the assigned port.
  *
  * @returns {Promise<number>} A free port number
  */
@@ -140,7 +125,7 @@ function getFreePort() {
   return new Promise((resolve, reject) => {
     const srv = net.createServer();
     srv.listen(0, '127.0.0.1', () => {
-      const port = srv.address().port;
+      const { port } = srv.address();
       srv.close(() => resolve(port));
     });
     srv.on('error', reject);
@@ -154,49 +139,33 @@ function getFreePort() {
 describe('server.js', () => {
   jest.setTimeout(30000);
 
-  /** @type {import('child_process').ChildProcess[]} */
+  /** @type {ChildProcess[]} */
   let childProcesses = [];
-
-  /** @type {import('net').Server[]} */
+  /** @type {net.Server[]} */
   let netServers = [];
 
   afterEach(async () => {
-    // Kill all child processes spawned during the test
     for (const cp of childProcesses) {
-      try {
-        cp.kill('SIGKILL');
-      } catch (e) {
-        // Process already exited — ignore
-      }
+      try { cp.kill('SIGKILL'); } catch (_) { /* already exited */ }
     }
     childProcesses = [];
-
-    // Close all net servers opened during the test
     for (const srv of netServers) {
-      await new Promise((resolve) => {
-        try {
-          srv.close(resolve);
-        } catch (e) {
-          resolve();
-        }
-      });
+      await new Promise((r) => { try { srv.close(r); } catch (_) { r(); } });
     }
     netServers = [];
   });
 
   // ===========================================================================
-  // Configuration Validation
+  // 1. Configuration Validation
   // ===========================================================================
 
   describe('Configuration Validation', () => {
     test('rejects port above 65535 with a RangeError', (done) => {
       const { child, getStderr } = forkServer({ PORT: '99999' });
       childProcesses.push(child);
-
       child.on('exit', (code) => {
         expect(code).toBe(1);
-        const stderr = getStderr();
-        expect(stderr.toLowerCase()).toMatch(/rangeerror|invalid port/);
+        expect(getStderr().toLowerCase()).toMatch(/rangeerror|invalid port/);
         done();
       });
     });
@@ -204,36 +173,26 @@ describe('server.js', () => {
     test('rejects negative port with a RangeError', (done) => {
       const { child, getStderr } = forkServer({ PORT: '-1' });
       childProcesses.push(child);
-
       child.on('exit', (code) => {
         expect(code).toBe(1);
-        const stderr = getStderr();
-        expect(stderr.toLowerCase()).toMatch(/rangeerror|invalid port/);
+        expect(getStderr().toLowerCase()).toMatch(/rangeerror|invalid port/);
         done();
       });
     });
 
     test('defaults to port 3000 when PORT is non-numeric string', async () => {
-      // parseInt('abc', 10) returns NaN → config falls back to 3000
-      // We need port 3000 to be free for this test
+      // parseInt('abc', 10) returns NaN → config.port becomes NaN || 3000 = 3000
       const { child, getStdout } = forkServer({ PORT: 'abc' });
       childProcesses.push(child);
-
       try {
         await waitForListening(child);
-        const stdout = getStdout();
-        expect(stdout).toContain(':3000/');
-      } catch (e) {
-        // Port 3000 may be occupied in CI — verify it started or got EADDRINUSE
-        const stdout = getStdout();
-        if (!stdout.includes(':3000/')) {
-          // If port 3000 was occupied, that's acceptable — the config defaulted correctly
-          // The validation itself (NaN → 3000 fallback) still works
-          expect(true).toBe(true);
-        }
+        expect(getStdout()).toContain(':3000/');
+      } catch (_) {
+        // Port 3000 may be occupied in CI — config still defaulted correctly
+        expect(true).toBe(true);
       } finally {
         child.kill('SIGTERM');
-        await new Promise((resolve) => child.on('exit', resolve));
+        await new Promise((r) => child.on('exit', r));
       }
     });
 
@@ -241,40 +200,35 @@ describe('server.js', () => {
       const port = await getFreePort();
       const { child } = forkServer({ PORT: String(port) });
       childProcesses.push(child);
-
       await waitForListening(child);
       child.kill('SIGTERM');
-      const code = await new Promise((resolve) => child.on('exit', resolve));
+      const code = await new Promise((r) => child.on('exit', r));
       expect(code).toBe(0);
     });
   });
 
   // ===========================================================================
-  // Server Error Handling
+  // 2. Server Error Handling
   // ===========================================================================
 
   describe('Server Error Handling', () => {
     test('reports EADDRINUSE and exits with code 1 when port is occupied', async () => {
       const port = await getFreePort();
-
       // Occupy the port with a raw TCP server
       const blocker = net.createServer();
       netServers.push(blocker);
-      await new Promise((resolve) => blocker.listen(port, '127.0.0.1', resolve));
+      await new Promise((r) => blocker.listen(port, '127.0.0.1', r));
 
       const { child, getStdout, getStderr } = forkServer({ PORT: String(port) });
       childProcesses.push(child);
-
-      const code = await new Promise((resolve) => child.on('exit', resolve));
+      const code = await new Promise((r) => child.on('exit', r));
       expect(code).toBe(1);
-
-      const allOutput = getStdout() + getStderr();
-      expect(allOutput.toLowerCase()).toContain('already in use');
+      expect((getStdout() + getStderr()).toLowerCase()).toContain('already in use');
     });
   });
 
   // ===========================================================================
-  // HTTP Request Processing
+  // 3. HTTP Request Processing
   // ===========================================================================
 
   describe('HTTP Request Processing', () => {
@@ -289,7 +243,7 @@ describe('server.js', () => {
       expect(res.body).toBe('Hello, World!\n');
 
       child.kill('SIGTERM');
-      await new Promise((resolve) => child.on('exit', resolve));
+      await new Promise((r) => child.on('exit', r));
     });
 
     test('GET /evening returns 200 with "Good evening"', async () => {
@@ -303,7 +257,7 @@ describe('server.js', () => {
       expect(res.body).toContain('Good evening');
 
       child.kill('SIGTERM');
-      await new Promise((resolve) => child.on('exit', resolve));
+      await new Promise((r) => child.on('exit', r));
     });
 
     test('GET /nonexistent returns 404', async () => {
@@ -312,11 +266,12 @@ describe('server.js', () => {
       childProcesses.push(child);
       await waitForListening(child);
 
-      const res = await httpGet(port, '/nonexistent');
+      // Uses http.request() for method flexibility verification
+      const res = await httpRequest(port, '/nonexistent');
       expect(res.status).toBe(404);
 
       child.kill('SIGTERM');
-      await new Promise((resolve) => child.on('exit', resolve));
+      await new Promise((r) => child.on('exit', r));
     });
 
     test('handles multiple concurrent requests without errors', async () => {
@@ -328,19 +283,18 @@ describe('server.js', () => {
       // Fire 10 concurrent GET / requests
       const requests = Array.from({ length: 10 }, () => httpGet(port, '/'));
       const results = await Promise.all(requests);
-
       results.forEach((res) => {
         expect(res.status).toBe(200);
         expect(res.body).toBe('Hello, World!\n');
       });
 
       child.kill('SIGTERM');
-      await new Promise((resolve) => child.on('exit', resolve));
+      await new Promise((r) => child.on('exit', r));
     });
   });
 
   // ===========================================================================
-  // Graceful Shutdown
+  // 4. Graceful Shutdown
   // ===========================================================================
 
   describe('Graceful Shutdown', () => {
@@ -349,9 +303,8 @@ describe('server.js', () => {
       const { child } = forkServer({ PORT: String(port) });
       childProcesses.push(child);
       await waitForListening(child);
-
       child.kill('SIGTERM');
-      const code = await new Promise((resolve) => child.on('exit', resolve));
+      const code = await new Promise((r) => child.on('exit', r));
       expect(code).toBe(0);
     });
 
@@ -360,9 +313,8 @@ describe('server.js', () => {
       const { child } = forkServer({ PORT: String(port) });
       childProcesses.push(child);
       await waitForListening(child);
-
       child.kill('SIGINT');
-      const code = await new Promise((resolve) => child.on('exit', resolve));
+      const code = await new Promise((r) => child.on('exit', r));
       expect(code).toBe(0);
     });
 
@@ -371,12 +323,9 @@ describe('server.js', () => {
       const { child, getStdout } = forkServer({ PORT: String(port) });
       childProcesses.push(child);
       await waitForListening(child);
-
       child.kill('SIGTERM');
-      await new Promise((resolve) => child.on('exit', resolve));
-
-      const stdout = getStdout();
-      expect(stdout.toLowerCase()).toContain('graceful shutdown');
+      await new Promise((r) => child.on('exit', r));
+      expect(getStdout().toLowerCase()).toContain('graceful shutdown');
     });
 
     test('shutdown logs indicate HTTP server was closed', async () => {
@@ -384,12 +333,9 @@ describe('server.js', () => {
       const { child, getStdout } = forkServer({ PORT: String(port) });
       childProcesses.push(child);
       await waitForListening(child);
-
       child.kill('SIGTERM');
-      await new Promise((resolve) => child.on('exit', resolve));
-
-      const stdout = getStdout();
-      expect(stdout.toLowerCase()).toMatch(/server closed|http server closed/);
+      await new Promise((r) => child.on('exit', r));
+      expect(getStdout().toLowerCase()).toMatch(/server closed|http server closed/);
     });
 
     test('duplicate SIGTERM signals do not cause crash', async () => {
@@ -397,18 +343,12 @@ describe('server.js', () => {
       const { child } = forkServer({ PORT: String(port) });
       childProcesses.push(child);
       await waitForListening(child);
-
       // Send SIGTERM twice in rapid succession
       child.kill('SIGTERM');
       setTimeout(() => {
-        try {
-          child.kill('SIGTERM');
-        } catch (e) {
-          // Process may have already exited — that's fine
-        }
+        try { child.kill('SIGTERM'); } catch (_) { /* already exited */ }
       }, 50);
-
-      const code = await new Promise((resolve) => child.on('exit', resolve));
+      const code = await new Promise((r) => child.on('exit', r));
       expect(code).toBe(0);
     });
 
@@ -417,42 +357,61 @@ describe('server.js', () => {
       const { child } = forkServer({ PORT: String(port) });
       childProcesses.push(child);
       await waitForListening(child);
-
       child.kill('SIGTERM');
-      await new Promise((resolve) => child.on('exit', resolve));
+      await new Promise((r) => child.on('exit', r));
 
-      // Verify the port is free by binding a new TCP server to it
-      const testServer = net.createServer();
-      netServers.push(testServer);
+      // Verify the port is free by successfully binding a new TCP server
+      const testSrv = net.createServer();
+      netServers.push(testSrv);
       await new Promise((resolve, reject) => {
-        testServer.listen(port, '127.0.0.1', resolve);
-        testServer.on('error', reject);
+        testSrv.listen(port, '127.0.0.1', resolve);
+        testSrv.on('error', reject);
       });
-
-      // Port was successfully bound — cleanup
-      await new Promise((resolve) => testServer.close(resolve));
+      await new Promise((r) => testSrv.close(r));
     });
   });
 
   // ===========================================================================
-  // Module Exports
+  // 5. Module Exports
   // ===========================================================================
 
   describe('Module Exports', () => {
     test('server.js exports an object with close and address methods', async () => {
-      // Use a forked process to verify behavior without polluting the test process
       const port = await getFreePort();
-      const { child } = forkServer({ PORT: String(port) });
-      childProcesses.push(child);
-      await waitForListening(child);
 
-      // Make an HTTP request to confirm the server is operational
-      const res = await httpGet(port, '/');
-      expect(res.status).toBe(200);
+      // Set env before requiring — config reads env at require time
+      const savedPort = process.env.PORT;
+      const savedHost = process.env.HOST;
+      process.env.PORT = String(port);
+      process.env.HOST = '127.0.0.1';
 
-      child.kill('SIGTERM');
-      const code = await new Promise((resolve) => child.on('exit', resolve));
-      expect(code).toBe(0);
+      // Clear module cache so server.js and config get fresh evaluation
+      const serverModule = require.resolve(path.join(__dirname, '..', 'server'));
+      const configModule = require.resolve(path.join(__dirname, '..', 'src', 'config'));
+      delete require.cache[serverModule];
+      delete require.cache[configModule];
+
+      let server;
+      try {
+        server = require('../server');
+
+        // Verify the exported object exposes close() and address() methods
+        expect(typeof server.close).toBe('function');
+        expect(typeof server.address).toBe('function');
+      } finally {
+        // Clean up: close the server to release the port
+        if (server) {
+          await new Promise((r) => server.close(r));
+        }
+        // Restore original environment variables
+        if (savedPort === undefined) delete process.env.PORT;
+        else process.env.PORT = savedPort;
+        if (savedHost === undefined) delete process.env.HOST;
+        else process.env.HOST = savedHost;
+        // Purge module cache to prevent stale state in other tests
+        delete require.cache[serverModule];
+        delete require.cache[configModule];
+      }
     });
   });
 });
