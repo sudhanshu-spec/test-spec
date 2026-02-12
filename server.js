@@ -1,8 +1,9 @@
 /**
  * HTTP Server Entry Point
  *
- * This module binds the Express application to an HTTP server.
- * Configuration is separated from app creation for better testability.
+ * This module binds the Express application to an HTTP server and manages
+ * the server lifecycle including startup logging via Winston and graceful
+ * shutdown on SIGTERM/SIGINT signals.
  *
  * Architecture:
  *   - src/app.js       → Express app factory (routes & middleware)
