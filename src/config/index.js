@@ -13,9 +13,13 @@
  * - HOST: Override default host binding
  * - PORT: Override default port number
  * - NODE_ENV: Set application environment (development, production, test)
+ * - LOG_LEVEL: Set Winston logging level (error, warn, info, http, debug)
+ * - CORS_ORIGIN: Set allowed CORS origin for cross-origin requests
  * 
  * @module src/config
  */
+
+require('dotenv').config();
 
 module.exports = {
   /**
@@ -37,5 +41,19 @@ module.exports = {
    * @type {string}
    * @default 'development'
    */
-  env: process.env.NODE_ENV || 'development'
+  env: process.env.NODE_ENV || 'development',
+
+  /**
+   * Application log level for Winston logger
+   * @type {string}
+   * @default 'info'
+   */
+  logLevel: process.env.LOG_LEVEL || 'info',
+
+  /**
+   * Allowed CORS origin for cross-origin requests
+   * @type {string}
+   * @default '*'
+   */
+  corsOrigin: process.env.CORS_ORIGIN || '*'
 };
