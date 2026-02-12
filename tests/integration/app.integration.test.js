@@ -31,9 +31,8 @@ describe('Integration Tests - Express Application', () => {
 
   describe('GET /', () => {
     test('GET / should return 200 status code', async () => {
-      const res = await request(app).get('/');
-
-      expect(res.status).toBe(200);
+      // Uses Supertest's chainable .expect(status) assertion
+      await request(app).get('/').expect(200);
     });
 
     test('GET / should return Hello, World!\\n as response body', async () => {
@@ -65,9 +64,8 @@ describe('Integration Tests - Express Application', () => {
 
   describe('GET /evening', () => {
     test('GET /evening should return 200 status code', async () => {
-      const res = await request(app).get('/evening');
-
-      expect(res.status).toBe(200);
+      // Uses Supertest's chainable .expect(status) assertion
+      await request(app).get('/evening').expect(200);
     });
 
     test('GET /evening should return Good evening as response body', async () => {
@@ -91,10 +89,9 @@ describe('Integration Tests - Express Application', () => {
 
   describe('404 Not Found - Undefined Routes', () => {
     test('GET /nonexistent should return 404 status code', async () => {
-      // Express 5's default handler returns 404 for paths with no registered route
-      const res = await request(app).get('/nonexistent');
-
-      expect(res.status).toBe(404);
+      // Express 5's default handler returns 404 for paths with no registered route.
+      // Assert status code only — Express 5's HTML error body may vary.
+      await request(app).get('/nonexistent').expect(404);
     });
   });
 
@@ -104,24 +101,18 @@ describe('Integration Tests - Express Application', () => {
 
   describe('404 Not Found - Unsupported HTTP Methods', () => {
     test('POST / should return 404 for unregistered method', async () => {
-      // Only GET is registered on / (src/routes/main.routes.js line 26)
-      // Express 5 returns 404 for unregistered methods on defined paths
-      const res = await request(app).post('/');
-
-      expect(res.status).toBe(404);
+      // Only GET is registered on / (src/routes/main.routes.js line 26).
+      // Express 5 returns 404 for unregistered methods on defined paths.
+      await request(app).post('/').expect(404);
     });
 
     test('PUT /evening should return 404 for unregistered method', async () => {
-      // Only GET is registered on /evening
-      const res = await request(app).put('/evening');
-
-      expect(res.status).toBe(404);
+      // Only GET is registered on /evening.
+      await request(app).put('/evening').expect(404);
     });
 
     test('DELETE / should return 404 for unregistered method', async () => {
-      const res = await request(app).delete('/');
-
-      expect(res.status).toBe(404);
+      await request(app).delete('/').expect(404);
     });
   });
 
