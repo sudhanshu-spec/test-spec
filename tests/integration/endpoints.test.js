@@ -163,19 +163,20 @@ describe('Security Headers', () => {
 });
 
 describe('Rate Limit Headers', () => {
-  test('should include ratelimit-limit header on responses', async () => {
+  test('should include ratelimit-policy header on responses', async () => {
     const response = await get('/');
-    expect(response.headers['ratelimit-limit']).toBeDefined();
+    expect(response.headers['ratelimit-policy']).toBeDefined();
   });
 
-  test('should include ratelimit-remaining header on responses', async () => {
+  test('should include ratelimit header on responses', async () => {
     const response = await get('/');
-    expect(response.headers['ratelimit-remaining']).toBeDefined();
+    expect(response.headers['ratelimit']).toBeDefined();
   });
 
-  test('should include ratelimit-reset header on responses', async () => {
-    const response = await get('/');
-    expect(response.headers['ratelimit-reset']).toBeDefined();
+  test('should include rate limit headers on /evening endpoint', async () => {
+    const response = await get('/evening');
+    expect(response.headers['ratelimit-policy']).toBeDefined();
+    expect(response.headers['ratelimit']).toBeDefined();
   });
 });
 
