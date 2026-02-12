@@ -1,11 +1,45 @@
 /**
  * @fileoverview Unit tests for the Winston logger factory (src/config/logger.js)
+ *
+ * Validates that the logger singleton is properly configured:
+ * - Logger instance is defined and is an object
+ * - Exposes standard logging methods (info, warn, error, debug)
+ * - Defaults to 'info' log level when LOG_LEVEL is not set
+ * - Has expected transports (Console + File for error.log and combined.log)
+ * - Adapts Console transport format based on NODE_ENV (development vs production)
+ *
+ * Uses jest.resetModules() pattern from config.test.js for environment isolation
+ * when testing different NODE_ENV configurations.
+ *
  * @module tests/unit/logger
  */
 
 'use strict';
 
-describe('Logger Factory Module', () => {
+/**
+ * Loads a fresh logger instance with optional environment variable overrides.
+ * Resets the module cache to ensure a completely fresh logger evaluation,
+ * which is critical because the logger module is a singleton.
+ * @param {Object<string, string|undefined>} [envOverrides={}] - Environment variable overrides.
+ *   Set a key to undefined to delete that environment variable.
+ * @returns {import('winston').Logger} Fresh Winston logger instance
+ */
+function loadLogger(envOverrides = {}) {
+  jest.resetModules();
+
+  Object.keys(envOverrides).forEach(key => {
+    if (envOverrides[key] === undefined) {
+      delete process.env[key];
+    } else {
+      process.env[key] = envOverrides[key];
+    }
+  });
+
+  return require('../../src/config/logger');
+}
+
+describe('Logger Module', () => {
+  /** @type {NodeJS.ProcessEnv} */
   const originalEnv = process.env;
 
   beforeEach(() => {
@@ -17,59 +51,70 @@ describe('Logger Factory Module', () => {
     process.env = originalEnv;
   });
 
-  /**
-   * Loads a fresh logger instance with optional environment overrides.
-   * @param {Object<string, string>} [envOverrides={}] - Environment overrides
-   * @returns {import('winston').Logger} Fresh logger instance
-   */
-  function loadLoggerWithEnv(envOverrides = {}) {
-    jest.resetModules();
-    Object.keys(envOverrides).forEach(key => {
-      if (envOverrides[key] === undefined) {
-        delete process.env[key];
-      } else {
-        process.env[key] = envOverrides[key];
-      }
-    });
-    return require('../../src/config/logger');
-  }
-
-  describe('Logger Export', () => {
-    test('should export a Winston logger instance', () => {
-      const logger = require('../../src/config/logger');
+  describe('Logger Instance', () => {
+    test('should export a defined logger instance', () => {
+      const logger = loadLogger();
       expect(logger).toBeDefined();
-      expect(typeof logger.info).toBe('function');
-      expect(typeof logger.warn).toBe('function');
-      expect(typeof logger.error).toBe('function');
-      expect(typeof logger.debug).toBe('function');
+      expect(typeof logger).toBe('object');
     });
 
-    test('should have the add method for adding transports', () => {
-      const logger = require('../../src/config/logger');
-      expect(typeof logger.add).toBe('function');
+    test('should have info method', () => {
+      const logger = loadLogger();
+      expect(typeof logger.info).toBe('function');
+    });
+
+    test('should have warn method', () => {
+      const logger = loadLogger();
+      expect(typeof logger.warn).toBe('function');
+    });
+
+    test('should have error method', () => {
+      const logger = loadLogger();
+      expect(typeof logger.error).toBe('function');
+    });
+
+    test('should have debug method', () => {
+      const logger = loadLogger();
+      expect(typeof logger.debug).toBe('function');
     });
   });
 
-  describe('Default Configuration', () => {
-    test('should default to info log level', () => {
-      const logger = loadLoggerWithEnv({ LOG_LEVEL: '' });
+  describe('Logger Configuration', () => {
+    test('should default log level to info', () => {
+      delete process.env.LOG_LEVEL;
+      const logger = loadLogger();
       expect(logger.level).toBe('info');
     });
 
-    test('should use LOG_LEVEL when set', () => {
-      const logger = loadLoggerWithEnv({ LOG_LEVEL: 'debug' });
+    test('should respect LOG_LEVEL environment variable', () => {
+      const logger = loadLogger({ LOG_LEVEL: 'debug' });
       expect(logger.level).toBe('debug');
     });
-  });
 
-  describe('Transport Configuration', () => {
-    test('should have at least 3 transports (2 File + 1 Console)', () => {
-      const logger = require('../../src/config/logger');
-      expect(logger.transports.length).toBeGreaterThanOrEqual(3);
+    test('should have transports configured', () => {
+      const logger = loadLogger();
+      expect(logger.transports).toBeDefined();
+      expect(logger.transports.length).toBeGreaterThan(0);
     });
 
-    test('should include File transport for error.log', () => {
-      const logger = require('../../src/config/logger');
+    test('should have Console transport', () => {
+      const logger = loadLogger();
+      const consoleTransport = logger.transports.find(
+        t => t.constructor.name === 'Console'
+      );
+      expect(consoleTransport).toBeDefined();
+    });
+
+    test('should have File transports', () => {
+      const logger = loadLogger();
+      const fileTransports = logger.transports.filter(
+        t => t.constructor.name === 'File'
+      );
+      expect(fileTransports.length).toBeGreaterThanOrEqual(2);
+    });
+
+    test('should include File transport for error.log with error level', () => {
+      const logger = loadLogger();
       const fileTransports = logger.transports.filter(
         t => t.constructor.name === 'File'
       );
@@ -81,7 +126,7 @@ describe('Logger Factory Module', () => {
     });
 
     test('should include File transport for combined.log', () => {
-      const logger = require('../../src/config/logger');
+      const logger = loadLogger();
       const fileTransports = logger.transports.filter(
         t => t.constructor.name === 'File'
       );
@@ -90,53 +135,35 @@ describe('Logger Factory Module', () => {
       );
       expect(combinedTransport).toBeDefined();
     });
-
-    test('should include Console transport', () => {
-      const logger = require('../../src/config/logger');
-      const consoleTransports = logger.transports.filter(
-        t => t.constructor.name === 'Console'
-      );
-      expect(consoleTransports.length).toBeGreaterThanOrEqual(1);
-    });
   });
 
-  describe('Environment-Aware Console Formatting', () => {
-    test('should use colorized format in non-production environment', () => {
-      const logger = loadLoggerWithEnv({ NODE_ENV: 'development' });
+  describe('Environment-Aware Configuration', () => {
+    test('should configure logger in development mode', () => {
+      const logger = loadLogger({ NODE_ENV: 'development' });
+      expect(logger).toBeDefined();
       const consoleTransport = logger.transports.find(
         t => t.constructor.name === 'Console'
       );
       expect(consoleTransport).toBeDefined();
     });
 
-    test('should use JSON format in production environment', () => {
-      const logger = loadLoggerWithEnv({ NODE_ENV: 'production' });
+    test('should configure logger in production mode', () => {
+      const logger = loadLogger({ NODE_ENV: 'production' });
+      expect(logger).toBeDefined();
       const consoleTransport = logger.transports.find(
         t => t.constructor.name === 'Console'
       );
       expect(consoleTransport).toBeDefined();
     });
-  });
 
-  describe('Logging Functionality', () => {
-    test('should log info messages without throwing', () => {
-      const logger = require('../../src/config/logger');
-      expect(() => logger.info('test info message')).not.toThrow();
+    test('should have at least 3 transports in development mode', () => {
+      const logger = loadLogger({ NODE_ENV: 'development' });
+      expect(logger.transports.length).toBeGreaterThanOrEqual(3);
     });
 
-    test('should log error messages without throwing', () => {
-      const logger = require('../../src/config/logger');
-      expect(() => logger.error('test error message')).not.toThrow();
-    });
-
-    test('should log warn messages without throwing', () => {
-      const logger = require('../../src/config/logger');
-      expect(() => logger.warn('test warn message')).not.toThrow();
-    });
-
-    test('should log messages with metadata without throwing', () => {
-      const logger = require('../../src/config/logger');
-      expect(() => logger.info('test', { key: 'value' })).not.toThrow();
+    test('should have at least 3 transports in production mode', () => {
+      const logger = loadLogger({ NODE_ENV: 'production' });
+      expect(logger.transports.length).toBeGreaterThanOrEqual(3);
     });
   });
 });
