@@ -52,17 +52,17 @@ describe('Configuration Module', () => {
   describe('Dotenv Loading', () => {
     test('should load dotenv before reading environment variables', () => {
       jest.resetModules();
-      // Mock dotenv to verify it is required and .config() is called
-      const dotenvMock = { config: jest.fn() };
-      jest.mock('dotenv', () => dotenvMock);
+      // Use jest.doMock (non-hoisted) to mock dotenv within this test scope
+      const mockDotenvConfig = jest.fn();
+      jest.doMock('dotenv', () => ({ config: mockDotenvConfig }));
 
       // Re-require config so the module executes with the mocked dotenv
       require('../../src/config');
 
-      expect(dotenvMock.config).toHaveBeenCalled();
+      expect(mockDotenvConfig).toHaveBeenCalled();
 
       // Clean up the dotenv mock for subsequent tests
-      jest.unmock('dotenv');
+      jest.dontMock('dotenv');
     });
   });
 
