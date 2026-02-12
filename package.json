@@ -5,11 +5,16 @@
     "main": "server.js",
     "scripts": {
         "start": "node server.js",
-        "test": "echo \"Error: no test specified\" && exit 1"
+        "test": "jest --detectOpenHandles --forceExit",
+        "test:coverage": "jest --coverage --detectOpenHandles --forceExit"
     },
     "author": "hxu",
     "license": "MIT",
     "dependencies": {
         "express": "^5.1.0"
+    },
+    "devDependencies": {
+        "jest": "30.2.0",
+        "supertest": "7.2.2"
     }
 }
