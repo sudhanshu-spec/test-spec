@@ -34,6 +34,9 @@ npm run test:watch
 
 # Run tests with coverage report
 npm run test:coverage
+
+# Run tests in CI mode with coverage
+npm run test:ci
 ```
 
 ## Coverage Requirements
@@ -47,4 +50,12 @@ The project enforces minimum coverage thresholds to maintain code quality. Tests
 | Lines      | 80%       |
 | Statements | 80%       |
 
-These thresholds are configured in `jest.config.js` and enforced during CI runs. Coverage reports are generated in the `coverage/` directory when running `npm run test:coverage`.
+These thresholds are configured in `jest.config.js` and enforced automatically during CI runs via `npm run test:ci`. Coverage reports are generated in the `coverage/` directory when running either `npm run test:coverage` or `npm run test:ci`.
+
+## Testing Rules
+
+The test suite follows these key conventions to ensure reliability and correctness:
+
+- **No Live Server in Tests:** Integration tests use [Supertest](https://github.com/ladjs/supertest) against the exported Express app instance (`require('../../src/app')`). Tests never spawn a live HTTP server, ensuring fast and deterministic execution.
+- **Environment Isolation:** Configuration unit tests reset the module registry via `jest.resetModules()` and restore `process.env` after each test to prevent cross-contamination between test cases.
+- **Exact Assertion Matching:** Response body assertions use `toBe()` for exact string comparison rather than `toContain()` or regex matching, enforcing strict response contract fidelity.
