@@ -1,6 +1,6 @@
 # hao-backprop-test
 
-A Node.js tutorial server demonstrating Express.js integration with multiple HTTP endpoints.
+A Node.js tutorial server demonstrating how to integrate Express.js as the formal HTTP framework — replacing the raw Node.js `http` module — to serve multiple HTTP endpoints.
 
 > **Note**: This is a test project for backprop integration.
 
@@ -121,6 +121,22 @@ Verify both endpoints are operational:
 ```bash
 curl -s http://127.0.0.1:3000/ && echo " - Root OK"
 curl -s http://127.0.0.1:3000/evening && echo " - Evening OK"
+```
+
+### Unmatched Routes (404)
+
+Requests to undefined routes or unsupported HTTP methods return a `404` status via Express default handling. No custom error middleware is used.
+
+**Undefined route:**
+```bash
+curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3000/unknown
+# Output: 404
+```
+
+**Unsupported HTTP method on a defined route:**
+```bash
+curl -s -o /dev/null -w "%{http_code}" -X POST http://127.0.0.1:3000/
+# Output: 404
 ```
 
 ## Project Structure
