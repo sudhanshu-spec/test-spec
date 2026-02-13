@@ -34,6 +34,9 @@ npm run test:watch
 
 # Run tests with coverage report
 npm run test:coverage
+
+# Run tests in CI mode with coverage
+npm run test:ci
 ```
 
 ## Coverage Requirements
