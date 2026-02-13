@@ -192,22 +192,32 @@ PORT=8080 npm start
 
 ## Architecture
 
-This project follows a modular Express.js architecture with separation of concerns:
+This project follows a four-layer modular Express.js architecture with strict separation of concerns:
+
+| Layer | Module | Responsibility |
+|-------|--------|----------------|
+| **Entry Layer** | `server.js` | HTTP server binding — imports the pre-configured Express app and config, invokes `app.listen()` with environment-driven parameters |
+| **Application Layer** | `src/app.js` | Express Factory — creates an Express instance via `express()`, mounts route middleware via `app.use()`, and exports the app without calling `listen()` |
+| **Routing Layer** | `src/routes/` | Express Router + Barrel Pattern — defines endpoint handlers via `express.Router()` and aggregates route modules through `src/routes/index.js` |
+| **Configuration Layer** | `src/config/index.js` | Twelve-Factor Config — reads `HOST`, `PORT`, and `NODE_ENV` from `process.env` with hardcoded fallback defaults |
 
 ```
 Request Flow:
 Client → server.js → Express App (src/app.js) → Router (src/routes/) → Response
-                           ↑
-                     Configuration
-                   (src/config/index.js)
+          (Entry)       (Application)               (Routing)
+                              ↑
+                        Configuration
+                      (src/config/index.js)
 ```
 
 ### Design Patterns Used
 
-- **Factory Pattern**: `src/app.js` exports a configured Express app without starting the server, enabling testability
-- **Barrel Pattern**: `src/routes/index.js` aggregates route exports for clean imports
-- **CommonJS Modules**: Uses `require`/`module.exports` for Node.js compatibility
-- **Twelve-Factor App**: Configuration externalized to environment variables
+- **Factory Pattern**: `src/app.js` creates and exports a configured Express app without starting the server, enabling Supertest-based integration testing without a live server
+- **Barrel Pattern**: `src/routes/index.js` aggregates and re-exports route modules as named exports for centralized import by the application layer
+- **Express Router**: `src/routes/main.routes.js` defines route handlers via `express.Router()` with `router.get()` method chains for modular, mountable endpoint definitions
+- **CommonJS Modules**: All files use `require()`/`module.exports` throughout — no ESM `import`/`export` syntax
+- **Twelve-Factor App**: Configuration sourced from environment variables (`HOST`, `PORT`, `NODE_ENV`) with sensible fallback defaults, following the Twelve-Factor App methodology
+- **Separation of Concerns**: Application assembly (`src/app.js`) is fully decoupled from HTTP server binding (`server.js`); `server.js` is the sole module permitted to call `app.listen()`
 
 ## Dependencies
 
@@ -240,7 +250,7 @@ npm ls express
 
 ## Testing
 
-This project includes a comprehensive test suite built with **Jest 30.x** and **Supertest** for HTTP endpoint testing.
+This project includes a comprehensive test suite of **41 tests** across **4 test suites**, built with **Jest 30.x** and **Supertest** for HTTP endpoint testing.
 
 ### Test Execution Commands
 
@@ -255,7 +265,7 @@ This project includes a comprehensive test suite built with **Jest 30.x** and **
 
 ### Test Structure
 
-The test suite is organized into three categories based on test scope:
+The 41 tests are organized into four suites across three categories based on test scope:
 
 ```
 tests/
@@ -268,11 +278,12 @@ tests/
     └── server.test.js       # Startup and shutdown behavior
 ```
 
-| Directory | Purpose | Test Approach |
-|-----------|---------|---------------|
-| `tests/unit/` | Test isolated modules without HTTP | Direct module imports with Jest assertions |
-| `tests/integration/` | Test HTTP endpoint responses | Supertest requests against the Express app |
-| `tests/lifecycle/` | Test server startup/shutdown | Mock-based lifecycle verification |
+| Suite | File | Tests | Test Approach |
+|-------|------|-------|---------------|
+| Config Unit | `tests/unit/config.test.js` | 15 | Direct module imports — defaults, overrides, edge cases, type checking |
+| Route Unit | `tests/unit/routes.test.js` | 7 | Router stack inspection — structure, handler verification, method/path assertions |
+| Integration | `tests/integration/endpoints.test.js` | 14 | Supertest requests against Express app — HTTP contract verification |
+| Lifecycle | `tests/lifecycle/server.test.js` | 5 | Mock-based — startup, shutdown, `EADDRINUSE` error handling |
 
 ### Coverage Targets
 
