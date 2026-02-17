@@ -1,299 +1,329 @@
-# Project Guide: Jest Unit Tests for Express.js Server
+# Project Guide: Express.js Integration & GET /evening Endpoint
 
-## Executive Summary
+## 1. Executive Summary
 
-**Project Status: 90% Complete (18 hours completed out of 20 total hours)**
+**Project Completion: 82.6% — 19 hours completed out of 23 total hours**
 
-This project implements comprehensive unit tests for an Express.js 5.x application using Jest 30.x and Supertest 7.x. All core testing requirements from the Agent Action Plan have been successfully implemented, with 41 tests achieving 100% code coverage across all source files.
+This project successfully integrates Express.js 5.1.0 as the HTTP framework for an existing Node.js tutorial server and adds a new `GET /evening` endpoint returning `"Good evening"`. All development, testing, and documentation objectives defined in the Agent Action Plan have been fully implemented and validated.
 
 ### Key Achievements
-- ✅ 41 tests passing across 4 test suites
-- ✅ 100% code coverage (exceeds the 80% target)
-- ✅ Jest 30.2.0 + Supertest 7.1.4 infrastructure configured
-- ✅ Clean, DRY test code with reusable helper functions
-- ✅ Full JSDoc type annotations for type safety
-- ✅ Comprehensive documentation in README.md
-- ✅ Application verified running correctly
+- Express.js 5.1.0 integrated with Factory Pattern, Barrel Pattern, and Twelve-Factor configuration
+- `GET /evening` endpoint implemented and returning exact string `"Good evening"` with 200 OK
+- Existing `GET /` endpoint fully preserved (backward compatible)
+- 41 tests across 4 suites — all passing with 100% code coverage
+- Comprehensive README.md with API reference, curl examples, and architecture documentation
+- Zero compilation errors, zero test failures, zero runtime errors
 
-### Completion Calculation
-- **Completed Hours**: 18h (infrastructure: 2h, config tests: 3h, routes tests: 2h, endpoint tests: 3.5h, lifecycle tests: 3.5h, documentation: 1h, refactoring: 3h)
-- **Remaining Hours**: 2h (optional CI/CD setup, minor documentation polish)
-- **Total Project Hours**: 20h
-- **Completion Percentage**: 18h / 20h = **90%**
+### Remaining Work (4 hours)
+Standard production readiness tasks remain: code review, environment configuration, staging verification, and production deployment. No code defects or functional gaps were identified.
 
 ---
 
-## Validation Results Summary
+## 2. Validation Results Summary
 
-### Test Execution Results
-```
-Test Suites: 4 passed, 4 total
-Tests:       41 passed, 41 total
-Snapshots:   0 total
-Time:        1.654s
-```
+### 2.1 Final Validator Outcome
+The Final Validator completed a full validation cycle with **zero issues found**. No fixes were required — all code was production-ready as implemented by the coding agents.
 
-### Coverage Report
-| File | Statements | Branches | Functions | Lines |
-|------|------------|----------|-----------|-------|
-| server.js | 100% | 100% | 100% | 100% |
-| src/app.js | 100% | 100% | 100% | 100% |
-| src/config/index.js | 100% | 100% | 100% | 100% |
-| src/routes/index.js | 100% | 100% | 100% | 100% |
-| src/routes/main.routes.js | 100% | 100% | 100% | 100% |
-| **All files** | **100%** | **100%** | **100%** | **100%** |
+### 2.2 Compilation Results
+All 5 source JavaScript files pass `node --check` syntax validation with zero errors:
 
-### Application Runtime Verification
-- Server starts successfully with `npm start`
-- Binds to http://127.0.0.1:3000/
-- GET `/` returns "Hello, World!\n" with 200 status
-- GET `/evening` returns "Good evening" with 200 status
+| File | Status |
+|------|--------|
+| `server.js` | ✅ Pass |
+| `src/app.js` | ✅ Pass |
+| `src/config/index.js` | ✅ Pass |
+| `src/routes/index.js` | ✅ Pass |
+| `src/routes/main.routes.js` | ✅ Pass |
 
-### Code Quality Improvements Applied
-- Removed 232 lines of verbose comments
-- Created 10 reusable helper functions across test files
-- Added complete JSDoc type annotations including @typedef, @param, @returns
-- No unnecessary console.log statements in test files
+### 2.3 Test Results
+
+| Test Suite | Tests | Status |
+|------------|-------|--------|
+| `tests/integration/endpoints.test.js` | 14 | ✅ All pass |
+| `tests/unit/routes.test.js` | 7 | ✅ All pass |
+| `tests/unit/config.test.js` | 12 | ✅ All pass |
+| `tests/lifecycle/server.test.js` | 8 | ✅ All pass |
+| **Total** | **41** | **✅ 41/41 (100%)** |
+
+### 2.4 Code Coverage
+
+| Metric | Coverage | Threshold | Status |
+|--------|----------|-----------|--------|
+| Statements | 100% | ≥ 80% | ✅ Pass |
+| Branches | 100% | ≥ 75% | ✅ Pass |
+| Functions | 100% | ≥ 90% | ✅ Pass |
+| Lines | 100% | ≥ 80% | ✅ Pass |
+
+### 2.5 Runtime Validation
+
+| Endpoint | Status | Body | Content-Type | Result |
+|----------|--------|------|-------------|--------|
+| `GET /` | 200 | `Hello, World!\n` | `text/html; charset=utf-8` | ✅ Pass |
+| `GET /evening` | 200 | `Good evening` | `text/html; charset=utf-8` | ✅ Pass |
+| `GET /nonexistent` | 404 | — | — | ✅ Pass |
+
+### 2.6 Fixes Applied During Validation
+**None required.** The codebase was fully functional and production-ready prior to validation. Zero errors were encountered across compilation, testing, and runtime validation.
 
 ---
 
-## Visual Representation
+## 3. Hours Breakdown & Completion Assessment
+
+### 3.1 Calculation
+
+**Completed: 19 hours | Remaining: 4 hours | Total: 23 hours | Completion: 19/23 = 82.6%**
+
+### 3.2 Completed Hours by Component
+
+| Component | Hours | Details |
+|-----------|-------|---------|
+| Core Application Architecture | 5.0 | `server.js` refactoring (1h), `src/app.js` factory (1.5h), `src/config/index.js` (1h), `src/routes/index.js` barrel (0.5h), `src/routes/main.routes.js` with GET /evening (1h) |
+| Test Infrastructure & Coverage | 9.0 | `jest.config.js` setup (0.5h), integration tests (2h), route unit tests (1.5h), config unit tests (2h), lifecycle tests (3h) |
+| Documentation | 2.0 | `README.md` comprehensive rewrite with API reference, curl examples, architecture (2h) |
+| Dependency & Configuration | 1.5 | `package.json` dependency management (1h), `.gitignore` patterns (0.5h) |
+| Validation & Quality Assurance | 1.5 | Syntax checks (0.5h), runtime testing (0.5h), coverage verification (0.5h) |
+| **Total Completed** | **19.0** | |
+
+### 3.3 Remaining Hours by Task
+
+| # | Task | Base Hours | After Multipliers (1.44x) | Priority |
+|---|------|-----------|---------------------------|----------|
+| 1 | Code review and PR approval | 0.7 | 1.0 | High |
+| 2 | Production environment configuration | 0.7 | 1.0 | Medium |
+| 3 | Staging environment smoke testing | 0.7 | 1.0 | Medium |
+| 4 | Production deployment and verification | 0.7 | 1.0 | Low |
+| | **Total Remaining** | **2.8** | **4.0** | |
+
+Enterprise multipliers applied: Compliance (1.15x) × Uncertainty buffer (1.25x) = 1.44x
+
+### 3.4 Visual Representation
 
 ```mermaid
 pie title Project Hours Breakdown
-    "Completed Work" : 18
-    "Remaining Work" : 2
+    "Completed Work" : 19
+    "Remaining Work" : 4
 ```
 
 ---
 
-## Files Created/Modified
+## 4. Detailed Human Task List
 
-### New Files Created
-| File | Lines | Purpose |
-|------|-------|---------|
-| `jest.config.js` | 27 | Jest configuration with coverage thresholds |
-| `tests/unit/config.test.js` | 140 | 15 unit tests for configuration module |
-| `tests/unit/routes.test.js` | 94 | 7 unit tests for route handlers |
-| `tests/integration/endpoints.test.js` | 125 | 14 HTTP endpoint integration tests |
-| `tests/lifecycle/server.test.js` | 204 | 5 server lifecycle tests |
+### 4.1 Task Table
 
-### Files Updated
-| File | Changes |
-|------|---------|
-| `package.json` | Added test scripts and devDependencies (jest, supertest) |
-| `README.md` | Added comprehensive Testing section with 60+ lines |
+All remaining tasks sum to exactly **4 hours**, matching the pie chart "Remaining Work" value.
+
+| # | Task | Description | Action Steps | Hours | Priority | Severity |
+|---|------|-------------|--------------|-------|----------|----------|
+| 1 | Code Review & PR Approval | Review all code changes for correctness, style, and security before merging | 1. Review `src/routes/main.routes.js` for correct `/evening` handler implementation. 2. Verify `server.js` modular architecture. 3. Review all 4 test suites for adequate coverage. 4. Confirm README.md accuracy. 5. Approve and merge PR. | 1.0 | High | Low |
+| 2 | Production Environment Configuration | Set up `.env` file with production values for HOST, PORT, and NODE_ENV | 1. Create `.env` file from documented defaults (`HOST=127.0.0.1`, `PORT=3000`, `NODE_ENV=production`). 2. Configure production host binding (e.g., `HOST=0.0.0.0` for container environments). 3. Set appropriate PORT for production infrastructure. 4. Verify `node server.js` starts with production config. | 1.0 | Medium | Low |
+| 3 | Staging Environment Smoke Testing | Validate both endpoints function correctly in staging/pre-production environment | 1. Deploy to staging environment. 2. Run `curl -s http://<staging-host>:<port>/` and verify `Hello, World!\n` response. 3. Run `curl -s http://<staging-host>:<port>/evening` and verify `Good evening` response. 4. Verify 404 handling for undefined routes. 5. Run `npm test` in staging to confirm all 41 tests pass. | 1.0 | Medium | Low |
+| 4 | Production Deployment & Verification | Deploy to production and verify endpoints are accessible | 1. Merge PR to production branch. 2. Run `npm install --production` on production server. 3. Start application with `NODE_ENV=production npm start`. 4. Verify `GET /` returns 200 with correct body. 5. Verify `GET /evening` returns 200 with `Good evening`. 6. Monitor logs for any runtime errors. | 1.0 | Low | Low |
+| | **Total Remaining Hours** | | | **4.0** | | |
+
+### 4.2 Task Priority Summary
+- **High Priority (1 task, 1h):** Code review — required before any deployment
+- **Medium Priority (2 tasks, 2h):** Environment setup and staging validation
+- **Low Priority (1 task, 1h):** Production deployment (straightforward given full validation)
 
 ---
 
-## Development Guide
+## 5. Comprehensive Development Guide
 
-### System Prerequisites
+### 5.1 System Prerequisites
 
 | Requirement | Minimum Version | Verified Version |
-|-------------|-----------------|------------------|
-| Node.js | 18.x | 20.19.5 |
-| npm | 8.x | 10.8.2 |
+|-------------|-----------------|-----------------|
+| Node.js | 18.x | v20.20.0 |
+| npm | 8.x | 11.1.0 |
+| Operating System | Linux, macOS, or Windows | Any |
 
-### Environment Setup
+### 5.2 Environment Setup
 
-1. **Clone the repository**
+**Clone and navigate to the repository:**
 ```bash
 git clone <repository-url>
-cd hello_world
+cd hao-backprop-test
 ```
 
-2. **Install dependencies**
+**Optional — Create environment configuration:**
+```bash
+# Create .env file (optional — sensible defaults are built-in)
+cat > .env << 'EOF'
+HOST=127.0.0.1
+PORT=3000
+NODE_ENV=development
+EOF
+```
+
+Default values if no `.env` file exists:
+- `HOST`: `127.0.0.1`
+- `PORT`: `3000`
+- `NODE_ENV`: `development`
+
+### 5.3 Dependency Installation
+
 ```bash
 npm install
-# Or for CI environments:
-npm ci
 ```
 
-### Running Tests
+**Expected output:** 381 packages installed with 0 vulnerabilities. Dependencies installed:
+- `express` 5.1.0 (runtime)
+- `jest` 30.2.0 (dev)
+- `supertest` 7.1.4 (dev)
 
-| Command | Purpose | Usage |
-|---------|---------|-------|
-| `npm test` | Run all tests | Development and verification |
-| `npm run test:watch` | Watch mode | Development with auto-rerun |
-| `npm run test:coverage` | Coverage report | Verify coverage thresholds |
-| `npm run test:ci` | CI optimized | CI/CD pipelines |
+### 5.4 Running Tests
 
-**Expected Output:**
-```
-PASS tests/integration/endpoints.test.js
-PASS tests/unit/routes.test.js
-PASS tests/unit/config.test.js
-PASS tests/lifecycle/server.test.js
-
-Test Suites: 4 passed, 4 total
-Tests:       41 passed, 41 total
-```
-
-### Running the Application
-
+**Run full test suite with coverage:**
 ```bash
-# Start with defaults
-npm start
-# Expected: Server running at http://127.0.0.1:3000/
+CI=true npx jest --coverage --watchAll=false --ci --verbose
+```
 
-# Custom configuration
+**Expected output:**
+- Test Suites: 4 passed, 4 total
+- Tests: 41 passed, 41 total
+- Coverage: 100% across all metrics (statements, branches, functions, lines)
+
+**Run tests in watch mode (development):**
+```bash
+npm run test:watch
+```
+
+### 5.5 Application Startup
+
+**Start the server:**
+```bash
+npm start
+```
+
+**Expected console output:**
+```
+Server running at http://127.0.0.1:3000/
+```
+
+**Start with custom configuration:**
+```bash
 HOST=0.0.0.0 PORT=8080 npm start
 ```
 
-### Verification Steps
+### 5.6 Verification Steps
 
-1. **Verify tests pass:**
+**Test the root endpoint:**
 ```bash
-npm test
-# All 41 tests should pass
+curl -s http://127.0.0.1:3000/
+# Expected output: Hello, World!
 ```
 
-2. **Verify coverage thresholds:**
+**Test the evening endpoint:**
 ```bash
-npm run test:coverage
-# All metrics should be 100%
+curl -s http://127.0.0.1:3000/evening
+# Expected output: Good evening
 ```
 
-3. **Verify server runs:**
+**Test 404 handling:**
 ```bash
-npm start &
-curl http://127.0.0.1:3000/
-# Expected: Hello, World!
-curl http://127.0.0.1:3000/evening
-# Expected: Good evening
+curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3000/nonexistent
+# Expected output: 404
 ```
 
----
-
-## Remaining Human Tasks
-
-| Priority | Task | Description | Hours | Severity |
-|----------|------|-------------|-------|----------|
-| Low | CI/CD Pipeline Setup | Configure GitHub Actions or similar for automated test runs | 1.5 | Low |
-| Low | Environment Documentation | Document production environment variable requirements | 0.5 | Low |
-| **Total** | | | **2.0** | |
-
-### Task Details
-
-#### 1. CI/CD Pipeline Setup (1.5 hours) - Low Priority
-**Description:** Configure continuous integration to run tests on every push/PR.
-
-**Action Steps:**
-1. Create `.github/workflows/test.yml` file
-2. Configure Node.js 20.x environment
-3. Add `npm ci` and `npm run test:ci` steps
-4. Configure coverage reporting (optional)
-
-**Sample Configuration:**
-```yaml
-name: Tests
-on: [push, pull_request]
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - run: npm ci
-      - run: npm run test:ci
+**Quick health check (both endpoints):**
+```bash
+curl -s http://127.0.0.1:3000/ && echo " - Root OK"
+curl -s http://127.0.0.1:3000/evening && echo " - Evening OK"
 ```
 
-#### 2. Environment Documentation (0.5 hours) - Low Priority
-**Description:** Add production environment configuration guide.
-
-**Action Steps:**
-1. Document required environment variables for production
-2. Add example `.env.example` file
-3. Document Docker deployment if needed
-
----
-
-## Risk Assessment
-
-### Technical Risks
-
-| Risk | Severity | Likelihood | Mitigation |
-|------|----------|------------|------------|
-| Jest version incompatibility | Low | Low | Pinned to ^30.2.0 with lockfile |
-| Supertest updates breaking tests | Low | Low | Pinned to ^7.1.4 with lockfile |
-| Node.js version drift | Low | Medium | Documented minimum version 18.x |
-
-### Operational Risks
-
-| Risk | Severity | Likelihood | Mitigation |
-|------|----------|------------|------------|
-| No automated CI/CD | Low | High | Manual testing verified; CI setup recommended |
-| Missing production config docs | Low | Medium | Basic env vars documented in README |
-
-### Security Risks
-- **None identified**: Application has no authentication, database, or external dependencies requiring security review.
-
-### Integration Risks
-- **None identified**: No external service integrations in the application.
-
----
-
-## Architecture Overview
+### 5.7 Project Structure
 
 ```
-hello_world/
-├── server.js                 # Entry point - HTTP server binding
+├── server.js                           # HTTP server entry point
 ├── src/
-│   ├── app.js               # Express app factory
+│   ├── app.js                          # Express application factory
 │   ├── config/
-│   │   └── index.js         # Environment configuration
+│   │   └── index.js                    # Environment-driven configuration
 │   └── routes/
-│       ├── index.js         # Route barrel export
-│       └── main.routes.js   # Route handlers (/, /evening)
+│       ├── index.js                    # Route barrel/aggregator
+│       └── main.routes.js              # GET / and GET /evening handlers
 ├── tests/
-│   ├── unit/
-│   │   ├── config.test.js   # Configuration tests (15 tests)
-│   │   └── routes.test.js   # Route handler tests (7 tests)
 │   ├── integration/
-│   │   └── endpoints.test.js # HTTP endpoint tests (14 tests)
+│   │   └── endpoints.test.js           # HTTP endpoint integration tests
+│   ├── unit/
+│   │   ├── routes.test.js              # Route handler unit tests
+│   │   └── config.test.js              # Configuration module unit tests
 │   └── lifecycle/
-│       └── server.test.js   # Server lifecycle tests (5 tests)
-├── jest.config.js           # Jest configuration
-├── package.json             # Dependencies and scripts
-└── README.md                # Documentation
+│       └── server.test.js              # Server binding/shutdown lifecycle tests
+├── package.json                        # npm manifest
+├── jest.config.js                      # Jest test configuration
+├── README.md                           # Comprehensive project documentation
+└── .gitignore                          # Repository ignore patterns
 ```
 
----
+### 5.8 Troubleshooting
 
-## Test Categories Summary
-
-| Category | File | Tests | Coverage |
-|----------|------|-------|----------|
-| Unit - Config | config.test.js | 15 | Default values, custom values, edge cases, type checking |
-| Unit - Routes | routes.test.js | 7 | Router exports, handler definitions, path ordering |
-| Integration | endpoints.test.js | 14 | HTTP responses, status codes, headers, error handling |
-| Lifecycle | server.test.js | 5 | Startup, shutdown, config binding, error handling |
-| **Total** | | **41** | **100%** |
+| Issue | Cause | Solution |
+|-------|-------|----------|
+| `EADDRINUSE` error on startup | Port already in use | Change PORT via environment variable: `PORT=3001 npm start` |
+| `Cannot find module 'express'` | Dependencies not installed | Run `npm install` |
+| Tests fail with "Cannot find module" | Node modules missing | Delete `node_modules/` and run `npm install` |
+| Coverage below thresholds | Test files incomplete | Ensure all test files exist in `tests/` directory |
 
 ---
 
-## Quality Metrics Achieved
+## 6. Risk Assessment
 
-| Metric | Target | Achieved | Status |
-|--------|--------|----------|--------|
-| Line Coverage | ≥ 80% | 100% | ✅ Exceeded |
-| Branch Coverage | ≥ 75% | 100% | ✅ Exceeded |
-| Function Coverage | ≥ 90% | 100% | ✅ Exceeded |
-| Statement Coverage | ≥ 80% | 100% | ✅ Exceeded |
-| All Tests Pass | 100% | 100% | ✅ Met |
-| DRY Compliance | Yes | Yes | ✅ Met |
-| Type Safety | JSDoc | Full | ✅ Met |
+### 6.1 Technical Risks
+
+| Risk | Severity | Likelihood | Mitigation |
+|------|----------|------------|------------|
+| No custom error handling middleware | Low | Low | Express.js 5.x default 404/500 handling is adequate for this scope. Add custom middleware if error responses need structured JSON format. |
+| No request logging | Low | Medium | Application has no request logging middleware. For production, consider adding `morgan` or similar HTTP logger. |
+
+### 6.2 Security Risks
+
+| Risk | Severity | Likelihood | Mitigation |
+|------|----------|------------|------------|
+| No security headers (Helmet) | Low | Low | Explicitly out of scope per AAP. Add `helmet` middleware before exposing to public internet. |
+| No rate limiting | Low | Low | Explicitly out of scope per AAP. Add `express-rate-limit` for production traffic. |
+| No CORS configuration | Low | Low | Not needed for server-rendered text responses. Add `cors` middleware if API is consumed by browser clients. |
+
+### 6.3 Operational Risks
+
+| Risk | Severity | Likelihood | Mitigation |
+|------|----------|------------|------------|
+| No process manager (PM2) | Low | Medium | Server runs as bare Node.js process. For production, use PM2 or container orchestration for auto-restart and clustering. |
+| No health check endpoint | Low | Low | Application lacks a dedicated `/health` endpoint. The existing `GET /` can serve as a basic health check. |
+| No CI/CD pipeline | Medium | High | Explicitly out of scope per AAP. Set up GitHub Actions or similar to run `npm test` on pull requests. |
+
+### 6.4 Integration Risks
+
+| Risk | Severity | Likelihood | Mitigation |
+|------|----------|------------|------------|
+| No external service dependencies | None | N/A | Application is self-contained with static string responses. No API keys, databases, or third-party services to configure. |
+
+### 6.5 Overall Risk Assessment
+**Risk Level: Low.** The application is a simple, self-contained HTTP server with static responses. All identified risks are operational best-practice improvements rather than functional defects. The codebase has 100% test coverage and zero known issues.
 
 ---
 
-## Conclusion
+## 7. Git Change Summary
 
-The Jest testing implementation for the Express.js hello_world application is **90% complete** (18 hours completed out of 20 total hours). All core testing requirements have been fully implemented with 100% code coverage, exceeding all targets. The remaining 2 hours represent optional enhancements (CI/CD setup and additional documentation) that are not blocking production deployment.
+- **Branch:** `blitzy-bba9f953-0698-4596-8059-eeb90a8c385d` (47 commits ahead of `main`)
+- **Files changed:** 16 (including lockfile and blitzy docs)
+- **Source files created/modified:** 13 (5 source, 4 tests, 4 config/docs)
+- **Total source lines added:** 1,111 (excluding `package-lock.json` and `blitzy/` documentation)
+- **Key source additions:** `src/app.js` (27 lines), `src/config/index.js` (41 lines), `src/routes/index.js` (19 lines), `src/routes/main.routes.js` (41 lines)
+- **Key test additions:** 563 total test lines across 4 suites
 
-**Recommended Next Steps:**
-1. Merge this PR to enable test-driven development
-2. Optionally configure CI/CD for automated test runs
-3. Use `npm run test:coverage` before any future code changes
+---
+
+## 8. Feature Requirements Traceability
+
+| AAP Requirement | Status | Evidence |
+|----------------|--------|----------|
+| Integrate Express.js as HTTP framework | ✅ Complete | `express ^5.1.0` in `package.json`; `src/app.js` creates Express app |
+| Add `GET /evening` returning `"Good evening"` | ✅ Complete | `src/routes/main.routes.js` line 38; runtime verified |
+| Preserve `GET /` returning `"Hello, World!\n"` | ✅ Complete | Handler unchanged; integration test confirms exact body |
+| Follow Factory/Barrel/Router patterns | ✅ Complete | `src/app.js` (factory), `src/routes/index.js` (barrel), `src/routes/main.routes.js` (router) |
+| CommonJS modules only | ✅ Complete | All files use `require()`/`module.exports` |
+| JSDoc documentation on handlers | ✅ Complete | All route handlers have `@route` and `@returns` annotations |
+| Test coverage ≥ 75/90/80/80 thresholds | ✅ Complete | 100% across all metrics |
+| Update README.md with `/evening` docs | ✅ Complete | API reference, curl examples, project structure all updated |
+| Route ordering: `/` before `/evening` | ✅ Complete | Unit test verifies stack ordering |
