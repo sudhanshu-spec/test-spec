@@ -2,8 +2,8 @@
  * Configuration Management Module
  * 
  * This module centralizes all application configuration values with environment
- * variable support following the Twelve-Factor App methodology for configuration
- * externalization.
+ * variable support, implementing Factor III (Store config in the environment)
+ * of the Twelve-Factor App methodology for configuration externalization.
  * 
  * Default values preserve backward compatibility with original server.js implementation:
  * - host: '127.0.0.1' (from original server.js line 3)
@@ -15,6 +15,9 @@
  * - NODE_ENV: Set application environment (development, production, test)
  * 
  * @module src/config
+ * @see module:server
+ * @example <caption>Override defaults for production</caption>
+ * // HOST=0.0.0.0 PORT=8080 NODE_ENV=production npm start
  */
 
 module.exports = {
