@@ -4,1011 +4,658 @@
 
 ## 0.1 Intent Clarification
 
-### 0.1.1 Core Feature Objective
 
-Based on the prompt, the Blitzy platform understands that the new feature requirement is to:
+### 0.1.1 Core Documentation Objective
 
-| Requirement ID | User Request | Technical Interpretation |
-|----------------|--------------|--------------------------|
-| REQ-001 | "add expressjs into the project" | Integrate Express.js web framework as the HTTP server foundation |
-| REQ-002 | "add another endpoint that return the response of 'Good evening'" | Create a new HTTP GET endpoint that responds with the exact string "Good evening" |
+Based on the provided requirements, the Blitzy platform understands that the documentation objective is to **enhance and consolidate documentation for the `hello_world` Express.js tutorial server** by accomplishing three complementary goals: enriching `server.js` with comprehensive JSDoc annotations and inline explanatory comments, upgrading the project-level `README.md` into a definitive developer guide (covering setup, API reference, and deployment), and embedding instructional inline code explanations throughout the entry-point module.
 
-**Feature Requirements with Enhanced Clarity:**
+**Documentation Request Category:** Update existing documentation | Improve documentation coverage
 
-- **Express.js Integration**: The user requests adding the Express.js framework to enhance the Node.js server with professional routing capabilities, middleware support, and structured request handling patterns
-- **Evening Greeting Endpoint**: A secondary HTTP endpoint should be implemented to return an evening-specific greeting message, demonstrating multi-route capability within the Express.js application
+**Documentation Type:** API docs (JSDoc) | README file (comprehensive guide) | Deployment guide | Inline code explanations
 
-**Implicit Requirements Detected:**
+The user's requirements decompose into the following discrete documentation objectives:
 
-| Implicit Requirement | Rationale |
-|---------------------|-----------|
-| Maintain existing "Hello World" endpoint | User mentions "add another endpoint" implying the existing endpoint should remain functional |
-| HTTP GET method | Greeting endpoints typically use GET for read-only responses |
-| Text/HTML response format | Standard response format for simple string responses |
-| Backward compatibility | Tutorial context suggests preserving educational value of original implementation |
+| # | User Requirement | Enhanced Interpretation |
+|---|---|---|
+| DOC-001 | "Add JSDoc comments to server.js functions" | Enhance `server.js` with JSDoc annotations for every exported symbol, function parameter, callback, return type, thrown error, and module-level documentation. Existing JSDoc (`@module server`, `@type` annotations on `app` and `config` constants, and a description for `app.listen`) must be audited for completeness and enhanced where gaps exist — specifically the anonymous callback passed to `app.listen()` and the startup logging behaviour. |
+| DOC-002 | "Create a comprehensive README" | Update the existing `README.md` (currently 338 lines covering prerequisites, installation, API, project structure, architecture, testing, and troubleshooting) into a fully comprehensive project guide. The word "create" implies the user expects a substantially expanded document rather than a net-new file. |
+| DOC-003 | "Setup instructions" | Ensure the README includes complete environment setup, prerequisites verification, dependency installation, and first-run instructions with expected outputs. The current README already contains these sections but they should be reviewed for completeness and enhanced with deployment-context awareness. |
+| DOC-004 | "API documentation" | Provide exhaustive HTTP API reference within the README covering every endpoint (`GET /`, `GET /evening`), request/response contracts, Content-Type headers, status codes, response body semantics (including trailing newline distinctions), error behaviour for unknown routes, and curl examples. |
+| DOC-005 | "Deployment guide" | Add a new **Deployment Guide** section to the README. This section is currently absent from the existing documentation and must cover production environment variables, binding to network interfaces (`0.0.0.0`), process management recommendations, reverse proxy considerations, and security notes. |
+| DOC-006 | "Inline code explanations" | Add clear, instructional inline comments within `server.js` that explain the purpose and rationale behind each code block — dependency imports, configuration loading, server binding, and the startup callback. These complement JSDoc by providing human-readable narrative alongside formal API annotations. |
 
-**Feature Dependencies and Prerequisites:**
+**Inferred Documentation Needs:**
 
-| Dependency | Type | Status |
-|------------|------|--------|
-| Node.js runtime (≥18.x) | Runtime Environment | Available |
-| npm package manager (≥10.x) | Build Tool | Available |
-| Existing server.js entry point | Code Dependency | Exists in repository |
-| HTTP module foundation | System Dependency | Built into Node.js |
+Based on repository analysis, the following implicit documentation needs are surfaced:
+
+- `server.js` already contains module-level JSDoc (`@module server`) and `@type` annotations for `app` and `config` constants (Source: `server.js:1-37`). The `app.listen()` call at line 49 has a description block but lacks `@param` and `@returns` tags for the callback. The anonymous arrow function `() => { console.log(...) }` on line 49 has no dedicated JSDoc. These are the primary JSDoc gaps.
+- The existing README at `README.md` is already substantial (338 lines). However, it lacks a dedicated **Deployment Guide** section, and could benefit from consolidated inline code walkthroughs.
+- Source files `src/app.js`, `src/config/index.js`, `src/routes/index.js`, and `src/routes/main.routes.js` already possess complete JSDoc annotations including `@module`, `@type`, `@route`, and `@returns` tags. These files are NOT in scope for JSDoc modifications unless the README references them for architectural context.
 
 ### 0.1.2 Special Instructions and Constraints
 
-**Architectural Requirements Detected:**
-
-| Requirement | Source | Implementation Approach |
-|-------------|--------|------------------------|
-| Use existing CommonJS module pattern | Repository convention | Maintain `require`/`module.exports` syntax |
-| Follow factory pattern for app creation | Express.js best practices | Separate app configuration from server binding |
-| Maintain testability | Repository structure | Ensure endpoints can be tested without starting HTTP listener |
-
-**User Example (Preserved Exactly as Provided):**
-
-> "this is a tutorial of node js server hosting one endpoint that returns the response 'Hello world'. Could you add expressjs into the project and add another endpoint that return the reponse of 'Good evening'?"
-
-**Critical Implementation Constraints:**
-
-- The existing tutorial nature must be preserved
-- The new endpoint path should follow RESTful conventions
-- Response format should match the existing "Hello World" pattern for consistency
+- No specific directives regarding documentation style, templates, or minimal changes were provided by the user.
+- No templates or examples were supplied.
+- No design system or Figma attachments are referenced.
+- The project follows existing conventions: CommonJS module system, `'use strict'` directive, JSDoc annotations using `/** ... */` multi-line blocks with standard tags (`@module`, `@type`, `@param`, `@returns`, `@route`, `@default`).
+- The existing README uses GitHub-Flavored Markdown (GFM) with tables, fenced code blocks, and hierarchical heading structure.
 
 ### 0.1.3 Technical Interpretation
 
-These feature requirements translate to the following technical implementation strategy:
+These documentation requirements translate to the following technical documentation strategy:
 
-| Requirement | Technical Action | Target Component |
-|-------------|------------------|------------------|
-| Add Express.js | Install `express` as production dependency in `package.json` | `package.json`, `package-lock.json` |
-| Configure Express app | Create Express application factory with middleware setup | `src/app.js` |
-| Integrate routing | Mount Express Router for endpoint management | `src/routes/main.routes.js` |
-| Add evening endpoint | Define `GET /evening` route handler returning "Good evening" | `src/routes/main.routes.js` |
-| Wire server binding | Connect Express app to HTTP server with config | `server.js` |
+- To **enrich server.js JSDoc** (DOC-001), we will update `server.js` by adding formal `@param` and `@callback` annotations to the `app.listen()` invocation, documenting the anonymous startup callback with `@fires` or `@see` references, and ensuring every constant and function-expression has complete type annotations including `@example` usage.
+- To **create a comprehensive README** (DOC-002), we will update `README.md` to consolidate and expand existing sections, ensuring a complete developer-facing guide with progressive disclosure from quick-start to deep-dive architecture.
+- To **document setup instructions** (DOC-003), we will review and enhance the existing Prerequisites, Installation, and Usage sections in `README.md` with verification commands and expected outputs.
+- To **provide API documentation** (DOC-004), we will expand the existing API Reference section in `README.md` with complete request/response contracts, error handling documentation, and additional curl examples.
+- To **create a deployment guide** (DOC-005), we will add a new `## Deployment` section to `README.md` covering production configuration, process management, and network binding.
+- To **add inline code explanations** (DOC-006), we will update `server.js` with descriptive inline comments (`//`) explaining each functional block's purpose and design rationale alongside the existing section-separator comments.
 
-**Implementation Pattern:**
 
-- To **add Express.js**, we will install the express package and create an application factory in `src/app.js`
-- To **implement the evening endpoint**, we will create a route handler in `src/routes/main.routes.js` using Express Router
-- To **maintain the existing Hello World endpoint**, we will migrate the existing response logic to Express route format
-- To **ensure testability**, we will separate app configuration (in `src/app.js`) from server binding (in `server.js`)
-
-### 0.1.4 Current Repository State Assessment
-
-**IMPORTANT FINDING**: Upon comprehensive analysis of the repository, the Blitzy platform has determined that:
+## 0.2 Documentation Discovery and Analysis
 
-| Feature | User Request | Current State | Status |
-|---------|--------------|---------------|--------|
-| Express.js | "add expressjs into the project" | Express.js ^5.1.0 already installed | **IMPLEMENTED** |
-| Evening Endpoint | "add another endpoint that return 'Good evening'" | `GET /evening` returns "Good evening" | **IMPLEMENTED** |
 
-The requested features have **already been fully implemented** in the existing codebase:
+### 0.2.1 Existing Documentation Infrastructure Assessment
 
-- **Express.js**: Version 5.1.0 is installed as a production dependency
-- **Evening Endpoint**: `GET /evening` route exists in `src/routes/main.routes.js`, returning exact string "Good evening"
-- **Hello World Endpoint**: `GET /` route exists, returning "Hello, World!\n"
-- **Test Coverage**: 100% code coverage across all modules with 41 passing tests
+Repository analysis reveals a well-documented Node.js Express.js tutorial server with inline JSDoc annotations already present across all source files, multiple sub-directory READMEs, and a comprehensive root-level README. No external documentation generator (JSDoc CLI, MkDocs, Docusaurus, Sphinx, etc.) is configured.
 
-**Verification Command Results:**
-```bash
-npm test  # Result: 41 passed, 100% coverage
-```
-
-This Agent Action Plan documents the complete implementation that satisfies all user requirements.
+**Documentation Files Discovered:**
 
-## 0.2 Repository Scope Discovery
+| File Path | Type | Lines | Coverage Status |
+|---|---|---|---|
+| `README.md` | Project README | 338 | Comprehensive — covers prerequisites, install, API, structure, arch, testing, troubleshooting. Missing deployment guide. |
+| `src/README.md` | Architecture Documentation | — | Covers factory pattern, module relationships for the `src/` layer |
+| `src/config/README.md` | Module Documentation | — | Documents Twelve-Factor config, environment variables, usage examples |
+| `src/routes/README.md` | Module Documentation | — | Documents route definitions, barrel pattern, how to add new routes |
+| `tests/README.md` | Test Documentation | — | Documents test categories (unit/integration/lifecycle), running tests, coverage requirements |
+| `blitzy/documentation/Project Guide.md` | Project Guide | — | Auto-generated project guide summarizing architecture and implementation |
+| `blitzy/documentation/Technical Specifications.md` | Technical Specification | — | Full technical spec with architecture, dependencies, flows, deployment |
 
-### 0.2.1 Comprehensive File Analysis
+**Documentation Framework:** None. No `jsdoc.json`, `mkdocs.yml`, `docusaurus.config.js`, `.readthedocs.yml`, or `sphinx/conf.py` was found. The project relies exclusively on inline JSDoc annotations and manually authored Markdown files.
 
-The following exhaustive analysis identifies ALL files in the repository affected by the Express.js integration and evening endpoint feature:
-
-**Existing Source Files (Modified for Feature Implementation):**
-
-| File Path | Status | Purpose | Feature Relevance |
-|-----------|--------|---------|-------------------|
-| `server.js` | Modified | HTTP server entry point | Binds Express app to configured host/port |
-| `src/app.js` | Created | Express application factory | Core Express app configuration and route mounting |
-| `src/routes/main.routes.js` | Created | Route handlers | Contains both `/` and `/evening` endpoints |
-| `src/routes/index.js` | Created | Route aggregator (barrel pattern) | Exports `mainRoutes` for clean imports |
-| `src/config/index.js` | Created | Configuration management | Provides `host`, `port`, `env` from environment variables |
-
-**Configuration Files (Modified/Updated):**
-
-| File Path | Status | Purpose | Changes Made |
-|-----------|--------|---------|--------------|
-| `package.json` | Modified | npm manifest | Added `express@^5.1.0` dependency |
-| `package-lock.json` | Modified | Dependency lock file | Locked express@5.1.0 and transitive dependencies |
-| `jest.config.js` | Created | Test configuration | Configured Jest for Node.js environment with coverage thresholds |
-| `.gitignore` | Unchanged | Git ignore patterns | Existing patterns cover `node_modules/`, `.env`, etc. |
-
-**Test Files (Created for Feature Coverage):**
-
-| File Path | Status | Purpose | Test Scope |
-|-----------|--------|---------|------------|
-| `tests/integration/endpoints.test.js` | Created | HTTP endpoint integration tests | GET `/`, GET `/evening`, 404 handling |
-| `tests/unit/config.test.js` | Created | Configuration module unit tests | Default values, env var parsing |
-| `tests/unit/routes.test.js` | Created | Route structure unit tests | Router export, route registration |
-| `tests/lifecycle/server.test.js` | Created | Server lifecycle tests | Binding, logging, error handling |
-
-**Documentation Files:**
-
-| File Path | Status | Purpose | Content Updates |
-|-----------|--------|---------|-----------------|
-| `README.md` | Modified | Project documentation | API reference for both endpoints, environment configuration |
-| `blitzy/documentation/Project Guide.md` | Created | Implementation guide | Verification steps, architecture overview |
-| `blitzy/documentation/Technical Specifications.md` | Created | Technical specification | Implementation constraints, file mappings |
-
-### 0.2.2 Integration Point Discovery
-
-**API Endpoints Connected to Feature:**
-
-| Endpoint | Method | Handler Location | Response Body |
-|----------|--------|------------------|---------------|
-| `/` | GET | `src/routes/main.routes.js:26-28` | `"Hello, World!\n"` |
-| `/evening` | GET | `src/routes/main.routes.js:37-39` | `"Good evening"` |
-
-**Service Layer Architecture:**
-
-```
-Request Flow Architecture:
-┌─────────────┐     ┌────────────┐     ┌──────────────────┐     ┌─────────────────────┐
-│   Client    │ --> │  server.js │ --> │    src/app.js    │ --> │ src/routes/main.*.js│
-│  (Browser/  │     │  (HTTP     │     │   (Express App   │     │   (Route Handlers)  │
-│   curl)     │     │   Binding) │     │    Factory)      │     │                     │
-└─────────────┘     └────────────┘     └──────────────────┘     └─────────────────────┘
-                           ↑
-                    ┌──────────────────┐
-                    │  src/config/     │
-                    │  (Configuration) │
-                    └──────────────────┘
-```
-
-**Module Dependency Graph:**
-
-| Module | Depends On | Depended By |
-|--------|------------|-------------|
-| `server.js` | `src/app`, `src/config` | Entry point (none) |
-| `src/app.js` | `express`, `src/routes` | `server.js`, tests |
-| `src/routes/index.js` | `src/routes/main.routes` | `src/app.js` |
-| `src/routes/main.routes.js` | `express` | `src/routes/index.js` |
-| `src/config/index.js` | `process.env` | `server.js`, tests |
-
-### 0.2.3 New File Requirements Summary
-
-All required files for the Express.js and evening endpoint feature have been created:
-
-**Core Source Files:**
-
-| File | Created | Purpose | Lines of Code |
-|------|---------|---------|---------------|
-| `src/app.js` | ✓ | Express application factory | 27 |
-| `src/routes/main.routes.js` | ✓ | Route handlers for `/` and `/evening` | 41 |
-| `src/routes/index.js` | ✓ | Route aggregator barrel | 19 |
-| `src/config/index.js` | ✓ | Environment configuration | 41 |
-
-**Test Files:**
-
-| File | Created | Test Count | Coverage Target |
-|------|---------|------------|-----------------|
-| `tests/integration/endpoints.test.js` | ✓ | 12 tests | Endpoint contracts |
-| `tests/unit/config.test.js` | ✓ | 15 tests | Configuration parsing |
-| `tests/unit/routes.test.js` | ✓ | 7 tests | Route structure |
-| `tests/lifecycle/server.test.js` | ✓ | 5 tests | Server lifecycle |
-
-### 0.2.4 Directory Structure Overview
-
-```
-hello_world/
-├── server.js                    # Entry point - HTTP server binding
-├── package.json                 # npm manifest (express@^5.1.0)
-├── package-lock.json            # Dependency lock file
-├── jest.config.js               # Jest test configuration
-├── README.md                    # Project documentation
-├── .gitignore                   # Git ignore patterns
-├── src/                         # Application source
-│   ├── app.js                   # Express app factory
-│   ├── config/                  # Configuration module
-│   │   └── index.js             # Environment variable management
-│   └── routes/                  # Routing surface
-│       ├── index.js             # Route aggregator
-│       └── main.routes.js       # GET / and GET /evening handlers
-├── tests/                       # Test suite
-│   ├── integration/             # HTTP endpoint tests
-│   │   └── endpoints.test.js    # API contract tests
-│   ├── unit/                    # Module unit tests
-│   │   ├── config.test.js       # Config module tests
-│   │   └── routes.test.js       # Routes structure tests
-│   └── lifecycle/               # Server lifecycle tests
-│       └── server.test.js       # Startup/shutdown tests
-└── blitzy/                      # Documentation
-    └── documentation/
-        ├── Project Guide.md     # Implementation guide
-        └── Technical Specifications.md  # Technical spec
-```
-
-## 0.3 Dependency Inventory
-
-### 0.3.1 Private and Public Packages
-
-**Runtime Dependencies (Production):**
-
-| Registry | Package Name | Version | Purpose | Status |
-|----------|--------------|---------|---------|--------|
-| npm | `express` | ^5.1.0 (locked: 5.1.0) | Web framework providing HTTP handling, routing, and middleware | Installed |
-
-**Development Dependencies (Non-Production):**
-
-| Registry | Package Name | Version | Purpose | Status |
-|----------|--------------|---------|---------|--------|
-| npm | `jest` | ^30.2.0 (locked: 30.2.0) | JavaScript testing framework and test runner | Installed |
-| npm | `supertest` | ^7.1.4 (locked: 7.1.4) | HTTP assertion library for Express endpoint testing | Installed |
-
-**Transitive Dependencies (Key Express.js Dependencies):**
-
-| Package | Version | Purpose |
-|---------|---------|---------|
-| `body-parser` | ^2.2.0 | Request body parsing |
-| `router` | ^2.2.0 | Routing infrastructure |
-| `finalhandler` | ^2.1.0 | Final response handler (404/500) |
-| `http-errors` | ^2.0.0 | HTTP error creation |
-| `send` | ^1.1.0 | Static file sending |
-| `qs` | ^6.14.0 | Query string parsing |
-
-### 0.3.2 Runtime Environment Requirements
-
-| Requirement | Minimum Version | Recommended Version | Current Environment |
-|-------------|-----------------|---------------------|---------------------|
-| Node.js | 18.x | 20.19.x (LTS) | 20.20.0 ✓ |
-| npm | 8.x | 10.8.x | 11.1.0 ✓ |
-
-**Verification Commands:**
-```bash
-node --version  # v20.20.0
-npm --version   # 11.1.0
-```
-
-### 0.3.3 Dependency Updates Applied
-
-**Package.json Modifications:**
-
-| Section | Change | Before | After |
-|---------|--------|--------|-------|
-| `dependencies.express` | Added | N/A | `"^5.1.0"` |
-| `devDependencies.jest` | Added | N/A | `"^30.2.0"` |
-| `devDependencies.supertest` | Added | N/A | `"^7.1.4"` |
-
-**Import Updates Required:**
-
-Files requiring Express-related imports:
-
-| File Pattern | Import Statement | Purpose |
-|--------------|------------------|---------|
-| `src/app.js` | `const express = require('express')` | Express application factory |
-| `src/routes/main.routes.js` | `const express = require('express')` | Router creation |
-| `tests/integration/*.test.js` | `const request = require('supertest')` | HTTP testing |
-| `tests/**/*.test.js` | Jest globals (`describe`, `test`, `expect`) | Test framework (no explicit import needed) |
-
-**Module Import Transformation:**
-
-| File | Old Import | New Import |
-|------|------------|------------|
-| `server.js` | Native `http` module (if applicable) | `require('./src/app')` for Express app |
-| `src/app.js` | N/A | `require('express')`, `require('./routes')` |
-| `src/routes/main.routes.js` | N/A | `require('express').Router()` |
-
-### 0.3.4 External Reference Updates
-
-**Configuration Files Updated:**
-
-| File | Update Type | Details |
-|------|-------------|---------|
-| `package.json` | Dependencies added | express, jest, supertest |
-| `package-lock.json` | Lock file generated | Full dependency tree with integrity hashes |
-| `jest.config.js` | Test config created | Node environment, coverage thresholds |
-
-**Build/CI Files:**
-
-| File | Status | Notes |
-|------|--------|-------|
-| `.github/workflows/*` | Not present | CI/CD not configured for this tutorial project |
-| `Dockerfile` | Not present | Containerization not required |
-| `.gitlab-ci.yml` | Not present | GitLab CI not configured |
-
-### 0.3.5 Dependency Installation Commands
-
-**Production Installation:**
-```bash
-npm ci  # Clean install from lock file (preferred for CI)
-npm install  # Install with potential dependency updates
-```
-
-**Verification:**
-```bash
-npm ls express
-# hello_world@1.0.0 /path/to/project
-
-#### └── express@5.1.0
-
-npm ls jest
-# hello_world@1.0.0 /path/to/project
-
-#### └── jest@30.2.0
-
-npm ls supertest
-# hello_world@1.0.0 /path/to/project
-
-#### └── supertest@7.1.4
+**API Documentation Tools in Use:** JSDoc annotation syntax (`/** ... */`) is used inline across all source modules. No HTML generation tool is installed (verified via `grep -r "jsdoc\|typedoc" package.json` — no results).
+
+**Diagram Tools Detected:** The existing `README.md` uses ASCII architecture diagrams. No Mermaid, PlantUML, or D2 configuration files are present.
+
+**Documentation Hosting/Deployment:** None. Documentation is consumed directly from the repository as Markdown files.
+
+### 0.2.2 Repository Code Analysis for Documentation
+
+**Search patterns used for code to document:**
+
+| Pattern | Directory | Findings |
+|---|---|---|
+| Server entry point | `server.js` | Entry module — 53 lines, has `@module server`, `@type` annotations on `app` and `config` imports, JSDoc on `app.listen()`. Missing: `@param`/`@callback` on listen callback, `@example` blocks, inline narrative comments. |
+| Express app factory | `src/app.js` | Application factory — 28 lines, has `@module src/app`, documents Express app creation and route mounting. Fully documented. |
+| Configuration module | `src/config/index.js` | Config exports — 42 lines, has `@module src/config`, each property (`host`, `port`, `env`) has `@type` and `@default`. Fully documented. |
+| Route barrel | `src/routes/index.js` | Re-export barrel — 20 lines, has `@module src/routes`, describes barrel pattern. Fully documented. |
+| Route handlers | `src/routes/main.routes.js` | GET handlers — 42 lines, has `@module src/routes/main.routes`, `@route` and `@returns` on both GET `/` and GET `/evening`. Fully documented. |
+| Project configuration | `package.json` | Package metadata — name `hao-backprop-test`, version `1.0.0`, MIT license, author `hxu`, scripts: `start`, `test`, `test:coverage` |
+| Test configuration | `jest.config.js` | Jest config — node environment, coverage thresholds: 75% branches, 90% functions, 80% lines/statements |
+| Git ignore | `.gitignore` | Standard Node.js ignores — `node_modules/`, `coverage/`, `.env` |
+
+**Key directories examined:**
+- Root (`/`) — `server.js`, `package.json`, `README.md`, `jest.config.js`, `.gitignore`
+- `src/` — `app.js`, `config/index.js`, `routes/index.js`, `routes/main.routes.js`
+- `tests/` — `integration/`, `lifecycle/`, `unit/` folders with 41 total tests
+- `blitzy/` — `documentation/` with Project Guide and Technical Specifications
+
+**Existing JSDoc Gap Analysis in `server.js`:**
+
+| Line Range | Element | Current JSDoc | Gap |
+|---|---|---|---|
+| 1–17 | Module header | `@module server` with Architecture and Usage sections | None — complete |
+| 25–30 | `const app` | `@type {import('express').Application}` | None — complete |
+| 32–37 | `const config` | `@type {{ host: string, port: number, env: string }}` | None — complete |
+| 43–52 | `app.listen()` | Description block only — "Starts the Express.js HTTP server..." | Missing `@param`, `@callback`, `@returns`, `@example`, and `@fires` tags. The anonymous callback function has no standalone documentation. |
+| 49 | Callback `() => { console.log(...) }` | No JSDoc | Missing — needs `@callback` or inline documentation |
+| General | Inline explanations | Only section-separator comments exist | Missing — needs narrative inline comments explaining each block |
+
+### 0.2.3 Web Search Research Conducted
+
+- **JSDoc best practices for Node.js/Express:** Research confirmed that JSDoc 4.0.5 is the latest stable version. Standard practice includes `@module` for CommonJS modules, `@type` for variable annotations, `@param` and `@returns` for functions, `@callback` for anonymous function documentation, and `@example` blocks for usage illustrations. Comments must use `/** ... */` blocks to be parsed.
+- **Documentation structure conventions:** For small Express.js projects, a single comprehensive README with setup, API reference, and deployment sections is considered best practice, with JSDoc annotations embedded directly in source files for API-level documentation.
+- **Express.js API documentation patterns:** Recommended practice includes documenting endpoints with `@route`, request/response types, status codes, and curl examples.
+
+
+## 0.3 Documentation Scope Analysis
+
+
+### 0.3.1 Code-to-Documentation Mapping
+
+**Modules requiring documentation changes:**
+
+- **Module: `server.js` (Entry Point)**
+  - Public APIs: `app.listen(port, host, callback)` invocation, module-scoped constants `app`, `config`
+  - Current documentation: Partial — module header and `@type` annotations exist; `app.listen()` lacks formal parameter and callback JSDoc; inline explanations are absent
+  - Documentation needed: Enhanced JSDoc with `@param`, `@callback`, `@example`, `@see` tags on the listen call; comprehensive inline comments explaining each block's purpose and design rationale; expanded module-level description with architectural context
+
+- **Module: `src/app.js` (Application Factory)**
+  - Public APIs: Default export of configured Express `app` instance
+  - Current documentation: Complete — `@module src/app` with full description
+  - Documentation needed: None (already fully documented). Referenced in README for architectural context only.
+
+- **Module: `src/config/index.js` (Configuration)**
+  - Public APIs: Exports `{ host, port, env }`
+  - Current documentation: Complete — `@module src/config`, `@type` and `@default` on each property
+  - Documentation needed: None (already fully documented). Referenced in README environment variable section.
+
+- **Module: `src/routes/index.js` (Route Barrel)**
+  - Public APIs: Re-exports `{ mainRoutes }`
+  - Current documentation: Complete — `@module src/routes` with barrel pattern description
+  - Documentation needed: None.
+
+- **Module: `src/routes/main.routes.js` (Route Handlers)**
+  - Public APIs: `GET /` and `GET /evening` handlers, `mainRoutes` Router export
+  - Current documentation: Complete — `@module`, `@route`, `@returns` on each handler
+  - Documentation needed: None. Referenced in README API documentation section.
+
+**Configuration options requiring documentation in README:**
+
+| Config Property | Source | Current README Coverage | Gap |
+|---|---|---|---|
+| `PORT` | `src/config/index.js:21` | Documented in Environment Variables table | None |
+| `HOST` | `src/config/index.js:14` | Documented in Environment Variables table | None |
+| `NODE_ENV` | `src/config/index.js:28` | Documented in Environment Variables table | None |
+| Production deployment config | N/A | Not documented | Missing — needs deployment guide section |
+
+**Features requiring documentation:**
+
+| Feature | Current Coverage | Gaps |
+|---|---|---|
+| Server startup/shutdown | Basic in README Usage section | Needs deployment guide with process management |
+| GET `/` endpoint | Documented with curl example | Needs enhanced response schema and error docs |
+| GET `/evening` endpoint | Documented with curl example | Needs enhanced response schema and error docs |
+| Error handling (404) | Not documented in README | Missing — Express default 404 behaviour |
+| Testing | Covered in README Testing section | Adequate |
+| Architecture | Covered in README with ASCII diagram | Adequate — could enhance with Mermaid |
+
+### 0.3.2 Documentation Gap Analysis
+
+Given the requirements and repository analysis, the documentation gaps include:
+
+**Undocumented or under-documented areas:**
+
+- **`server.js` JSDoc completeness**: The `app.listen()` call (line 43–52) lacks `@param` tags for `config.port`, `config.host`, and the anonymous callback. The anonymous startup callback (`() => { console.log(...) }`) has no `@callback` or `@function` documentation. No `@example` blocks exist anywhere in the file.
+- **`server.js` inline explanations**: The file uses only minimal `// ---` section separators. There are no narrative comments explaining *why* the strict mode is used, why the app factory pattern is employed, why the config is destructured as an object import, or what the listen callback achieves beyond its implementation.
+- **Deployment documentation**: The existing README has zero coverage of deployment topics — no production configuration, no process management (PM2, systemd), no reverse proxy setup, no Docker considerations, no security hardening notes.
+- **Error behaviour documentation**: The README documents happy-path API responses but does not document what happens when the user hits an undefined route (Express default 404 JSON or HTML response) or when the server fails to bind.
+- **README Deployment Guide**: Entirely absent — must be created from scratch within the README to cover production environment variables, bind address (`0.0.0.0` vs `127.0.0.1`), process supervision, and graceful shutdown.
+
+**Already-complete documentation (no changes needed):**
+
+- `src/app.js` — JSDoc is comprehensive
+- `src/config/index.js` — JSDoc is comprehensive with `@type` and `@default`
+- `src/routes/index.js` — JSDoc is comprehensive
+- `src/routes/main.routes.js` — JSDoc is comprehensive with `@route` and `@returns`
+- `src/README.md` — Architecture documentation complete
+- `src/config/README.md` — Configuration documentation complete
+- `src/routes/README.md` — Route documentation complete
+- `tests/README.md` — Test documentation complete
+
+
+## 0.4 Documentation Implementation Design
+
+
+### 0.4.1 Documentation Structure Planning
+
+The project's documentation footprint remains file-based Markdown and inline JSDoc. No documentation site generator will be introduced, consistent with the project's minimal tutorial-server nature. The documentation structure after implementation will be:
 
 ```
-
-### 0.3.6 Version Compatibility Matrix
-
-| Component | Minimum | Maximum | Tested | Notes |
-|-----------|---------|---------|--------|-------|
-| Node.js | 18.0.0 | Latest | 20.20.0 | Express 5.x requires Node ≥18 |
-| npm | 8.0.0 | Latest | 11.1.0 | Lock file v3 format |
-| Express.js | 5.1.0 | 5.x | 5.1.0 | Caret allows minor/patch updates |
-| Jest | 30.2.0 | 30.x | 30.2.0 | Latest major version |
-| Supertest | 7.1.4 | 7.x | 7.1.4 | Compatible with Express 5.x |
-
-## 0.4 Integration Analysis
-
-### 0.4.1 Existing Code Touchpoints
-
-**Direct Modifications Required:**
-
-| File | Location | Modification Type | Description |
-|------|----------|-------------------|-------------|
-| `server.js` | Lines 30-52 | Refactored | Import Express app and config, bind with `app.listen()` |
-| `src/app.js` | Full file | Created | Express application factory with route mounting |
-| `src/routes/main.routes.js` | Full file | Created | Route handlers for `/` and `/evening` |
-| `src/routes/index.js` | Full file | Created | Barrel pattern for route aggregation |
-| `src/config/index.js` | Full file | Created | Environment configuration module |
-
-**Server Entry Point Integration (`server.js`):**
-
-```javascript
-// Key integration points in server.js
-const app = require('./src/app');      // Line 30: Import Express app
-const config = require('./src/config'); // Line 37: Import configuration
-
-// Line 49-52: Server binding
-app.listen(config.port, config.host, () => {
-  console.log(`Server running at http://${config.host}:${config.port}/`);
-});
+/ (repository root)
+├── README.md                      (UPDATE — comprehensive project guide)
+│   ├── Overview / Introduction
+│   ├── Prerequisites
+│   ├── Installation & Setup
+│   ├── Usage & Custom Configuration
+│   ├── API Reference (GET /, GET /evening, error behaviour)
+│   ├── Project Structure
+│   ├── Architecture & Design Patterns
+│   ├── Deployment Guide (NEW section)
+│   │   ├── Production Configuration
+│   │   ├── Process Management
+│   │   ├── Reverse Proxy
+│   │   └── Security Considerations
+│   ├── Environment Variables
+│   ├── Dependencies
+│   ├── Scripts Reference
+│   ├── Testing
+│   ├── Troubleshooting
+│   └── License & Author
+├── server.js                      (UPDATE — enhanced JSDoc + inline explanations)
+├── src/
+│   ├── README.md                  (NO CHANGE — already complete)
+│   ├── app.js                     (NO CHANGE — JSDoc already complete)
+│   ├── config/
+│   │   ├── README.md              (NO CHANGE — already complete)
+│   │   └── index.js               (NO CHANGE — JSDoc already complete)
+│   └── routes/
+│       ├── README.md              (NO CHANGE — already complete)
+│       ├── index.js               (NO CHANGE — JSDoc already complete)
+│       └── main.routes.js         (NO CHANGE — JSDoc already complete)
+└── tests/
+    └── README.md                  (NO CHANGE — already complete)
 ```
 
-### 0.4.2 Dependency Injection Points
+### 0.4.2 Content Generation Strategy
 
-**Service Registration Locations:**
+**Information Extraction Approach:**
 
-| Component | Registration Point | Injection Target |
-|-----------|-------------------|------------------|
-| Express App | `src/app.js` exports | `server.js` imports via `require('./src/app')` |
-| Configuration | `src/config/index.js` exports | `server.js` imports via `require('./src/config')` |
-| Main Routes | `src/routes/index.js` exports `mainRoutes` | `src/app.js` mounts via `app.use('/', mainRoutes)` |
-| Router | `src/routes/main.routes.js` exports | `src/routes/index.js` re-exports |
+- "Extract function signatures and type information from `server.js` (Source: `server.js:25-52`) for JSDoc parameter, return, and callback annotations"
+- "Extract API endpoint definitions from `src/routes/main.routes.js` (Source: `src/routes/main.routes.js:18-42`) for README API reference enhancement"
+- "Extract environment variable defaults from `src/config/index.js` (Source: `src/config/index.js:14-28`) for deployment guide configuration section"
+- "Generate deployment guidance by analyzing server binding logic in `server.js:49` and config module patterns in `src/config/index.js`"
+- "Create inline code explanations by analyzing each block in `server.js` against architecture documentation in the tech spec Section 5.1 (High-Level Architecture)"
 
-**Dependency Flow Diagram:**
+**Documentation Standards:**
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                         server.js (Entry Point)                      │
-│  ┌─────────────────────────┐    ┌─────────────────────────┐         │
-│  │ require('./src/app')    │    │ require('./src/config') │         │
-│  └───────────┬─────────────┘    └───────────┬─────────────┘         │
-└──────────────┼──────────────────────────────┼───────────────────────┘
-               │                              │
-               ▼                              ▼
-┌──────────────────────────────┐  ┌──────────────────────────────────┐
-│       src/app.js             │  │       src/config/index.js        │
-│  ┌────────────────────────┐  │  │  exports { host, port, env }     │
-│  │ require('express')     │  │  │  ┌─────────────────────────────┐ │
-│  │ require('./routes')    │  │  │  │ process.env.HOST || '...'   │ │
-│  │ app.use('/', mainRoutes)│ │  │  │ parseInt(process.env.PORT)  │ │
-│  └────────────┬───────────┘  │  │  │ process.env.NODE_ENV        │ │
-│               │              │  │  └─────────────────────────────┘ │
-└───────────────┼──────────────┘  └──────────────────────────────────┘
-                │
-                ▼
-┌────────────────────────────────────────────────────────────────────┐
-│                    src/routes/index.js                              │
-│  ┌──────────────────────────────────────────────────────────────┐  │
-│  │ const mainRoutes = require('./main.routes')                  │  │
-│  │ module.exports = { mainRoutes }                              │  │
-│  └─────────────────────────────┬────────────────────────────────┘  │
-└────────────────────────────────┼───────────────────────────────────┘
-                                 │
-                                 ▼
-┌────────────────────────────────────────────────────────────────────┐
-│                   src/routes/main.routes.js                         │
-│  ┌──────────────────────────────────────────────────────────────┐  │
-│  │ const router = express.Router()                              │  │
-│  │ router.get('/', (req, res) => res.send('Hello, World!\n'))   │  │
-│  │ router.get('/evening', (req, res) => res.send('Good evening'))│  │
-│  │ module.exports = router                                      │  │
-│  └──────────────────────────────────────────────────────────────┘  │
-└────────────────────────────────────────────────────────────────────┘
+- Markdown formatting with proper heading hierarchy (`#` through `####`)
+- Mermaid diagram integration for architecture visualization using fenced code blocks
+- Code examples using language-annotated fenced blocks (`javascript`, `bash`)
+- Source citations as inline references: `Source: /path/to/file.js:LineNumber`
+- Tables for parameter descriptions, environment variables, and API response fields
+- Consistent use of existing README terminology and style conventions
+
+### 0.4.3 Diagram and Visual Strategy
+
+**Mermaid diagrams to create within the README:**
+
+- **Request-Response Flow Diagram**: A sequence diagram showing the client → `server.js` → `src/app.js` → `src/routes/main.routes.js` → HTTP response flow. This replaces or supplements the existing ASCII architecture diagram in the README.
+
+- **Module Dependency Diagram**: A graph diagram showing the `require()` dependency tree: `server.js` → `src/app` and `src/config`, `src/app` → `src/routes/index` → `src/routes/main.routes`, with Express as an external dependency.
+
+- **Server Lifecycle Diagram**: A state diagram depicting startup → listening → request handling → shutdown lifecycle for the deployment guide section.
+
+**Diagram specifications:**
+
+```mermaid
+graph LR
+    Client([HTTP Client]) --> Server[server.js]
+    Server --> App[src/app.js]
+    App --> Routes[src/routes/main.routes.js]
+    Routes --> Response([HTTP Response])
+    Server --> Config[src/config/index.js]
 ```
 
-### 0.4.3 Database/Schema Updates
+### 0.4.4 JSDoc Enhancement Strategy for server.js
 
-| Update Type | Required | Notes |
-|-------------|----------|-------|
-| Database Migrations | No | Stateless endpoints, no persistence layer |
-| Schema Additions | No | No database dependencies |
-| Data Models | No | Simple string responses only |
+The JSDoc enhancement for `server.js` follows a structured approach targeting three categories of documentation gaps:
 
-### 0.4.4 Middleware Integration
+**Category 1 — Formal Tag Completion:**
+- Add `@listens` tag to the `app.listen()` call to document the binding address
+- Add `@see` references linking to `src/app.js` and `src/config/index.js`
+- Add `@example` blocks showing how to start the server and expected console output
+- Add `@requires` tags for the `./src/app` and `./src/config` module dependencies
 
-**Express Middleware Chain:**
+**Category 2 — Callback Documentation:**
+- Document the anonymous arrow function callback with a `@callback` definition or inline JSDoc block describing its purpose (console logging on successful bind), its relationship to the listen event, and the absence of error handling in the callback signature
 
-| Order | Middleware | Location | Purpose |
-|-------|------------|----------|---------|
-| 1 | Route Mounting | `src/app.js:25` | `app.use('/', mainRoutes)` mounts all routes |
-| 2 | Express Default | Built-in | 404 handling for undefined routes |
-| 3 | Express Default | Built-in | Error handling for server errors |
+**Category 3 — Inline Narrative Comments:**
+- Add explanatory comments for the `'use strict'` directive: why strict mode is enforced
+- Add comments for the module imports: factory pattern rationale, Twelve-Factor config loading
+- Add comments for the `app.listen()` call: binding semantics, callback purpose
+- Add comments for the `console.log()` output: operational visibility, structured startup message format
 
-**Middleware Flow:**
-```
-Request → app.use('/', mainRoutes) → Route Handler → Response
-                    │
-                    └─→ (No match) → Express 404 Handler
-```
 
-### 0.4.5 Test Integration Points
+## 0.5 Documentation File Transformation Mapping
 
-**Test Harness Integration:**
 
-| Test Suite | Integration Point | Mechanism |
-|------------|-------------------|-----------|
-| `endpoints.test.js` | `src/app.js` | Supertest with `request(app)` |
-| `config.test.js` | `src/config/index.js` | Direct require with env manipulation |
-| `routes.test.js` | `src/routes/main.routes.js` | Direct require, inspect `router.stack` |
-| `server.test.js` | `server.js` | Mock-based lifecycle testing |
+### 0.5.1 File-by-File Documentation Plan
 
-**Test Configuration:**
-```javascript
-// jest.config.js integration
-collectCoverageFrom: [
-  'server.js',
-  'src/**/*.js',
-]
-```
+| Target Documentation File | Transformation | Source Code/Docs | Content/Changes |
+|---|---|---|---|
+| `server.js` | UPDATE | `server.js` | Enhance existing JSDoc annotations: add `@listens`, `@requires`, `@see`, `@example`, and `@callback` tags to `app.listen()` block; add inline narrative comments explaining strict mode, factory pattern import, Twelve-Factor config import, server binding semantics, and startup callback purpose |
+| `README.md` | UPDATE | `README.md`, `src/routes/main.routes.js`, `src/config/index.js`, `server.js` | Expand API Reference with response schemas and error behaviour; add new Deployment Guide section covering production config, process management, reverse proxy, and security; add Mermaid architecture diagram; enhance setup instructions with verification steps |
 
-### 0.4.6 API Contract Integration
+### 0.5.2 Source Files to Update — Detail
 
-| Endpoint | Contract | Integration Verification |
-|----------|----------|-------------------------|
-| `GET /` | Returns `"Hello, World!\n"`, status 200, Content-Type: text/html | `tests/integration/endpoints.test.js` |
-| `GET /evening` | Returns `"Good evening"`, status 200, Content-Type: text/html | `tests/integration/endpoints.test.js` |
-| `GET /invalid` | Returns status 404 | `tests/integration/endpoints.test.js` |
-| `POST /` | Returns status 404 | `tests/integration/endpoints.test.js` |
-
-## 0.5 Technical Implementation
-
-### 0.5.1 File-by-File Execution Plan
-
-**CRITICAL**: The following files have been created or modified to implement the Express.js integration and evening endpoint feature. All implementations are **COMPLETE**.
-
-**Group 1 - Core Feature Files:**
-
-| Action | File | Implementation Details | Status |
-|--------|------|------------------------|--------|
-| MODIFY | `server.js` | Entry point refactored to import Express app and config, bind with `app.listen()` | ✓ Complete |
-| CREATE | `src/app.js` | Express application factory with route mounting via `app.use('/', mainRoutes)` | ✓ Complete |
-| CREATE | `src/routes/main.routes.js` | Route handlers for `GET /` and `GET /evening` endpoints | ✓ Complete |
-| CREATE | `src/routes/index.js` | Barrel pattern aggregator exporting `mainRoutes` | ✓ Complete |
-| CREATE | `src/config/index.js` | Environment configuration (`host`, `port`, `env`) | ✓ Complete |
-
-**Group 2 - Configuration Files:**
-
-| Action | File | Implementation Details | Status |
-|--------|------|------------------------|--------|
-| MODIFY | `package.json` | Added `express@^5.1.0`, `jest@^30.2.0`, `supertest@^7.1.4` | ✓ Complete |
-| MODIFY | `package-lock.json` | Generated lock file with full dependency tree | ✓ Complete |
-| CREATE | `jest.config.js` | Jest configuration with coverage thresholds | ✓ Complete |
-
-**Group 3 - Tests and Documentation:**
-
-| Action | File | Implementation Details | Status |
-|--------|------|------------------------|--------|
-| CREATE | `tests/integration/endpoints.test.js` | HTTP endpoint contract tests (12 tests) | ✓ Complete |
-| CREATE | `tests/unit/config.test.js` | Configuration module tests (15 tests) | ✓ Complete |
-| CREATE | `tests/unit/routes.test.js` | Route structure tests (7 tests) | ✓ Complete |
-| CREATE | `tests/lifecycle/server.test.js` | Server lifecycle tests (5 tests) | ✓ Complete |
-| MODIFY | `README.md` | Comprehensive API documentation | ✓ Complete |
-
-### 0.5.2 Implementation Approach per File
-
-**1. Server Entry Point (`server.js`):**
-
-The server entry point has been refactored to:
-- Import the pre-configured Express application from `./src/app`
-- Import configuration from `./src/config`
-- Bind the Express app to the configured network interface
-- Log startup confirmation with server URL
-
-**Key Implementation:**
-```javascript
-const app = require('./src/app');
-const config = require('./src/config');
-app.listen(config.port, config.host, () => {...});
-```
-
-**2. Express Application Factory (`src/app.js`):**
-
-The Express app factory establishes:
-- Express application instance creation
-- Route mounting at root path
-- Export of configured app for testability
-
-**Key Implementation:**
-```javascript
-const app = express();
-app.use('/', mainRoutes);
-module.exports = app;
-```
-
-**3. Route Handlers (`src/routes/main.routes.js`):**
-
-Route handlers implement:
-- `GET /` returning `"Hello, World!\n"` (with trailing newline)
-- `GET /evening` returning `"Good evening"` (no trailing newline)
-
-**Key Implementation:**
-```javascript
-router.get('/', (req, res) => res.send('Hello, World!\n'));
-router.get('/evening', (req, res) => res.send('Good evening'));
-```
-
-**4. Configuration Module (`src/config/index.js`):**
-
-Configuration provides:
-- `host`: `process.env.HOST || '127.0.0.1'`
-- `port`: `parseInt(process.env.PORT, 10) || 3000`
-- `env`: `process.env.NODE_ENV || 'development'`
-
-### 0.5.3 Implementation Verification
-
-**Test Results Summary:**
-
-| Test Suite | Tests | Passed | Coverage |
-|------------|-------|--------|----------|
-| `tests/integration/endpoints.test.js` | 12 | 12 ✓ | Endpoint contracts |
-| `tests/unit/config.test.js` | 15 | 15 ✓ | Config parsing |
-| `tests/unit/routes.test.js` | 7 | 7 ✓ | Route structure |
-| `tests/lifecycle/server.test.js` | 5 | 5 ✓ | Server lifecycle |
-| **TOTAL** | **41** | **41 ✓** | **100%** |
-
-**Coverage Metrics:**
-
-| Metric | Target | Achieved | Status |
-|--------|--------|----------|--------|
-| Statements | 80% | 100% | ✓ Exceeds |
-| Branches | 75% | 100% | ✓ Exceeds |
-| Functions | 90% | 100% | ✓ Exceeds |
-| Lines | 80% | 100% | ✓ Exceeds |
-
-### 0.5.4 Feature Verification Commands
-
-**Server Startup:**
-```bash
-npm start
-# Output: Server running at http://127.0.0.1:3000/
+**File: `server.js` — Enhanced JSDoc and Inline Code Explanations**
 
 ```
-
-**Endpoint Testing:**
-```bash
-# Test Hello World endpoint
-
-curl -s http://127.0.0.1:3000/
-# Output: Hello, World!
-
-#### Test Evening endpoint
-
-curl -s http://127.0.0.1:3000/evening
-# Output: Good evening
-
+File: server.js
+Type: Source Code with JSDoc and Inline Comments
+Source Code: server.js (self — updating existing content)
+Changes by Section:
+    - Module Header (lines 1–17): Add @requires tags for ./src/app and ./src/config
+    - Strict Mode (line 19): Add inline comment explaining strict mode enforcement
+    - App Import (lines 25–30): Add @see tag referencing src/app.js; add inline comment
+      explaining factory pattern import rationale
+    - Config Import (lines 32–37): Add @see tag referencing src/config/index.js; add
+      inline comment explaining Twelve-Factor configuration loading
+    - app.listen() Block (lines 43–52): Add @listens tag, @example block showing
+      startup command and expected output, enhance description with error handling notes
+    - Callback Function (line 49): Add @callback ServerStartCallback typedef or
+      inline JSDoc block documenting the startup logging callback
+    - Console.log (line 50): Add inline comment explaining startup message format
+Key Citations: server.js, src/app.js, src/config/index.js
 ```
 
-**Automated Test Execution:**
-```bash
-npm test
-# Output: Test Suites: 4 passed, Tests: 41 passed
+Specific JSDoc additions for `server.js`:
 
-npm run test:coverage
-# Output: 100% coverage across all metrics
+- `@requires module:src/app` — documents the app.js dependency
+- `@requires module:src/config` — documents the config dependency
+- `@see module:src/app` — cross-references the application factory
+- `@see module:src/config` — cross-references the configuration module
+- `@listens {number} config.port` — documents the port binding
+- `@example` block — shows `node server.js` with expected console output
+- `@callback ServerStartCallback` — defines the startup callback type
 
-```
+Inline comments to add:
 
-### 0.5.5 Design Patterns Applied
+- Line 19 (`'use strict'`): Explain that strict mode prevents silent errors and enforces safer JavaScript parsing
+- Lines 25–30 (app import): Explain that the Express application is imported as a fully configured instance from the factory module
+- Lines 32–37 (config import): Explain that configuration is externalized following Twelve-Factor methodology, loaded from environment variables with sensible defaults
+- Lines 43–52 (app.listen): Explain that this binds the Express application to the configured host and port, initiating the HTTP server event loop
+- Line 49 (callback): Explain that the callback executes once the server has successfully bound, providing operational visibility via console output
 
-| Pattern | Implementation | Location |
-|---------|----------------|----------|
-| Factory Pattern | Express app created and exported without binding | `src/app.js` |
-| Barrel Pattern | Routes aggregated via index.js | `src/routes/index.js` |
-| Separation of Concerns | App config separate from server binding | `server.js` vs `src/app.js` |
-| Twelve-Factor Config | Environment variables with defaults | `src/config/index.js` |
-| CommonJS Modules | `require`/`module.exports` throughout | All `.js` files |
-
-### 0.5.6 User Interface Design
-
-**Not Applicable**: This feature implements backend HTTP endpoints only. No user interface components (HTML, CSS, JavaScript frontend) are involved.
-
-| UI Element | Status | Notes |
-|------------|--------|-------|
-| Figma Screens | Not provided | N/A for API endpoints |
-| HTML Templates | Not required | Plain text responses |
-| CSS Styling | Not required | No visual components |
-| Frontend JS | Not required | Server-side only |
-
-## 0.6 Scope Boundaries
-
-### 0.6.1 Exhaustively In Scope
-
-**Feature Source Files:**
-
-| Pattern | Files Matched | Purpose |
-|---------|---------------|---------|
-| `src/**/*.js` | `src/app.js`, `src/config/index.js`, `src/routes/index.js`, `src/routes/main.routes.js` | Core application source |
-| `server.js` | Entry point | HTTP server binding |
-
-**Test Files:**
-
-| Pattern | Files Matched | Purpose |
-|---------|---------------|---------|
-| `tests/**/*.test.js` | All test files | Automated testing |
-| `tests/integration/*.test.js` | `endpoints.test.js` | HTTP endpoint contracts |
-| `tests/unit/*.test.js` | `config.test.js`, `routes.test.js` | Module unit tests |
-| `tests/lifecycle/*.test.js` | `server.test.js` | Server lifecycle tests |
-
-**Configuration Files:**
-
-| File | In Scope | Purpose |
-|------|----------|---------|
-| `package.json` | ✓ | Dependency definitions |
-| `package-lock.json` | ✓ | Dependency lock file |
-| `jest.config.js` | ✓ | Test framework configuration |
-| `.gitignore` | ✓ | Git ignore patterns |
-
-**Documentation:**
-
-| File | In Scope | Purpose |
-|------|----------|---------|
-| `README.md` | ✓ | Project documentation |
-| `blitzy/documentation/*.md` | ✓ | Technical specifications |
-
-**Environment Configuration:**
-
-| Variable | In Scope | Default Value |
-|----------|----------|---------------|
-| `HOST` | ✓ | `'127.0.0.1'` |
-| `PORT` | ✓ | `3000` |
-| `NODE_ENV` | ✓ | `'development'` |
-
-### 0.6.2 Explicitly Out of Scope
-
-**Features Not Implemented:**
-
-| Feature | Reason | Status |
-|---------|--------|--------|
-| HTTPS/TLS Support | Not requested, tutorial scope | Out of scope |
-| Authentication/Authorization | Not requested | Out of scope |
-| Database Integration | Stateless endpoints only | Out of scope |
-| Session Management | Not requested | Out of scope |
-| Request Logging Middleware | Not requested | Out of scope |
-| Rate Limiting | Not requested | Out of scope |
-| CORS Configuration | Not requested | Out of scope |
-| Health Check Endpoint | Not requested | Out of scope |
-| Metrics/Monitoring | Not requested | Out of scope |
-| Containerization (Docker) | Not requested | Out of scope |
-| CI/CD Pipeline | Not requested | Out of scope |
-
-**Files Explicitly Excluded:**
-
-| Pattern | Reason |
-|---------|--------|
-| `node_modules/**` | Third-party dependencies (auto-generated) |
-| `coverage/**` | Test coverage reports (auto-generated) |
-| `.env`, `.env.local` | Environment secrets (gitignored) |
-| `.DS_Store`, `Thumbs.db` | OS metadata files |
-| `.vscode/**`, `.idea/**` | IDE configuration |
-| `*.log`, `logs/**` | Log files |
-
-**Unrelated Modules:**
-
-| Module Type | Status | Notes |
-|-------------|--------|-------|
-| Additional HTTP endpoints | Out of scope | Only `/` and `/evening` requested |
-| POST/PUT/DELETE methods | Out of scope | GET endpoints only |
-| Request body parsing | Out of scope | No request bodies needed |
-| Query parameter handling | Out of scope | Basic tolerance only |
-| Custom error pages | Out of scope | Express defaults used |
-
-### 0.6.3 Scope Verification Checklist
-
-| Requirement | In Scope | Implemented | Verified |
-|-------------|----------|-------------|----------|
-| Add Express.js to project | ✓ | ✓ | ✓ (package.json) |
-| Maintain existing Hello World endpoint | ✓ | ✓ | ✓ (GET /) |
-| Add evening endpoint returning "Good evening" | ✓ | ✓ | ✓ (GET /evening) |
-| Environment configuration | ✓ | ✓ | ✓ (HOST, PORT, NODE_ENV) |
-| Automated tests | ✓ | ✓ | ✓ (41 tests, 100% coverage) |
-| Documentation | ✓ | ✓ | ✓ (README.md) |
-
-### 0.6.4 Boundary Summary
+**File: `README.md` — Comprehensive README Enhancement**
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                        IN SCOPE                                      │
-│  ┌───────────────────────────────────────────────────────────────┐  │
-│  │ Core Feature:                                                 │  │
-│  │ - Express.js integration (^5.1.0)                            │  │
-│  │ - GET / endpoint → "Hello, World!\n"                         │  │
-│  │ - GET /evening endpoint → "Good evening"                     │  │
-│  │ - Environment configuration (HOST, PORT, NODE_ENV)           │  │
-│  │ - Factory pattern application architecture                   │  │
-│  │ - 41 automated tests with 100% coverage                      │  │
-│  └───────────────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────────────┐
-│                       OUT OF SCOPE                                   │
-│  ┌───────────────────────────────────────────────────────────────┐  │
-│  │ Not Requested:                                                │  │
-│  │ - Additional endpoints beyond / and /evening                 │  │
-│  │ - HTTPS/TLS security                                         │  │
-│  │ - Authentication/authorization                               │  │
-│  │ - Database integration                                       │  │
-│  │ - Containerization (Docker)                                  │  │
-│  │ - CI/CD pipelines                                            │  │
-│  │ - Production hardening (helmet, rate limiting)               │  │
-│  │ - Performance optimizations                                  │  │
-│  │ - Refactoring unrelated code                                 │  │
-│  └───────────────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────────┘
+File: README.md
+Type: Project README (Markdown)
+Source Code: README.md (existing), src/routes/main.routes.js, src/config/index.js, server.js
+Changes by Section:
+    - API Reference: Expand with response Content-Type headers, status codes for
+      success and error paths, response body details (newline in GET /, no newline
+      in GET /evening), add 404 behaviour documentation, enhance curl examples
+    - Deployment Guide (NEW): Create complete section covering:
+      - Production environment variables (HOST=0.0.0.0, NODE_ENV=production)
+      - Process management with PM2 or systemd
+      - Reverse proxy configuration with nginx
+      - Security considerations (Helmet.js, rate limiting)
+      - Health check endpoint recommendations
+      - Graceful shutdown patterns
+    - Architecture Diagram: Add Mermaid request-response flow diagram
+      supplementing existing ASCII diagram
+    - Setup Instructions: Add verification commands (node --version, npm --version)
+      with expected output ranges
+Diagrams:
+    - Mermaid request-response flow diagram
+    - Mermaid module dependency graph
+    - Mermaid server lifecycle state diagram (in deployment section)
+Key Citations: server.js, src/app.js, src/config/index.js, src/routes/main.routes.js
 ```
 
-## 0.7 Rules for Feature Addition
+### 0.5.3 Documentation Files Requiring No Changes
 
-### 0.7.1 Feature-Specific Rules and Requirements
+The following files were evaluated and require no modifications:
 
-**No explicit rules were specified by the user.** The following rules were inferred from the repository conventions and Express.js best practices:
+| File Path | Reason |
+|---|---|
+| `src/README.md` | Architecture documentation is complete — covers factory pattern and module relationships |
+| `src/config/README.md` | Configuration documentation is complete — covers Twelve-Factor config, env vars, usage examples |
+| `src/routes/README.md` | Route documentation is complete — covers route definitions, barrel pattern, extension guide |
+| `tests/README.md` | Test documentation is complete — covers test categories, running tests, coverage requirements |
+| `src/app.js` | JSDoc annotations are comprehensive — `@module`, description, middleware, exports |
+| `src/config/index.js` | JSDoc annotations are comprehensive — `@module`, `@type`, `@default` on all exports |
+| `src/routes/index.js` | JSDoc annotations are comprehensive — `@module`, barrel pattern documentation |
+| `src/routes/main.routes.js` | JSDoc annotations are comprehensive — `@module`, `@route`, `@returns` on all handlers |
+| `jest.config.js` | Configuration file — no documentation changes needed |
+| `package.json` | Package manifest — no documentation changes needed |
+| `.gitignore` | Git configuration — no documentation changes needed |
 
-### 0.7.2 Code Conventions (Inferred from Repository)
+### 0.5.4 Documentation Configuration Updates
 
-| Rule ID | Convention | Application |
-|---------|------------|-------------|
-| R-001 | CommonJS Modules | Use `require`/`module.exports` throughout (no ES modules) |
-| R-002 | Strict Mode | Enable `'use strict'` in entry points |
-| R-003 | JSDoc Comments | Document modules and functions with JSDoc blocks |
-| R-004 | Consistent Formatting | Maintain existing code style (2-space indentation) |
+No documentation configuration files need to be created or updated. The project does not use a documentation site generator. All documentation is authored directly in Markdown and JSDoc. No `mkdocs.yml`, `docusaurus.config.js`, `.readthedocs.yml`, `jsdoc.json`, or similar configuration files exist or are required.
 
-### 0.7.3 Architectural Patterns (Inferred)
+If the team elects to add JSDoc HTML generation in the future, a `jsdoc.json` configuration file would need to be created with source paths pointing to `server.js` and `src/` with recursive scanning enabled.
 
-| Rule ID | Pattern | Requirement |
-|---------|---------|-------------|
-| R-005 | Factory Pattern | App configuration separate from server binding |
-| R-006 | Barrel Pattern | Aggregate exports via index.js files |
-| R-007 | Separation of Concerns | Distinct modules for app, config, routes |
-| R-008 | Twelve-Factor App | Externalize configuration via environment variables |
+### 0.5.5 Cross-Documentation Dependencies
 
-### 0.7.4 Express.js Specific Rules
+- **Internal cross-references in README**: The Deployment Guide section will reference the Environment Variables table already present in the README. The API Reference section references route implementations in `src/routes/main.routes.js`.
+- **JSDoc cross-references in server.js**: New `@see` tags will link to `module:src/app` and `module:src/config`. New `@requires` tags will declare module dependencies.
+- **Navigation**: No table of contents update is needed — the existing README does not use an auto-generated TOC. If one is present, it should be updated to include the new Deployment Guide section.
+- **No shared content/includes**: The project does not use documentation includes, partials, or templating systems.
 
-| Rule ID | Rule | Implementation |
-|---------|------|----------------|
-| R-009 | Router Usage | Use `express.Router()` for route handlers |
-| R-010 | Route Mounting | Mount routes at application level with `app.use()` |
-| R-011 | Response Format | Use `res.send()` for string responses |
-| R-012 | No Direct Binding | App factory must not call `app.listen()` |
 
-### 0.7.5 Testing Requirements
+## 0.6 Dependency Inventory
 
-| Rule ID | Requirement | Implementation |
-|---------|-------------|----------------|
-| R-013 | Jest Framework | Use Jest for all test suites |
-| R-014 | Supertest Integration | Use Supertest for HTTP endpoint testing |
-| R-015 | Coverage Thresholds | Maintain ≥80% line coverage, ≥75% branch coverage |
-| R-016 | Test Organization | Organize into unit/, integration/, lifecycle/ directories |
 
-### 0.7.6 Response Contract Rules
+### 0.6.1 Documentation Dependencies
 
-| Rule ID | Endpoint | Exact Response Contract |
-|---------|----------|------------------------|
-| R-017 | `GET /` | Body: `"Hello, World!\n"` (with trailing newline) |
-| R-018 | `GET /evening` | Body: `"Good evening"` (no trailing newline) |
-| R-019 | Invalid routes | HTTP 404 status code |
-| R-020 | Content-Type | `text/html; charset=utf-8` (Express default for `res.send()`) |
+The documentation task — adding JSDoc inline annotations and enhancing the Markdown README — does not require any new runtime or devDependency packages. JSDoc comments are authored directly in JavaScript source files and parsed by IDEs and editors natively. The README is standard GitHub-Flavored Markdown rendered by repository hosting platforms without tooling.
 
-### 0.7.7 Configuration Rules
+**Current project dependencies relevant to the documentation context:**
 
-| Rule ID | Variable | Rule |
-|---------|----------|------|
-| R-021 | `HOST` | Default to `'127.0.0.1'`, type: string |
-| R-022 | `PORT` | Default to `3000`, parse with `parseInt(value, 10)`, type: number |
-| R-023 | `NODE_ENV` | Default to `'development'`, type: string |
-| R-024 | Synchronous | Config module must be synchronous (no async/await) |
+| Registry | Package Name | Version | Purpose |
+|---|---|---|---|
+| npm | express | 5.1.0 | Production dependency — HTTP framework whose API is documented in JSDoc and README |
+| npm | jest | 30.2.0 | Dev dependency — test framework referenced in README testing section |
+| npm | supertest | 7.1.4 | Dev dependency — HTTP assertion library referenced in README testing section |
 
-### 0.7.8 Compatibility Rules
+**Optional documentation tooling (not currently installed, not required for this task):**
 
-| Rule ID | Requirement | Implementation |
-|---------|-------------|----------------|
-| R-025 | Node.js Version | Require Node.js ≥18.x (Express 5.x requirement) |
-| R-026 | npm Version | Require npm ≥8.x for lockfile v3 support |
-| R-027 | Express Version | Use Express ^5.1.0 (semver caret for minor/patch updates) |
-| R-028 | Backward Compatibility | Preserve existing endpoint behavior during modifications |
+| Registry | Package Name | Version | Purpose |
+|---|---|---|---|
+| npm | jsdoc | 4.0.5 | JSDoc HTML documentation generator — could generate an HTML doc site from the JSDoc comments being added. Not required for the current task scope (inline annotation only). |
 
-### 0.7.9 Security Considerations
+No new dependencies need to be added to `package.json` for this documentation task. The JSDoc annotations are pure comment syntax within JavaScript files and require no build-time or runtime tooling. Mermaid diagrams embedded in the README are rendered by GitHub's Markdown renderer natively.
 
-| Rule ID | Consideration | Status |
-|---------|---------------|--------|
-| R-029 | No secrets in code | Environment variables for sensitive data |
-| R-030 | gitignore patterns | Exclude `.env`, `node_modules/`, logs |
+### 0.6.2 Documentation Reference Updates
 
-### 0.7.10 Performance and Scalability
+**Documentation files requiring internal link verification:**
 
-**No specific performance requirements were provided.** As a tutorial project, the following defaults apply:
+- `README.md` — The existing README contains relative links to project files and sections. After adding the new Deployment Guide section, the table of contents (if present) must be updated to include the new heading. Internal anchor links to the Environment Variables section from the Deployment Guide must be verified.
 
-| Aspect | Implementation | Notes |
-|--------|----------------|-------|
-| Concurrency | Single Node.js process | No clustering required |
-| Memory Limits | Default Node.js limits | No tuning required |
-| Request Timeout | Express defaults | No custom timeouts |
-| Connection Pooling | N/A | No database connections |
+**No link transformation rules apply** — no URLs or paths are being renamed or relocated. All changes are content additions/enhancements within existing file locations.
 
-### 0.7.11 User-Specified Rules Summary
 
-| Category | User Specification | Blitzy Interpretation |
-|----------|-------------------|----------------------|
-| Endpoint Path | Not specified | `/evening` chosen following REST conventions |
-| Response Format | `"Good evening"` | Exact string, no trailing newline |
-| HTTP Method | Not specified | GET (standard for read-only endpoints) |
-| Framework Version | Not specified | Express ^5.1.0 (latest stable) |
-| Architecture | Not specified | Factory pattern (Express best practice) |
+## 0.7 Coverage and Quality Targets
 
-**Note**: Since the user did not specify explicit rules or constraints, the implementation follows Express.js community conventions and the existing repository patterns.
 
-## 0.8 References
+### 0.7.1 Documentation Coverage Metrics
 
-### 0.8.1 Files and Folders Searched
+**Current coverage analysis:**
 
-**Root Directory Files:**
+| Category | Documented | Total | Current Coverage | Target |
+|---|---|---|---|---|
+| Public APIs (JSDoc) in `server.js` | 3 of 5 elements | 5 (module header, `app` const, `config` const, `app.listen()`, startup callback) | 60% | 100% |
+| Public APIs (JSDoc) in `src/` modules | 4 of 4 modules | 4 (`app.js`, `config/index.js`, `routes/index.js`, `routes/main.routes.js`) | 100% | 100% (no change) |
+| README sections | 11 of 12 needed | 12 (Overview, Prerequisites, Install, Usage, API, Structure, Architecture, Env Vars, Dependencies, Scripts, Testing, Troubleshooting, **Deployment**) | 92% | 100% |
+| API endpoints documented in README | 2 of 2 endpoints | 2 (`GET /`, `GET /evening`) | 100% (basic) | 100% (enhanced with schemas/errors) |
+| Inline code explanations in `server.js` | 0 of 5 blocks | 5 (strict mode, app import, config import, listen call, callback) | 0% | 100% |
+| Environment variables documented | 3 of 3 | 3 (`PORT`, `HOST`, `NODE_ENV`) | 100% | 100% (no change) |
+| Error behaviour documented | 0 of 2 scenarios | 2 (404 unknown route, server bind failure) | 0% | 100% |
+| Deployment coverage | 0 of 5 topics | 5 (prod config, process mgmt, reverse proxy, security, health check) | 0% | 100% |
+
+**Coverage gaps to address:**
+
+- `server.js` JSDoc: Currently 60% annotated — the `app.listen()` invocation and its anonymous callback lack formal JSDoc tags. Target 100% with `@listens`, `@requires`, `@see`, `@example`, and `@callback` additions.
+- `server.js` inline explanations: Currently 0% — no narrative inline comments exist beyond section separators. Target 100% with explanatory comments on every functional block.
+- README Deployment Guide: Currently 0% — section does not exist. Target 100% with complete production deployment coverage.
+- README Error Behaviour: Currently 0% — only happy-path responses documented. Target 100% with 404 and server error documentation.
+
+### 0.7.2 Documentation Quality Criteria
+
+**Completeness requirements:**
+
+- All `server.js` constants and function expressions have complete JSDoc including description, `@type` or `@param`, and cross-references (`@see`)
+- The `app.listen()` call has `@listens`, `@example`, and callback documentation
+- Every code block in `server.js` has an accompanying inline comment explaining its purpose and design rationale
+- The README API Reference includes request method, path, response body, Content-Type, status codes, and curl examples for every endpoint
+- The README Deployment Guide includes production environment variables, process management, reverse proxy, security, and health check sections
+- All README sections have consistent formatting with proper heading hierarchy
+
+**Accuracy validation:**
+
+- JSDoc `@type` annotations must match the actual types exported by `src/config/index.js` and returned by `src/app.js`
+- Code examples in `@example` blocks must be executable: `node server.js` must produce the documented console output
+- API curl examples must match actual server responses (verified against `src/routes/main.routes.js` handler implementations)
+- Environment variable defaults documented in the Deployment Guide must match the defaults in `src/config/index.js` (host: `'localhost'`, port: `3000`, env: `'development'`)
+
+**Clarity standards:**
+
+- Technical accuracy maintained with accessible, tutorial-friendly language appropriate for a learning project
+- Progressive disclosure: README moves from quick-start through detailed API to advanced deployment
+- Consistent terminology throughout: "server" (not "application"), "endpoint" (not "route" in user-facing docs), "environment variable" (not "config param")
+
+**Maintainability:**
+
+- Source citations embedded in JSDoc via `@see` cross-references
+- README sections reference source files by path for traceability
+- Deployment guide recommendations are generic (not tied to specific cloud providers) for longevity
+
+### 0.7.3 Example and Diagram Requirements
+
+| Requirement | Target Count | Format |
+|---|---|---|
+| JSDoc `@example` blocks in `server.js` | 1 minimum | JavaScript code block showing startup command and expected output |
+| Mermaid diagrams in README | 2–3 | Request-response flow, module dependency graph, server lifecycle |
+| API curl examples in README | 2 minimum (one per endpoint) | Bash code blocks with `curl` commands and expected responses |
+| Deployment code examples in README | 3–4 | Bash/config blocks for PM2, systemd, nginx, env setup |
+| Inline comment explanations in `server.js` | 5 minimum (one per block) | Single-line `//` comments preceding each code block |
+
+
+## 0.8 Scope Boundaries
+
+
+### 0.8.1 Exhaustively In Scope
+
+**Source file documentation updates (JSDoc + inline comments):**
+- `server.js` — Enhanced JSDoc annotations (`@listens`, `@requires`, `@see`, `@example`, `@callback`) and narrative inline code explanation comments
+
+**README documentation updates:**
+- `README.md` — API Reference enhancement (response schemas, error behaviour, Content-Type headers, status codes) and new Deployment Guide section (production config, process management, reverse proxy, security, health checks)
+
+**Documentation assets (diagrams):**
+- Mermaid request-response flow diagram (embedded in `README.md`)
+- Mermaid module dependency graph (embedded in `README.md`)
+- Mermaid server lifecycle diagram (embedded in `README.md` Deployment Guide section)
+
+### 0.8.2 Explicitly Out of Scope
+
+- **Source code modifications to `src/` modules**: `src/app.js`, `src/config/index.js`, `src/routes/index.js`, and `src/routes/main.routes.js` already have complete JSDoc annotations and require no changes. Only `server.js` (the entry point explicitly named in the user's request) receives documentation updates.
+- **Test file modifications**: No test files in `tests/` will be created, updated, or modified. Test documentation in `tests/README.md` is already complete.
+- **New documentation files**: No new standalone documentation files (e.g., `docs/` directory, `DEPLOYMENT.md`, `API.md`) will be created. All documentation changes are made within existing files (`server.js`, `README.md`).
+- **Sub-directory README updates**: `src/README.md`, `src/config/README.md`, and `src/routes/README.md` are out of scope — they are already comprehensive.
+- **Feature additions or code refactoring**: No server functionality, middleware, error handlers, or endpoints will be added, modified, or removed.
+- **Documentation tooling installation**: No `jsdoc`, `typedoc`, `mkdocs`, `docusaurus`, or other documentation generators will be added to `package.json` or configured. The task scope is inline annotation and Markdown authoring only.
+- **Deployment configuration changes**: No `Dockerfile`, `docker-compose.yml`, `PM2` ecosystem file, `nginx.conf`, or CI/CD pipeline files will be created. The Deployment Guide in the README provides guidance only.
+- **Package.json script additions**: No new npm scripts (e.g., `docs`, `jsdoc`) will be added.
+- **Blitzy documentation**: Files in `blitzy/documentation/` are auto-generated reference documents and will not be modified.
+
+
+## 0.9 Execution Parameters
+
+
+### 0.9.1 Documentation-Specific Instructions
+
+| Parameter | Value |
+|---|---|
+| Documentation build command | N/A — no documentation site generator configured |
+| Documentation preview command | N/A — Markdown is previewed via editor or `npx markdown-preview README.md` |
+| Diagram generation command | N/A — Mermaid diagrams are embedded inline and rendered by GitHub/GitLab |
+| Documentation deployment command | N/A — documentation is served directly from the repository |
+| Default format | GitHub-Flavored Markdown (GFM) for README; JSDoc `/** ... */` blocks for source annotations |
+| Citation requirement | Every JSDoc cross-reference uses `@see module:path` format; README sections reference source files by relative path |
+| Style guide | Match existing conventions: GFM tables, fenced code blocks with language specifiers, hierarchical heading structure (`#` through `####`), CommonJS JSDoc patterns (`@module`, `@type`, `@param`, `@returns`) |
+| Documentation validation | Visual inspection of Markdown rendering; JSDoc annotation syntax validation via IDE integration (VS Code IntelliSense) |
+
+### 0.9.2 Build and Test Verification
+
+The documentation changes do not affect the project's build or test suite. Verification that documentation changes have not introduced regressions:
+
+- **Test suite**: `cd /tmp/blitzy/test-spec/0101 && CI=true npx jest --watchAll=false` — all 41 tests must continue to pass
+- **Server startup**: `cd /tmp/blitzy/test-spec/0101 && timeout 5 node server.js` — must produce the expected startup message and exit cleanly on timeout
+- **JSDoc syntax**: JSDoc comments must use `/** ... */` format (not `/* ... */` or `// ...`) to be parseable by JSDoc tools and IDE IntelliSense
+
+
+## 0.10 Rules for Documentation
+
+
+The following documentation rules govern all changes in this implementation. These are derived from the project's existing conventions and documentation best practices:
+
+- **Preserve existing JSDoc style**: All new JSDoc annotations in `server.js` must follow the existing pattern used throughout the `src/` modules — multi-line `/** ... */` blocks with `@tag` annotations, consistent indentation, and descriptive prose preceding formal tags. Source reference: `src/config/index.js:1-12`, `src/routes/main.routes.js:1-15`.
+
+- **Maintain existing README structure and tone**: The updated `README.md` must preserve the existing section ordering, heading hierarchy, table formatting, and professional tutorial-style tone. New sections (Deployment Guide) are appended in logical position after the Architecture section and before the Dependencies section.
+
+- **No source code logic changes**: Documentation updates to `server.js` are limited to comment additions. No executable JavaScript code may be added, removed, or modified. The `server.js` file's functional behaviour must remain identical before and after documentation changes.
+
+- **JSDoc annotations must use standard tags only**: Only well-established JSDoc tags are permitted: `@module`, `@type`, `@param`, `@returns`, `@callback`, `@see`, `@requires`, `@listens`, `@example`, `@default`, `@description`. No custom or experimental tags.
+
+- **Inline comments use single-line format**: Inline code explanations in `server.js` must use single-line `//` comment syntax, placed on the line immediately preceding the code they describe. Multi-line inline explanations use consecutive `//` lines. JSDoc block comments (`/** ... */`) are reserved for formal API annotations.
+
+- **Mermaid diagrams must be self-contained**: Each Mermaid diagram in the README must render correctly as a standalone block within GitHub-Flavored Markdown. No external files or dependencies. Use `graph`, `sequenceDiagram`, or `stateDiagram-v2` syntax.
+
+- **API documentation must match actual implementation**: All HTTP endpoint documentation (methods, paths, response bodies, status codes) must be verified against the actual handler implementations in `src/routes/main.routes.js`. The GET `/` handler returns `'Hello, World!\n'` (with trailing newline); the GET `/evening` handler returns `'Good evening'` (without trailing newline).
+
+- **Environment variable documentation must match source defaults**: All environment variable defaults documented in the README and Deployment Guide must match the defaults defined in `src/config/index.js`: `HOST` defaults to `'localhost'`, `PORT` defaults to `3000`, `NODE_ENV` defaults to `'development'`.
+
+- **All tests must pass after documentation changes**: Since only comments are being added to `server.js`, the existing 41-test suite must pass without modification. Any failure indicates an accidental code change.
+
+
+## 0.11 References
+
+
+### 0.11.1 Repository Files and Folders Searched
+
+The following files and folders were comprehensively searched and analyzed to derive the conclusions in this Agent Action Plan:
+
+**Source Files (read in full):**
 
 | File Path | Purpose | Key Findings |
-|-----------|---------|--------------|
-| `package.json` | npm manifest | Express ^5.1.0, Jest ^30.2.0, Supertest ^7.1.4 |
-| `package-lock.json` | Dependency lock | Locked versions, integrity hashes |
-| `server.js` | Entry point | HTTP binding with Express app and config |
-| `jest.config.js` | Test config | Coverage thresholds, test patterns |
-| `README.md` | Documentation | API reference, environment variables |
-| `.gitignore` | Git ignore | Standard Node.js patterns |
+|---|---|---|
+| `server.js` | Server entry point | 53 lines; has `@module server`, `@type` annotations on constants, JSDoc on `app.listen()`; missing `@param`/`@callback` on listen callback, missing inline explanations |
+| `src/app.js` | Express application factory | 28 lines; complete JSDoc with `@module src/app` |
+| `src/config/index.js` | Configuration module | 42 lines; complete JSDoc with `@module src/config`, `@type` and `@default` on all exports |
+| `src/routes/index.js` | Route barrel pattern | 20 lines; complete JSDoc with `@module src/routes` |
+| `src/routes/main.routes.js` | HTTP route handlers | 42 lines; complete JSDoc with `@module`, `@route`, `@returns` on GET `/` and GET `/evening` |
+| `package.json` | Package manifest | name: `hao-backprop-test`, version: 1.0.0, express ^5.1.0, jest ^30.2.0, supertest ^7.1.4, MIT license |
+| `jest.config.js` | Jest configuration | Node test environment; coverage thresholds: 75% branches, 90% functions, 80% lines/statements |
+| `.gitignore` | Git ignore patterns | Standard Node.js: node_modules/, coverage/, .env |
 
-**Source Directory (`src/`):**
-
-| File Path | Purpose | Key Findings |
-|-----------|---------|--------------|
-| `src/app.js` | Express factory | App creation, route mounting |
-| `src/config/index.js` | Configuration | HOST, PORT, NODE_ENV with defaults |
-| `src/routes/index.js` | Route aggregator | Barrel pattern, exports mainRoutes |
-| `src/routes/main.routes.js` | Route handlers | GET `/` and GET `/evening` implementations |
-
-**Test Directory (`tests/`):**
+**Documentation Files (read in full):**
 
 | File Path | Purpose | Key Findings |
-|-----------|---------|--------------|
-| `tests/integration/endpoints.test.js` | HTTP tests | 12 endpoint contract tests |
-| `tests/unit/config.test.js` | Config tests | 15 config parsing tests |
-| `tests/unit/routes.test.js` | Route tests | 7 route structure tests |
-| `tests/lifecycle/server.test.js` | Lifecycle tests | 5 server binding tests |
+|---|---|---|
+| `README.md` | Project README | 338 lines; covers prerequisites, installation, usage, API reference, project structure, architecture, env vars, dependencies, scripts, testing, troubleshooting, license. Missing: Deployment Guide section. |
+| `src/README.md` | Source architecture docs | Covers factory pattern, module relationships |
+| `src/config/README.md` | Config module docs | Covers Twelve-Factor config, environment variables, usage examples |
+| `src/routes/README.md` | Routes module docs | Covers route definitions, barrel pattern, extension guide |
+| `tests/README.md` | Test suite docs | Covers test categories, running tests, coverage requirements |
 
-**Documentation Directory (`blitzy/`):**
+**Folders Explored:**
 
-| File Path | Purpose | Key Findings |
-|-----------|---------|--------------|
-| `blitzy/documentation/` | Doc folder | Contains project guides and specs |
+| Folder Path | Contents |
+|---|---|
+| `/` (repository root) | `server.js`, `README.md`, `package.json`, `package-lock.json`, `jest.config.js`, `.gitignore`, `src/`, `tests/`, `blitzy/` |
+| `src/` | `README.md`, `app.js`, `config/`, `routes/` |
+| `src/config/` | `README.md`, `index.js` |
+| `src/routes/` | `README.md`, `index.js`, `main.routes.js` |
+| `tests/` | `README.md`, `integration/`, `lifecycle/`, `unit/` |
+| `blitzy/` | `documentation/` |
+| `blitzy/documentation/` | `Project Guide.md`, `Technical Specifications.md` |
 
-### 0.8.2 Technical Specification Sections Retrieved
+**Technical Specification Sections Retrieved:**
 
-| Section Heading | Content Summary |
-|-----------------|-----------------|
-| `1.1 Executive Summary` | Project overview, stakeholders, value proposition |
-| `2.1 Feature Catalog` | F-001 (Root Greeting), F-002 (Evening Greeting) - both COMPLETED |
-| `3.2 Frameworks & Libraries` | Express.js ^5.1.0 specification |
-| `3.3 Open Source Dependencies` | Runtime and dev dependencies with versions |
+| Section | Key Information Used |
+|---|---|
+| 1.1 Executive Summary | Project overview, REQ-001 and REQ-002 requirements, stakeholder context |
+| 3.1 Programming Languages | JavaScript/CommonJS, Node.js runtime |
+| Node.js Runtime Versions | Minimum ≥18.x, recommended 20.19.x LTS, tested 20.20.0 |
+| 3.3 Open Source Dependencies | Express 5.1.0 (production), Jest 30.2.0 + Supertest 7.1.4 (dev), 405 resolved packages |
+| 5.1 High-Level Architecture | Layered architecture (Entry → Application → Routing → Configuration), factory pattern, barrel pattern, Twelve-Factor config, request-response flow |
 
-### 0.8.3 User-Provided Attachments
+**Bash Commands Executed:**
 
-**No attachments were provided by the user.**
+| Command | Purpose | Result |
+|---|---|---|
+| `find / -name ".blitzyignore" 2>/dev/null` | Check for ignore files | None found |
+| `cd /tmp/blitzy/test-spec/0101 && npm ci` | Install dependencies | 65 packages installed, 1 high severity vulnerability |
+| `node -e "console.log(require('express/package.json').version)"` | Verify Express version | 5.1.0 confirmed |
+| `node -e "console.log(require('jest/package.json').version)"` | Verify Jest version | 30.2.0 confirmed |
+| `node -e "console.log(require('supertest/package.json').version)"` | Verify Supertest version | 7.1.4 confirmed |
+| `grep -r "jsdoc\|typedoc" package.json` | Check for doc generators | None found |
 
-| Attachment Type | Status | Notes |
-|-----------------|--------|-------|
-| Code Files | None | N/A |
-| Configuration Files | None | N/A |
-| Design Documents | None | N/A |
-| Images | None | N/A |
+### 0.11.2 External Research
 
-### 0.8.4 User-Provided URLs
+| Search Query | Key Finding |
+|---|---|
+| "JSDoc best practices Node.js Express 2025" | JSDoc uses `/** ... */` blocks with standard tags; CommonJS modules documented via `@module`; callbacks via `@callback` |
+| "jsdoc npm latest version 2025" | JSDoc latest stable version is 4.0.5 on npm |
 
-**No URLs were provided by the user.**
+### 0.11.3 Attachments
 
-| URL Type | Status | Notes |
-|----------|--------|-------|
-| Figma Screens | None | N/A (API-only feature) |
-| API Documentation | None | N/A |
-| External References | None | N/A |
+No attachments were provided by the user. No Figma URLs or external design references are associated with this task.
 
-### 0.8.5 Environment Setup Instructions
-
-**No setup instructions were provided by the user.** Standard Node.js project setup was applied:
-
-| Setup Step | Command | Result |
-|------------|---------|--------|
-| Node.js Version Check | `node --version` | v20.20.0 ✓ |
-| npm Version Check | `npm --version` | 11.1.0 ✓ |
-| Dependency Installation | `npm ci` | 381 packages installed |
-| Test Execution | `npm test` | 41 tests passed |
-
-### 0.8.6 Search Tracking Summary
-
-**Deep Search Operations:**
-
-| Search # | Target | Tool | Purpose |
-|----------|--------|------|---------|
-| 1 | Root (`""`) | `get_source_folder_contents` | Repository structure discovery |
-| 2 | `src/` | `get_source_folder_contents` | Source directory structure |
-| 3 | `src/routes/` | `get_source_folder_contents` | Route module structure |
-| 4 | `src/config/` | `get_source_folder_contents` | Config module structure |
-| 5 | `tests/` | `get_source_folder_contents` | Test directory structure |
-| 6 | `tests/integration/` | `get_source_folder_contents` | Integration test details |
-| 7 | `blitzy/` | `get_source_folder_contents` | Documentation structure |
-
-**File Retrieval Operations:**
-
-| Search # | File | Tool | Purpose |
-|----------|------|------|---------|
-| 8 | `package.json` | `read_file` | Dependency versions |
-| 9 | `server.js` | `read_file` | Entry point implementation |
-| 10 | `src/app.js` | `read_file` | Express app factory |
-| 11 | `src/routes/main.routes.js` | `read_file` | Route handlers |
-| 12 | `src/routes/index.js` | `read_file` | Route aggregator |
-| 13 | `src/config/index.js` | `read_file` | Configuration module |
-| 14 | `README.md` | `read_file` | Project documentation |
-| 15 | `.gitignore` | `read_file` | Ignore patterns |
-| 16 | `jest.config.js` | `read_file` | Test configuration |
-
-**Bash Operations:**
-
-| Operation | Command | Purpose |
-|-----------|---------|---------|
-| .blitzyignore search | `find / -name ".blitzyignore"` | Check for ignore patterns |
-| Repository location | `find /tmp -name "package.json"` | Locate project |
-| Node version | `node --version` | Verify runtime |
-| npm version | `npm --version` | Verify package manager |
-| Dependency install | `npm ci` | Install packages |
-| Test execution | `npm test` | Verify implementation |
-
-### 0.8.7 External References
-
-| Reference | URL | Purpose |
-|-----------|-----|---------|
-| Express.js Documentation | https://expressjs.com/ | Framework reference |
-| Jest Documentation | https://jestjs.io/ | Test framework reference |
-| Supertest Documentation | https://github.com/ladjs/supertest | HTTP testing reference |
-| Node.js Documentation | https://nodejs.org/ | Runtime reference |
-
-### 0.8.8 Repository Analysis Summary
-
-| Metric | Value |
-|--------|-------|
-| Total Files Analyzed | 16 |
-| Total Folders Analyzed | 7 |
-| Tech Spec Sections Retrieved | 4 |
-| Bash Commands Executed | 6 |
-| Total Tests in Repository | 41 |
-| Code Coverage Achieved | 100% |
-| Feature Status | **FULLY IMPLEMENTED** |
 
