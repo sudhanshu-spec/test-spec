@@ -1,7 +1,7 @@
 /**
  * Main Application Routes Module
  * 
- * This module defines the main GET route handlers using Express Router.
+ * @fileoverview Defines the main route handler definitions using Express Router.
  * Routes are extracted from original server.js lines 8-14 with exact
  * behavioral preservation.
  * 
@@ -12,8 +12,11 @@
  * @module src/routes/main.routes
  */
 
+'use strict';
+
 const express = require('express');
 
+/** @type {import('express').Router} */
 const router = express.Router();
 
 /**

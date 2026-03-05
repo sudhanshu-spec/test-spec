@@ -1,4 +1,7 @@
 /**
+ * @fileoverview Centralized application configuration following Twelve-Factor methodology.
+ * Exports environment-driven { host, port, env } with safe defaults.
+ *
  * Configuration Management Module
  * 
  * This module centralizes all application configuration values with environment
@@ -17,6 +20,9 @@
  * @module src/config
  */
 
+'use strict';
+
+/** @type {{ host: string, port: number, env: string }} */
 module.exports = {
   /**
    * Server host binding address

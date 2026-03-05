@@ -1,7 +1,7 @@
 /**
  * Express Application Configuration Module
  * 
- * This module initializes and exports the configured Express app instance.
+ * @fileoverview Initializes and exports the configured Express app instance.
  * It separates application configuration from HTTP server initialization
  * (which remains in server.js), enabling unit testing without starting
  * the actual server.
@@ -11,9 +11,12 @@
  * @module src/app
  */
 
+'use strict';
+
 const express = require('express');
 const { mainRoutes } = require('./routes');
 
+/** @type {import('express').Application} */
 const app = express();
 
 /**
