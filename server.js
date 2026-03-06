@@ -5,8 +5,15 @@ const port = 3000;
 
 const app = express();
 
+app.disable('x-powered-by');
+
+app.use((req, res, next) => {
+  res.set('X-Content-Type-Options', 'nosniff');
+  next();
+});
+
 app.get('/', (req, res) => {
-  res.send('Hello, World!\n');
+  res.send('Hello world');
 });
 
 app.get('/evening', (req, res) => {
