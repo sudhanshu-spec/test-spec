@@ -52,6 +52,7 @@ npm start
 
 **Expected output:**
 ```
+Application module loaded successfully
 Server running at http://127.0.0.1:3000/
 ```
 
@@ -314,6 +315,12 @@ These handlers are registered before the server starts listening, ensuring cover
 |---------|---------|---------|
 | `express` | ^5.1.0 | Web framework providing HTTP handling, routing, and middleware |
 
+### Development Dependencies
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| `jest` | ^29.7.0 | JavaScript testing framework |
+
 ### Dependency Installation
 
 ```bash
@@ -330,6 +337,7 @@ npm ls express
 | Script | Command | Description |
 |--------|---------|-------------|
 | `start` | `node server.js` | Starts the HTTP server |
+| `test` | `jest --watchAll=false` | Runs the test suite |
 
 ## Troubleshooting
 
