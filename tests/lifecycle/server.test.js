@@ -205,4 +205,40 @@ describe('Server Entry Point', () => {
 
     consoleErrorSpy.mockRestore();
   });
+
+  test('should handle non-EADDRINUSE server errors gracefully', () => {
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    require('../../server');
+
+    // Retrieve the error handler captured by the mock server's .on() method
+    const errorHandler = mockServer._errorHandler;
+    expect(errorHandler).toBeDefined();
+
+    // Invoke with a non-EADDRINUSE error to exercise the else-branch (line 72)
+    /** @type {NodeJS.ErrnoException} */
+    const error = Object.assign(new Error('Permission denied'), { code: 'EACCES' });
+
+    expect(() => errorHandler(error)).not.toThrow();
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Server error: Permission denied');
+
+    consoleErrorSpy.mockRestore();
+  });
+
+  test('should initiate graceful shutdown on SIGTERM signal', () => {
+    const processExitSpy = jest.spyOn(process, 'exit').mockImplementation(() => {});
+
+    require('../../server');
+
+    // Trigger SIGTERM to invoke the shutdown function (lines 87-93)
+    process.emit('SIGTERM');
+
+    // Verify the complete shutdown sequence
+    expect(consoleSpy).toHaveBeenCalledWith('Shutdown signal received: closing HTTP server');
+    expect(mockServer.close).toHaveBeenCalledTimes(1);
+    expect(consoleSpy).toHaveBeenCalledWith('HTTP server closed');
+    expect(processExitSpy).toHaveBeenCalledWith(0);
+
+    processExitSpy.mockRestore();
+  });
 });
