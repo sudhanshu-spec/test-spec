@@ -13,6 +13,8 @@
  * - HOST: Override default host binding
  * - PORT: Override default port number
  * - NODE_ENV: Set application environment (development, production, test)
+ * - SHUTDOWN_TIMEOUT: Maximum wait time (ms) for graceful shutdown (default: 5000)
+ * - REQUEST_TIMEOUT: HTTP request timeout (ms) to prevent hung connections (default: 30000)
  * 
  * @module src/config
  */
@@ -37,5 +39,19 @@ module.exports = {
    * @type {string}
    * @default 'development'
    */
-  env: process.env.NODE_ENV || 'development'
+  env: process.env.NODE_ENV || 'development',
+
+  /**
+   * Maximum wait time in milliseconds for graceful shutdown before force-killing the process
+   * @type {number}
+   * @default 5000
+   */
+  shutdownTimeout: parseInt(process.env.SHUTDOWN_TIMEOUT, 10) || 5000,
+
+  /**
+   * HTTP request timeout in milliseconds to prevent hung connections
+   * @type {number}
+   * @default 30000
+   */
+  requestTimeout: parseInt(process.env.REQUEST_TIMEOUT, 10) || 30000
 };
