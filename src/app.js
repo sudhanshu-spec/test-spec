@@ -18,6 +18,22 @@ const { errorHandler, notFoundHandler } = require('./middleware');
 const app = express();
 
 /**
+ * Disable the X-Powered-By header to prevent exposing the server framework
+ * to potential attackers. This is a standard Express security hardening measure.
+ */
+app.disable('x-powered-by');
+
+/**
+ * Set security headers on all responses.
+ * X-Content-Type-Options: nosniff prevents browsers from MIME-sniffing
+ * the response body, mitigating content-type confusion attacks.
+ */
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  next();
+});
+
+/**
  * Mount main routes at root path
  * This preserves the original route paths:
  * - GET '/' -> mainRoutes handles this
