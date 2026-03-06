@@ -120,7 +120,7 @@ app.use((err, req, res, next) => {
   const statusCode = err.statusCode || err.status || 500;
   res.status(statusCode).json({
     error: err.name || 'Internal Server Error',
-    message: err.message,
+    message: process.env.NODE_ENV === 'production' ? 'Internal Server Error' : err.message,
     statusCode: statusCode
   });
 });
@@ -184,9 +184,13 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 /**
- * HTTP Server Configuration
+ * Server Startup — HTTP and HTTPS Configuration
  * 
- * Maintains backward compatibility by keeping HTTP server on port 3000.
+ * Starts HTTP and HTTPS servers, stores references for graceful shutdown,
+ * and registers server error handlers.
+ * 
+ * HTTP server binds to 127.0.0.1:3000 for backward compatibility.
+ * HTTPS server binds to 127.0.0.1:3443 conditionally in non-production environments.
  * In production environments, HTTP should redirect to HTTPS or be disabled
  * entirely behind a reverse proxy (nginx, Apache) that handles TLS termination.
  * 
@@ -208,30 +212,30 @@ function startServer() {
     process.exit(1);
   });
 
-/**
- * HTTPS Server Configuration (Development Environment)
- * 
- * Configures encrypted HTTPS server on port 3443 using TLS certificates.
- * Conditional startup prevents errors in production where certificates
- * are managed by external tools (Let's Encrypt, certificate managers).
- * 
- * Certificate Requirements:
- * - Development: Self-signed certificates generated via generate-cert.sh script
- * - Production: Commercial CA or Let's Encrypt certificates with auto-renewal
- * 
- * Security Benefits:
- * - Encrypts all data in transit (prevents man-in-the-middle attacks)
- * - Enables HSTS (HTTP Strict Transport Security) header functionality
- * - Protects sensitive data like authentication credentials
- * - Supports TLS 1.2+ with strong cipher suites
- * 
- * Certificate Generation:
- * Run: cd config/ssl && bash generate-cert.sh
- * This creates key.pem (private key) and cert.pem (self-signed certificate)
- * 
- * Note: Self-signed certificates trigger browser warnings. For production,
- * use certificates from trusted Certificate Authorities (Let's Encrypt, DigiCert, etc.)
- */
+  /**
+   * HTTPS Server Configuration (Development Environment)
+   * 
+   * Configures encrypted HTTPS server on port 3443 using TLS certificates.
+   * Conditional startup prevents errors in production where certificates
+   * are managed by external tools (Let's Encrypt, certificate managers).
+   * 
+   * Certificate Requirements:
+   * - Development: Self-signed certificates generated via generate-cert.sh script
+   * - Production: Commercial CA or Let's Encrypt certificates with auto-renewal
+   * 
+   * Security Benefits:
+   * - Encrypts all data in transit (prevents man-in-the-middle attacks)
+   * - Enables HSTS (HTTP Strict Transport Security) header functionality
+   * - Protects sensitive data like authentication credentials
+   * - Supports TLS 1.2+ with strong cipher suites
+   * 
+   * Certificate Generation:
+   * Run: cd config/ssl && bash generate-cert.sh
+   * This creates key.pem (private key) and cert.pem (self-signed certificate)
+   * 
+   * Note: Self-signed certificates trigger browser warnings. For production,
+   * use certificates from trusted Certificate Authorities (Let's Encrypt, DigiCert, etc.)
+   */
   if (process.env.NODE_ENV !== 'production') {
     try {
       const httpsOptions = {
