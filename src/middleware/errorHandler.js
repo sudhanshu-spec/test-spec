@@ -28,6 +28,12 @@
  * @param {import('express').NextFunction} next - Express next function (required by Express error-handling signature)
  */
 const errorHandler = (err, req, res, next) => {
+  // Guard: If headers have already been sent (e.g., during a streaming response),
+  // delegate to Express's built-in finalhandler to avoid ERR_HTTP_HEADERS_SENT.
+  if (res.headersSent) {
+    return next(err);
+  }
+
   // Determine HTTP status code from the error object, defaulting to 500
   const status = err.status || err.statusCode || 500;
 
