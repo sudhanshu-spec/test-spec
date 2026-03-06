@@ -13,6 +13,7 @@
 
 const express = require('express');
 const { mainRoutes } = require('./routes');
+const { errorHandler, notFoundHandler } = require('./middleware');
 
 const app = express();
 
@@ -23,5 +24,20 @@ const app = express();
  * - GET '/evening' -> mainRoutes handles this
  */
 app.use('/', mainRoutes);
+
+/**
+ * Mount 404 catch-all handler
+ * Must be placed after all route registrations to catch unmatched requests.
+ * Returns structured JSON 404 responses instead of Express default text.
+ */
+app.use(notFoundHandler);
+
+/**
+ * Mount centralized error handler
+ * Must be the LAST middleware in the stack.
+ * Uses the 4-argument (err, req, res, next) Express error-handling signature.
+ * Produces structured JSON error responses with production-safe stack trace suppression.
+ */
+app.use(errorHandler);
 
 module.exports = app;
