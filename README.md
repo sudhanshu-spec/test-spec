@@ -38,7 +38,7 @@ cd hao-backprop-test
 npm install
 ```
 
-This will install Express.js (^5.1.0) and all required dependencies.
+This will install Express.js (^5.2.0) and all required dependencies.
 
 ## Usage
 
@@ -132,13 +132,15 @@ hao-backprop-test/
 ├── package-lock.json            # Dependency lockfile
 ├── README.md                    # Project documentation (this file)
 ├── .gitignore                   # Git ignore patterns
-└── src/                         # Application source root
-    ├── app.js                   # Express application factory
-    ├── config/                  # Configuration module
-    │   └── index.js             # Environment variable management
-    └── routes/                  # Routing surface
-        ├── index.js             # Route aggregator (barrel pattern)
-        └── main.routes.js       # Route handlers implementation
+├── src/                         # Application source root
+│   ├── app.js                   # Express application factory
+│   ├── config/                  # Configuration module
+│   │   └── index.js             # Environment variable management
+│   └── routes/                  # Routing surface
+│       ├── index.js             # Route aggregator (barrel pattern)
+│       └── main.routes.js       # Route handlers implementation
+└── blitzy/                      # Internal platform documentation
+    └── documentation/           # Technical specifications
 ```
 
 ### File Descriptions
@@ -206,7 +208,7 @@ Client → server.js → Express App (src/app.js) → Router (src/routes/) → R
 
 | Package | Version | Purpose |
 |---------|---------|---------|
-| `express` | ^5.1.0 | Web framework providing HTTP handling, routing, and middleware |
+| `express` | ^5.2.0 | Web framework providing HTTP handling, routing, and middleware |
 
 ### Dependency Installation
 
@@ -216,7 +218,7 @@ npm install
 
 # Verify express installation
 npm ls express
-# Expected: express@5.1.0
+# Expected: express@5.2.1
 ```
 
 ## Scripts
