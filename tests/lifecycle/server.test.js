@@ -100,6 +100,10 @@ describe('Server Entry Point', () => {
 
   afterEach(() => {
     jest.restoreAllMocks();
+    // Clean up signal handlers registered by server.js during require()
+    // to prevent handler accumulation across test cases
+    process.removeAllListeners('SIGTERM');
+    process.removeAllListeners('SIGINT');
   });
 
   afterAll(() => {
@@ -147,15 +151,21 @@ describe('Server Entry Point', () => {
   });
 
   test('should provide server object that supports graceful shutdown', () => {
+    const exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => {});
+
     require('../../server');
 
     expect(mockListen).toHaveBeenCalled();
 
-    const closeCallback = jest.fn();
-    mockServer.close(closeCallback);
+    // Trigger SIGTERM to exercise the graceful shutdown handler registered by server.js
+    process.emit('SIGTERM');
 
+    // Verify server.close() was invoked by the shutdown handler
     expect(mockServer.close).toHaveBeenCalledTimes(1);
-    expect(closeCallback).toHaveBeenCalled();
+    // Verify clean exit after server connections drain
+    expect(exitSpy).toHaveBeenCalledWith(0);
+
+    exitSpy.mockRestore();
   });
 
   test('should handle EADDRINUSE error when port is already in use', () => {
