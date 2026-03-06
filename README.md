@@ -114,6 +114,26 @@ curl -s http://127.0.0.1:3000/evening
 # Output: Good evening
 ```
 
+### Undefined Routes
+
+Any request to an undefined path returns a 404 error via Express's default error handling.
+
+**Request:**
+```bash
+curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3000/nonexistent
+```
+
+**Response:**
+- **Status Code:** 404 Not Found
+- **Content-Type:** Varies (Express default error response)
+- **Body:** Express default 404 error message
+
+**Example:**
+```bash
+curl -i http://127.0.0.1:3000/nonexistent
+# HTTP/1.1 404 Not Found
+```
+
 ### Health Check
 
 Verify both endpoints are operational:
