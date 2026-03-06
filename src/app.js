@@ -19,6 +19,12 @@ const { mainRoutes } = require('./routes');
 const app = express();
 
 /**
+ * Enable case-sensitive routing so that '/Evening' and '/EVENING'
+ * do not match the '/evening' route (Express 5.x defaults to false).
+ */
+app.set('case sensitive routing', true);
+
+/**
  * Mount main routes at root path
  * This preserves the original route paths:
  * - GET '/' -> mainRoutes handles this
