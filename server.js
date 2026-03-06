@@ -108,9 +108,11 @@ app.get('/health', (req, res) => {
 
 // 404 Not Found handler - catches all undefined routes
 app.use((req, res, next) => {
+  // Sanitize URL to prevent reflected XSS (defense-in-depth)
+  const safePath = req.originalUrl.replace(/[<>]/g, '');
   res.status(404).json({
     error: 'Not Found',
-    message: `Resource '${req.originalUrl}' not found`,
+    message: `Resource '${safePath}' not found`,
     statusCode: 404
   });
 });
