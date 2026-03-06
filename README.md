@@ -154,13 +154,17 @@ hao-backprop-test/
 ├── .gitignore                   # Git ignore patterns
 ├── jest.config.js               # Jest test framework configuration
 ├── src/                         # Application source root
+│   ├── README.md                # Application source documentation
 │   ├── app.js                   # Express application factory
 │   ├── config/                  # Configuration module
+│   │   ├── README.md            # Configuration module documentation
 │   │   └── index.js             # Environment variable management
 │   └── routes/                  # Routing surface
+│       ├── README.md            # Routing module documentation
 │       ├── index.js             # Route aggregator (barrel pattern)
 │       └── main.routes.js       # Route handlers implementation
 └── tests/                       # Test suite root
+    ├── README.md                # Test suite documentation
     ├── unit/                    # Isolated module tests
     │   ├── config.test.js       # Configuration module tests
     │   └── routes.test.js       # Route handler tests
@@ -256,7 +260,7 @@ npm ls express
 | `test` | `jest` | Run the complete test suite |
 | `test:watch` | `jest --watch` | Run tests in watch mode for development |
 | `test:coverage` | `jest --coverage` | Run tests and generate coverage report |
-| `test:ci` | `jest --ci --coverage` | Run tests optimized for CI/CD environments |
+| `test:ci` | `jest --ci --coverage --reporters=default` | Run tests optimized for CI/CD environments |
 
 ## Testing
 

@@ -12,6 +12,8 @@
  * @module src/routes
  */
 
+'use strict';
+
 const mainRoutes = require('./main.routes');
 
 module.exports = {

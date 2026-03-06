@@ -11,6 +11,8 @@
  * @module src/app
  */
 
+'use strict';
+
 const express = require('express');
 const { mainRoutes } = require('./routes');
 
