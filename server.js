@@ -59,16 +59,19 @@ const config = require('./src/config');
  * Default binding: http://127.0.0.1:3000/
  * Override via HOST and PORT environment variables.
  */
-app.listen(config.port, config.host, () => {
+const server = app.listen(config.port, config.host, () => {
   // Log server startup information
   console.log(`Server running at http://${config.host}:${config.port}/`);
 });
 
-// Log application initialization complete
-console.log('Application module loaded successfully');
-
-// PR test log - added for testing purposes
-console.log('Express.js server initialization complete - PR validation log');
-
-// Additional PR validation log - added per user request for testing purposes
-console.log('PR update test: Server module fully initialized');
+// Handle server startup errors (e.g., port already in use, invalid host)
+server.on('error', (error) => {
+  if (error.code === 'EADDRINUSE') {
+    console.error(`Error: Port ${config.port} is already in use`);
+  } else if (error.code === 'EADDRNOTAVAIL') {
+    console.error(`Error: Host ${config.host} is not available`);
+  } else {
+    console.error(`Server error: ${error.message}`);
+  }
+  process.exit(1);
+});
