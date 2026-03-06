@@ -37,5 +37,19 @@ module.exports = {
    * @type {string}
    * @default 'development'
    */
-  env: process.env.NODE_ENV || 'development'
+  env: process.env.NODE_ENV || 'development',
+
+  /**
+   * Maximum wait time (ms) for graceful shutdown before force-killing the process.
+   * @type {number}
+   * @default 5000
+   */
+  shutdownTimeout: parseInt(process.env.SHUTDOWN_TIMEOUT, 10) || 5000,
+
+  /**
+   * HTTP request timeout (ms) to prevent hung connections.
+   * @type {number}
+   * @default 30000
+   */
+  requestTimeout: parseInt(process.env.REQUEST_TIMEOUT, 10) || 30000
 };
