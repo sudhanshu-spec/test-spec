@@ -65,7 +65,7 @@ const authConfig = require('../config/auth');
  * Success Response (201 Created):
  * {
  *   "message": "User registered successfully",
- *   "user": { "id": "uuid", "username": "john_doe", "email": "john@example.com", "createdAt": "..." }
+ *   "user": { "id": "uuid", "username": "john_doe", "email": "john@example.com" }
  * }
  * Set-Cookie: token=<JWT>; HttpOnly; Secure; SameSite=Strict
  *
@@ -132,7 +132,11 @@ const register = async (req, res) => {
     // Return 201 Created with the sanitized user object (no hashedPassword)
     return res.status(201).json({
       message: 'User registered successfully',
-      user
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email
+      }
     });
   } catch (error) {
     // Catch-all error handler — return generic message to prevent information disclosure
