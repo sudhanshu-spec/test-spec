@@ -137,12 +137,90 @@ const handleValidationErrors = (req, res, next) => {
 };
 
 /**
+ * Validation chain for login request body
+ * 
+ * Validates user credentials submitted during authentication login requests.
+ * Ensures email is properly formatted and password meets minimum length requirements.
+ * 
+ * Usage Example:
+ *   router.post('/login', validateLogin, handleValidationErrors, controller.login);
+ * 
+ * Validation Rules:
+ * - body('email').isEmail(): Ensures the email field contains a valid email address format
+ * - body('email').normalizeEmail(): Normalizes the email address (lowercase domain, remove dots in gmail, etc.)
+ * - body('password').isLength({min: 8}): Ensures password is at least 8 characters long
+ * - withMessage(): Provides clear, user-facing error messages for each validation failure
+ * 
+ * Security Benefit:
+ * Prevents malformed or empty credentials from reaching the authentication logic layer,
+ * reducing attack surface for brute-force and credential stuffing attacks.
+ * Email normalization ensures consistent lookup and prevents duplicate account creation
+ * with equivalent email variations.
+ * 
+ * @type {ValidationChain[]}
+ * @constant
+ */
+const validateLogin = [
+  body('email')
+    .isEmail()
+    .withMessage('Please provide a valid email address')
+    .normalizeEmail(),
+  body('password')
+    .isLength({ min: 8 })
+    .withMessage('Password must be at least 8 characters long')
+];
+
+/**
+ * Validation chain for registration request body
+ * 
+ * Validates new user registration data including username, email, and password fields.
+ * Applies sanitization (trim, escape) and format validation to prevent injection attacks
+ * and ensure data integrity for new account creation.
+ * 
+ * Usage Example:
+ *   router.post('/register', validateRegister, handleValidationErrors, controller.register);
+ * 
+ * Validation Rules:
+ * - body('username').trim(): Removes leading and trailing whitespace from username
+ * - body('username').isLength({min: 3}): Ensures username is at least 3 characters long
+ * - body('username').escape(): Converts HTML special characters to entities to prevent XSS
+ * - body('email').isEmail(): Ensures the email field contains a valid email address format
+ * - body('email').normalizeEmail(): Normalizes the email address for consistent storage
+ * - body('password').isLength({min: 8}): Ensures password is at least 8 characters long
+ * - withMessage(): Provides clear, user-facing error messages for each validation failure
+ * 
+ * Security Benefit:
+ * Prevents XSS attacks through username escaping, ensures email uniqueness through
+ * normalization, and enforces minimum password complexity. Input sanitization at the
+ * validation layer implements defense-in-depth before data reaches the controller.
+ * 
+ * @type {ValidationChain[]}
+ * @constant
+ */
+const validateRegister = [
+  body('username')
+    .trim()
+    .isLength({ min: 3 })
+    .withMessage('Username must be at least 3 characters long')
+    .escape(),
+  body('email')
+    .isEmail()
+    .withMessage('Please provide a valid email address')
+    .normalizeEmail(),
+  body('password')
+    .isLength({ min: 8 })
+    .withMessage('Password must be at least 8 characters long')
+];
+
+/**
  * Module Exports
  * 
- * Exports three validation utilities for use across application routes:
+ * Exports five validation utilities for use across application routes:
  * 1. validateQueryId - Integer validation for query parameters
  * 2. validateBodyName - String sanitization for request body fields
- * 3. handleValidationErrors - Centralized error handling middleware
+ * 3. validateLogin - Email and password validation for login requests
+ * 4. validateRegister - Username, email, and password validation for registration requests
+ * 5. handleValidationErrors - Centralized error handling middleware
  * 
  * These exports provide reusable validation chains per Agent Action Plan Section 0.6.1
  * "Validation chains must be reusable across routes"
@@ -150,9 +228,16 @@ const handleValidationErrors = (req, res, next) => {
  * Integration Example in server.js:
  *   const { validateQueryId, handleValidationErrors } = require('./middleware/validation');
  *   app.get('/api/data', [validateQueryId, handleValidationErrors], handler);
+ * 
+ * Integration Example for auth routes:
+ *   const { validateLogin, validateRegister, handleValidationErrors } = require('../middleware/validation');
+ *   router.post('/login', validateLogin, handleValidationErrors, controller.login);
+ *   router.post('/register', validateRegister, handleValidationErrors, controller.register);
  */
 module.exports = {
   validateQueryId,
   validateBodyName,
+  validateLogin,
+  validateRegister,
   handleValidationErrors
 };
