@@ -23,6 +23,7 @@
  * @requires cors - CORS policy middleware (v2.8.5)
  * @requires https - Node.js HTTPS server module
  * @requires fs - File system for SSL certificate loading
+ * @requires cookie-parser - Cookie parsing middleware (v1.4.7)
  */
 
 const express = require('express');
@@ -35,6 +36,11 @@ const https = require('https');
 const fs = require('fs');
 // Security configuration imports
 const { securityConfig, corsOptions, limiterConfig } = require('./middleware/security');
+// Cookie parsing middleware for JWT token extraction from HttpOnly cookies
+const cookieParser = require('cookie-parser');
+// Authentication route modules
+const authRoutes = require('./routes/auth');
+const protectedRoutes = require('./routes/protected');
 
 const hostname = '127.0.0.1';
 const port = 3000;
@@ -52,6 +58,7 @@ const app = express();
  * 1. helmet() - Security headers must be set before any response processing
  * 2. cors() - Cross-origin policy enforcement before request handling
  * 3. express.json() - Body parsing before validation and rate limit checks
+ * 3.5. cookieParser() - Cookie parsing for JWT token extraction from HttpOnly cookies
  * 4. rateLimit() - Request throttling after parsing but before route handlers
  */
 
@@ -76,6 +83,12 @@ app.use(cors(corsOptions));
 //    - Limits body size to prevent memory exhaustion attacks
 app.use(express.json());
 
+// 3.5. Cookie Parser: Parse cookies from incoming HTTP requests
+//    - Required for JWT token extraction from HttpOnly cookies
+//    - Must be before route handlers that need req.cookies access
+//    - Enables cookie-based authentication flow
+app.use(cookieParser());
+
 // 4. Rate Limiting: Prevent DoS attacks with IP-based request throttling
 //    - Limits each IP address to 100 requests per 15-minute sliding window
 //    - Returns HTTP 429 (Too Many Requests) when limit exceeded
@@ -91,6 +104,13 @@ app.get('/', (req, res) => {
 app.get('/evening', (req, res) => {
   res.send('Good evening');
 });
+
+// Authentication Routes
+// Public routes (no authentication required) - login and register
+app.use('/auth', authRoutes);
+
+// Protected routes (authentication required) - logout
+app.use('/auth', protectedRoutes);
 
 /**
  * HTTP Server Configuration
