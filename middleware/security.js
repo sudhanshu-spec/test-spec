@@ -117,7 +117,7 @@ const securityConfig = {
  */
 const corsOptions = {
   origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'],
-  methods: ['GET', 'POST'],
+  methods: ['GET', 'POST', 'DELETE'],
   credentials: true,
   optionsSuccessStatus: 200
 };
