@@ -46,11 +46,13 @@ const authMiddleware = require('../middleware/auth');
 /**
  * Protected Authentication Router
  *
- * Creates an Express Router instance with router-level authentication guard.
- * The router.use(authMiddleware) call ensures that EVERY route defined on this
- * router automatically requires a valid JWT token in the request cookies.
+ * Creates an Express Router instance for authenticated endpoints. Authentication
+ * middleware (authMiddleware) is applied per-route to ensure that only explicitly
+ * defined endpoints trigger JWT verification. This approach prevents unmatched
+ * HTTP methods or paths from receiving 401 responses — they correctly fall through
+ * to the application's 404 handler instead.
  *
- * Authentication Guard Behavior:
+ * Authentication Guard Behavior (applied per-route):
  * - authMiddleware extracts the JWT from req.cookies.token (set by cookie-parser)
  * - jwt.verify() validates the HMAC-SHA256 signature and checks expiration claims
  * - On valid token: req.user is populated with decoded payload { id, email, iat, exp }
@@ -66,12 +68,6 @@ const authMiddleware = require('../middleware/auth');
  */
 const router = Router();
 
-// Apply JWT authentication middleware at the router level
-// CRITICAL: This MUST come BEFORE any route definitions (router.post, router.get, etc.)
-// Express middleware executes in registration order — authMiddleware will run first
-// for every request that matches any route on this router, ensuring all routes are protected
-router.use(authMiddleware);
-
 /**
  * POST /logout — End Authenticated User Session
  *
@@ -83,17 +79,22 @@ router.use(authMiddleware);
  * Full endpoint path: POST /auth/logout (when mounted at /auth in server.js)
  *
  * Authentication Requirement:
- * - Valid JWT cookie is REQUIRED (enforced by router-level authMiddleware)
+ * - Valid JWT cookie is REQUIRED (enforced by per-route authMiddleware)
  * - req.user is available with { id, email, iat, exp } from the decoded JWT
  * - Without valid JWT, a 401 Unauthorized response is returned by authMiddleware
- *   BEFORE this handler is ever reached
+ *   BEFORE the logout handler is ever reached
  *
  * Middleware Pipeline:
- * authMiddleware (router-level) → authController.logout
+ * authMiddleware (per-route) → authController.logout
+ *
+ * Authentication middleware is applied per-route (rather than via router.use()) to
+ * ensure that only explicitly defined POST /logout requests trigger authentication
+ * verification. This prevents unmatched HTTP methods (e.g., GET /auth/logout) from
+ * receiving 401 responses — instead, they correctly fall through to the 404 handler.
  *
  * No validation middleware is applied to this route because:
  * - There is no request body to validate (logout has no input payload)
- * - Authentication is the only prerequisite, handled by router-level middleware
+ * - Authentication is the only prerequisite, handled by per-route middleware
  *
  * Success Response (200 OK):
  * {
@@ -114,7 +115,7 @@ router.use(authMiddleware);
  * @name POST /logout
  * @memberof module:routes/protected
  */
-router.post('/logout', authController.logout);
+router.post('/logout', authMiddleware, authController.logout);
 
 /**
  * Module Exports

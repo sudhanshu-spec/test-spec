@@ -85,9 +85,23 @@ const users = [];
  * @param {string} userData.username - User display name (3+ characters, pre-validated)
  * @param {string} userData.email - Normalized email address (pre-validated by express-validator)
  * @param {string} userData.hashedPassword - bcrypt hash of the user's password (hashed by controller)
- * @returns {Object} Sanitized user object: { id: string, username: string, email: string, createdAt: string }
+ * @returns {Object|null} Sanitized user object { id, username, email, createdAt } on success,
+ *   or null if a user with the same email already exists (duplicate detection is atomic)
  */
 const create = (userData) => {
+  // Atomic email uniqueness check — prevents race conditions in concurrent registration.
+  // Since this entire function body runs synchronously within a single tick of the
+  // Node.js event loop, no other request can interleave between the duplicate check
+  // and the array push. This eliminates the TOCTOU (Time-Of-Check-Time-Of-Use) race
+  // that existed when the check was in the async controller layer (separated by
+  // an await bcrypt.hash() call that yields to the event loop).
+  const existingUser = users.find((user) => user.email === userData.email);
+  if (existingUser) {
+    // Email already exists — return null to signal a conflict to the caller.
+    // The controller should respond with 409 Conflict when create() returns null.
+    return null;
+  }
+
   // Generate a cryptographically secure UUID v4 identifier for the new user
   const id = crypto.randomUUID();
 

@@ -113,6 +113,41 @@ app.use('/auth', authRoutes);
 app.use('/auth', protectedRoutes);
 
 /**
+ * Global Error Handling Middleware
+ *
+ * Catches errors that occur during request processing and returns appropriate
+ * JSON error responses. This middleware specifically handles:
+ *
+ * 1. JSON Parse Errors (entity.parse.failed):
+ *    When express.json() encounters malformed JSON in the request body, it throws
+ *    a SyntaxError with type 'entity.parse.failed'. Without this handler, Express
+ *    defaults to sending an HTML error page with internal stack traces and file paths,
+ *    which is a security risk (information disclosure) and an inconsistent response format.
+ *
+ * 2. All Other Errors:
+ *    Delegated to Express's built-in error handler via next(err) to maintain
+ *    default behavior for non-JSON-parse errors.
+ *
+ * IMPORTANT: This middleware MUST be registered AFTER all route handlers but BEFORE
+ * the HTTP server listener. Express identifies error-handling middleware by the
+ * four-parameter signature (err, req, res, next).
+ *
+ * @param {Error} err - The error object thrown during request processing
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next function to delegate to default error handler
+ */
+app.use((err, req, res, next) => {
+  // Handle malformed JSON request body errors from express.json() / body-parser
+  // The 'entity.parse.failed' type is set by body-parser when JSON parsing fails
+  if (err.type === 'entity.parse.failed') {
+    return res.status(400).json({ message: 'Invalid JSON body' });
+  }
+  // Delegate all other errors to Express's built-in error handler
+  next(err);
+});
+
+/**
  * HTTP Server Configuration
  * 
  * Maintains backward compatibility by keeping HTTP server on port 3000.

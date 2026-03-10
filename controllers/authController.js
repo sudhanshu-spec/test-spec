@@ -105,9 +105,17 @@ const register = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, authConfig.bcryptSaltRounds);
 
     // Persist the new user record in the data store
-    // User.create() returns a sanitized object: { id, username, email, createdAt }
-    // The hashedPassword is stored internally but excluded from the return value
+    // User.create() performs an atomic email uniqueness check and returns a sanitized
+    // object: { id, username, email, createdAt }. Returns null if email already exists
+    // (race condition protection — the check-and-insert is synchronous/atomic within create).
     const user = User.create({ username, email, hashedPassword });
+
+    // Handle race condition: if another concurrent request registered the same email
+    // between our initial findByEmail check (above) and this create call, create()
+    // returns null. Respond with 409 Conflict, same as the explicit check above.
+    if (!user) {
+      return res.status(409).json({ message: 'Email already registered' });
+    }
 
     // Sign a JWT token with minimal claims (id and email) for session identification
     // Token is signed with HS256 algorithm (jsonwebtoken default) using the configured secret
