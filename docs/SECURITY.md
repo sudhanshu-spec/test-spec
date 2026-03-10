@@ -973,7 +973,7 @@ Creates a new user account and issues a JWT token.
 **Success Response (201 Created):**
 ```json
 {
-  "message": "Registration successful",
+  "message": "User registered successfully",
   "user": {
     "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     "username": "johndoe",
