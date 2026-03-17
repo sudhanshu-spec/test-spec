@@ -5,7 +5,8 @@
 
 'use strict';
 
-const mainRoutes = require('../../src/routes/main.routes');
+const mainRouter = require('../../src/routes/main.routes');
+const { configureRoutes } = require('../../src/routes');
 
 /**
  * @typedef {Object} RouteLayer
@@ -36,31 +37,31 @@ function getRoutePaths(router) {
 describe('Route Handlers - main.routes.js', () => {
   describe('Router Export', () => {
     test('should export an Express Router instance', () => {
-      expect(mainRoutes).toBeDefined();
-      expect(typeof mainRoutes).toBe('function');
-      expect(mainRoutes.stack).toBeDefined();
-      expect(Array.isArray(mainRoutes.stack)).toBe(true);
+      expect(mainRouter).toBeDefined();
+      expect(typeof mainRouter).toBe('function');
+      expect(mainRouter.stack).toBeDefined();
+      expect(Array.isArray(mainRouter.stack)).toBe(true);
     });
 
     test('should have router handle method defined', () => {
-      expect(typeof mainRoutes.handle).toBe('function');
+      expect(typeof mainRouter.handle).toBe('function');
     });
   });
 
   describe('Route Handler Definitions', () => {
     test('should have two route handlers defined', () => {
-      const routeLayers = getRouteLayers(mainRoutes);
+      const routeLayers = getRouteLayers(mainRouter);
       expect(routeLayers.length).toBe(2);
     });
 
     test('should define handlers for / and /evening paths', () => {
-      const paths = getRoutePaths(mainRoutes);
+      const paths = getRoutePaths(mainRouter);
       expect(paths).toContain('/');
       expect(paths).toContain('/evening');
     });
 
     test('should define GET method handlers for both routes', () => {
-      const routeLayers = getRouteLayers(mainRoutes);
+      const routeLayers = getRouteLayers(mainRouter);
       
       routeLayers.forEach(layer => {
         expect(layer.route.methods).toBeDefined();
@@ -69,7 +70,7 @@ describe('Route Handlers - main.routes.js', () => {
     });
 
     test('should have handler functions in route stack', () => {
-      const routeLayers = getRouteLayers(mainRoutes);
+      const routeLayers = getRouteLayers(mainRouter);
       
       routeLayers.forEach(layer => {
         expect(layer.route.stack).toBeDefined();
@@ -84,11 +85,24 @@ describe('Route Handlers - main.routes.js', () => {
 
   describe('Route Path Ordering', () => {
     test('should define root path (/) before /evening path', () => {
-      const paths = getRoutePaths(mainRoutes);
+      const paths = getRoutePaths(mainRouter);
       const rootIndex = paths.indexOf('/');
       const eveningIndex = paths.indexOf('/evening');
       
       expect(rootIndex).toBeLessThan(eveningIndex);
     });
+  });
+});
+
+describe('Route Barrel - index.js', () => {
+  test('should export configureRoutes as a function', () => {
+    expect(configureRoutes).toBeDefined();
+    expect(typeof configureRoutes).toBe('function');
+  });
+
+  test('should mount mainRouter on root path when configureRoutes is called', () => {
+    const mockApp = { use: jest.fn() };
+    configureRoutes(mockApp);
+    expect(mockApp.use).toHaveBeenCalledWith('/', mainRouter);
   });
 });
