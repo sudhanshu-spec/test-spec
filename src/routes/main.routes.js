@@ -12,6 +12,8 @@
  * @module src/routes/main.routes
  */
 
+'use strict';
+
 const express = require('express');
 
 const router = express.Router();

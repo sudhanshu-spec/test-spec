@@ -2,6 +2,9 @@
  * @fileoverview Jest configuration for Express.js hello_world application
  * @type {import('jest').Config}
  */
+
+'use strict';
+
 module.exports = {
   testEnvironment: 'node',
   roots: ['<rootDir>/tests'],
