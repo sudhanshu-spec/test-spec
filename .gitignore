@@ -22,3 +22,8 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+# Build artifacts
+dist/
+build/
+*.tgz
