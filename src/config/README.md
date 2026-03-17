@@ -18,6 +18,8 @@ The module synchronously reads environment variables when you `require()` it—n
 - Parses PORT as an integer with explicit radix 10: `parseInt(process.env.PORT, 10) || 3000`
 - Falls back to `'development'` if NODE_ENV isn't set
 
+The exported configuration object is frozen with `Object.freeze()`, making it immutable. This prevents accidental mutation of configuration values at runtime, ensuring all consumers share the same deterministic values.
+
 ## Usage
 
 ```javascript
