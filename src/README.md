@@ -4,7 +4,7 @@ This directory contains the application core — the Express app factory that cr
 
 ## Key Files
 
-- **app.js** — The Express application factory. Creates the app instance, mounts the main routes at the root path (`/`), and exports the configured app for use elsewhere.
+- **app.js** — The Express application factory. Creates the app instance, delegates route registration to `configureRoutes(app)`, and exports the configured app for use elsewhere.
 
 ## Architecture
 
@@ -20,6 +20,6 @@ The module uses a factory pattern for better testability:
 |--------|------|
 | `server.js` | Imports the app and binds it to the configured host/port |
 | `config/` | Provides environment-based configuration (host, port, env) |
-| `routes/` | Provides the `mainRoutes` router, mounted at the root path |
+| `routes/` | Exports `configureRoutes(app)` to register all route handlers on the app |
 
 For project-level documentation, see the root [README.md](../README.md).
