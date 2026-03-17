@@ -26,8 +26,9 @@ Server startup and shutdown behavior tests verify the application lifecycle.
 ## Running Tests
 
 ```bash
-# Run all tests
+# Run all tests with coverage (default)
 npm test
+# This runs: jest --coverage --forceExit --detectOpenHandles
 
 # Run tests in watch mode during development
 npm run test:watch
@@ -42,9 +43,9 @@ The project enforces minimum coverage thresholds to maintain code quality. Tests
 
 | Metric     | Threshold |
 |------------|-----------|
-| Branches   | 75%       |
-| Functions  | 90%       |
+| Branches   | 80%       |
+| Functions  | 80%       |
 | Lines      | 80%       |
 | Statements | 80%       |
 
-These thresholds are configured in `jest.config.js` and enforced during CI runs. Coverage reports are generated in the `coverage/` directory when running `npm run test:coverage`.
+These thresholds are configured in `jest.config.js` and enforced during test runs. Coverage reports are generated in the `coverage/` directory when running `npm test` or `npm run test:coverage`.
