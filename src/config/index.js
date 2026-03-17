@@ -17,7 +17,7 @@
  * @module src/config
  */
 
-module.exports = {
+module.exports = Object.freeze({
   /**
    * Server host binding address
    * @type {string}
@@ -38,4 +38,4 @@ module.exports = {
    * @default 'development'
    */
   env: process.env.NODE_ENV || 'development'
-};
+});
