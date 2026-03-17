@@ -17,6 +17,8 @@
  * @module src/config
  */
 
+'use strict';
+
 module.exports = Object.freeze({
   /**
    * Server host binding address
