@@ -1,19 +1,27 @@
+'use strict';
+
 /**
  * Route Aggregator Module
  * 
  * This module aggregates all route modules for clean, centralized imports.
- * It serves as the central route registry, allowing src/app.js to import
- * all routes with a single require statement.
+ * It exports a configureRoutes(app) function that mounts all route handlers
+ * on the Express application.
  * 
  * Usage in src/app.js:
- *   const { mainRoutes } = require('./routes');
- *   app.use('/', mainRoutes);
+ *   const { configureRoutes } = require('./routes');
+ *   configureRoutes(app);
  * 
  * @module src/routes
  */
 
-const mainRoutes = require('./main.routes');
+const mainRouter = require('./main.routes');
 
-module.exports = {
-  mainRoutes
-};
+/**
+ * Registers all route modules on the Express application
+ * @param {import('express').Application} app - The Express application instance
+ */
+function configureRoutes(app) {
+  app.use('/', mainRouter);
+}
+
+module.exports = { configureRoutes };

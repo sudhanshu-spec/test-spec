@@ -1,3 +1,5 @@
+'use strict';
+
 /**
  * Express Application Configuration Module
  * 
@@ -12,16 +14,19 @@
  */
 
 const express = require('express');
-const { mainRoutes } = require('./routes');
+const { configureRoutes } = require('./routes');
 
 const app = express();
 
 /**
- * Mount main routes at root path
- * This preserves the original route paths:
- * - GET '/' -> mainRoutes handles this
- * - GET '/evening' -> mainRoutes handles this
+ * Configure and mount all application routes
+ * Uses the barrel export pattern from src/routes/index.js
+ * This enables adding new route modules without modifying this file
+ * 
+ * Registered routes:
+ * - GET '/' -> Returns 'Hello, World!\n'
+ * - GET '/evening' -> Returns 'Good evening'
  */
-app.use('/', mainRoutes);
+configureRoutes(app);
 
 module.exports = app;

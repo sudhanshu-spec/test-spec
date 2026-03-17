@@ -46,7 +46,9 @@ const config = require('./src/config');
  * Binds the Express app to the configured network interface.
  * The callback fires once the server is ready to accept connections.
  */
-app.listen(config.port, config.host, () => {
+const server = app.listen(config.port, config.host, () => {
   // Display startup confirmation with the server URL
   console.log(`Server running at http://${config.host}:${config.port}/`);
 });
+
+module.exports = server;

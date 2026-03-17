@@ -10,7 +10,7 @@ Before running this application, ensure you have the following installed:
 
 | Requirement | Minimum Version | Recommended Version |
 |-------------|-----------------|---------------------|
-| Node.js | 18.x | 20.19.x (LTS) |
+| Node.js | ≥18.0.0 | 20.19.x (LTS) |
 | npm | 8.x | 10.8.x |
 
 ### Verify Installation
@@ -134,13 +134,17 @@ hao-backprop-test/
 ├── .gitignore                   # Git ignore patterns
 ├── jest.config.js               # Jest test framework configuration
 ├── src/                         # Application source root
+│   ├── README.md                # Source architecture documentation
 │   ├── app.js                   # Express application factory
 │   ├── config/                  # Configuration module
+│   │   ├── README.md            # Configuration module documentation
 │   │   └── index.js             # Environment variable management
 │   └── routes/                  # Routing surface
+│       ├── README.md            # Routing module documentation
 │       ├── index.js             # Route aggregator (barrel pattern)
 │       └── main.routes.js       # Route handlers implementation
 └── tests/                       # Test suite root
+    ├── README.md                # Test suite documentation
     ├── unit/                    # Isolated module tests
     │   ├── config.test.js       # Configuration module tests
     │   └── routes.test.js       # Route handler tests
@@ -154,10 +158,10 @@ hao-backprop-test/
 
 | File | Purpose |
 |------|---------|
-| `server.js` | Entry point that imports the Express app and binds it to the configured host/port |
+| `server.js` | Entry point that imports the Express app, binds it to the configured host/port, and exports the server instance for lifecycle testing |
 | `src/app.js` | Express application factory - creates and exports configured Express app with mounted routes |
 | `src/config/index.js` | Configuration module - exports `{ host, port, env }` from environment variables |
-| `src/routes/index.js` | Route aggregator using barrel pattern - centralizes route exports |
+| `src/routes/index.js` | Route aggregator — exports `configureRoutes(app)` function for centralized route mounting |
 | `src/routes/main.routes.js` | Route handlers - implements GET `/` and GET `/evening` endpoints |
 
 ## Environment Variables
@@ -205,7 +209,7 @@ Client → server.js → Express App (src/app.js) → Router (src/routes/) → R
 ### Design Patterns Used
 
 - **Factory Pattern**: `src/app.js` exports a configured Express app without starting the server, enabling testability
-- **Barrel Pattern**: `src/routes/index.js` aggregates route exports for clean imports
+- **Barrel Pattern**: `src/routes/index.js` exports a `configureRoutes(app)` function that mounts all route handlers on the Express app
 - **CommonJS Modules**: Uses `require`/`module.exports` for Node.js compatibility
 - **Twelve-Factor App**: Configuration externalized to environment variables
 
@@ -233,10 +237,10 @@ npm ls express
 | Script | Command | Description |
 |--------|---------|-------------|
 | `start` | `node server.js` | Starts the HTTP server |
-| `test` | `jest` | Run the complete test suite |
+| `test` | `jest --coverage --forceExit --detectOpenHandles` | Run the complete test suite with coverage |
 | `test:watch` | `jest --watch` | Run tests in watch mode for development |
 | `test:coverage` | `jest --coverage` | Run tests and generate coverage report |
-| `test:ci` | `jest --ci --coverage` | Run tests optimized for CI/CD environments |
+| `test:ci` | `jest --ci --coverage --reporters=default` | Run tests optimized for CI/CD environments |
 
 ## Testing
 
@@ -252,6 +256,8 @@ This project includes a comprehensive test suite built with **Jest 30.x** and **
 | CI execution | `npm run test:ci` | Optimized execution for CI/CD pipelines |
 | Single file | `npx jest tests/unit/config.test.js` | Run a specific test file |
 | Pattern match | `npx jest --testPathPatterns="config"` | Run tests matching a pattern |
+
+> **Note on test flags:** The primary `test` script includes `--forceExit` to prevent Jest from hanging on open server handles (e.g., from lifecycle tests that call `app.listen()`), and `--detectOpenHandles` to report any handles that would otherwise keep the process alive. The `--coverage` flag collects code coverage metrics on every run.
 
 ### Test Structure
 
@@ -281,8 +287,8 @@ The project enforces the following code coverage thresholds:
 | Coverage Metric | Target | Description |
 |-----------------|--------|-------------|
 | Line Coverage | ≥ 80% | Percentage of code lines executed by tests |
-| Branch Coverage | ≥ 75% | Percentage of conditional branches tested |
-| Function Coverage | ≥ 90% | Percentage of functions called by tests |
+| Branch Coverage | ≥ 80% | Percentage of conditional branches tested |
+| Function Coverage | ≥ 80% | Percentage of functions called by tests |
 | Statement Coverage | ≥ 80% | Percentage of statements executed by tests |
 
 **Generate and view coverage report:**

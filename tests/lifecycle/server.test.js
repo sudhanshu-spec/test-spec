@@ -115,6 +115,13 @@ describe('Server Entry Point', () => {
     expect(typeof mockListen.mock.calls[0][2]).toBe('function');
   });
 
+  test('should export the server instance from module.exports', () => {
+    const server = require('../../server');
+
+    expect(server).toBeDefined();
+    expect(server).toBe(mockServer);
+  });
+
   test('should log startup message with server URL', () => {
     require('../../server');
 
@@ -147,14 +154,14 @@ describe('Server Entry Point', () => {
   });
 
   test('should provide server object that supports graceful shutdown', () => {
-    require('../../server');
+    const server = require('../../server');
 
-    expect(mockListen).toHaveBeenCalled();
+    expect(server).toBeDefined();
 
     const closeCallback = jest.fn();
-    mockServer.close(closeCallback);
+    server.close(closeCallback);
 
-    expect(mockServer.close).toHaveBeenCalledTimes(1);
+    expect(server.close).toHaveBeenCalledTimes(1);
     expect(closeCallback).toHaveBeenCalled();
   });
 
