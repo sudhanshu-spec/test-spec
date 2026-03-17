@@ -240,7 +240,7 @@ npm ls express
 | `test` | `jest --coverage --forceExit --detectOpenHandles` | Run the complete test suite with coverage |
 | `test:watch` | `jest --watch` | Run tests in watch mode for development |
 | `test:coverage` | `jest --coverage` | Run tests and generate coverage report |
-| `test:ci` | `jest --ci --coverage` | Run tests optimized for CI/CD environments |
+| `test:ci` | `jest --ci --coverage --reporters=default` | Run tests optimized for CI/CD environments |
 
 ## Testing
 
