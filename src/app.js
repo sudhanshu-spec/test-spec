@@ -12,16 +12,17 @@
  */
 
 const express = require('express');
-const { mainRoutes } = require('./routes');
+const { configureRoutes } = require('./routes');
 
 const app = express();
 
 /**
- * Mount main routes at root path
+ * Mount all routes on the application
+ * Delegates to configureRoutes() which registers all route modules.
  * This preserves the original route paths:
- * - GET '/' -> mainRoutes handles this
- * - GET '/evening' -> mainRoutes handles this
+ * - GET '/' -> mainRouter handles this
+ * - GET '/evening' -> mainRouter handles this
  */
-app.use('/', mainRoutes);
+configureRoutes(app);
 
 module.exports = app;
