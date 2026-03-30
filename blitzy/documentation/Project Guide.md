@@ -1,933 +1,426 @@
-# Express.js Migration - Comprehensive Project Guide
-
-## Executive Summary
-
-### Project Completion Status
-
-**Completion: 87% (10 hours completed out of 11.5 total hours)**
-
-This Express.js migration project has achieved full technical completion with all implementation requirements met and validated. The migration from vanilla Node.js HTTP server to Express.js 5.1.0 framework has been successfully completed, tested, and verified as production-ready.
-
-**Hours Breakdown:**
-- **Completed Work:** 10 hours
-  - Dependency installation & configuration: 2 hours
-  - Server refactoring (server.js): 4 hours
-  - Validation & endpoint testing: 3 hours
-  - Code review & documentation: 1 hour
-- **Remaining Work:** 1.5 hours
-  - Final human code review: 1 hour
-  - Documentation verification & sign-off: 0.5 hours
-- **Total Project Hours:** 11.5 hours
-
-**Formula:** 10 completed hours / (10 + 1.5) total hours = 10 / 11.5 = **87.0% complete**
-
-### Key Achievements
-
-✅ **Express.js 5.1.0 Framework Integration**
-- Successfully migrated from native `http.createServer()` to Express.js application pattern
-- Added Express.js ^5.1.0 as project dependency (69 total packages installed)
-- Zero vulnerabilities detected in security audit
-
-✅ **Complete Server Refactoring (server.js)**
-- Transformed 15-line HTTP server into 19-line Express.js application
-- Implemented route-based architecture with explicit path handlers
-- Maintained identical external behavior for existing root endpoint
-
-✅ **Dual Endpoint Implementation**
-- GET `/` endpoint: Returns "Hello, World!\n" (preserved existing functionality)
-- GET `/evening` endpoint: Returns "Good evening" (new feature)
-- Both endpoints tested and verified working correctly
-
-✅ **Configuration Updates (package.json)**
-- Corrected "main" field from "index.js" to "server.js"
-- Added "start" script enabling `npm start` command
-- Added "dependencies" section with Express.js declaration
-
-✅ **100% Validation Success**
-- ✅ Dependency installation: Express.js 5.1.0 installed successfully
-- ✅ Code compilation: Syntax check passed with zero errors
-- ✅ Application runtime: Server starts and runs without errors
-- ✅ Endpoint verification: All routes return expected responses
-- ✅ Security audit: 0 vulnerabilities found
-- ✅ Git integrity: All changes committed, working tree clean
-
-### Critical Unresolved Issues
-
-**None.** All implementation requirements have been completed successfully. The validation process found zero compilation errors, zero runtime errors, and zero security vulnerabilities.
-
-### Recommended Next Steps
-
-1. **Human Code Review** (1 hour) - Senior developer review and approval of Express.js migration approach
-2. **Final Documentation Sign-off** (0.5 hours) - Verify all documentation requirements met
+# Blitzy Project Guide — Collapsible Dashboard UI (ResizeObserver)
 
 ---
 
-## Validation Results Summary
+## 1. Executive Summary
 
-### Final Validator Accomplishments
+### 1.1 Project Overview
 
-The Final Validator agent completed comprehensive validation with **100% success across all production-readiness gates**:
+This project adds a collapsible dashboard UI to an existing minimal Node.js/Express hello_world server (v1.0.0). The dashboard implements the native browser ResizeObserver Web API to automatically recalculate panel heights when content changes, enabling smooth CSS-animated expand/collapse transitions without relying on legacy approaches like `window.onresize` polling or `max-height` hacks. The feature is implemented entirely with vanilla HTML5, CSS3, and ES6+ JavaScript — requiring zero new npm dependencies. The server-side modification is limited to adding Express static file serving middleware and a convenience `/dashboard` route, with all existing endpoints preserved byte-for-byte.
 
-**GATE 1: Dependency Installation ✅**
-- Express.js 5.1.0 installed successfully
-- 68 transitive dependencies installed correctly
-- Verification: `npm list express` → express@5.1.0 ✅
-- Security: 0 vulnerabilities
-
-**GATE 2: Code Compilation ✅**
-- Syntax validation: `node -c server.js` passed
-- Zero compilation errors
-- Express.js API usage verified correct
-
-**GATE 3: Test Suite Execution ✅**
-- Status: N/A (no test suite present in tutorial project)
-- Default npm test placeholder present
-- No test failures (as expected for this project scope)
-
-**GATE 4: Application Runtime ✅**
-- Server startup: Successful with both `npm start` and `node server.js`
-- Console output: "Server running at http://127.0.0.1:3000/" ✅
-- Endpoint testing results:
-  - `GET /` → "Hello, World!\n" ✅ (exact match including newline)
-  - `GET /evening` → "Good evening" ✅ (exact match, no newline)
-  - `GET /nonexistent` → Express.js 404 HTML response ✅
-- Runtime errors: Zero errors during execution
-
-### Compilation Results by Component
-
-| Component | Status | Details |
-|-----------|--------|---------|
-| server.js | ✅ PASS | Express.js syntax validated, all routes compile correctly |
-| package.json | ✅ PASS | Valid JSON, all fields properly structured |
-| Dependencies | ✅ PASS | Express.js 5.1.0 + 68 packages installed, 0 vulnerabilities |
-
-### Test Execution Summary
-
-**Test Suite:** Not applicable (tutorial project with no automated tests)
-
-**Manual Endpoint Testing:**
-- ✅ Root endpoint (GET /): Returns "Hello, World!\n" as expected
-- ✅ Evening endpoint (GET /evening): Returns "Good evening" as expected  
-- ✅ 404 handling: Undefined routes return Express.js default 404 page
-
-**Test Coverage:** Manual verification complete for all implemented endpoints
-
-### Runtime Validation Results
-
-**Server Startup:**
-```bash
-npm start
-> hello_world@1.0.0 start
-> node server.js
-Server running at http://127.0.0.1:3000/
-```
-✅ Server starts successfully on 127.0.0.1:3000
-
-**Endpoint Responses:**
-```bash
-curl http://127.0.0.1:3000/
-Hello, World!
-
-curl http://127.0.0.1:3000/evening
-Good evening
-```
-✅ All endpoints return expected responses
-
-**Security Audit:**
-```bash
-npm audit
-found 0 vulnerabilities
-```
-✅ No security vulnerabilities detected
-
-### Dependency Status
-
-**Primary Dependency:**
-- express@5.1.0 ✅ Installed and verified
-
-**Transitive Dependencies:**
-- 68 packages installed successfully
-- All compatibility requirements met (Node.js v20.19.5 satisfies Express 5.x requirement of Node 18+)
-
-### Fixes Applied During Validation
-
-**Issues Found:** 0  
-**Issues Fixed:** 0  
-**Issues Remaining:** 0
-
-The validation process found no errors or issues. The implementation by previous agents (Setup Agent and Implementation Agent) was complete and correct, requiring no fixes or modifications.
-
----
-
-## Project Hours Breakdown
-
-### Visual Representation
+### 1.2 Completion Status
 
 ```mermaid
-pie title Project Hours Breakdown (Total: 11.5 hours)
-    "Completed Work" : 10
-    "Remaining Work" : 1.5
+pie title Project Completion — 84.1%
+    "Completed (AI)" : 37
+    "Remaining" : 7
 ```
 
-### Detailed Hours Analysis
+| Metric | Value |
+|---|---|
+| **Total Project Hours** | 44h |
+| **Completed Hours (AI)** | 37h |
+| **Remaining Hours** | 7h |
+| **Completion Percentage** | 84.1% (37h / 44h) |
 
-**Completed Work: 10 hours (87%)**
+**Calculation**: 37 completed hours / (37 completed + 7 remaining) = 37 / 44 = 84.1% complete.
 
-| Category | Hours | Description |
-|----------|-------|-------------|
-| Dependency Installation & Configuration | 2.0 | Express.js 5.x compatibility research, npm installation, package.json updates (main, scripts, dependencies) |
-| Server Refactoring | 4.0 | Analysis of HTTP server implementation, Express.js pattern refactoring, route handler implementation (GET / and GET /evening) |
-| Validation & Testing | 3.0 | Syntax validation, runtime testing, endpoint verification, security audit, git verification |
-| Code Review & Documentation | 1.0 | Inline code review, commit messages, agent logs preparation |
-| **Total Completed** | **10.0** | **All technical implementation complete** |
+### 1.3 Key Accomplishments
 
-**Remaining Work: 1.5 hours (13%)**
+- [x] Modified `server.js` to serve static files via `express.static()` middleware with security headers
+- [x] Created `public/dashboard.html` — semantic HTML5 dashboard with 4 collapsible panels and full ARIA accessibility
+- [x] Created `public/css/dashboard.css` — 301-line stylesheet with CSS transitions, responsive design, and `prefers-reduced-motion` support
+- [x] Created `public/js/collapsible-dashboard.js` — 280-line ResizeObserver-powered logic with observer lifecycle cleanup, `requestAnimationFrame` safety, and dynamic content demonstration
+- [x] Created `tests/dashboard.test.js` — 10 integration tests covering endpoint preservation, static file serving, content validation, and error handling (10/10 pass)
+- [x] Created `tests/resize-observer.test.html` — 7 browser-based tests validating ResizeObserver behavior (7/7 pass)
+- [x] Existing endpoints preserved byte-for-byte: `GET /` → `"Hello, World!\n"`, `GET /evening` → `"Good evening"`
+- [x] Security hardening: X-Content-Type-Options, X-Frame-Options, Content-Security-Policy headers added
+- [x] Accessibility compliance: `<button>` panel headers, `aria-expanded`/`aria-hidden` toggling, keyboard focus management, skip-nav link
+- [x] Zero new npm dependencies — ResizeObserver is a native browser API
 
-| Category | Hours | Description |
-|----------|-------|-------------|
-| Final Human Code Review | 1.0 | Senior developer review of Express.js migration approach and implementation quality |
-| Documentation Verification | 0.5 | Final verification of README preservation and package.json metadata accuracy |
-| **Total Remaining** | **1.5** | **Human review and sign-off only** |
+### 1.4 Critical Unresolved Issues
 
-**Total Project Hours: 11.5**
+| Issue | Impact | Owner | ETA |
+|---|---|---|---|
+| `package.json` test script still points to failing echo command | `npm test` returns exit code 1; does not run actual test suite | Human Developer | 0.5h |
+| Cross-browser testing not performed in Safari/Firefox/Edge | Dashboard behavior unverified outside Chromium-based browsers | Human Developer / QA | 2h |
 
----
+### 1.5 Access Issues
 
-## Detailed Task Table for Human Developers
+No access issues identified. The project runs entirely on localhost (127.0.0.1:3000) with no external service dependencies, API keys, or third-party credentials required.
 
-### Remaining Tasks Summary
+### 1.6 Recommended Next Steps
 
-All technical implementation is complete. The following tasks represent final human review and sign-off activities required before production deployment.
-
-| # | Task Description | Action Steps | Priority | Severity | Hours |
-|---|------------------|--------------|----------|----------|-------|
-| 1 | **Final Code Review** | Review server.js Express.js implementation for code quality, best practices adherence, and maintainability. Verify route handlers follow Express.js conventions. Approve migration approach. | High | Low | 1.0 |
-| 2 | **Documentation Verification** | Verify README.md preserved unchanged per requirements. Review package.json metadata (name, version, description, author, license) for accuracy. Confirm start script works correctly. | Medium | Low | 0.5 |
-| **TOTAL REMAINING HOURS** | | | | | **1.5** |
-
-### Task Details
-
-#### Task 1: Final Code Review (1.0 hour)
-
-**Description:** Conduct comprehensive code review of the Express.js migration implementation.
-
-**Action Steps:**
-1. Review server.js implementation (19 lines)
-   - Verify Express.js import and app initialization
-   - Check route handler implementations (GET / and GET /evening)
-   - Confirm proper use of res.send() method
-   - Validate app.listen() configuration
-2. Verify code quality standards
-   - Consistent 2-space indentation maintained
-   - Template literals used appropriately
-   - Constants preserved (hostname, port)
-   - Console.log message format preserved
-3. Assess Express.js best practices adherence
-   - Route definitions use explicit HTTP methods (app.get)
-   - Response handling follows Express.js conventions
-   - Error handling relies on Express.js defaults (acceptable for tutorial project)
-4. Approve migration approach
-   - Confirm lift-and-shift pattern appropriately applied
-   - Verify backward compatibility for root endpoint
-   - Validate new /evening endpoint functionality
-5. Sign off on implementation quality
-
-**Priority:** High  
-**Severity:** Low (no blocking issues, quality assurance only)  
-**Estimated Hours:** 1.0  
-**Dependencies:** None  
-**Assigned To:** Senior Developer / Tech Lead
-
-#### Task 2: Documentation Verification (0.5 hours)
-
-**Description:** Verify all documentation requirements met and metadata accurate.
-
-**Action Steps:**
-1. Verify README.md preservation
-   - Confirm README.md content unchanged (contains "Do not touch!" directive)
-   - Validate file is byte-for-byte identical to original
-2. Review package.json metadata
-   - Verify "main": "server.js" (corrected from "index.js")
-   - Verify "scripts.start": "node server.js" added
-   - Verify "dependencies": {"express": "^5.1.0"} present
-   - Check name, version, description, author, license fields for accuracy
-3. Test start script
-   - Execute `npm start` to confirm it launches server correctly
-   - Verify console output matches expected format
-4. Sign off on documentation completeness
-
-**Priority:** Medium  
-**Severity:** Low (documentation verification, non-blocking)  
-**Estimated Hours:** 0.5  
-**Dependencies:** Task 1 (Code Review)  
-**Assigned To:** Technical Writer / Senior Developer
+1. **[High]** Update `package.json` test script to `"node --test tests/dashboard.test.js"` so `npm test` executes the integration suite
+2. **[High]** Perform cross-browser testing in Safari, Firefox, and Edge to verify ResizeObserver behavior and CSS transitions
+3. **[Medium]** Set up production deployment configuration (Docker, process manager, or hosting platform)
+4. **[Medium]** Implement end-to-end automated browser testing with a headless browser framework (Playwright or Puppeteer)
+5. **[Low]** Conduct code review, approve changes, and merge to production branch
 
 ---
 
-## Complete Development Guide
+## 2. Project Hours Breakdown
+
+### 2.1 Completed Work Detail
+
+| Component | Hours | Description |
+|---|---|---|
+| Server.js Modification | 3h | Added `path` import, `express.static()` middleware, `/dashboard` route via `res.sendFile()`, `x-powered-by` disabled |
+| Dashboard HTML Page | 4h | Created `public/dashboard.html` — 119-line semantic HTML5 with 4 collapsible panels, ARIA attributes, skip-nav link, varied content (lists, tables, ordered lists, dynamic demo) |
+| Dashboard CSS Stylesheet | 5h | Created `public/css/dashboard.css` — 301-line stylesheet with global reset, responsive layout, panel transitions (`height 300ms ease`), chevron rotation, hover states, `prefers-reduced-motion` support, mobile breakpoints |
+| ResizeObserver JavaScript | 7h | Created `public/js/collapsible-dashboard.js` — 280-line IIFE with `handleResize()` callback (contentBoxSize + fallback), `togglePanel()` with ARIA sync, `updateWrapperFocusability()`, `cleanupObservers()` on beforeunload, `setupDynamicContentDemo()` handlers |
+| Node.js Integration Tests | 5h | Created `tests/dashboard.test.js` — 382-line test file using Node.js built-in test runner, server lifecycle management (spawn/kill), 10 tests across 4 groups (endpoint preservation, static asset delivery, content validation, error handling) |
+| Browser-Based ResizeObserver Tests | 4h | Created `tests/resize-observer.test.html` — 550-line self-contained browser test page with 7 async tests (API availability, initial observation, content addition/removal detection, height accuracy, disconnect, panel toggle attributes) |
+| Accessibility Implementation | 3h | `<button>` panel headers, `aria-expanded` toggling, `aria-hidden` on collapsed wrappers, `tabindex` management for focusable elements in hidden regions, skip-nav link, focus-visible outlines |
+| Bug Fixes and Quality | 4h | Fixed 3 CSS color contrast violations (WCAG 2.1 AA), corrected 3 CSS color values per AAP spec, resolved content clipping in panels, fixed CWE-79 innerHTML XSS vulnerability (switched to textContent), resolved aria-hidden focusability issues |
+| Security Hardening | 2h | Added security headers middleware (X-Content-Type-Options: nosniff, X-Frame-Options: DENY, Content-Security-Policy), disabled x-powered-by header |
+| **Total Completed** | **37h** | |
+
+### 2.2 Remaining Work Detail
+
+| Category | Hours | Priority |
+|---|---|---|
+| Package.json test script update | 0.5h | High |
+| Cross-browser testing (Safari, Firefox, Edge) | 2h | High |
+| Production deployment preparation | 1.5h | Medium |
+| End-to-end automated browser testing | 2h | Medium |
+| Code review and quality assurance | 1h | Low |
+| **Total Remaining** | **7h** | |
+
+### 2.3 Hours Calculation
+
+- **Completed Hours**: 37h (all AAP deliverables implemented, tested, and validated)
+- **Remaining Hours**: 7h (path-to-production polish and cross-browser verification)
+- **Total Project Hours**: 37h + 7h = 44h
+- **Completion Percentage**: 37 / 44 × 100 = **84.1%**
+
+---
+
+## 3. Test Results
+
+All tests were executed by Blitzy's autonomous validation agents. Results sourced from validation logs.
+
+| Test Category | Framework | Total Tests | Passed | Failed | Coverage % | Notes |
+|---|---|---|---|---|---|---|
+| Integration (Endpoint Preservation) | Node.js built-in test runner (`node:test`) | 2 | 2 | 0 | 100% | GET / byte-perfect, GET /evening byte-perfect |
+| Integration (Static Asset Delivery) | Node.js built-in test runner (`node:test`) | 4 | 4 | 0 | 100% | dashboard.html, dashboard.css, collapsible-dashboard.js, /dashboard route — all 200 with correct MIME types |
+| Integration (Content Validation) | Node.js built-in test runner (`node:test`) | 3 | 3 | 0 | 100% | Accessibility attributes present, CSS transitions/overflow present, ResizeObserver + contentBoxSize + disconnect present |
+| Integration (Error Handling) | Node.js built-in test runner (`node:test`) | 1 | 1 | 0 | 100% | Nonexistent file returns 404 |
+| Browser (ResizeObserver API) | Custom browser-based test runner (`tests/resize-observer.test.html`) | 7 | 7 | 0 | 100% | API availability, initial callback, content add/remove detection, height accuracy, disconnect, panel toggle |
+| **Total** | | **17** | **17** | **0** | **100%** | **All tests passing — zero failures** |
+
+---
+
+## 4. Runtime Validation & UI Verification
+
+**Server Runtime:**
+- ✅ Server starts on `127.0.0.1:3000` without errors
+- ✅ `GET /` returns `"Hello, World!\n"` (byte-perfect preservation confirmed)
+- ✅ `GET /evening` returns `"Good evening"` (byte-perfect preservation confirmed)
+- ✅ `GET /dashboard.html` returns HTTP 200 with `text/html` content type
+- ✅ `GET /dashboard` returns HTTP 200 via `res.sendFile()` route
+- ✅ `GET /css/dashboard.css` returns HTTP 200 with `text/css` content type
+- ✅ `GET /js/collapsible-dashboard.js` returns HTTP 200 with JavaScript content type
+- ✅ `GET /nonexistent` returns HTTP 404
+
+**Security Headers:**
+- ✅ `X-Content-Type-Options: nosniff` — present on all responses
+- ✅ `X-Frame-Options: DENY` — present on all responses
+- ✅ `Content-Security-Policy: default-src 'self'; style-src 'self' 'unsafe-inline'` — present on all responses
+- ✅ `X-Powered-By` header disabled
+
+**Dashboard UI Verification:**
+- ✅ All 4 panels render correctly in collapsed state on initial page load
+- ✅ Panel headers display chevron indicator (CSS-only border rotation)
+- ✅ Clicking a panel header expands the panel with smooth height transition (300ms ease)
+- ✅ Clicking an expanded panel header collapses it with smooth transition to height 0
+- ✅ Multiple panels can be independently expanded/collapsed
+- ✅ Dynamic Content Demo: "Add Paragraph" button adds content, ResizeObserver auto-recalculates height
+- ✅ Dynamic Content Demo: "Remove Paragraph" button removes content, ResizeObserver auto-recalculates height
+- ✅ Responsive layout verified at desktop (1280px), tablet (768px, 600px), and mobile (375px) widths
+- ✅ No JavaScript errors in browser console (only standard favicon.ico 404)
+
+**Accessibility Verification:**
+- ✅ Panel headers are `<button>` elements with native keyboard support (Enter/Space to toggle)
+- ✅ `aria-expanded` attributes toggle correctly between `"true"` and `"false"`
+- ✅ `aria-hidden` on content wrappers toggles in sync with collapse state
+- ✅ Skip-nav link present and functional (`Skip to main content`)
+- ✅ Focus-visible outlines displayed on keyboard navigation
+- ✅ Focusable elements inside collapsed panels have `tabindex="-1"` to prevent focus in aria-hidden regions
+
+---
+
+## 5. Compliance & Quality Review
+
+| AAP Requirement | Status | Evidence |
+|---|---|---|
+| ResizeObserver API as primary measurement mechanism | ✅ Pass | `collapsible-dashboard.js` line 255: `new ResizeObserver(handleResize)` with `contentBoxSize` and `contentRect` fallback |
+| `express.static()` middleware for static file serving | ✅ Pass | `server.js` line 28: `app.use(express.static(path.join(__dirname, 'public')))` |
+| `/dashboard` route via `res.sendFile()` | ✅ Pass | `server.js` line 38-40 |
+| Collapsible panels with toggle headers | ✅ Pass | 4 panels in `dashboard.html`, each with `<button class="panel-header">` |
+| CSS height transition animation (0 → measured) | ✅ Pass | `dashboard.css` line 151: `transition: height 300ms ease` |
+| Observer lifecycle cleanup (disconnect on unload) | ✅ Pass | `collapsible-dashboard.js` line 226: `cleanupObservers()` bound to `beforeunload` |
+| `requestAnimationFrame()` for DOM mutations in callback | ✅ Pass | `collapsible-dashboard.js` line 68: `requestAnimationFrame(() => { ... })` |
+| Dynamic content demonstration (add/remove) | ✅ Pass | Panel 4 with "Add Paragraph" and "Remove Paragraph" buttons |
+| Accessibility: `<button>` headers, `aria-expanded`, `aria-hidden` | ✅ Pass | HTML uses `<button>` elements; JS toggles ARIA attributes in `togglePanel()` |
+| `prefers-reduced-motion` support | ✅ Pass | `dashboard.css` lines 284-301: `transition-duration: 0ms` for all animated elements |
+| GET `/` returns `"Hello, World!\n"` (byte-perfect) | ✅ Pass | Verified by test + runtime curl |
+| GET `/evening` returns `"Good evening"` (byte-perfect) | ✅ Pass | Verified by test + runtime curl |
+| Server binds to `127.0.0.1:3000` | ✅ Pass | `server.js` lines 4-5 unchanged |
+| No new npm dependencies | ✅ Pass | `package.json` dependencies section unchanged; only `express: ^5.1.0` |
+| No `public/index.html` created | ✅ Pass | Directory listing confirms no `index.html` — `GET /` not intercepted |
+| No third-party UI frameworks | ✅ Pass | Tests explicitly assert no React/Vue/Angular references |
+| Vanilla JavaScript only (no build tools) | ✅ Pass | Single IIFE script loaded via `<script src>` |
+| `README.md` not modified | ✅ Pass | File status: UNCHANGED in git diff |
+| Integration tests (Node.js) | ✅ Pass | 10/10 tests pass with zero failures |
+| Browser-based tests (ResizeObserver) | ✅ Pass | 7/7 tests pass per validation logs |
+
+**Fixes Applied During Autonomous Validation:**
+- Fixed 3 WCAG 2.1 AA color contrast violations in dashboard CSS (commit `bb67913`)
+- Corrected 3 CSS color values to match AAP specification (commit `4d050ba`)
+- Resolved ResizeObserver content clipping and aria-hidden focusability issues (commit `f63a784`)
+- Aligned ResizeObserver measurement with AAP spec and resolved CWE-79 innerHTML vulnerability (commit `630d658`)
+- Added security headers middleware (X-Content-Type-Options, X-Frame-Options, CSP) (commit `b170d6f`)
+
+---
+
+## 6. Risk Assessment
+
+| Risk | Category | Severity | Probability | Mitigation | Status |
+|---|---|---|---|---|---|
+| `package.json` test script not updated — `npm test` fails | Technical | Medium | High | Update script to `"node --test tests/dashboard.test.js"` | Open |
+| Cross-browser compatibility untested (Safari, Firefox, Edge) | Technical | Medium | Low | ResizeObserver has full support since July 2020; manual testing recommended | Open |
+| `unsafe-inline` in CSP allows inline styles | Security | Low | Low | Required for JS-driven `style.height` animations; no user-generated inline styles | Accepted |
+| No HTTPS/TLS configuration | Security | Medium | Medium | Expected — localhost-only development server; add TLS termination for production | Open |
+| No rate limiting or request throttling | Security | Low | Low | Minimal risk for localhost; add rate limiting middleware if exposed publicly | Open |
+| No automated CI/CD pipeline | Operational | Low | High | Repository has no CI configuration; explicitly out of AAP scope | Accepted |
+| No health check endpoint | Operational | Low | Medium | Add `GET /health` endpoint if monitoring is needed in production | Open |
+| No process manager for crash recovery | Operational | Medium | Medium | Use PM2, systemd, or Docker restart policy for production deployment | Open |
+| Legacy browsers (IE, old Edge) not supported | Integration | Low | Low | ResizeObserver requires Chrome 64+, Firefox 69+, Safari 13.1+, Edge 79+; optional polyfill documented in AAP | Accepted |
+
+---
+
+## 7. Visual Project Status
+
+```mermaid
+pie title Project Hours Breakdown
+    "Completed Work" : 37
+    "Remaining Work" : 7
+```
+
+**Completed Work: 37 hours (84.1%)**
+- Server modification, dashboard HTML/CSS/JS, tests, accessibility, bug fixes, security hardening
+
+**Remaining Work: 7 hours (15.9%)**
+- Package.json update (0.5h), cross-browser testing (2h), deployment prep (1.5h), e2e testing (2h), code review (1h)
+
+---
+
+## 8. Summary & Recommendations
+
+### Achievement Summary
+
+The Blitzy autonomous agents successfully delivered all AAP-scoped deliverables for the collapsible dashboard feature. The project is **84.1% complete** (37 hours completed out of 44 total hours). All 6 planned files were created/modified as specified: `server.js` (updated), `public/dashboard.html` (created), `public/css/dashboard.css` (created), `public/js/collapsible-dashboard.js` (created), `tests/dashboard.test.js` (created), and `tests/resize-observer.test.html` (created). A total of 1,683 lines of code were added across 14 commits, with zero new npm dependencies.
+
+All 17 tests pass with a 100% pass rate. Both existing endpoints are preserved byte-for-byte. The ResizeObserver implementation follows the modern pattern specified in the AAP — using `contentBoxSize` with `contentRect` fallback, `requestAnimationFrame()` safety, and proper observer disconnect on page unload. Accessibility features exceed the AAP requirements with WCAG 2.1 AA color contrast, keyboard focus management, and `prefers-reduced-motion` support. Security was hardened with three response headers and XSS prevention (CWE-79 fix).
+
+### Remaining Gaps
+
+The 7 remaining hours of work are path-to-production tasks: updating the `package.json` test script (0.5h), cross-browser testing in Safari/Firefox/Edge (2h), production deployment preparation (1.5h), end-to-end automated browser testing (2h), and code review (1h). No core feature functionality is missing.
+
+### Critical Path to Production
+
+1. Update `package.json` test script → enables `npm test` for CI/CD integration
+2. Cross-browser testing → validates ResizeObserver behavior across engines
+3. Production deployment setup → containerization, process manager, TLS termination
+
+### Production Readiness Assessment
+
+The feature is **functionally complete and tested** for development and staging environments. It requires cross-browser verification and deployment configuration before production release. No blocking issues remain — all tests pass, all endpoints work, and the codebase is clean.
+
+---
+
+## 9. Development Guide
 
 ### System Prerequisites
 
-**Required Software:**
-
-| Software | Minimum Version | Purpose | Installation |
-|----------|----------------|---------|--------------|
-| Node.js | 18.0.0+ | JavaScript runtime (Express 5.x requirement) | https://nodejs.org/ |
-| npm | 7.0.0+ | Package manager | Included with Node.js |
-| curl | Any | API testing (optional) | Pre-installed on macOS/Linux, Windows: https://curl.se/ |
-
-**System Requirements:**
-- Operating System: macOS, Linux, or Windows
-- RAM: 256 MB minimum
-- Disk Space: 100 MB (includes node_modules)
-- Network: Internet connection required for initial npm install
-
-**Current Environment Verified:**
-- Node.js: v20.19.5 ✅ (satisfies requirement)
-- npm: 10.8.2 ✅
-- Express.js: 5.1.0 ✅
+| Software | Minimum Version | Recommended | Purpose |
+|---|---|---|---|
+| Node.js | v18.0.0 | v20.20.1 (LTS) | JavaScript runtime |
+| npm | v9.0.0 | v11.1.0 | Package manager |
+| Git | v2.30+ | Latest | Version control |
 
 ### Environment Setup
 
-**Step 1: Verify Node.js Installation**
-
 ```bash
-node --version
-# Expected output: v18.0.0 or higher (v20.19.5 recommended)
+# 1. Clone the repository and switch to the feature branch
+git clone <repository-url>
+cd hello_world
+git checkout blitzy-d5a43c03-d4a7-4191-923d-30f46773c91f
 
-npm --version
-# Expected output: v7.0.0 or higher (v10.8.2 recommended)
-```
-
-**Step 2: Navigate to Project Directory**
-
-```bash
-cd /path/to/hello_world
-# Replace /path/to/hello_world with your actual project path
-```
-
-**Step 3: Verify Project Files Present**
-
-```bash
-ls -la
-# Expected files:
-# - README.md (73 bytes)
-# - package.json (345 bytes)
-# - package-lock.json (34,769 bytes)
-# - server.js (348 bytes)
-# - .gitignore (172 bytes)
-```
-
-**Environment Variables:**
-
-No environment variables required. The server uses hard-coded configuration:
-- Hostname: 127.0.0.1 (localhost)
-- Port: 3000
-
-To customize, edit server.js lines 3-4:
-```javascript
-const hostname = '127.0.0.1';  // Change to '0.0.0.0' for external access
-const port = 3000;              // Change to desired port number
+# 2. Verify Node.js version
+node -v   # Expected: v20.x.x (LTS)
+npm -v    # Expected: v11.x.x
 ```
 
 ### Dependency Installation
 
-**Step 1: Install Express.js and Dependencies**
-
 ```bash
-npm install
-```
+# Install dependencies from lockfile (deterministic)
+npm ci
 
-**Expected Output:**
-```
-added 69 packages, and audited 69 packages in 2s
-
-12 packages are looking for funding
-  run `npm fund` for details
-
-found 0 vulnerabilities
-```
-
-**Verification:**
-```bash
-npm list express
 # Expected output:
-# hello_world@1.0.0 /path/to/project
-# └── express@5.1.0
+# added 68 packages in <time>
+# found 0 vulnerabilities
 ```
-
-**Step 2: Verify Dependency Installation**
-
-```bash
-ls -la node_modules/ | wc -l
-# Expected output: ~70 (68 packages + 2 directory entries)
-
-npm audit
-# Expected output: found 0 vulnerabilities
-```
-
-**Troubleshooting Dependency Installation:**
-
-| Issue | Solution |
-|-------|----------|
-| `npm install` fails with permission error | Run with `sudo npm install` (Linux/macOS) or run terminal as Administrator (Windows) |
-| `Cannot find module 'express'` after install | Delete node_modules and package-lock.json, then run `npm install` again |
-| Slow installation speed | Try `npm install --verbose` to see progress, or use `npm install --registry https://registry.npmjs.org/` |
 
 ### Application Startup
 
-**Method 1: Using npm start (Recommended)**
-
 ```bash
-npm start
-```
-
-**Expected Output:**
-```
-> hello_world@1.0.0 start
-> node server.js
-
-Server running at http://127.0.0.1:3000/
-```
-
-**Method 2: Direct Node.js Execution**
-
-```bash
+# Start the Express server
 node server.js
+
+# Expected output:
+# Server running at http://127.0.0.1:3000/
 ```
 
-**Expected Output:**
-```
-Server running at http://127.0.0.1:3000/
-```
-
-**Background Execution (Optional):**
-
-```bash
-# Start server in background
-npm start &
-# or
-node server.js &
-
-# Check if server is running
-ps aux | grep node
-
-# Stop background server
-pkill -f "node server.js"
-```
-
-**Server Startup Sequence:**
-
-1. Node.js loads server.js
-2. Express module imported (`require('express')`)
-3. Express application initialized (`express()`)
-4. Routes registered:
-   - GET / → "Hello, World!\n"
-   - GET /evening → "Good evening"
-5. Server binds to 127.0.0.1:3000
-6. Console displays startup message
-7. Server ready to accept requests
+The server binds to `127.0.0.1:3000` (localhost only).
 
 ### Verification Steps
 
-**Step 1: Verify Server is Running**
-
-Check console output for:
-```
-Server running at http://127.0.0.1:3000/
-```
-
-**Step 2: Test Root Endpoint**
-
-Using curl:
 ```bash
+# In a new terminal — verify existing endpoints
 curl http://127.0.0.1:3000/
-# Expected output: Hello, World!
-```
+# Expected: Hello, World!
 
-Using browser:
-- Open http://127.0.0.1:3000/ in web browser
-- Expected display: `Hello, World!` (with newline)
-
-**Step 3: Test Evening Endpoint**
-
-Using curl:
-```bash
 curl http://127.0.0.1:3000/evening
-# Expected output: Good evening
+# Expected: Good evening
+
+# Verify dashboard static files
+curl -o /dev/null -w "%{http_code}" http://127.0.0.1:3000/dashboard.html
+# Expected: 200
+
+curl -o /dev/null -w "%{http_code}" http://127.0.0.1:3000/dashboard
+# Expected: 200
+
+curl -o /dev/null -w "%{http_code}" http://127.0.0.1:3000/css/dashboard.css
+# Expected: 200
+
+curl -o /dev/null -w "%{http_code}" http://127.0.0.1:3000/js/collapsible-dashboard.js
+# Expected: 200
+
+# Verify security headers
+curl -sI http://127.0.0.1:3000/dashboard.html | grep -E "X-Content-Type|X-Frame|Content-Security"
+# Expected:
+# X-Content-Type-Options: nosniff
+# X-Frame-Options: DENY
+# Content-Security-Policy: default-src 'self'; style-src 'self' 'unsafe-inline'
+
+# Verify 404 handling
+curl -o /dev/null -w "%{http_code}" http://127.0.0.1:3000/nonexistent
+# Expected: 404
 ```
 
-Using browser:
-- Open http://127.0.0.1:3000/evening in web browser
-- Expected display: `Good evening`
-
-**Step 4: Test 404 Handling**
+### Running Tests
 
 ```bash
-curl http://127.0.0.1:3000/nonexistent
-# Expected output: Express.js default 404 HTML error page
+# Run the Node.js integration test suite (10 tests)
+node --test tests/dashboard.test.js
+
+# Expected output:
+# TAP version 13
+# ... (all test details)
+# # tests 10
+# # pass 10
+# # fail 0
 ```
 
-**Step 5: Verify No Errors in Console**
-
-Check terminal running the server for any error messages. Expected: No errors logged.
-
-**Comprehensive Verification Checklist:**
-
-- ✅ `npm start` launches server without errors
-- ✅ Console displays "Server running at http://127.0.0.1:3000/"
-- ✅ `curl http://127.0.0.1:3000/` returns "Hello, World!\n"
-- ✅ `curl http://127.0.0.1:3000/evening` returns "Good evening"
-- ✅ `curl http://127.0.0.1:3000/other` returns Express 404 page
-- ✅ No error messages in server console
-- ✅ Server responds within reasonable time (<100ms)
+For browser-based tests, open `http://127.0.0.1:3000/tests/resize-observer.test.html` in a browser (note: the `tests/` folder is not served by `express.static` — open the file directly or copy to `public/` temporarily).
 
 ### Example Usage
 
-**Basic API Testing with curl:**
+1. Open `http://127.0.0.1:3000/dashboard.html` in a modern browser
+2. Click any panel header (e.g., "System Overview") to expand it with smooth animation
+3. Click the same header again to collapse it
+4. Expand "Dynamic Content Demo" panel
+5. Click "Add Paragraph" to add content — observe the panel height adjusts automatically
+6. Click "Remove Paragraph" to remove content — observe the panel height shrinks smoothly
 
-```bash
-# Test root endpoint
-curl -v http://127.0.0.1:3000/
-# Response: Hello, World!\n
-# Status: 200 OK
-# Content-Type: text/html; charset=utf-8
+### Troubleshooting
 
-# Test evening endpoint
-curl -v http://127.0.0.1:3000/evening
-# Response: Good evening
-# Status: 200 OK
-# Content-Type: text/html; charset=utf-8
-
-# Test undefined route (404)
-curl -v http://127.0.0.1:3000/undefined
-# Response: Express.js HTML 404 error page
-# Status: 404 Not Found
-```
-
-**Browser Testing:**
-
-1. Start server: `npm start`
-2. Open browser to http://127.0.0.1:3000/
-3. Verify page displays: "Hello, World!"
-4. Navigate to http://127.0.0.1:3000/evening
-5. Verify page displays: "Good evening"
-
-**Automated Testing Script:**
-
-```bash
-#!/bin/bash
-# test-server.sh - Automated endpoint testing
-
-echo "Starting server..."
-npm start &
-SERVER_PID=$!
-sleep 2
-
-echo "Testing root endpoint..."
-curl -s http://127.0.0.1:3000/ | grep -q "Hello, World" && echo "✅ Root endpoint OK" || echo "❌ Root endpoint FAILED"
-
-echo "Testing evening endpoint..."
-curl -s http://127.0.0.1:3000/evening | grep -q "Good evening" && echo "✅ Evening endpoint OK" || echo "❌ Evening endpoint FAILED"
-
-echo "Stopping server..."
-kill $SERVER_PID
-echo "Tests complete"
-```
-
-**Development Workflow:**
-
-1. Make code changes to server.js
-2. Stop server (Ctrl+C in terminal)
-3. Restart server: `npm start`
-4. Test endpoints with curl or browser
-5. Verify expected behavior
-6. Commit changes: `git add . && git commit -m "Description"`
-
-**Production Considerations:**
-
-For production deployment, consider:
-- Change hostname from 127.0.0.1 to 0.0.0.0 for external access
-- Use environment variables for configuration (port, hostname)
-- Implement process manager (PM2, systemd)
-- Add logging middleware (morgan)
-- Configure reverse proxy (nginx, Apache)
-- Enable HTTPS/TLS encryption
+| Issue | Cause | Resolution |
+|---|---|---|
+| `EADDRINUSE: address already in use :::3000` | Port 3000 is occupied by another process | Kill the existing process: `lsof -ti:3000 \| xargs kill -9` |
+| `Cannot find module 'express'` | Dependencies not installed | Run `npm ci` from the project root |
+| Dashboard panels don't animate | Browser lacks ResizeObserver support | Use Chrome 64+, Firefox 69+, Safari 13.1+, or Edge 79+ |
+| `npm test` fails with "Error: no test specified" | `package.json` test script not updated | Change to `"test": "node --test tests/dashboard.test.js"` |
 
 ---
 
-## Risk Assessment
-
-### Risk Categories and Mitigation
-
-**Overall Risk Level: LOW** ✅
-
-The project has achieved production-ready status with zero critical or high-severity risks. All remaining items are standard best practices for human review.
-
-### Technical Risks
-
-| Risk ID | Description | Severity | Likelihood | Impact | Mitigation | Status |
-|---------|-------------|----------|------------|--------|------------|--------|
-| T-01 | Express.js version compatibility issues with future Node.js releases | Low | Low | Medium | Using semver caret notation (^5.1.0) allows compatible updates. Monitor Express.js release notes for breaking changes. | ✅ Mitigated |
-| T-02 | Localhost-only binding (127.0.0.1) prevents external access | Low | N/A | Low | This is intentional for tutorial project. For production, change hostname to '0.0.0.0' in server.js line 3. | ✅ By Design |
-| T-03 | No error handling middleware for unexpected errors | Low | Low | Low | Express.js 5.x provides automatic error handling for async operations. For tutorial project, default error handling is sufficient. | ✅ Acceptable |
-
-**Technical Risk Summary:** All technical risks are low severity. The implementation follows Express.js best practices for a tutorial-level application.
-
-### Security Risks
-
-| Risk ID | Description | Severity | Likelihood | Impact | Mitigation | Status |
-|---------|-------------|----------|------------|--------|------------|--------|
-| S-01 | No security vulnerabilities detected in dependencies | None | N/A | None | npm audit shows 0 vulnerabilities. All 69 packages are clean. | ✅ Resolved |
-| S-02 | No helmet.js security headers middleware | Low | N/A | Low | For tutorial project with localhost binding, security middleware is not required. For production, add helmet.js. | ✅ By Design |
-| S-03 | No rate limiting or DDoS protection | Low | Low | Low | Localhost binding limits exposure. For production, add express-rate-limit middleware. | ✅ By Design |
-
-**Security Risk Summary:** Zero security vulnerabilities found. The project is appropriate for its tutorial/learning scope. Production deployments should add standard security middleware.
-
-### Operational Risks
-
-| Risk ID | Description | Severity | Likelihood | Impact | Mitigation | Status |
-|---------|-------------|----------|------------|--------|------------|--------|
-| O-01 | No process manager for automatic restart | Low | N/A | Low | Tutorial project run manually. For production, use PM2 or systemd for process management. | ✅ By Design |
-| O-02 | No logging middleware for request tracking | Low | N/A | Low | Console.log provides startup confirmation. For production, add morgan or winston logging. | ✅ By Design |
-| O-03 | Manual server restart required after code changes | Low | N/A | Low | Expected for tutorial project. For development, add nodemon as devDependency. | ✅ By Design |
-
-**Operational Risk Summary:** All operational limitations are appropriate for a tutorial project. Production deployments should implement standard operational tooling.
-
-### Integration Risks
-
-| Risk ID | Description | Severity | Likelihood | Impact | Mitigation | Status |
-|---------|-------------|----------|------------|--------|------------|--------|
-| I-01 | No database integration or data persistence | None | N/A | None | Tutorial project returns static strings. No database required by design. | ✅ By Design |
-| I-02 | No external API integrations | None | N/A | None | Tutorial project is self-contained. No external services required. | ✅ By Design |
-| I-03 | No authentication or authorization | None | N/A | None | Tutorial project has public endpoints. Authentication not required by design. | ✅ By Design |
-
-**Integration Risk Summary:** No integration risks. The project is intentionally self-contained with no external dependencies.
-
-### Blockers and Dependencies
-
-**Current Blockers:** None
-
-**Dependencies for Remaining Tasks:**
-- Task 1 (Code Review): No dependencies
-- Task 2 (Documentation Verification): Depends on Task 1 completion (recommended)
-
-**Critical Path:** Code Review → Documentation Verification → Production Ready
-
----
-
-## Git Repository Analysis
-
-### Commit History
-
-**Total Commits on Branch:** 3 (1 base + 2 feature commits)
-
-**Feature Commits:**
-1. `865ed65` - "Setup: Install Express.js 5.1.0 and update project configuration"
-   - Added .gitignore (21 lines)
-   - Added package-lock.json (829 lines)
-   - Modified package.json (+7 lines, -3 lines)
-   
-2. `7231f52` - "Migrate server from native HTTP module to Express.js framework"
-   - Modified server.js (+10 lines, -6 lines)
-
-**Base Commit:**
-3. `9c01295` - "Test existing product" (original repository state)
-
-### Files Modified
-
-**Summary Statistics:**
-- Files changed: 4
-- Lines added: 867
-- Lines removed: 9
-- Net lines changed: +858
-
-**File-by-File Breakdown:**
-
-| File | Lines Added | Lines Removed | Net Change | Status |
-|------|-------------|---------------|------------|--------|
-| .gitignore | 21 | 0 | +21 | Created |
-| package-lock.json | 829 | 0 | +829 | Created |
-| package.json | 7 | 3 | +4 | Modified |
-| server.js | 10 | 6 | +4 | Refactored |
-| **Total** | **867** | **9** | **+858** | |
-
-### Code Volume Analysis
-
-**Lines of Code by Type:**
-
-| Type | Lines | Percentage |
-|------|-------|------------|
-| Dependency Lock Data (package-lock.json) | 829 | 96.4% |
-| Configuration (.gitignore) | 21 | 2.4% |
-| Source Code (server.js) | 4 net | 0.5% |
-| Project Metadata (package.json) | 4 net | 0.5% |
-| **Total Net Change** | **858** | **100%** |
-
-**Source Code Statistics:**
-- server.js: 19 lines total (10 added, 6 removed from original 15 lines)
-- Two route handlers implemented
-- Express.js integration: 1 require statement, 1 app initialization, 3 method calls
-
-### Working Tree Status
-
-**Current Status:** Clean ✅
-
-```bash
-git status
-# Output: nothing to commit, working tree clean
-```
-
-All changes have been properly committed. No uncommitted modifications detected.
-
-### Branch Information
-
-**Current Branch:** `blitzy-983c0629-feb9-4ca8-93fb-1c4b17303882`
-
-**Branch Comparison:** Feature branch is 2 commits ahead of base commit `9c01295`
-
----
-
-## Scope Compliance Verification
-
-### In-Scope Files (All Completed ✅)
-
-| File | Status | Requirements | Completion |
-|------|--------|--------------|------------|
-| server.js | ✅ Complete | Migrate from HTTP to Express.js, add two endpoints | 100% |
-| package.json | ✅ Complete | Update main, add start script, add dependencies | 100% |
-| package-lock.json | ✅ Complete | Auto-updated by npm during Express installation | 100% |
-| .gitignore | ✅ Complete | Added to exclude node_modules (not in scope but good practice) | 100% |
-
-### Out-of-Scope Files (Properly Preserved ✅)
-
-| File | Status | Requirements | Compliance |
-|------|--------|--------------|------------|
-| README.md | ✅ Preserved | Contains "Do not touch!" directive - must remain unchanged | 100% |
-
-**Verification:**
-```bash
-git diff 9c01295..7231f52 -- README.md
-# Output: (empty) - no changes to README.md ✅
-```
-
-### Features Implemented vs. Planned
-
-| Requirement | Agent Action Plan | Implementation | Status |
-|-------------|-------------------|----------------|--------|
-| Migrate to Express.js | Section 0.5 Group 2 | Commit 7231f52 | ✅ Complete |
-| Add Express dependency | Section 0.3 | Commit 865ed65 | ✅ Complete |
-| Root endpoint (GET /) | Section 0.5 Group 2 | server.js lines 8-10 | ✅ Complete |
-| Evening endpoint (GET /evening) | Section 0.5 Group 2 | server.js lines 12-14 | ✅ Complete |
-| Fix package.json main | Section 0.5 Group 1 | package.json line 5 | ✅ Complete |
-| Add start script | Section 0.5 Group 1 | package.json line 7 | ✅ Complete |
-| Preserve README | Section 0.6 Explicitly Out | No changes to README.md | ✅ Complete |
-
-**Scope Compliance: 100%** ✅
-
-All in-scope requirements implemented. All out-of-scope boundaries respected.
-
----
-
-## Production Deployment Readiness
-
-### Deployment Checklist
-
-**Prerequisites Complete:**
-- ✅ All dependencies installed (69 packages)
-- ✅ Zero security vulnerabilities
-- ✅ Code compiles without errors
-- ✅ Application runs successfully
-- ✅ All endpoints tested and verified
-- ✅ Git working tree clean
-
-**Ready for Production:** YES ✅ (with human review completion)
-
-### Deployment Commands
-
-**Option 1: Direct Node.js**
-```bash
-node server.js
-```
-
-**Option 2: npm start**
-```bash
-npm start
-```
-
-**Option 3: Production Process Manager (PM2)**
-```bash
-npm install -g pm2
-pm2 start server.js --name "hello-world-express"
-pm2 save
-pm2 startup
-```
-
-**Option 4: Docker Containerization**
-```dockerfile
-# Dockerfile (not included in project, example only)
-FROM node:20-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --only=production
-COPY server.js ./
-EXPOSE 3000
-CMD ["node", "server.js"]
-```
-
-### Environment Considerations
-
-**Development Environment:**
-- Hostname: 127.0.0.1 (localhost only)
-- Port: 3000
-- No external access
-
-**Production Environment (Recommendations):**
-- Change hostname to '0.0.0.0' for external access
-- Use environment variable for port: `process.env.PORT || 3000`
-- Implement reverse proxy (nginx/Apache)
-- Add HTTPS/TLS certificates
-- Configure process manager (PM2/systemd)
-- Enable monitoring and logging
-
----
-
-## Appendix
-
-### Express.js 5.x Features Used
-
-| Feature | Usage in Project | Documentation |
-|---------|------------------|---------------|
-| `express()` | Application initialization (line 6) | https://expressjs.com/en/5x/api.html#express |
-| `app.get()` | Route definition (lines 8, 12) | https://expressjs.com/en/5x/api.html#app.get.method |
-| `res.send()` | Response sending (lines 9, 13) | https://expressjs.com/en/5x/api.html#res.send |
-| `app.listen()` | Server binding (line 16) | https://expressjs.com/en/5x/api.html#app.listen |
-
-### Command Reference
-
-**Installation:**
-```bash
-npm install                 # Install all dependencies
-npm install express         # Install Express.js specifically
-npm list express           # Verify Express installation
-```
-
-**Execution:**
-```bash
-npm start                   # Start server using package.json script
-node server.js             # Start server directly
-node -c server.js          # Syntax check only (no execution)
-```
-
-**Testing:**
-```bash
-curl http://127.0.0.1:3000/              # Test root endpoint
-curl http://127.0.0.1:3000/evening       # Test evening endpoint
-curl -v http://127.0.0.1:3000/           # Verbose output with headers
-```
-
-**Maintenance:**
-```bash
-npm audit                   # Check for security vulnerabilities
-npm update                 # Update dependencies (respects semver)
-npm outdated               # Check for outdated packages
-```
-
-### File Structure
-
-```
-/tmp/blitzy/test-spec/blitzy983c0629f/
-├── .git/                   # Git repository metadata
-├── .gitignore              # Git ignore patterns (21 lines)
-├── node_modules/           # Installed dependencies (68 packages)
-├── README.md               # Project documentation (73 bytes, preserved)
-├── package.json            # Project manifest (345 bytes, modified)
-├── package-lock.json       # Dependency lock file (34,769 bytes, generated)
-└── server.js               # Express.js application (348 bytes, refactored)
-```
-
-### Package.json Final State
-
-```json
-{
-    "name": "hello_world",
-    "version": "1.0.0",
-    "description": "Hello world in Node.js",
-    "main": "server.js",
-    "scripts": {
-        "start": "node server.js",
-        "test": "echo \"Error: no test specified\" && exit 1"
-    },
-    "author": "hxu",
-    "license": "MIT",
-    "dependencies": {
-        "express": "^5.1.0"
-    }
-}
-```
-
-### server.js Final State
-
-```javascript
-const express = require('express');
-
-const hostname = '127.0.0.1';
-const port = 3000;
-
-const app = express();
-
-app.get('/', (req, res) => {
-  res.send('Hello, World!\n');
-});
-
-app.get('/evening', (req, res) => {
-  res.send('Good evening');
-});
-
-app.listen(port, hostname, () => {
-  console.log(`Server running at http://${hostname}:${port}/`);
-});
-```
-
-### Validation Commands Executed
-
-All commands executed successfully during validation:
-
-```bash
-git branch --show-current              # Verify branch name
-git status                             # Check working tree status
-npm list express                       # Verify Express installation
-node -c server.js                      # Syntax validation
-node server.js &                       # Start server for testing
-curl http://127.0.0.1:3000/           # Test root endpoint
-curl http://127.0.0.1:3000/evening    # Test evening endpoint
-curl http://127.0.0.1:3000/other      # Test 404 handling
-npm start                              # Verify start script
-npm audit                              # Security vulnerability check
-git log --oneline -5                   # Review commit history
-git diff HEAD~2 HEAD -- README.md      # Verify README unchanged
-```
-
-All commands returned expected results with zero errors.
-
----
-
-## Summary
-
-This Express.js migration project has achieved **87% completion (10 hours completed out of 11.5 total hours)** with full technical implementation and validation success. All production-readiness gates passed at 100%, with zero security vulnerabilities, zero compilation errors, and zero runtime errors.
-
-**Remaining work consists solely of human review activities (1.5 hours):**
-1. Final code review by senior developer (1 hour)
-2. Documentation verification and sign-off (0.5 hours)
-
-The project is **production-ready** and awaiting final human approval before deployment.
-
-**Key Success Metrics:**
-- ✅ 100% of in-scope features implemented
-- ✅ 100% validation success rate
-- ✅ 0 security vulnerabilities
-- ✅ 0 compilation or runtime errors
-- ✅ All endpoints tested and verified
-- ✅ Scope boundaries fully respected
-
-**Recommended Action:** Proceed with human code review (Task 1) and documentation verification (Task 2) to achieve 100% completion.
+## 10. Appendices
+
+### A. Command Reference
+
+| Command | Purpose |
+|---|---|
+| `npm ci` | Install dependencies from lockfile (deterministic) |
+| `node server.js` | Start the Express server on 127.0.0.1:3000 |
+| `npm start` | Alias for `node server.js` |
+| `node --test tests/dashboard.test.js` | Run integration test suite (10 tests) |
+| `curl http://127.0.0.1:3000/` | Test root endpoint |
+| `curl http://127.0.0.1:3000/evening` | Test evening endpoint |
+| `curl http://127.0.0.1:3000/dashboard.html` | Test dashboard page |
+
+### B. Port Reference
+
+| Port | Service | Protocol | Binding |
+|---|---|---|---|
+| 3000 | Express HTTP Server | HTTP/1.1 | 127.0.0.1 (localhost only) |
+
+### C. Key File Locations
+
+| File | Purpose |
+|---|---|
+| `server.js` | Express server entry point (44 lines) |
+| `public/dashboard.html` | Dashboard HTML page (119 lines) |
+| `public/css/dashboard.css` | Dashboard stylesheet (301 lines) |
+| `public/js/collapsible-dashboard.js` | ResizeObserver logic (280 lines) |
+| `tests/dashboard.test.js` | Node.js integration tests (382 lines) |
+| `tests/resize-observer.test.html` | Browser-based ResizeObserver tests (550 lines) |
+| `package.json` | npm manifest and scripts |
+| `package-lock.json` | Deterministic dependency lockfile |
+
+### D. Technology Versions
+
+| Technology | Version | Purpose |
+|---|---|---|
+| Node.js | v20.20.1 (LTS) | JavaScript runtime |
+| npm | v11.1.0 | Package manager |
+| Express | 5.1.0 | HTTP server framework |
+| ResizeObserver | Native Web API (since July 2020) | DOM element size observation |
+| HTML | HTML5 | Dashboard markup |
+| CSS | CSS3 | Styling and transitions |
+| JavaScript | ES6+ | Client-side logic |
+
+### E. Environment Variable Reference
+
+No environment variables are required. The server configuration is hardcoded:
+- **Hostname**: `127.0.0.1` (defined in `server.js` line 4)
+- **Port**: `3000` (defined in `server.js` line 5)
+
+### F. Developer Tools Guide
+
+- **Browser DevTools**: Use the Elements panel to inspect panel ARIA attributes; use the Console to verify no JavaScript errors; use the Network panel to confirm static assets load with correct MIME types and security headers
+- **ResizeObserver debugging**: In the browser console, `document.querySelectorAll('.panel-content')` returns all observed elements; ResizeObserver callbacks can be traced via breakpoints in `handleResize()`
+- **Test development**: Add new integration tests to `tests/dashboard.test.js` following the existing `httpGet()` + `assert` pattern; add new browser tests to `tests/resize-observer.test.html` following the existing `runTest()` async pattern
+
+### G. Glossary
+
+| Term | Definition |
+|---|---|
+| **ResizeObserver** | A native Web API that monitors changes to an element's content or border box dimensions, firing a callback when sizes change |
+| **contentBoxSize** | A ResizeObserverEntry property providing the element's content box dimensions as `blockSize` (height) and `inlineSize` (width) |
+| **ARIA** | Accessible Rich Internet Applications — a set of HTML attributes that improve web accessibility for assistive technologies |
+| **CSP** | Content Security Policy — an HTTP response header that restricts which resources the browser is allowed to load |
+| **IIFE** | Immediately Invoked Function Expression — a JavaScript pattern that creates a private scope to avoid global namespace pollution |
+| **prefers-reduced-motion** | A CSS media query that detects if the user has requested the system minimize non-essential motion |
