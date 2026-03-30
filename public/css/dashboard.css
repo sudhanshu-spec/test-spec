@@ -1,0 +1,301 @@
+/* ==========================================================================
+   Collapsible Dashboard Stylesheet
+   Styles for the ResizeObserver-powered collapsible dashboard UI.
+   Loaded by public/dashboard.html via <link rel="stylesheet" href="css/dashboard.css">
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Phase 1: Global Reset and Base Styles
+   -------------------------------------------------------------------------- */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+    Ubuntu, Cantarell, sans-serif;
+  line-height: 1.6;
+  color: #333;
+  background-color: #f5f5f5;
+  padding: 1.25rem;
+}
+
+/* Skip navigation link — visually hidden until focused */
+.skip-nav {
+  position: absolute;
+  inset-inline-start: -100vw;
+  z-index: 1000;
+  padding: 0.5rem 1rem;
+  background-color: #2c3e50;
+  color: #ffffff;
+  text-decoration: none;
+  font-weight: 600;
+  border-radius: 0 0 4px 4px;
+}
+
+.skip-nav:focus-visible {
+  inset-inline-start: 50%;
+  transform: translateX(-50%);
+}
+
+/* --------------------------------------------------------------------------
+   Phase 2: Dashboard Layout (Centered Container, Responsive Widths)
+   -------------------------------------------------------------------------- */
+
+.dashboard-container {
+  max-width: 900px;
+  width: 90%;
+  margin: 0 auto;
+  padding-block: 1.25rem;
+}
+
+.dashboard-header {
+  text-align: center;
+  margin-block-end: 1.875rem;
+}
+
+.dashboard-header h1 {
+  font-size: 1.8rem;
+  color: #2c3e50;
+  margin-block-end: 0.5rem;
+}
+
+.dashboard-header p {
+  font-size: 0.95rem;
+  color: #7f8c8d;
+}
+
+/* --------------------------------------------------------------------------
+   Phase 3: Panel Appearance (Border, Border-Radius, Box-Shadow)
+   -------------------------------------------------------------------------- */
+
+.panel {
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+  margin-block-end: 1rem;
+  overflow: hidden;
+}
+
+/* --------------------------------------------------------------------------
+   Phase 4: Panel Header Styling (Cursor, Flex Layout, Chevron Icon)
+   -------------------------------------------------------------------------- */
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 1rem 1.25rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #2c3e50;
+  text-align: start;
+  font-family: inherit;
+  line-height: inherit;
+  transition: background-color 150ms ease;
+}
+
+@media (hover: hover) {
+  .panel-header:hover {
+    background-color: #f8f9fa;
+  }
+}
+
+.panel-header:focus-visible {
+  outline: 2px solid #3498db;
+  outline-offset: -2px;
+}
+
+.panel-title {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
+/* Chevron indicator — CSS borders + transform: rotate() */
+.panel-chevron {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-inline-end: 2px solid #7f8c8d;
+  border-block-end: 2px solid #7f8c8d;
+  transform: rotate(45deg);
+  transition: transform 300ms ease;
+  flex-shrink: 0;
+  margin-inline-start: 0.75rem;
+}
+
+/* When panel is expanded, rotate chevron to point upward */
+.panel[data-collapsed="false"] .panel-chevron {
+  transform: rotate(-135deg);
+}
+
+/* --------------------------------------------------------------------------
+   Phase 5: Panel Content Wrapper Transition (Core Animation Mechanism)
+   The wrapper's height is set by JavaScript via ResizeObserver measurements.
+   CSS handles the smooth animation between explicit pixel height values.
+   -------------------------------------------------------------------------- */
+
+.panel-content-wrapper {
+  overflow: hidden;
+  transition: height 300ms ease;
+}
+
+/* Inner content element — observed by ResizeObserver */
+.panel-content {
+  padding: 1rem 1.25rem;
+}
+
+/* --------------------------------------------------------------------------
+   Phase 6: Content Element Styling (Lists, Tables, Paragraphs)
+   -------------------------------------------------------------------------- */
+
+.panel-content p {
+  margin-block-end: 0.75rem;
+}
+
+.panel-content p:last-child {
+  margin-block-end: 0;
+}
+
+.panel-content ul,
+.panel-content ol {
+  margin-block: 0.5rem;
+  padding-inline-start: 1.5rem;
+}
+
+.panel-content li {
+  margin-block-end: 0.25rem;
+}
+
+.panel-content li:last-child {
+  margin-block-end: 0;
+}
+
+.panel-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-block: 0.5rem;
+}
+
+.panel-content th,
+.panel-content td {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #e0e0e0;
+  text-align: start;
+}
+
+.panel-content th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+}
+
+/* --------------------------------------------------------------------------
+   Phase 7: Utility Classes for Dynamic Content Demo Buttons
+   -------------------------------------------------------------------------- */
+
+.add-content-btn,
+.remove-content-btn {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  margin-block-start: 0.5rem;
+  margin-block-end: 0.25rem;
+  margin-inline-end: 0.25rem;
+  font-size: 0.875rem;
+  font-family: inherit;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.add-content-btn {
+  background-color: #3498db;
+  color: #ffffff;
+  border: 1px solid #3498db;
+}
+
+.add-content-btn:focus-visible {
+  outline: 2px solid #3498db;
+  outline-offset: 2px;
+}
+
+.remove-content-btn {
+  background-color: #ffffff;
+  color: #e74c3c;
+  border: 1px solid #e74c3c;
+}
+
+@media (hover: hover) {
+  .add-content-btn:hover {
+    background-color: #2980b9;
+  }
+
+  .remove-content-btn:hover {
+    background-color: #e74c3c;
+    color: #ffffff;
+  }
+}
+
+.remove-content-btn:focus-visible {
+  outline: 2px solid #e74c3c;
+  outline-offset: 2px;
+}
+
+/* --------------------------------------------------------------------------
+   Phase 8: Responsive Design (Mobile to Desktop)
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 600px) {
+  .dashboard-container {
+    width: 100%;
+    padding-inline: 0.625rem;
+  }
+
+  .panel-header {
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+  }
+
+  .panel-content {
+    padding: 0.75rem 1rem;
+  }
+
+  .dashboard-header h1 {
+    font-size: 1.4rem;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Phase 9: prefers-reduced-motion Media Query Support
+   When the user's OS enables reduced motion, all transitions complete
+   instantaneously while still applying correct heights via JavaScript.
+   -------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .panel-content-wrapper {
+    transition-duration: 0ms;
+  }
+
+  .panel-chevron {
+    transition-duration: 0ms;
+  }
+
+  .panel-header {
+    transition-duration: 0ms;
+  }
+
+  .add-content-btn,
+  .remove-content-btn {
+    transition-duration: 0ms;
+  }
+}
