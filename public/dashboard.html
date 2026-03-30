@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Collapsible Dashboard</title>
+  <meta name="description" content="A collapsible dashboard UI with smooth expand and collapse transitions powered by the ResizeObserver Web API.">
+  <link rel="stylesheet" href="css/dashboard.css">
+</head>
+<body>
+  <a href="#main-content" class="skip-nav">Skip to main content</a>
+
+  <div class="dashboard-container">
+    <header class="dashboard-header">
+      <h1>Collapsible Dashboard</h1>
+      <p>Powered by ResizeObserver API</p>
+    </header>
+
+    <main id="main-content" class="panels">
+
+      <!-- Panel 1: System Overview -->
+      <div class="panel" data-collapsed="true">
+        <button class="panel-header" aria-expanded="false">
+          <span class="panel-title">System Overview</span>
+          <span class="panel-chevron" aria-hidden="true"></span>
+        </button>
+        <div class="panel-content-wrapper" style="height: 0" aria-hidden="true">
+          <div class="panel-content">
+            <p>This dashboard provides a real-time overview of key system indicators. Each panel can be expanded or collapsed independently, with smooth height transitions powered by the ResizeObserver API.</p>
+            <ul>
+              <li>CPU Usage: 42%</li>
+              <li>Memory Allocation: 3.2 GB / 8 GB</li>
+              <li>Active Connections: 128</li>
+              <li>Uptime: 14 days, 6 hours</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Panel 2: Performance Metrics -->
+      <div class="panel" data-collapsed="true">
+        <button class="panel-header" aria-expanded="false">
+          <span class="panel-title">Performance Metrics</span>
+          <span class="panel-chevron" aria-hidden="true"></span>
+        </button>
+        <div class="panel-content-wrapper" style="height: 0" aria-hidden="true">
+          <div class="panel-content">
+            <p>Current performance data collected from the monitoring pipeline. Metrics are refreshed automatically when the panel content changes.</p>
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Metric</th>
+                  <th scope="col">Value</th>
+                  <th scope="col">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Response Time</td>
+                  <td>45 ms</td>
+                  <td>Normal</td>
+                </tr>
+                <tr>
+                  <td>Throughput</td>
+                  <td>1,250 req/s</td>
+                  <td>Normal</td>
+                </tr>
+                <tr>
+                  <td>Error Rate</td>
+                  <td>0.02%</td>
+                  <td>Normal</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Panel 3: Recent Activity -->
+      <div class="panel" data-collapsed="true">
+        <button class="panel-header" aria-expanded="false">
+          <span class="panel-title">Recent Activity</span>
+          <span class="panel-chevron" aria-hidden="true"></span>
+        </button>
+        <div class="panel-content-wrapper" style="height: 0" aria-hidden="true">
+          <div class="panel-content">
+            <p>A chronological log of recent system events and user actions recorded by the activity tracker.</p>
+            <ol>
+              <li>Deployment v2.4.1 completed successfully</li>
+              <li>Database backup finished (2.3 GB archived)</li>
+              <li>New user registration: 15 accounts created</li>
+              <li>SSL certificate renewed for api.example.com</li>
+              <li>Cache invalidation triggered for static assets</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+
+      <!-- Panel 4: Dynamic Content Demo -->
+      <div class="panel" data-collapsed="true">
+        <button class="panel-header" aria-expanded="false">
+          <span class="panel-title">Dynamic Content Demo</span>
+          <span class="panel-chevron" aria-hidden="true"></span>
+        </button>
+        <div class="panel-content-wrapper" style="height: 0" aria-hidden="true">
+          <div class="panel-content" id="dynamic-demo">
+            <p>This panel demonstrates the ResizeObserver's automatic height recalculation. Use the buttons below to add or remove content and watch the panel height adjust smoothly without any manual recalculation.</p>
+            <button class="add-content-btn" data-panel="dynamic-demo">Add Paragraph</button>
+            <button class="remove-content-btn" data-panel="dynamic-demo">Remove Paragraph</button>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <script src="js/collapsible-dashboard.js"></script>
+</body>
+</html>
