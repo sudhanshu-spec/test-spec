@@ -12,9 +12,11 @@
  * @module src/routes/main.routes
  */
 
+'use strict';
+
 const express = require('express');
 
-const router = express.Router();
+const router = express.Router({ caseSensitive: true });
 
 /**
  * Root route handler

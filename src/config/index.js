@@ -17,6 +17,8 @@
  * @module src/config
  */
 
+'use strict';
+
 module.exports = {
   /**
    * Server host binding address
