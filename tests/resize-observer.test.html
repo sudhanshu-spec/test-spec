@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ResizeObserver Collapsible Panel Tests</title>
+  <style>
+    /* Global reset and base styles */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      line-height: 1.6; color: #333; background-color: #f5f5f5; padding: 1.25rem;
+    }
+    h1 { font-size: 1.6rem; color: #2c3e50; margin-bottom: 0.25rem; }
+    .description { color: #5f6b6b; font-size: 0.95rem; margin-bottom: 1.25rem; }
+
+    /* Panel styles — minimal subset of dashboard.css for isolated testing */
+    .panel {
+      background: #ffffff; border: 1px solid #e0e0e0; border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.08); margin-bottom: 1rem; overflow: hidden;
+    }
+    .panel-header {
+      display: flex; align-items: center; width: 100%; padding: 1rem 1.25rem;
+      background: none; border: none; cursor: pointer; font-size: 1rem;
+      font-weight: 600; color: #2c3e50; text-align: start; font-family: inherit;
+    }
+    .panel-content-wrapper { overflow: hidden; transition: height 300ms ease; }
+    .panel-content { padding: 1rem 1.25rem; }
+    .panel-content p { margin-bottom: 0.75rem; }
+    .panel-content p:last-child { margin-bottom: 0; }
+
+    /* Test controls */
+    #run-tests {
+      padding: 0.75rem 1.5rem; background: #2472a4; color: #ffffff; border: none;
+      border-radius: 4px; cursor: pointer; font-size: 1rem; font-family: inherit;
+      margin-bottom: 1rem;
+    }
+    #run-tests:hover { background: #1d5f87; }
+    #run-tests:disabled { background: #999999; cursor: not-allowed; }
+
+    /* Results display */
+    #test-results { margin-top: 1rem; }
+    .test-result { padding: 0.4rem 0; font-family: monospace; font-size: 0.9rem; }
+    #test-summary {
+      margin-top: 1rem; padding: 0.75rem; font-weight: 600; font-size: 1.1rem;
+      border-radius: 4px;
+    }
+    .summary-pass { background: #d4edda; color: #155724; }
+    .summary-fail { background: #f8d7da; color: #721c24; }
+  </style>
+</head>
+<body>
+  <h1>ResizeObserver Collapsible Panel Tests</h1>
+  <p class="description">Self-contained browser-based validation of ResizeObserver behavior with collapsible panels.</p>
+
+  <!-- Test Panel 1 -->
+  <div class="panel" data-collapsed="true" id="test-panel-1">
+    <button class="panel-header" aria-expanded="false">Test Panel 1</button>
+    <div class="panel-content-wrapper" style="height: 0" aria-hidden="true">
+      <div class="panel-content">
+        <p>Initial content for test panel 1.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Test Panel 2 -->
+  <div class="panel" data-collapsed="true" id="test-panel-2">
+    <button class="panel-header" aria-expanded="false">Test Panel 2</button>
+    <div class="panel-content-wrapper" style="height: 0" aria-hidden="true">
+      <div class="panel-content">
+        <p>Initial content for test panel 2.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Test Panel 3 -->
+  <div class="panel" data-collapsed="true" id="test-panel-3">
+    <button class="panel-header" aria-expanded="false">Test Panel 3</button>
+    <div class="panel-content-wrapper" style="height: 0" aria-hidden="true">
+      <div class="panel-content">
+        <p>Initial content for test panel 3.</p>
+        <p>Additional paragraph providing extra content height for measurement tests.</p>
+      </div>
+    </div>
+  </div>
+
+  <button id="run-tests">Run Tests</button>
+  <div id="test-results"></div>
+  <div id="test-summary"></div>
+
+  <script>
+    'use strict';
+
+    /* ====================================================================
+       Test Runner Framework
+       ==================================================================== */
+
+    /** @type {{ name: string, passed: boolean }[]} */
+    var results = [];
+
+    /**
+     * Records a test assertion result.
+     * @param {boolean} condition - Whether the assertion passed.
+     * @param {string}  testName  - Human-readable test name.
+     */
+    function assert(condition, testName) {
+      results.push({ name: testName, passed: !!condition });
+    }
+
+    /**
+     * Renders colour-coded pass/fail results into the DOM and
+     * appends a summary line showing the total pass count.
+     */
+    function displayResults() {
+      var container = document.getElementById('test-results');
+      container.textContent = '';
+
+      results.forEach(function (r) {
+        var div = document.createElement('div');
+        div.className = 'test-result';
+        div.style.color = r.passed ? 'green' : 'red';
+        var icon = r.passed ? '\u2713 PASS' : '\u2717 FAIL';
+        div.textContent = icon + ': ' + r.name;
+        container.appendChild(div);
+      });
+
+      var passed = results.filter(function (r) { return r.passed; }).length;
+      var total  = results.length;
+      var summaryEl = document.getElementById('test-summary');
+      summaryEl.textContent = passed + ' of ' + total + ' tests passed';
+      summaryEl.className   = passed === total ? 'summary-pass' : 'summary-fail';
+    }
+
+    /* ====================================================================
+       Helper Utilities
+       ==================================================================== */
+
+    /**
+     * Extracts the content-box block-size from a ResizeObserverEntry,
+     * falling back to contentRect.height for older implementations.
+     * @param  {ResizeObserverEntry} entry
+     * @return {number}
+     */
+    function getEntryHeight(entry) {
+      if (entry.contentBoxSize && entry.contentBoxSize[0]) {
+        return entry.contentBoxSize[0].blockSize;
+      }
+      return entry.contentRect.height;
+    }
+
+    /**
+     * Resets every test panel to its initial collapsed state and removes
+     * any dynamically-added test content so tests start from a clean slate.
+     */
+    function resetPanels() {
+      var panels = document.querySelectorAll('.panel');
+      panels.forEach(function (panel) {
+        panel.dataset.collapsed = 'true';
+        var header  = panel.querySelector('.panel-header');
+        var wrapper = panel.querySelector('.panel-content-wrapper');
+        if (header)  header.setAttribute('aria-expanded', 'false');
+        if (wrapper) {
+          wrapper.style.height = '0';
+          wrapper.setAttribute('aria-hidden', 'true');
+        }
+        var content = panel.querySelector('.panel-content');
+        if (content) {
+          var added = content.querySelectorAll('[data-test-added]');
+          added.forEach(function (el) { el.remove(); });
+        }
+      });
+    }
+
+    /**
+     * Programmatically expands a panel for testing purposes — sets state
+     * attributes and applies the content's scrollHeight to the wrapper.
+     * @param {HTMLElement} panel
+     */
+    function expandPanel(panel) {
+      var wrapper = panel.querySelector('.panel-content-wrapper');
+      var content = panel.querySelector('.panel-content');
+      var header  = panel.querySelector('.panel-header');
+      panel.dataset.collapsed = 'false';
+      if (header)  header.setAttribute('aria-expanded', 'true');
+      if (wrapper && content) {
+        wrapper.setAttribute('aria-hidden', 'false');
+        wrapper.style.height = content.scrollHeight + 'px';
+      }
+    }
+
+    /**
+     * Mirrors the toggle behaviour expected from collapsible-dashboard.js:
+     * flips data-collapsed, aria-expanded, aria-hidden, and wrapper height.
+     * Used by Test 7 to validate the attribute contract.
+     * @param {HTMLElement} panel
+     */
+    function togglePanel(panel) {
+      var isCollapsed = panel.dataset.collapsed === 'true';
+      var wrapper = panel.querySelector('.panel-content-wrapper');
+      var header  = panel.querySelector('.panel-header');
+      var content = panel.querySelector('.panel-content');
+      if (!wrapper || !header || !content) return;
+
+      if (isCollapsed) {
+        panel.dataset.collapsed = 'false';
+        header.setAttribute('aria-expanded', 'true');
+        wrapper.setAttribute('aria-hidden', 'false');
+        wrapper.style.height = content.scrollHeight + 'px';
+      } else {
+        wrapper.style.height = wrapper.scrollHeight + 'px';
+        void wrapper.offsetHeight; /* force synchronous reflow */
+        wrapper.style.height = '0px';
+        panel.dataset.collapsed = 'true';
+        header.setAttribute('aria-expanded', 'false');
+        wrapper.setAttribute('aria-hidden', 'true');
+      }
+    }
+
+    /* ====================================================================
+       Test Cases
+       ==================================================================== */
+
+    /**
+     * Test 1 — ResizeObserver API Availability
+     * Verifies the browser exposes the native ResizeObserver constructor.
+     */
+    function test1_apiAvailability() {
+      assert(typeof ResizeObserver !== 'undefined', 'ResizeObserver API is available');
+    }
+
+    /**
+     * Test 2 — ResizeObserver Fires on Initial Observation
+     * Confirms that attaching an observer to an element causes the callback
+     * to fire at least once (the specification guarantees an initial entry).
+     */
+    async function test2_initialObservation() {
+      var panel   = document.getElementById('test-panel-1');
+      var content = panel.querySelector('.panel-content');
+      var fired   = false;
+
+      await new Promise(function (resolve) {
+        var timer = setTimeout(function () {
+          observer.disconnect();
+          resolve();
+        }, 500);
+
+        var observer = new ResizeObserver(function () {
+          fired = true;
+          clearTimeout(timer);
+          observer.disconnect();
+          resolve();
+        });
+
+        observer.observe(content);
+      });
+
+      assert(fired, 'ResizeObserver fires callback on initial observation');
+    }
+
+    /**
+     * Test 3 — ResizeObserver Detects Content Addition
+     * Expands a panel, observes its content element, programmatically adds
+     * a paragraph, and verifies the reported height increases.
+     */
+    async function test3_contentAddition() {
+      var panel   = document.getElementById('test-panel-2');
+      var content = panel.querySelector('.panel-content');
+      expandPanel(panel);
+
+      var initialHeight = null;
+      var addedHeight   = null;
+
+      await new Promise(function (resolve) {
+        var callCount = 0;
+        var timer = setTimeout(function () {
+          observer.disconnect();
+          resolve();
+        }, 1000);
+
+        var observer = new ResizeObserver(function (entries) {
+          callCount++;
+          var height = getEntryHeight(entries[0]);
+
+          if (callCount === 1) {
+            /* First callback — record baseline, then mutate DOM in rAF */
+            initialHeight = height;
+            requestAnimationFrame(function () {
+              var p = document.createElement('p');
+              p.textContent = 'Dynamically added content for resize detection.';
+              p.setAttribute('data-test-added', 'true');
+              content.appendChild(p);
+            });
+          } else {
+            /* Subsequent callback — record new height after addition */
+            addedHeight = height;
+            clearTimeout(timer);
+            observer.disconnect();
+            resolve();
+          }
+        });
+
+        observer.observe(content);
+      });
+
+      assert(
+        initialHeight !== null && addedHeight !== null && addedHeight > initialHeight,
+        'ResizeObserver detects content addition and reports increased height'
+      );
+    }
+
+    /**
+     * Test 4 — ResizeObserver Detects Content Removal
+     * Continues from Test 3's expanded state, removes the dynamically-added
+     * paragraph, and verifies the reported height decreases.
+     */
+    async function test4_contentRemoval() {
+      var panel   = document.getElementById('test-panel-2');
+      var content = panel.querySelector('.panel-content');
+      var addedEl = content.querySelector('[data-test-added]');
+
+      if (!addedEl) {
+        assert(false, 'ResizeObserver detects content removal and reports decreased height');
+        return;
+      }
+
+      var heightBefore = null;
+      var heightAfter  = null;
+
+      await new Promise(function (resolve) {
+        var callCount = 0;
+        var timer = setTimeout(function () {
+          observer.disconnect();
+          resolve();
+        }, 1000);
+
+        var observer = new ResizeObserver(function (entries) {
+          callCount++;
+          var height = getEntryHeight(entries[0]);
+
+          if (callCount === 1) {
+            /* First callback — record height with added content */
+            heightBefore = height;
+            requestAnimationFrame(function () {
+              addedEl.remove();
+            });
+          } else {
+            /* Subsequent callback — record height after removal */
+            heightAfter = height;
+            clearTimeout(timer);
+            observer.disconnect();
+            resolve();
+          }
+        });
+
+        observer.observe(content);
+      });
+
+      assert(
+        heightBefore !== null && heightAfter !== null && heightAfter < heightBefore,
+        'ResizeObserver detects content removal and reports decreased height'
+      );
+    }
+
+    /**
+     * Test 5 — Height Measurement Accuracy
+     * Verifies the observed contentBoxSize.blockSize value matches the
+     * element's computed content-box height (scrollHeight minus vertical
+     * padding) within a ±2 px tolerance for sub-pixel rounding.
+     */
+    async function test5_heightAccuracy() {
+      var panel   = document.getElementById('test-panel-3');
+      var content = panel.querySelector('.panel-content');
+      expandPanel(panel);
+
+      var measuredHeight = null;
+
+      await new Promise(function (resolve) {
+        var timer = setTimeout(function () {
+          observer.disconnect();
+          resolve();
+        }, 500);
+
+        var observer = new ResizeObserver(function (entries) {
+          measuredHeight = getEntryHeight(entries[0]);
+          clearTimeout(timer);
+          observer.disconnect();
+          resolve();
+        });
+
+        observer.observe(content);
+      });
+
+      /* scrollHeight includes padding; subtract to obtain content-box height */
+      var computed   = getComputedStyle(content);
+      var padTop     = parseFloat(computed.paddingTop) || 0;
+      var padBottom  = parseFloat(computed.paddingBottom) || 0;
+      var expectedHeight = content.scrollHeight - padTop - padBottom;
+      var tolerance  = 2;
+      var isAccurate = measuredHeight !== null &&
+                       Math.abs(measuredHeight - expectedHeight) <= tolerance;
+
+      assert(isAccurate, 'Measured height matches element scrollHeight');
+    }
+
+    /**
+     * Test 6 — Observer Disconnect Stops Callbacks
+     * Creates an observer, waits for its initial callback, disconnects it,
+     * then mutates the observed element and verifies no further callbacks fire.
+     */
+    async function test6_disconnectStops() {
+      var panel   = document.getElementById('test-panel-1');
+      var content = panel.querySelector('.panel-content');
+      expandPanel(panel);
+
+      var callCount = 0;
+      var observer  = new ResizeObserver(function () { callCount++; });
+      observer.observe(content);
+
+      /* Allow the initial observation callback to fire */
+      await new Promise(function (resolve) { setTimeout(resolve, 150); });
+      var countAfterInitial = callCount;
+
+      /* Disconnect — no further callbacks should be delivered */
+      observer.disconnect();
+
+      /* Mutate the observed element inside requestAnimationFrame */
+      await new Promise(function (resolve) {
+        requestAnimationFrame(function () {
+          var p = document.createElement('p');
+          p.textContent = 'Content added after observer was disconnected.';
+          p.setAttribute('data-test-added', 'true');
+          content.appendChild(p);
+          resolve();
+        });
+      });
+
+      /* Wait long enough for any stray callback to arrive */
+      await new Promise(function (resolve) { setTimeout(resolve, 350); });
+
+      assert(
+        callCount === countAfterInitial,
+        'Disconnected observer does not fire on subsequent changes'
+      );
+    }
+
+    /**
+     * Test 7 — Panel Toggle State Attributes
+     * Validates the attribute contract that collapsible-dashboard.js must
+     * implement: toggling a panel flips data-collapsed, aria-expanded, and
+     * aria-hidden to the correct complementary values.
+     */
+    function test7_toggleAttributes() {
+      var panel   = document.getElementById('test-panel-3');
+      var header  = panel.querySelector('.panel-header');
+      var wrapper = panel.querySelector('.panel-content-wrapper');
+
+      /* Verify initial collapsed state */
+      var initCollapsed    = panel.dataset.collapsed === 'true';
+      var initAriaExpanded = header.getAttribute('aria-expanded') === 'false';
+      var initAriaHidden   = wrapper.getAttribute('aria-hidden') === 'true';
+
+      /* Toggle to expanded */
+      togglePanel(panel);
+
+      var expCollapsed    = panel.dataset.collapsed === 'false';
+      var expAriaExpanded = header.getAttribute('aria-expanded') === 'true';
+      var expAriaHidden   = wrapper.getAttribute('aria-hidden') === 'false';
+
+      var allCorrect = initCollapsed && initAriaExpanded && initAriaHidden &&
+                       expCollapsed  && expAriaExpanded  && expAriaHidden;
+
+      assert(allCorrect,
+        'Panel toggle updates data-collapsed, aria-expanded, and aria-hidden correctly');
+    }
+
+    /* ====================================================================
+       Test Runner — Sequential Execution with Cleanup
+       ==================================================================== */
+
+    /**
+     * Runs every test sequentially, resets panel state between tests to
+     * prevent observer interference, and displays colour-coded results.
+     * Tests 3 & 4 intentionally share state (panel remains expanded with
+     * dynamically-added content between them).
+     */
+    async function runAllTests() {
+      var btn = document.getElementById('run-tests');
+      btn.disabled  = true;
+      btn.textContent = 'Running\u2026';
+
+      /* Clear previous run */
+      results = [];
+      document.getElementById('test-results').textContent = '';
+      document.getElementById('test-summary').textContent = '';
+      document.getElementById('test-summary').className   = '';
+
+      resetPanels();
+
+      try {
+        /* Test 1 — synchronous */
+        test1_apiAvailability();
+
+        /* Test 2 — async */
+        resetPanels();
+        await test2_initialObservation();
+
+        /* Test 3 — async (expands panel 2, adds content) */
+        resetPanels();
+        await test3_contentAddition();
+
+        /* Test 4 — async (continues from panel 2's expanded state) */
+        await test4_contentRemoval();
+
+        /* Test 5 — async */
+        resetPanels();
+        await test5_heightAccuracy();
+
+        /* Test 6 — async */
+        resetPanels();
+        await test6_disconnectStops();
+
+        /* Test 7 — synchronous */
+        resetPanels();
+        test7_toggleAttributes();
+      } catch (err) {
+        results.push({ name: 'Unexpected error: ' + err.message, passed: false });
+      }
+
+      /* Final cleanup and render */
+      resetPanels();
+      displayResults();
+
+      btn.disabled    = false;
+      btn.textContent = 'Run Tests';
+    }
+
+    /* ====================================================================
+       Entry Points — auto-run on load + manual re-run via button
+       ==================================================================== */
+
+    document.addEventListener('DOMContentLoaded', function () {
+      runAllTests();
+    });
+
+    document.getElementById('run-tests').addEventListener('click', function () {
+      runAllTests();
+    });
+  </script>
+</body>
+</html>
