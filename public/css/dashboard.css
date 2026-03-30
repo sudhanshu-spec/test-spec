@@ -67,7 +67,7 @@ body {
 
 .dashboard-header p {
   font-size: 0.95rem;
-  color: #5f6b6b;
+  color: #7f8c8d;
 }
 
 /* --------------------------------------------------------------------------
@@ -219,9 +219,9 @@ body {
 }
 
 .add-content-btn {
-  background-color: #2472a4;
+  background-color: #3498db;
   color: #ffffff;
-  border: 1px solid #2472a4;
+  border: 1px solid #3498db;
 }
 
 .add-content-btn:focus-visible {
@@ -231,8 +231,8 @@ body {
 
 .remove-content-btn {
   background-color: #ffffff;
-  color: #c0392b;
-  border: 1px solid #c0392b;
+  color: #e74c3c;
+  border: 1px solid #e74c3c;
 }
 
 @media (hover: hover) {
