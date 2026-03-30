@@ -41,9 +41,15 @@
    */
   function handleResize(entries) {
     for (const entry of entries) {
-      // Primary: borderBoxSize includes padding so the wrapper fully contains
-      // the observed .panel-content element. Fallback: offsetHeight (legacy).
-      const height = entry.borderBoxSize?.[0]?.blockSize ?? entry.target.offsetHeight;
+      // Primary: contentBoxSize as specified by the API contract.
+      // Fallback: contentRect.height for older implementations that lack contentBoxSize.
+      // Padding compensation is added so the wrapper fully contains the observed
+      // .panel-content element including its padding box.
+      const contentHeight = entry.contentBoxSize?.[0]?.blockSize ?? entry.contentRect.height;
+      const computed = getComputedStyle(entry.target);
+      const paddingTop = parseFloat(computed.paddingTop) || 0;
+      const paddingBottom = parseFloat(computed.paddingBottom) || 0;
+      const height = contentHeight + paddingTop + paddingBottom;
 
       // Walk from the observed .panel-content up to its owning .panel
       const panel = entry.target.closest('.panel');

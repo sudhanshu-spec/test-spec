@@ -113,12 +113,16 @@
      */
     function displayResults() {
       var container = document.getElementById('test-results');
-      container.innerHTML = results.map(function (r) {
-        var colour = r.passed ? 'green' : 'red';
-        var icon   = r.passed ? '\u2713 PASS' : '\u2717 FAIL';
-        return '<div class="test-result" style="color:' + colour + '">' +
-               icon + ': ' + r.name + '</div>';
-      }).join('');
+      container.textContent = '';
+
+      results.forEach(function (r) {
+        var div = document.createElement('div');
+        div.className = 'test-result';
+        div.style.color = r.passed ? 'green' : 'red';
+        var icon = r.passed ? '\u2713 PASS' : '\u2717 FAIL';
+        div.textContent = icon + ': ' + r.name;
+        container.appendChild(div);
+      });
 
       var passed = results.filter(function (r) { return r.passed; }).length;
       var total  = results.length;
@@ -486,7 +490,7 @@
 
       /* Clear previous run */
       results = [];
-      document.getElementById('test-results').innerHTML  = '';
+      document.getElementById('test-results').textContent = '';
       document.getElementById('test-summary').textContent = '';
       document.getElementById('test-summary').className   = '';
 
