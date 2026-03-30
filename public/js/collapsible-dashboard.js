@@ -41,8 +41,9 @@
    */
   function handleResize(entries) {
     for (const entry of entries) {
-      // Primary: contentBoxSize (modern browsers). Fallback: contentRect (legacy).
-      const height = entry.contentBoxSize?.[0]?.blockSize ?? entry.contentRect.height;
+      // Primary: borderBoxSize includes padding so the wrapper fully contains
+      // the observed .panel-content element. Fallback: offsetHeight (legacy).
+      const height = entry.borderBoxSize?.[0]?.blockSize ?? entry.target.offsetHeight;
 
       // Walk from the observed .panel-content up to its owning .panel
       const panel = entry.target.closest('.panel');
@@ -63,6 +64,32 @@
         });
       }
     }
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  Focusability management for collapsed panels                       */
+  /* ------------------------------------------------------------------ */
+
+  /**
+   * Updates the focusability of interactive elements within a panel wrapper.
+   * When a panel is collapsed its wrapper carries aria-hidden="true", so all
+   * focusable descendants must be removed from the tab order to satisfy
+   * WAI-ARIA (no focusable elements inside aria-hidden regions).
+   *
+   * @param {HTMLElement} wrapper - The .panel-content-wrapper element.
+   * @param {boolean} collapsed  - true to disable focus, false to restore it.
+   */
+  function updateWrapperFocusability(wrapper, collapsed) {
+    var focusable = wrapper.querySelectorAll(
+      'button, [href], input, select, textarea'
+    );
+    focusable.forEach(function (el) {
+      if (collapsed) {
+        el.setAttribute('tabindex', '-1');
+      } else {
+        el.removeAttribute('tabindex');
+      }
+    });
   }
 
   /* ------------------------------------------------------------------ */
@@ -92,6 +119,9 @@
       header.setAttribute('aria-expanded', 'true');
       wrapper.setAttribute('aria-hidden', 'false');
 
+      // Restore keyboard focusability for interactive elements inside the panel.
+      updateWrapperFocusability(wrapper, false);
+
       // Measure actual content height and set it on the wrapper to trigger
       // the CSS transition from 0 → measuredHeight.
       const measuredHeight = content.scrollHeight;
@@ -115,6 +145,10 @@
       panel.dataset.collapsed = 'true';
       header.setAttribute('aria-expanded', 'false');
       wrapper.setAttribute('aria-hidden', 'true');
+
+      // Remove keyboard focusability for interactive elements inside the
+      // collapsed panel to prevent focus within aria-hidden regions.
+      updateWrapperFocusability(wrapper, true);
     }
   }
 
@@ -215,6 +249,16 @@
       const observer = new ResizeObserver(handleResize);
       observer.observe(contentElement);
       observers.push(observer);
+
+      // Panels that start collapsed must have their focusable children removed
+      // from the tab order so that keyboard users cannot focus elements inside
+      // aria-hidden regions (WAI-ARIA requirement).
+      if (panel.dataset.collapsed === 'true') {
+        const wrapper = panel.querySelector('.panel-content-wrapper');
+        if (wrapper) {
+          updateWrapperFocusability(wrapper, true);
+        }
+      }
     });
 
     // Wire up the dynamic content demo buttons
