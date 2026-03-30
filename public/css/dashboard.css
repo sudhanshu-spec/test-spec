@@ -67,7 +67,7 @@ body {
 
 .dashboard-header p {
   font-size: 0.95rem;
-  color: #7f8c8d;
+  color: #5f6b6b;
 }
 
 /* --------------------------------------------------------------------------
@@ -219,35 +219,35 @@ body {
 }
 
 .add-content-btn {
-  background-color: #3498db;
+  background-color: #2472a4;
   color: #ffffff;
-  border: 1px solid #3498db;
+  border: 1px solid #2472a4;
 }
 
 .add-content-btn:focus-visible {
-  outline: 2px solid #3498db;
+  outline: 2px solid #2472a4;
   outline-offset: 2px;
 }
 
 .remove-content-btn {
   background-color: #ffffff;
-  color: #e74c3c;
-  border: 1px solid #e74c3c;
+  color: #c0392b;
+  border: 1px solid #c0392b;
 }
 
 @media (hover: hover) {
   .add-content-btn:hover {
-    background-color: #2980b9;
+    background-color: #1d5f87;
   }
 
   .remove-content-btn:hover {
-    background-color: #e74c3c;
+    background-color: #c0392b;
     color: #ffffff;
   }
 }
 
 .remove-content-btn:focus-visible {
-  outline: 2px solid #e74c3c;
+  outline: 2px solid #c0392b;
   outline-offset: 2px;
 }
 
