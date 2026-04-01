@@ -5,9 +5,9 @@
  * variable support following the Twelve-Factor App methodology for configuration
  * externalization.
  * 
- * Default values preserve backward compatibility with original server.js implementation:
- * - host: '127.0.0.1' (from original server.js line 3)
- * - port: 3000 (from original server.js line 4)
+ * Default values provide standard Express.js server configuration defaults:
+ * - host: '127.0.0.1' (localhost binding for development security)
+ * - port: 3000 (standard Express.js development port)
  * 
  * Environment variable overrides:
  * - HOST: Override default host binding
