@@ -1,4 +1,4 @@
-# hao-backprop-test
+# hello_world
 
 A Node.js tutorial server demonstrating Express.js integration with multiple HTTP endpoints.
 
@@ -29,7 +29,7 @@ npm --version
 
 ```bash
 git clone <repository-url>
-cd hao-backprop-test
+cd hello_world
 ```
 
 2. Install dependencies:
@@ -126,7 +126,7 @@ curl -s http://127.0.0.1:3000/evening && echo " - Evening OK"
 ## Project Structure
 
 ```
-hao-backprop-test/
+hello_world/
 ├── server.js                    # Entry point - HTTP server binding
 ├── package.json                 # npm manifest and dependencies
 ├── package-lock.json            # Dependency lockfile
@@ -236,7 +236,7 @@ npm ls express
 | `test` | `jest` | Run the complete test suite |
 | `test:watch` | `jest --watch` | Run tests in watch mode for development |
 | `test:coverage` | `jest --coverage` | Run tests and generate coverage report |
-| `test:ci` | `jest --ci --coverage` | Run tests optimized for CI/CD environments |
+| `test:ci` | `jest --ci --coverage --reporters=default` | Run tests optimized for CI/CD environments |
 
 ## Testing
 
@@ -305,7 +305,9 @@ npm run test:coverage
 
 **Port already in use:**
 ```bash
-# Error: listen EADDRINUSE: address already in use
+# You will see: "Port 3000 is already in use. Please choose a different port."
+# (This message is logged via console.error by server.js when the underlying
+#  Node.js error code is EADDRINUSE.)
 # Solution: Use a different port
 PORT=3001 npm start
 ```
@@ -324,13 +326,33 @@ PORT=8080 npm start
 npm install
 ```
 
+## Security
+
+This project is a Node.js / Express.js tutorial. The current release carries
+5 transitive `npm audit` advisories (2 in the runtime tree via `express@5.1.0`
+and 3 in the dev-only tree via `jest@30.2.0`) that are knowingly accepted
+within the tutorial scope. Per the project's Agent Action Plan §0.6.2,
+`npm audit fix` is **not** run on this branch.
+
+For the authoritative breakdown — per-advisory analysis, exploitability
+assessment in this specific codebase, verification commands, the deliberately
+out-of-scope hardening backlog, and the recommended order of changes for any
+future production deployment — see [`SECURITY.md`](./SECURITY.md).
+
+To reproduce the advisory state at any time:
+
+```bash
+npm audit                 # 5 advisories total (3 high, 2 moderate)
+npm audit --omit=dev      # 2 production-tree advisories (1 high, 1 moderate)
+```
+
 ## License
 
 This project is licensed under the MIT License.
 
 ## Author
 
-hao-backprop-test contributors
+hxu
 
 ---
 
