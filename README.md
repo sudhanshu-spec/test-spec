@@ -326,6 +326,26 @@ PORT=8080 npm start
 npm install
 ```
 
+## Security
+
+This project is a Node.js / Express.js tutorial. The current release carries
+5 transitive `npm audit` advisories (2 in the runtime tree via `express@5.1.0`
+and 3 in the dev-only tree via `jest@30.2.0`) that are knowingly accepted
+within the tutorial scope. Per the project's Agent Action Plan §0.6.2,
+`npm audit fix` is **not** run on this branch.
+
+For the authoritative breakdown — per-advisory analysis, exploitability
+assessment in this specific codebase, verification commands, the deliberately
+out-of-scope hardening backlog, and the recommended order of changes for any
+future production deployment — see [`SECURITY.md`](./SECURITY.md).
+
+To reproduce the advisory state at any time:
+
+```bash
+npm audit                 # 5 advisories total (3 high, 2 moderate)
+npm audit --omit=dev      # 2 production-tree advisories (1 high, 1 moderate)
+```
+
 ## License
 
 This project is licensed under the MIT License.

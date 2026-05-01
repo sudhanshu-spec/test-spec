@@ -848,6 +848,8 @@ npm run test:coverage
 |---------|---------------|--------|
 | R-029 | No secrets in code | Environment variables for sensitive data |
 | R-030 | gitignore patterns | Exclude `.env`, `node_modules/`, logs |
+| R-031 | Dependency advisories | The repository carries 5 transitive `npm audit` advisories (2 runtime via `express@5.1.0` → `path-to-regexp@8.3.0` HIGH and `qs@6.14.0` MODERATE; 3 dev-only via `jest@30.2.0`). All five are acknowledged and accepted for the tutorial scope per AAP §0.6.2 ("`npm audit fix` is not to be run"). The authoritative analysis (per-CVE detail, exploitability assessment in this codebase, remediation path) lives in `SECURITY.md` at the repository root. |
+| R-032 | Documentation accuracy | Any documentation summary that classifies advisories by tree (runtime vs dev) MUST match `npm audit` and `npm audit --omit=dev` output. The previous summary stating "all advisories are in Jest's transitive dev dependencies" was inaccurate and has been superseded by `SECURITY.md`. |
 
 ### 0.7.10 Performance and Scalability
 

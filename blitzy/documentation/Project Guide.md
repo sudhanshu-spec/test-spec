@@ -325,6 +325,15 @@ server.js
 | No security middleware (helmet, CORS, rate limiting) | Low | Low | Tutorial scope; add if moving to production |
 | No HTTPS/TLS support | Low | Low | Tutorial scope; use a reverse proxy (nginx) for production TLS |
 | Server binds to 127.0.0.1 by default | Info | N/A | Safe default; use `HOST=0.0.0.0` only when needed |
+| 2 runtime-tree `npm audit` advisories (`path-to-regexp@8.3.0` HIGH, `qs@6.14.0` MODERATE) reachable via `express@5.1.0` | Acknowledged | Low (not exploitable in current code paths — static routes only, `req.query` never read) | Tracked and accepted for tutorial scope per AAP §0.6.2; full analysis, exploitability assessment, and remediation path are documented in [`SECURITY.md`](../../SECURITY.md) |
+| 3 dev-only `npm audit` advisories (`brace-expansion`, `minimatch`, `picomatch` via `jest`) | Acknowledged | None at runtime (not loaded by the running server) | Not loaded outside of `npm test`; tracked in [`SECURITY.md`](../../SECURITY.md); upstream resolution via Jest issues #15892/#15893 |
+
+> The advisory breakdown above corrects an earlier statement that classified
+> all five `npm audit` advisories as dev-only. Empirically, two of the five
+> live in the production tree and are reachable through `express@5.1.0`. The
+> file `SECURITY.md` at the repository root is the authoritative record of
+> the current advisory posture, exploitability analysis, and out-of-scope
+> hardening backlog.
 
 ### 6.3 Operational Risks
 
