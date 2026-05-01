@@ -1,6 +1,6 @@
 # src - Application Source
 
-This directory contains the application core — the Express app factory that creates and configures the Express application instance. It handles all app-level setup (middleware, routes) without dealing with server binding, keeping concerns cleanly separated.
+This directory contains the application core — the Express app factory that creates and configures the Express application instance. It handles all app-level setup (middleware integration point and route mounting) without dealing with server binding, keeping concerns cleanly separated.
 
 ## Key Files
 

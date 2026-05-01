@@ -1,4 +1,4 @@
-# hao-backprop-test
+# hello_world
 
 A Node.js tutorial server demonstrating Express.js integration with multiple HTTP endpoints.
 
@@ -29,7 +29,7 @@ npm --version
 
 ```bash
 git clone <repository-url>
-cd hao-backprop-test
+cd hello_world
 ```
 
 2. Install dependencies:
@@ -126,7 +126,7 @@ curl -s http://127.0.0.1:3000/evening && echo " - Evening OK"
 ## Project Structure
 
 ```
-hao-backprop-test/
+hello_world/
 ├── server.js                    # Entry point - HTTP server binding
 ├── package.json                 # npm manifest and dependencies
 ├── package-lock.json            # Dependency lockfile
@@ -236,7 +236,7 @@ npm ls express
 | `test` | `jest` | Run the complete test suite |
 | `test:watch` | `jest --watch` | Run tests in watch mode for development |
 | `test:coverage` | `jest --coverage` | Run tests and generate coverage report |
-| `test:ci` | `jest --ci --coverage` | Run tests optimized for CI/CD environments |
+| `test:ci` | `jest --ci --coverage --reporters=default` | Run tests optimized for CI/CD environments |
 
 ## Testing
 
@@ -305,7 +305,9 @@ npm run test:coverage
 
 **Port already in use:**
 ```bash
-# Error: listen EADDRINUSE: address already in use
+# You will see: "Port 3000 is already in use. Please choose a different port."
+# (This message is logged via console.error by server.js when the underlying
+#  Node.js error code is EADDRINUSE.)
 # Solution: Use a different port
 PORT=3001 npm start
 ```
@@ -330,7 +332,7 @@ This project is licensed under the MIT License.
 
 ## Author
 
-hao-backprop-test contributors
+hxu
 
 ---
 
