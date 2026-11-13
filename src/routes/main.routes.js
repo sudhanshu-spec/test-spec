@@ -42,6 +42,10 @@ router.get('/evening', (req, res) => {
  * Good evening route handler
  * Responds with 'Good evening' as plain text
  *
+ * Deliberately serves the same body as GET /evening under text/plain, while
+ * /evening keeps text/html; both registrations stay, so clients of /evening
+ * are unaffected.
+ *
  * @route GET /good-evening
  * @returns {string} 'Good evening'
  */
