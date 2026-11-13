@@ -48,18 +48,19 @@ describe('Route Handlers - main.routes.js', () => {
   });
 
   describe('Route Handler Definitions', () => {
-    test('should have two route handlers defined', () => {
+    test('should have three route handlers defined', () => {
       const routeLayers = getRouteLayers(mainRoutes);
-      expect(routeLayers.length).toBe(2);
+      expect(routeLayers.length).toBe(3);
     });
 
-    test('should define handlers for / and /evening paths', () => {
+    test('should define handlers for /, /evening, and /good-evening paths', () => {
       const paths = getRoutePaths(mainRoutes);
       expect(paths).toContain('/');
       expect(paths).toContain('/evening');
+      expect(paths).toContain('/good-evening');
     });
 
-    test('should define GET method handlers for both routes', () => {
+    test('should define GET method handlers for all routes', () => {
       const routeLayers = getRouteLayers(mainRoutes);
       
       routeLayers.forEach(layer => {
