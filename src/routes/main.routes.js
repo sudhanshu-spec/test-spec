@@ -38,4 +38,15 @@ router.get('/evening', (req, res) => {
   res.send('Good evening');
 });
 
+/**
+ * Good evening route handler
+ * Responds with 'Good evening' as plain text
+ *
+ * @route GET /good-evening
+ * @returns {string} 'Good evening'
+ */
+router.get('/good-evening', (req, res) => {
+  res.type('text/plain').send('Good evening');
+});
+
 module.exports = router;
