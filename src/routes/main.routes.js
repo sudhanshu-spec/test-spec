@@ -2,9 +2,8 @@
  * Main Application Routes Module
  *
  * This module defines the main GET route handlers using Express Router.
- * The '/' and '/evening' handlers are extracted from the original server.js
- * lines 8-14 with exact behavioral preservation; the '/good-evening' handler
- * is defined here on that same router.
+ * Each route contract below is served by exactly one handler registered
+ * on that single router.
  *
  * Route contracts:
  * - GET '/' returns 'Hello, World!\n' as text/html (with trailing newline)
@@ -20,8 +19,8 @@ const router = express.Router();
 
 /**
  * Root route handler
- * Responds with 'Hello, World!\n' - exact match to original server.js line 9
- * 
+ * Responds with 'Hello, World!\n' as text/html
+ *
  * @route GET /
  * @returns {string} 'Hello, World!\n'
  */
@@ -31,8 +30,8 @@ router.get('/', (req, res) => {
 
 /**
  * Evening route handler
- * Responds with 'Good evening' - exact match to original server.js line 13
- * 
+ * Responds with 'Good evening' as text/html
+ *
  * @route GET /evening
  * @returns {string} 'Good evening'
  */
