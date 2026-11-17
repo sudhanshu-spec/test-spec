@@ -1,14 +1,16 @@
 /**
  * Main Application Routes Module
- * 
+ *
  * This module defines the main GET route handlers using Express Router.
- * Routes are extracted from original server.js lines 8-14 with exact
- * behavioral preservation.
- * 
- * Route contracts preserved:
- * - GET '/' returns 'Hello, World!\n' (with trailing newline)
- * - GET '/evening' returns 'Good evening' (no trailing newline)
- * 
+ * The '/' and '/evening' handlers are extracted from the original server.js
+ * lines 8-14 with exact behavioral preservation; the '/good-evening' handler
+ * is defined here on that same router.
+ *
+ * Route contracts:
+ * - GET '/' returns 'Hello, World!\n' as text/html (with trailing newline)
+ * - GET '/evening' returns 'Good evening' as text/html (no trailing newline)
+ * - GET '/good-evening' returns 'Good evening' as text/plain (no trailing newline)
+ *
  * @module src/routes/main.routes
  */
 
