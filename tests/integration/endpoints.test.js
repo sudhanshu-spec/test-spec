@@ -34,6 +34,18 @@ function assertSuccessfulHtmlResponse(response, expectedBody) {
 }
 
 /**
+ * Asserts standard successful plain text response.
+ * @param {SupertestResponse} response - Supertest response object
+ * @param {string} expectedBody - Expected response body
+ */
+function assertSuccessfulPlainTextResponse(response, expectedBody) {
+  expect(response.status).toBe(200);
+  expect(response.text).toBe(expectedBody);
+  expect(response.headers['content-type']).toMatch(/text\/plain/);
+  expect(response.headers['content-type']).toMatch(/charset=utf-8/i);
+}
+
+/**
  * Asserts 404 error response.
  * @param {SupertestResponse} response - Supertest response object
  */
@@ -73,6 +85,23 @@ describe('HTTP Endpoints', () => {
 
     test('should return text/html Content-Type header', async () => {
       const response = await get('/evening').expect('Content-Type', /text\/html/);
+      expect(response.headers['content-type']).toMatch(/charset=utf-8/i);
+    });
+  });
+
+  describe('GET /good-evening', () => {
+    test('should return 200 status code', async () => {
+      const response = await get('/good-evening').expect(200);
+      expect(response.status).toBe(200);
+    });
+
+    test('should return "Good evening" in response body', async () => {
+      const response = await get('/good-evening');
+      assertSuccessfulPlainTextResponse(response, 'Good evening');
+    });
+
+    test('should return text/plain Content-Type header', async () => {
+      const response = await get('/good-evening').expect('Content-Type', /text\/plain/);
       expect(response.headers['content-type']).toMatch(/charset=utf-8/i);
     });
   });

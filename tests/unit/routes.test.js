@@ -35,60 +35,37 @@ function getRoutePaths(router) {
 
 describe('Route Handlers - main.routes.js', () => {
   describe('Router Export', () => {
-    test('should export an Express Router instance', () => {
-      expect(mainRoutes).toBeDefined();
+    test('exports an Express Router as a function with an array stack', () => {
       expect(typeof mainRoutes).toBe('function');
-      expect(mainRoutes.stack).toBeDefined();
       expect(Array.isArray(mainRoutes.stack)).toBe(true);
     });
 
-    test('should have router handle method defined', () => {
+    test('exposes the router request handler as a function', () => {
       expect(typeof mainRoutes.handle).toBe('function');
     });
   });
 
   describe('Route Handler Definitions', () => {
-    test('should have two route handlers defined', () => {
-      const routeLayers = getRouteLayers(mainRoutes);
-      expect(routeLayers.length).toBe(2);
+    test('registers exactly three route layers', () => {
+      expect(getRouteLayers(mainRoutes)).toHaveLength(3);
     });
 
-    test('should define handlers for / and /evening paths', () => {
-      const paths = getRoutePaths(mainRoutes);
-      expect(paths).toContain('/');
-      expect(paths).toContain('/evening');
+    test("registers exactly the paths '/', '/evening' and '/good-evening' in that order", () => {
+      expect(getRoutePaths(mainRoutes)).toEqual(['/', '/evening', '/good-evening']);
     });
 
-    test('should define GET method handlers for both routes', () => {
-      const routeLayers = getRouteLayers(mainRoutes);
-      
-      routeLayers.forEach(layer => {
-        expect(layer.route.methods).toBeDefined();
-        expect(layer.route.methods.get).toBe(true);
-      });
-    });
+    test('registers GET as the only method and a handler function on each of the three routes', () => {
+      const registrations = getRouteLayers(mainRoutes).map(layer => ({
+        path: layer.route.path,
+        methods: Object.keys(layer.route.methods || {}),
+        handlers: (layer.route.stack || []).map(handler => typeof handler.handle)
+      }));
 
-    test('should have handler functions in route stack', () => {
-      const routeLayers = getRouteLayers(mainRoutes);
-      
-      routeLayers.forEach(layer => {
-        expect(layer.route.stack).toBeDefined();
-        expect(layer.route.stack.length).toBeGreaterThan(0);
-        
-        layer.route.stack.forEach(handler => {
-          expect(typeof handler.handle).toBe('function');
-        });
-      });
-    });
-  });
-
-  describe('Route Path Ordering', () => {
-    test('should define root path (/) before /evening path', () => {
-      const paths = getRoutePaths(mainRoutes);
-      const rootIndex = paths.indexOf('/');
-      const eveningIndex = paths.indexOf('/evening');
-      
-      expect(rootIndex).toBeLessThan(eveningIndex);
+      expect(registrations).toEqual([
+        { path: '/', methods: ['get'], handlers: ['function'] },
+        { path: '/evening', methods: ['get'], handlers: ['function'] },
+        { path: '/good-evening', methods: ['get'], handlers: ['function'] }
+      ]);
     });
   });
 });
