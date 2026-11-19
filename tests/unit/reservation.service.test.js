@@ -14,6 +14,13 @@
 
 'use strict';
 
+// The wired singleton is built over the real reservation repository, which
+// reaches src/db and loads the native SQLite driver as soon as this suite
+// requires it. Replacing the connection module keeps a pure unit suite free of
+// that driver — and of any chance of a database file — while the repository
+// object the singleton holds stays the real one.
+jest.mock('../../src/db', () => ({ getDb: jest.fn(), closeDb: jest.fn() }));
+
 const { AppError, RESERVATION_ISSUES } = require('../../src/errors');
 const {
   createReservationService,

@@ -1,14 +1,32 @@
 /**
  * @fileoverview Unit tests for the menu service (src/services/menu.service.js).
  * Every case builds the service over stubbed category and item repositories, so
- * no database, no HTTP request and no port is involved. What is pinned here is
- * the category ordering, the slug filtering, the two not-found mappings and the
- * item projection the three menu endpoints answer with.
+ * no database, no HTTP request and no port is involved; the connection module is
+ * stubbed for the whole suite, so the SQLite binding never loads and no file is
+ * created. What is pinned here is the category ordering, the slug filtering, the
+ * two not-found mappings (R-6) and the item projection the three menu endpoints
+ * answer with: integer cents carried unformatted (R-3) and no user identity taken
+ * by a public read (R-5).
  * @module tests/unit/menu.service
  */
 
 'use strict';
 
+// The service's singleton is built at load over the real repository modules, and
+// both of those require the connection module, which loads the SQLite binding and
+// evaluates the configuration on the way in. Replacing the connection module for
+// the whole suite is what keeps both out of these cases: getDb throws, so a read
+// that slipped past the stubs fails the case that caused it instead of opening a
+// file. Fresh stubs come from buildMenuService per test, so no per-case module
+// reset is needed to isolate one case from the next.
+jest.mock('../../src/db', () => ({
+  getDb: jest.fn(() => {
+    throw new Error('Unit tests must not open the database');
+  }),
+  closeDb: jest.fn()
+}));
+
+const { getDb } = require('../../src/db');
 const { AppError } = require('../../src/errors');
 const {
   createMenuService,
@@ -126,13 +144,17 @@ function buildMenuService({
 /**
  * Invoke a call that is expected to fail and return the error it raised.
  *
- * @param {Function} invoke - Call expected to throw.
- * @returns {Error} The error the call raised.
- * @throws {Error} When the call returns instead of throwing.
+ * Awaits the invocation, so a failure raised synchronously and a rejected promise
+ * are both captured: the service raises synchronously today, and a case must not
+ * quietly pass if that ever becomes asynchronous.
+ *
+ * @param {Function} invoke - Call expected to throw or reject.
+ * @returns {Promise<Error>} The error the call raised.
+ * @throws {Error} When the call returns instead of failing.
  */
-function captureError(invoke) {
+async function captureError(invoke) {
   try {
-    invoke();
+    await invoke();
   } catch (error) {
     return error;
   }
@@ -149,7 +171,8 @@ describe('Menu service - menu.service.js', () => {
 
   test('wires the singleton to exactly the three read operations', () => {
     // The singleton is bound to the real repositories, so it is inspected here
-    // and never called: calling it would open the database.
+    // and never called: its reads would reach the connection module, which this
+    // suite stubs to throw.
     expect(typeof menuService.listCategories).toBe('function');
     expect(typeof menuService.listItems).toBe('function');
     expect(typeof menuService.getItem).toBe('function');
@@ -296,6 +319,21 @@ describe('Menu service - menu.service.js', () => {
       expect(repositories.categories.findBySlug).toHaveBeenCalledWith('classics');
     });
 
+    test('ignores a caller-supplied user id, because reading the menu takes no identity', () => {
+      // R-5: menu reads are public, so the filter object is the only input the
+      // service accepts and an id travelling beside it changes nothing.
+      const { service, repositories } = buildMenuService({
+        category: categoryRow(),
+        categoryItems: [itemRow()]
+      });
+
+      const items = service.listItems({ categorySlug: 'classics', userId: 'user-elsewhere' });
+
+      expect(repositories.categories.findBySlug).toHaveBeenCalledWith('classics');
+      expect(repositories.items.listByCategoryId).toHaveBeenCalledWith('cat-classics');
+      expect(items).toEqual([PUBLIC_ITEM]);
+    });
+
     test('is empty, not an error, for a known category holding no available item', () => {
       const { service, repositories } = buildMenuService({
         category: categoryRow(),
@@ -311,17 +349,18 @@ describe('Menu service - menu.service.js', () => {
     test.each([
       ['a slug no category carries', 'missing'],
       ['a slug that only matches once trimmed', '  pastries  ']
-    ])('raises CATEGORY_NOT_FOUND for %s', (_case, categorySlug) => {
+    ])('raises CATEGORY_NOT_FOUND for %s', async (_case, categorySlug) => {
       const { service, repositories } = buildMenuService({ category: null });
 
-      const error = captureError(() => service.listItems({ categorySlug }));
+      const error = await captureError(() => service.listItems({ categorySlug }));
 
       expect(repositories.categories.findBySlug).toHaveBeenCalledTimes(1);
       expect(repositories.items.listByCategoryId).not.toHaveBeenCalled();
       expect(repositories.items.listAvailable).not.toHaveBeenCalled();
       expect(error).toBeInstanceOf(AppError);
-      expect(error.code).toBe('CATEGORY_NOT_FOUND');
-      expect(error.status).toBe(404);
+      // R-6: the documented code and its status travel together, and a missing
+      // resource carries no `details` — those belong to validation failures only.
+      expect(error).toMatchObject({ code: 'CATEGORY_NOT_FOUND', status: 404 });
       expect(error.details).toBeUndefined();
       expect(error.message).toContain(categorySlug.trim());
     });
@@ -345,15 +384,15 @@ describe('Menu service - menu.service.js', () => {
       expect(service.getItem({ id: 'item-cheeseburger' }).is_available).toBe(false);
     });
 
-    test('raises MENU_ITEM_NOT_FOUND for an id that names no item', () => {
+    test('raises MENU_ITEM_NOT_FOUND for an id that names no item', async () => {
       const { service, repositories } = buildMenuService({ item: null });
 
-      const error = captureError(() => service.getItem({ id: 'item-missing' }));
+      const error = await captureError(() => service.getItem({ id: 'item-missing' }));
 
       expect(repositories.items.findById).toHaveBeenCalledWith('item-missing');
       expect(error).toBeInstanceOf(AppError);
-      expect(error.code).toBe('MENU_ITEM_NOT_FOUND');
-      expect(error.status).toBe(404);
+      // R-6: code and status together, and no `details` on a missing resource.
+      expect(error).toMatchObject({ code: 'MENU_ITEM_NOT_FOUND', status: 404 });
       expect(error.details).toBeUndefined();
       expect(error.message).toContain('item-missing');
     });
@@ -384,6 +423,17 @@ describe('Menu service - menu.service.js', () => {
       expect(typeof item.price_cents).toBe('number');
     });
 
+    test('leaves money unformatted, so no currency string reaches a response', () => {
+      // R-3: the server carries integer cents and never renders them; the single
+      // formatter lives in the client, so a currency symbol here is a defect.
+      const item = toPublicItem(itemRow({ price_cents: 1299 }));
+      const strings = Object.values(item).filter((value) => typeof value === 'string');
+
+      expect(item.price_cents).toBe(1299);
+      expect(JSON.stringify(item)).not.toMatch(/[$€£¥]/);
+      expect(strings.some((value) => /[$€£¥]/.test(value))).toBe(false);
+    });
+
     test('names exactly the contract keys, so no extra column reaches a response', () => {
       const item = toPublicItem(itemRow());
 
@@ -392,5 +442,11 @@ describe('Menu service - menu.service.js', () => {
         /category_id|category_name|category_slug|created_at|updated_at/
       );
     });
+  });
+
+  test('opens no database and binds no port for any case above', () => {
+    // The connection mock throws, so this proves every case reached its stubs and
+    // none of them fell through to the connection module.
+    expect(getDb).not.toHaveBeenCalled();
   });
 });
