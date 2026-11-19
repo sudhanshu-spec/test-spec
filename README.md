@@ -13,7 +13,9 @@ Before running this application, ensure you have the following installed:
 | Node.js | 20.19.x | 20.19.x (LTS) |
 | npm | 8.x | 10.8.x |
 
-The client's Vite 8 build requires Node.js `^20.19.0 || >=22.12.0` and Vitest 4 requires `^20.0.0 || ^22.0.0 || >=24.0.0`, both declared in `client/package-lock.json`, so Node.js 20.19.x is the minimum this project supports — and the version it is verified on.
+The client's Vite 8 build requires Node.js `^20.19.0 || >=22.12.0` and Vitest 4 requires `^20.0.0 || ^22.0.0 || >=24.0.0`, both declared in `client/package-lock.json`, so Node.js 20.19.x is the minimum this project supports. The delivered verification ran on Node.js v22.23.5 with npm 11.21.0 — a runtime both engine ranges accept.
+
+`jq`, any recent release, is needed only by the Example Session below: the walkthrough pipes the registration response through `jq` to capture the token, and no other step uses it.
 
 ### Verify Installation
 
@@ -104,7 +106,7 @@ HOST=0.0.0.0 PORT=8080 NODE_ENV=production npm start
 
 ## API Reference
 
-Every response is JSON except the three tutorial routes. Money is always an integer number of cents — `price_cents`, `unit_price_cents`, `line_total_cents` and `total_cents` — so no floating-point currency value is ever sent or accepted.
+Every `/api` response carries a JSON body except `POST /api/auth/logout`, which answers `204` with no body, and the `OPTIONS` requests the CORS middleware terminates before any routing; the three tutorial routes and unmatched paths outside `/api` are not JSON. Money is always an integer number of cents — `price_cents`, `unit_price_cents`, `line_total_cents` and `total_cents` — so no floating-point currency value is ever sent or accepted.
 
 ### Tutorial Routes
 
@@ -116,7 +118,7 @@ These three routes are frozen: method, status, content type and body do not chan
 | `GET` | `/evening` | 200 OK | `text/html; charset=utf-8` | `Good evening` (12 characters, no trailing newline) |
 | `GET` | `/good-evening` | 200 OK | `text/plain; charset=utf-8` | `Good evening` (12 characters, no trailing newline) |
 
-Any other method registered on those paths, and any path outside `/api` that matches no route, is answered with Express's own 404.
+Any other method registered on those paths, and any path outside `/api` that matches no route, is answered with Express's own 404 — except an `OPTIONS` request, which the app-wide CORS middleware answers with `204` and no body before any routing happens.
 
 #### GET `/`
 
@@ -256,7 +258,7 @@ Every failure is answered with one shape:
 | `ROUTE_NOT_FOUND` | 404 | The path matches no route under `/api`. |
 | `INTERNAL_ERROR` | 500 | An unhandled failure; the stack is logged server-side and never returned. |
 
-`ROUTE_NOT_FOUND` and the error envelope apply to `/api` only. A path outside `/api` — `/invalid`, `/hello-world` — keeps Express's own 404 page, exactly as it does today.
+`ROUTE_NOT_FOUND` and the error envelope apply to `/api` only. A path outside `/api` — `/invalid`, `/hello-world` — keeps Express's own 404 page, exactly as it does today; an `OPTIONS` request is the one exception, answered `204` with no body by the app-wide CORS middleware before any routing happens.
 
 #### Reservation Rules
 
@@ -276,7 +278,7 @@ Times are compared in the server's local timezone and the horizon is counted in 
 #### Example Session
 
 ```bash
-# Create an account and keep the token
+# Create an account and keep the token (needs jq — see Prerequisites)
 TOKEN=$(curl -s -X POST http://127.0.0.1:3000/api/auth/register \
   -H 'Content-Type: application/json' \
   -d '{"name":"Ada Lovelace","email":"ada@example.com","password":"correct-horse"}' \
@@ -291,10 +293,12 @@ curl -s -X POST http://127.0.0.1:3000/api/orders \
   -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -d '{"items":[{"menu_item_id":"<uuid>","quantity":2}],"notes":"No pickles"}'
 
-# Book a table
+# Book a table. The API refuses any date in the past or more than 90 days
+# ahead (the horizon documented above), so book a week from today.
+BOOKING_DATE=$(date -d '+7 days' +%Y-%m-%d 2>/dev/null || date -v+7d +%Y-%m-%d)
 curl -s -X POST http://127.0.0.1:3000/api/reservations \
   -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
-  -d '{"reservation_date":"2030-06-01","reservation_time":"19:30","party_size":2}'
+  -d "{\"reservation_date\":\"$BOOKING_DATE\",\"reservation_time\":\"19:30\",\"party_size\":2}"
 ```
 
 ## Project Structure
@@ -431,7 +435,7 @@ Browser client (Vite dev server or preview)
                     Configuration: src/config/index.js
 ```
 
-The order of those stages is the contract. The tutorial routes resolve in stage 3 exactly as they do without the API, and `src/middleware/not-found.js` and `src/middleware/error-handler.js` are mounted under `/api` only, so a path outside that mount point keeps Express's own 404.
+The order of those stages is the contract. The tutorial routes resolve in stage 3 exactly as they do without the API, and `src/middleware/not-found.js` and `src/middleware/error-handler.js` are mounted under `/api` only, so a path outside that mount point keeps Express's own 404 (the CORS middleware's `OPTIONS` answer being the one exception).
 
 Three boundaries are deliberate:
 
@@ -443,7 +447,7 @@ Three boundaries are deliberate:
 
 - **Factory Pattern**: `src/app.js` exports a configured Express app without starting the server, enabling testability
 - **Service and Repository Layers**: business rules live in `src/services/`, SQL only in `src/repositories/`
-- **Dependency Injection**: every service is built by a `create<Domain>Service({repositories, config, now})` factory, so the clock and the repositories are replaced in tests
+- **Dependency Injection**: every service is built by a `create<Domain>Service({...})` factory that receives its repositories by name — plus, where it needs them, its configuration and its clock — as arguments: `createAuthService({users, tokens, config, now})`, `createMenuService({categories, items})`, `createOrderService({orders, now})` and `createReservationService({reservations, config, now})`, so the clock and the repositories are replaced in tests
 - **Barrel Pattern**: `src/routes/index.js` and `src/routes/api/index.js` aggregate route exports for clean imports
 - **CommonJS on the server, ES modules in the client**: `require`/`module.exports` in the root package, `import`/`export` in `client/`; no file mixes the two
 - **Twelve-Factor App**: Configuration externalized to environment variables, read in `src/config/index.js` only
@@ -496,7 +500,7 @@ npm ls express
 cd client && npm install
 ```
 
-No library is added for hashing, tokens, validation, sessions or HTTP calls: `node:crypto` covers UUID generation, `scrypt` hashing and token minting, the `auth_tokens` table holds sessions, hand-written validators in the routers check every request body and path parameter, `express.json()` parses bodies, and the client uses the browser's `fetch`.
+No library is added for hashing, tokens, validation, sessions or HTTP calls: `node:crypto` covers UUID generation, `scrypt` hashing and token minting, the `auth_tokens` table holds sessions, hand-written validators — in the routers, plus the booking rules in `src/services/reservation.service.js` — check every request body and path parameter, `express.json()` parses bodies, and the client uses the browser's `fetch`.
 
 ## Scripts
 
@@ -559,15 +563,15 @@ tests/
 client/src/__tests__/        # Client state, routing and component tests (Vitest + jsdom)
 ```
 
-- `tests/unit/` — configuration defaults and parsing, the tutorial router shape, the error vocabulary, the Bearer-token guard, the API not-found handler, and the four services (`auth.service`, `menu.service`, `order.service`, `reservation.service`) against stubbed repositories.
-- `tests/integration/` — the tutorial route contracts, the API contract suites (`api-auth`, `api-menu`, `api-orders`, `api-reservations`, `api-contract`), the six repositories, the schema, the end-to-end flow `e2e-flow` (register, login, browse the menu, place an order, book a table), read latency (`latency`) and module reachability (`reachability`).
+- `tests/unit/` — configuration defaults and parsing, the tutorial router shape, the error vocabulary, the Bearer-token guard, the API not-found handler, the four services (`auth.service`, `menu.service`, `order.service`, `reservation.service`) against stubbed repositories, the 200-line module-size guard (`module-size`) and the entry point's listen-error and shutdown paths (`server-entry`).
+- `tests/integration/` — the tutorial route contracts, the API contract suites (`api-auth`, `api-menu`, `api-orders`, `api-reservations`, `api-contract`), the four domain routers over a real pipeline (`api-routers`), the six repositories, the database connection (`db-connection`), the error envelope (`error-handler`), the schema, the end-to-end flow `e2e-flow` (register, login, browse the menu, place an order, book a table), read latency (`latency`) and module reachability (`reachability`).
 - `tests/lifecycle/` — server startup and shutdown behaviour.
-- `client/src/__tests__/` — cart state, the typed API client and its 401 handling, form validation, protected routes and the layout.
+- `client/src/__tests__/` — cart state, the typed API client and its 401 handling, form validation, protected routes, the layout, module reachability (`reachability`) and the jsdom test bootstrap (`test-setup`).
 
 | Directory | Purpose | Test Approach |
 |-----------|---------|---------------|
 | `tests/unit/` | Test isolated modules without HTTP | Direct module imports with Jest assertions |
-| `tests/integration/` | Test HTTP endpoint responses and persistence | Supertest requests against the Express app, each suite on its own temporary database file |
+| `tests/integration/` | Test HTTP endpoint responses and persistence | Supertest requests against the Express app; the suites that exercise persistence run on their own temporary database file, and the suites that need none open no database at all |
 | `tests/lifecycle/` | Test server startup/shutdown | Mock-based lifecycle verification |
 | `client/src/__tests__/` | Test client behaviour | Vitest with Testing Library in a jsdom environment |
 
