@@ -1,10 +1,15 @@
 /**
- * @fileoverview Integration tests for the persistence contract: the schema held
- * in `src/db/schema.sql` and the reference data `src/db/seed.js` inserts into an
- * empty database. A real better-sqlite3 file is created outside the repository
- * and the schema is applied from the file itself, because foreign-key
- * enforcement is a per-connection pragma and the table and index set is what
- * SQLite actually recorded rather than what the SQL text appears to say.
+ * @fileoverview Integration tests for the persistence contract: the tables and
+ * indexes `src/db/schema.sql` declares, the foreign-key, CHECK and UNIQUE
+ * constraints those tables enforce, the reference data `src/db/seed.js` inserts
+ * into an empty database, and the idempotency of both across a close and
+ * re-open.
+ *
+ * The suite reaches the database only through the two functions
+ * `src/db/index.js` exports, because foreign-key enforcement is a per-connection
+ * pragma: the constraints are real only on the connection the repositories use,
+ * so a private handle would prove nothing about them. No HTTP and no repository
+ * is involved.
  * @module tests/integration/schema
  */
 
@@ -14,176 +19,444 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { randomUUID } = require('node:crypto');
-const Database = require('better-sqlite3');
-const { seedIfEmpty } = require('../../src/db/seed');
 
-const SCHEMA_PATH = path.join(__dirname, '../../src/db/schema.sql');
-const SCHEMA_SQL = fs.readFileSync(SCHEMA_PATH, 'utf8');
+// DB_FILE is set before the module registry is reset and before src/db is
+// required, so the src/config copy the database module reads points at this
+// suite's own file instead of data/app.db. No other variable is set.
+const previousDbFile = process.env.DB_FILE;
+const dbFile = path.join(os.tmpdir(), `burger-schema-${process.pid}-${Date.now()}.db`);
+process.env.DB_FILE = dbFile;
 
+jest.resetModules();
+
+const { getDb, closeDb } = require('../../src/db');
+
+/** The seven tables the schema declares — no cart table and no migration table. */
 const EXPECTED_TABLES = [
-  'auth_tokens', 'categories', 'menu_items', 'order_line_items', 'orders', 'reservations', 'users'
+  'auth_tokens',
+  'categories',
+  'menu_items',
+  'order_line_items',
+  'orders',
+  'reservations',
+  'users'
 ];
 
+/** The four declared index access paths, with the table and columns each covers. */
 const EXPECTED_INDEXES = [
+  { name: 'idx_auth_tokens_token_hash', table: 'auth_tokens', columns: ['token_hash'] },
   { name: 'idx_menu_items_category', table: 'menu_items', columns: ['category_id'] },
   { name: 'idx_orders_user_date', table: 'orders', columns: ['user_id', 'created_at'] },
-  { name: 'idx_reservations_user_date', table: 'reservations', columns: ['user_id', 'reservation_date'] },
-  { name: 'idx_auth_tokens_token_hash', table: 'auth_tokens', columns: ['token_hash'] }
+  { name: 'idx_reservations_user_date', table: 'reservations', columns: ['user_id', 'reservation_date'] }
 ];
 
-const FOREIGN_KEY_FAILURE = /FOREIGN KEY constraint failed/;
+/** The four order statuses the orders CHECK constraint admits. */
+const ORDER_STATUSES = ['confirmed', 'preparing', 'completed', 'cancelled'];
 
-const TABLE_QUERY =
-  "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name";
+/** Seed floors: at least five categories and at least twelve menu items. */
+const MINIMUM_CATEGORIES = 5;
+const MINIMUM_ITEMS = 12;
+
+/** Timestamp for the rows this suite writes by hand; both columns are NOT NULL. */
+const FIXTURE_TIMESTAMP = '2024-01-01T00:00:00.000Z';
 
 /**
- * Lists the user tables the database holds, SQLite's own internal objects aside.
- * @param {import('better-sqlite3').Database} db - Open handle
+ * The open, schema-applied, seeded connection.
+ * @returns {Object} The memoised better-sqlite3 handle
+ */
+const db = () => getDb();
+
+/**
+ * Lists the tables the database holds, SQLite's own internal objects aside.
  * @returns {string[]} Table names in ascending order
  */
-const tableNames = (db) => db.prepare(TABLE_QUERY).all().map((row) => row.name);
+function tableNames() {
+  return db()
+    .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name")
+    .all()
+    .map((row) => row.name);
+}
 
 /**
- * Snapshots a seeded table's primary keys so a later call can prove that not one
- * row was replaced. The table name is always one of the two literals the seed
- * owns; no user input reaches the statement.
- * @param {import('better-sqlite3').Database} db - Open handle
- * @param {'categories'|'menu_items'} table - Seeded table to read
- * @returns {string[]} Row ids in ascending order
+ * Lists the named indexes the database holds. The auto-indexes SQLite creates for
+ * a UNIQUE constraint carry an sqlite_autoindex prefix and are filtered out, so
+ * what remains is the set schema.sql declares.
+ * @returns {string[]} Index names in ascending order
  */
-const rowIds = (db, table) =>
-  db.prepare(`SELECT id FROM ${table} ORDER BY id`).all().map((row) => row.id);
+function indexNames() {
+  return db()
+    .prepare("SELECT name FROM sqlite_master WHERE type = 'index' ORDER BY name")
+    .all()
+    .map((row) => row.name)
+    .filter((name) => !name.startsWith('sqlite_autoindex'));
+}
 
 /**
- * Counts the rows of a seeded table.
- * @param {import('better-sqlite3').Database} db - Open handle
- * @param {'categories'|'menu_items'} table - Seeded table to count
+ * Counts the rows of a seeded table. The table name is always one of the two
+ * literals the seed owns; no user input reaches the statement.
+ * @param {'categories'|'menu_items'} table - Table to count
  * @returns {number} Row count
  */
-const countRows = (db, table) => db.prepare(`SELECT COUNT(*) AS total FROM ${table}`).get().total;
+function countRows(table) {
+  return db().prepare(`SELECT COUNT(*) AS total FROM ${table}`).get().total;
+}
+
+/**
+ * Inserts a user row and returns its id.
+ * @param {string} email - Email to store; every fixture passes a distinct one
+ * @returns {string} The inserted user's id
+ */
+function insertUser(email) {
+  const id = randomUUID();
+
+  db()
+    .prepare(
+      'INSERT INTO users (id, name, email, password_hash, password_salt, created_at, updated_at) ' +
+        'VALUES (?, ?, ?, ?, ?, ?, ?)'
+    )
+    .run(
+      id,
+      'Schema Fixture',
+      email,
+      'fixture-password-hash',
+      'fixture-password-salt',
+      FIXTURE_TIMESTAMP,
+      FIXTURE_TIMESTAMP
+    );
+
+  return id;
+}
+
+/**
+ * Inserts an order row and returns its id.
+ * @param {{userId: string, status?: string, totalCents?: number}} order - Row values
+ * @returns {string} The inserted order's id
+ */
+function insertOrder({ userId, status = 'confirmed', totalCents = 1499 }) {
+  const id = randomUUID();
+
+  db()
+    .prepare('INSERT INTO orders (id, user_id, status, total_cents) VALUES (?, ?, ?, ?)')
+    .run(id, userId, status, totalCents);
+
+  return id;
+}
+
+/**
+ * Inserts an order line row and returns its id.
+ * @param {{orderId: string, menuItemId: string, quantity?: number,
+ *   unitPriceCents?: number}} line - Row values
+ * @returns {string} The inserted line's id
+ */
+function insertLineItem({ orderId, menuItemId, quantity = 1, unitPriceCents = 899 }) {
+  const id = randomUUID();
+
+  db()
+    .prepare(
+      'INSERT INTO order_line_items ' +
+        '(id, order_id, menu_item_id, quantity, unit_price_cents, line_total_cents) VALUES (?, ?, ?, ?, ?, ?)'
+    )
+    .run(id, orderId, menuItemId, quantity, unitPriceCents, unitPriceCents * quantity);
+
+  return id;
+}
+
+/**
+ * Inserts a reservation row and returns its id.
+ * @param {{userId: string, date: string, time: string, partySize?: number}} reservation - Row values
+ * @returns {string} The inserted reservation's id
+ */
+function insertReservation({ userId, date, time, partySize = 2 }) {
+  const id = randomUUID();
+
+  db()
+    .prepare(
+      'INSERT INTO reservations (id, user_id, reservation_date, reservation_time, party_size) ' +
+        'VALUES (?, ?, ?, ?, ?)'
+    )
+    .run(id, userId, date, time, partySize);
+
+  return id;
+}
+
+/**
+ * A category id the seed created, for the menu items that need a parent row.
+ * @returns {string} Seeded category id
+ */
+function seededCategoryId() {
+  return db().prepare('SELECT id FROM categories ORDER BY display_order, id LIMIT 1').get().id;
+}
+
+/**
+ * A menu item id the seed created, for the order lines that need a parent row.
+ * @returns {string} Seeded menu item id
+ */
+function seededMenuItemId() {
+  return db().prepare('SELECT id FROM menu_items ORDER BY id LIMIT 1').get().id;
+}
+
+/**
+ * Asserts that a write is refused by a table constraint. SQLite reports every
+ * constraint violation as one SqliteError whose wording differs between
+ * versions, so the assertion is that the write throws rather than what it says.
+ * @param {Function} write - Statement bound to its arguments, not yet run
+ * @returns {void}
+ */
+function expectConstraintError(write) {
+  expect(write).toThrow();
+}
 
 describe('SQLite schema and seed', () => {
-  let workDir;
-  let db;
-
-  // One database for the whole file: the tests below run in declaration order, so
-  // the schema assertions see the tables before any row exists, the foreign-key
-  // case has no parent rows to borrow, and the seed assertions run last.
-  beforeAll(() => {
-    workDir = fs.mkdtempSync(path.join(os.tmpdir(), 'blitzy-schema-'));
-    db = new Database(path.join(workDir, 'schema.db'));
-    db.pragma('foreign_keys = ON');
-    db.exec(SCHEMA_SQL);
-  });
-
   afterAll(() => {
-    if (db && db.open) {
-      db.close();
+    // The handle must close before any file is unlinked: while it is open, WAL
+    // keeps the database, its -wal and its -shm files in use.
+    closeDb();
+
+    for (const target of [dbFile, `${dbFile}-wal`, `${dbFile}-shm`]) {
+      try {
+        fs.unlinkSync(target);
+      } catch {
+        // Already gone: a clean close removes the WAL sidecars, and the one
+        // remaining failure mode is a sidecar the operating system has not
+        // released yet. Either way there is no assertion that depends on it.
+      }
     }
 
-    if (workDir) {
-      fs.rmSync(workDir, { recursive: true, force: true });
+    if (previousDbFile === undefined) {
+      delete process.env.DB_FILE;
+    } else {
+      process.env.DB_FILE = previousDbFile;
     }
   });
 
   describe('tables', () => {
-    test('creates exactly the seven declared tables and no cart, session or migration table', () => {
-      expect(tableNames(db)).toEqual(EXPECTED_TABLES);
+    test('holds exactly the seven declared tables and no cart or migration table', () => {
+      expect(tableNames()).toEqual(EXPECTED_TABLES);
     });
 
-    test('creates no AUTOINCREMENT sequence table alongside them', () => {
-      const sequence = db.prepare("SELECT name FROM sqlite_master WHERE name = 'sqlite_sequence'");
-      expect(sequence.all()).toEqual([]);
+    test('holds no AUTOINCREMENT sequence table', () => {
+      expect(db().prepare("SELECT name FROM sqlite_master WHERE name = 'sqlite_sequence'").get()).toBeUndefined();
     });
   });
 
   describe('indexes', () => {
-    test.each(EXPECTED_INDEXES)('declares $name on $table over $columns', (expected) => {
-      const entry = db
+    test('declares exactly the four documented indexes', () => {
+      expect(indexNames()).toEqual(EXPECTED_INDEXES.map((index) => index.name).sort());
+    });
+
+    test.each(EXPECTED_INDEXES)('builds $name on $table over its documented columns', (expected) => {
+      const entry = db()
         .prepare("SELECT tbl_name FROM sqlite_master WHERE type = 'index' AND name = ?")
         .get(expected.name);
-      const columns = db.pragma(`index_info(${expected.name})`).map((column) => column.name);
+      const columns = db()
+        .pragma(`index_info(${expected.name})`)
+        .map((column) => column.name);
 
       expect(entry).toEqual({ tbl_name: expected.table });
       expect(columns).toEqual(expected.columns);
     });
   });
 
-  describe('foreign keys', () => {
-    test('are enforced on the connection', () => {
-      expect(db.pragma('foreign_keys', { simple: true })).toBe(1);
+  describe('connection pragmas', () => {
+    test('enforces foreign keys on the connection', () => {
+      expect(db().pragma('foreign_keys', { simple: true })).toBe(1);
     });
 
-    test('reject a menu item whose category does not exist', () => {
+    test('journals in WAL mode', () => {
+      expect(db().pragma('journal_mode', { simple: true })).toBe('wal');
+    });
+  });
+
+  describe('seed minimums', () => {
+    test('provides at least five categories and twelve menu items', () => {
+      expect(countRows('categories')).toBeGreaterThanOrEqual(MINIMUM_CATEGORIES);
+      expect(countRows('menu_items')).toBeGreaterThanOrEqual(MINIMUM_ITEMS);
+    });
+
+    test('prices every item in whole cents above zero', () => {
+      const prices = db()
+        .prepare('SELECT price_cents AS priceCents FROM menu_items')
+        .all()
+        .map((row) => row.priceCents);
+
+      expect(prices).toHaveLength(countRows('menu_items'));
+      expect(prices.filter((cents) => !Number.isInteger(cents) || cents <= 0)).toEqual([]);
+    });
+
+    test('gives every category a lowercase, unique, non-empty slug', () => {
+      const slugs = db()
+        .prepare('SELECT slug FROM categories')
+        .all()
+        .map((row) => row.slug);
+
+      expect(slugs.length).toBeGreaterThanOrEqual(MINIMUM_CATEGORIES);
+      expect(
+        slugs.filter((slug) => typeof slug !== 'string' || slug.trim() === '' || slug !== slug.toLowerCase())
+      ).toEqual([]);
+      expect(new Set(slugs).size).toBe(slugs.length);
+    });
+
+    test('describes every item', () => {
+      const undescribed = db()
+        .prepare("SELECT id FROM menu_items WHERE description IS NULL OR trim(description) = ''")
+        .all();
+
+      expect(undescribed).toEqual([]);
+    });
+
+    test('attaches every item to a category row that exists', () => {
+      const orphans = db()
+        .prepare('SELECT m.id FROM menu_items m LEFT JOIN categories c ON c.id = m.category_id WHERE c.id IS NULL')
+        .all();
+
+      expect(orphans).toEqual([]);
+    });
+
+    test('offers at least one item in every category', () => {
+      const unstocked = db()
+        .prepare(
+          'SELECT c.slug FROM categories c WHERE NOT EXISTS ' +
+            '(SELECT 1 FROM menu_items m WHERE m.category_id = c.id) ORDER BY c.slug'
+        )
+        .all()
+        .map((row) => row.slug);
+
+      expect(unstocked).toEqual([]);
+    });
+
+    test('sets a whole-number display_order on every category', () => {
+      const displayOrders = db()
+        .prepare('SELECT display_order AS displayOrder FROM categories')
+        .all()
+        .map((row) => row.displayOrder);
+
+      expect(displayOrders.length).toBeGreaterThanOrEqual(MINIMUM_CATEGORIES);
+      expect(displayOrders.filter((order) => !Number.isInteger(order))).toEqual([]);
+    });
+  });
+
+  describe('foreign-key enforcement', () => {
+    test('rejects a menu item whose category does not exist', () => {
       const itemId = randomUUID();
-      const insert = db.prepare(
-        'INSERT INTO menu_items (id, category_id, name, description, price_cents) VALUES (?, ?, ?, ?, ?)'
-      );
-      const countById = db.prepare('SELECT COUNT(*) AS total FROM menu_items WHERE id = ?');
+      const insert = () =>
+        db()
+          .prepare('INSERT INTO menu_items (id, category_id, name, description, price_cents) VALUES (?, ?, ?, ?, ?)')
+          .run(itemId, 'no-such-category', 'Orphan Burger', 'No category.', 899);
 
-      expect(() => insert.run(itemId, 'no-such-category', 'Orphan Burger', 'No category.', 899)).toThrow(
-        FOREIGN_KEY_FAILURE
-      );
-      expect(countById.get(itemId).total).toBe(0);
+      expectConstraintError(insert);
+      expect(db().prepare('SELECT COUNT(*) AS total FROM menu_items WHERE id = ?').get(itemId).total).toBe(0);
+    });
+
+    test('rejects an order whose user does not exist', () => {
+      const orderId = randomUUID();
+      const insert = () =>
+        db()
+          .prepare('INSERT INTO orders (id, user_id, total_cents) VALUES (?, ?, ?)')
+          .run(orderId, 'no-such-user', 1499);
+
+      expectConstraintError(insert);
+      expect(db().prepare('SELECT COUNT(*) AS total FROM orders WHERE id = ?').get(orderId).total).toBe(0);
     });
   });
 
-  describe('seed', () => {
-    test('fills the empty tables with the menu reference data', () => {
-      const firstResult = seedIfEmpty(db);
+  describe('CHECK constraints', () => {
+    test('rejects a menu item priced at zero cents', () => {
+      const insert = () =>
+        db()
+          .prepare('INSERT INTO menu_items (id, category_id, name, description, price_cents) VALUES (?, ?, ?, ?, ?)')
+          .run(randomUUID(), seededCategoryId(), 'Free Burger', 'Priced at nothing.', 0);
 
-      expect(firstResult).toEqual({ skipped: false, categories: 6, items: 14 });
-      expect(countRows(db, 'categories')).toBe(6);
-      expect(countRows(db, 'menu_items')).toBe(14);
-      expect(firstResult.categories).toBeGreaterThanOrEqual(5);
-      expect(firstResult.items).toBeGreaterThanOrEqual(12);
+      expectConstraintError(insert);
     });
 
-    test('seeds only priced items that carry a description, under unique category slugs', () => {
-      const unpriced = db.prepare('SELECT COUNT(*) AS total FROM menu_items WHERE price_cents <= 0');
-      const undescribed = db.prepare('SELECT COUNT(*) AS total FROM menu_items WHERE description IS NULL');
-      const distinctSlugs = db.prepare('SELECT COUNT(DISTINCT slug) AS total FROM categories');
+    test('rejects an order line whose quantity is zero', () => {
+      const orderId = insertOrder({ userId: insertUser(`line-${randomUUID()}@example.com`) });
 
-      expect(unpriced.get().total).toBe(0);
-      expect(undescribed.get().total).toBe(0);
-      expect(distinctSlugs.get().total).toBe(countRows(db, 'categories'));
+      expectConstraintError(() => insertLineItem({ orderId, menuItemId: seededMenuItemId(), quantity: 0 }));
     });
 
-    test('gives every category at least one available item', () => {
-      const availableItems = db.prepare(
-        `SELECT c.slug FROM categories c WHERE NOT EXISTS (
-           SELECT 1 FROM menu_items m WHERE m.category_id = c.id AND m.is_available = 1
-         ) ORDER BY c.slug`
-      );
+    test.each([0, 13])('rejects a reservation for a party of %i', (partySize) => {
+      const userId = insertUser(`party-${partySize}-${randomUUID()}@example.com`);
 
-      expect(availableItems.all().map((row) => row.slug)).toEqual([]);
+      expectConstraintError(() => insertReservation({ userId, date: '2099-06-01', time: '18:00', partySize }));
     });
 
-    test('is idempotent: a second seed skips and leaves every row in place', () => {
-      const categoryIds = rowIds(db, 'categories');
-      const itemIds = rowIds(db, 'menu_items');
+    test('rejects a negative order total', () => {
+      const userId = insertUser(`total-${randomUUID()}@example.com`);
 
-      expect(seedIfEmpty(db)).toEqual({
-        skipped: true,
-        categories: categoryIds.length,
-        items: itemIds.length
-      });
-      expect(rowIds(db, 'categories')).toEqual(categoryIds);
-      expect(rowIds(db, 'menu_items')).toEqual(itemIds);
+      expectConstraintError(() => insertOrder({ userId, totalCents: -1 }));
+    });
+
+    test('admits exactly the four documented order statuses', () => {
+      const userId = insertUser(`status-${randomUUID()}@example.com`);
+      const acceptedIds = ORDER_STATUSES.map((status) => insertOrder({ userId, status }));
+
+      expectConstraintError(() => insertOrder({ userId, status: 'shipped' }));
+
+      const placeholders = acceptedIds.map(() => '?').join(', ');
+      const stored = db()
+        .prepare(`SELECT status FROM orders WHERE id IN (${placeholders}) ORDER BY status`)
+        .all(...acceptedIds)
+        .map((row) => row.status);
+
+      expect(stored).toEqual([...ORDER_STATUSES].sort());
+
+      // These rows exist only to prove the accepted vocabulary, so they are
+      // removed again to leave the table as the earlier assertions found it.
+      db().prepare(`DELETE FROM orders WHERE id IN (${placeholders})`).run(...acceptedIds);
     });
   });
 
-  describe('re-applying the schema', () => {
-    test('raises nothing and changes nothing on a populated database', () => {
-      const tables = tableNames(db);
-      const categoryIds = rowIds(db, 'categories');
-      const itemIds = rowIds(db, 'menu_items');
+  describe('UNIQUE constraints', () => {
+    test('rejects a second account registered with the same email', () => {
+      const email = `duplicate-${randomUUID()}@example.com`;
+      insertUser(email);
 
-      expect(() => db.exec(SCHEMA_SQL)).not.toThrow();
+      expectConstraintError(() => insertUser(email));
+      expect(db().prepare('SELECT COUNT(*) AS total FROM users WHERE email = ?').get(email).total).toBe(1);
+    });
 
-      expect(tableNames(db)).toEqual(tables);
-      expect(rowIds(db, 'categories')).toEqual(categoryIds);
-      expect(rowIds(db, 'menu_items')).toEqual(itemIds);
+    test('rejects a duplicate slot for one user and admits it for another', () => {
+      const firstUser = insertUser(`slot-a-${randomUUID()}@example.com`);
+      const secondUser = insertUser(`slot-b-${randomUUID()}@example.com`);
+      const date = '2099-07-04';
+      const time = '19:30';
+
+      insertReservation({ userId: firstUser, date, time, partySize: 2 });
+      expectConstraintError(() => insertReservation({ userId: firstUser, date, time, partySize: 4 }));
+      insertReservation({ userId: secondUser, date, time, partySize: 2 });
+
+      const booked = db()
+        .prepare(
+          'SELECT user_id AS userId FROM reservations ' +
+            'WHERE reservation_date = ? AND reservation_time = ? ORDER BY user_id'
+        )
+        .all(date, time)
+        .map((row) => row.userId);
+
+      expect(booked).toEqual([firstUser, secondUser].sort());
+    });
+  });
+
+  describe('idempotency', () => {
+    test('re-opening the same file leaves the tables and the seed untouched', () => {
+      const tables = tableNames();
+      const categories = countRows('categories');
+      const items = countRows('menu_items');
+
+      closeDb();
+      const reopened = getDb();
+
+      expect(reopened.open).toBe(true);
+      expect(tableNames()).toEqual(tables);
+      expect(countRows('categories')).toBe(categories);
+      expect(countRows('menu_items')).toBe(items);
+    });
+
+    test('closing an already closed database does not throw', () => {
+      closeDb();
+
+      expect(() => closeDb()).not.toThrow();
     });
   });
 });
