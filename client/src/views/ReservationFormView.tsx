@@ -37,7 +37,7 @@ import { ApiError } from '../api/client';
 import type { ApiFieldDetail } from '../api/client';
 import { createReservation } from '../api/reservations';
 import { RESERVATION_ISSUES } from '../api/types';
-import { DateField, FieldError, FormMessage, NumberField, TextField } from '../components/FormControls';
+import { BusyStatus, DateField, FieldError, FormFeedback, NumberField, TextField } from '../components/FormControls';
 
 /** Length of one seating slot in minutes; the server places seating on the same step. */
 const SLOT_MINUTES = 30;
@@ -168,6 +168,122 @@ function isCalendarDate(value: string): boolean {
 }
 
 /**
+ * The courtesy check for the date, applied to the value as it stands: trimmed
+ * exactly as the request body is, present, and a real calendar date. Whether the
+ * date is in the past, inside the horizon or already taken is not the form's to
+ * judge.
+ *
+ * @param value - The date as typed.
+ * @returns The message the field shows while the value is unusable, or
+ *   undefined when the value may be sent.
+ */
+function dateMessage(value: string): string | undefined {
+  const trimmed = value.trim();
+
+  if (trimmed === '') {
+    return DATE_REQUIRED_MESSAGE;
+  }
+
+  return isCalendarDate(trimmed) ? undefined : DATE_INVALID_MESSAGE;
+}
+
+/**
+ * The courtesy check for the seating time, applied to the value the picker
+ * offers: a seating has to be chosen, and only the seatings on the grid can be.
+ * The window the value falls in, and every other checkpoint, belong to the
+ * server.
+ *
+ * @param value - The seating time as chosen.
+ * @returns The message the field shows while the value is unusable, or
+ *   undefined when the value may be sent.
+ */
+function timeMessage(value: string): string | undefined {
+  if (value === '') {
+    return TIME_REQUIRED_MESSAGE;
+  }
+
+  return SEATING_TIMES.includes(value) ? undefined : TIME_INVALID_MESSAGE;
+}
+
+/**
+ * The courtesy check for the party size: trimmed as the request body is,
+ * present, and a whole number. The range the value must fall in is the server's
+ * fourth checkpoint.
+ *
+ * @param value - The party size as typed.
+ * @returns The message the field shows while the value is unusable, or
+ *   undefined when the value may be sent.
+ */
+function partySizeMessage(value: string): string | undefined {
+  const size = value.trim();
+
+  if (size === '') {
+    return PARTY_REQUIRED_MESSAGE;
+  }
+
+  return Number.isInteger(Number(size)) ? undefined : PARTY_INVALID_MESSAGE;
+}
+
+/** The courtesy rule each field of this form is held to, keyed the API's way. */
+const FIELD_RULES: Record<ValidatedField, (value: string) => string | undefined> = {
+  reservation_date: dateMessage,
+  reservation_time: timeMessage,
+  party_size: partySizeMessage,
+};
+
+/** `@returns` The map with the field's entry removed, or the same map when it had none. */
+function withoutField(current: FieldMessages, field: ValidatedField): FieldMessages {
+  if (current[field] === undefined) {
+    return current;
+  }
+  const next = { ...current };
+  delete next[field];
+  return next;
+}
+
+/**
+ * Re-checks a message that is already on screen against the value that replaced
+ * it, so the rule a user is being shown stays visible for as long as the value
+ * breaks it. A message the field kept passes through unchanged, the message is
+ * dropped the moment the value satisfies the rule, and a field with no message
+ * gets none — nothing is checked before the first submit.
+ *
+ * A sentence the server put on the field survives only while it is also what the
+ * courtesy rule says about the new value: a verdict about the value that was
+ * submitted cannot be re-checked here, so it is not carried over to a value it
+ * was never about.
+ *
+ * @param current - The messages on screen.
+ * @param field - The field being edited.
+ * @param value - The value that replaced what the message was about.
+ * @returns The messages after the re-check, or the same map when the field had
+ *   no message of its own.
+ */
+function revisedMessages(
+  current: FieldMessages,
+  field: ValidatedField,
+  value: string,
+): FieldMessages {
+  if (current[field] === undefined) {
+    return current;
+  }
+
+  const message = FIELD_RULES[field](value);
+
+  if (message === undefined) {
+    return withoutField(current, field);
+  }
+
+  if (message === current[field]) {
+    return current;
+  }
+
+  const next: FieldMessages = { ...current };
+  next[field] = message;
+  return next;
+}
+
+/**
  * The text a checkpoint's failure shows against its field.
  *
  * The two `issue` values the API fixes are translated here, in one place, and
@@ -204,9 +320,10 @@ function messageForIssue(detail: ApiFieldDetail, serverMessage: string, submitte
  *
  * Four states are explicit: the initial form, which offers the way to the
  * caller's existing bookings; the populated form once values are typed; the
- * submitting state, announced through `role="status"` with the submit control
- * disabled; and a failure state that reports each checkpoint against the field
- * it names and leaves the submit control live so the booking can be retried.
+ * submitting state, carried by the form's `aria-busy` and one `role="status"`
+ * sentence with the submit control disabled; and a failure state that reports
+ * each checkpoint against the field it names and leaves the submit control live
+ * so the booking can be retried.
  *
  * A rejection that names a field this form renders is shown inline only, so the
  * same failure is never reported twice; anything else keeps the single
@@ -244,24 +361,27 @@ export function ReservationFormView(): JSX.Element {
   );
 
   /**
-   * Drops any failure a user edit has made stale: the message of the field
-   * being edited, and every form-level message.
-   *
-   * @param field - The field whose inline message is no longer accurate.
+   * Clears the form-level failures a submit produced, for an edit no field rule
+   * covers: the note is not a value the API's checkpoints judge, so nothing on
+   * screen is being described by a message about it.
    */
-  function clearFailure(field?: ValidatedField): void {
-    if (field !== undefined) {
-      setMessages((current) => {
-        if (current[field] === undefined) {
-          return current;
-        }
-        const next = { ...current };
-        delete next[field];
-        return next;
-      });
-    }
+  function clearFormFailure(): void {
     setSummary(null);
     setUnexpectedFailure(false);
+  }
+
+  /**
+   * Applies a user edit to the failures on screen: the edited field's message is
+   * re-checked against the new value instead of being discarded, and every
+   * form-level message a submit produced is cleared. The other fields keep
+   * their own, so correcting one value does not hide the rest.
+   *
+   * @param field - The field being edited.
+   * @param value - The value it now holds.
+   */
+  function handleEdit(field: ValidatedField, value: string): void {
+    setMessages((current) => revisedMessages(current, field, value));
+    clearFormFailure();
   }
 
   /**
@@ -299,31 +419,29 @@ export function ReservationFormView(): JSX.Element {
    * date, a seating time the picker offers, and a whole number of guests.
    * Deliberately silent on the past, the window, the party cap, the horizon and
    * uniqueness, which the API decides — the picker offers no time the window
-   * refuses, so no booking the server would accept is blocked here.
+   * refuses, so no booking the server would accept is blocked here. The field
+   * rules are the ones the same fields are re-checked against while they are
+   * edited, so a message reads the same whether it arrived on submit or stayed
+   * through a correction.
    *
    * @returns A message per offending field; empty when every value looks usable.
    */
   function courtesyMessages(): FieldMessages {
     const found: FieldMessages = {};
-    const date = reservationDate.trim();
+    const dateFailure = dateMessage(reservationDate);
+    const timeFailure = timeMessage(reservationTime);
+    const partyFailure = partySizeMessage(partySize);
 
-    if (date === '') {
-      found.reservation_date = DATE_REQUIRED_MESSAGE;
-    } else if (!isCalendarDate(date)) {
-      found.reservation_date = DATE_INVALID_MESSAGE;
+    if (dateFailure !== undefined) {
+      found.reservation_date = dateFailure;
     }
 
-    if (reservationTime === '') {
-      found.reservation_time = TIME_REQUIRED_MESSAGE;
-    } else if (!SEATING_TIMES.includes(reservationTime)) {
-      found.reservation_time = TIME_INVALID_MESSAGE;
+    if (timeFailure !== undefined) {
+      found.reservation_time = timeFailure;
     }
 
-    const size = partySize.trim();
-    if (size === '') {
-      found.party_size = PARTY_REQUIRED_MESSAGE;
-    } else if (!Number.isInteger(Number(size))) {
-      found.party_size = PARTY_INVALID_MESSAGE;
+    if (partyFailure !== undefined) {
+      found.party_size = partyFailure;
     }
 
     return found;
@@ -379,24 +497,19 @@ export function ReservationFormView(): JSX.Element {
   // It repeats the wiring `FormControls`' own field publishes — the label's
   // `htmlFor`, and a hint and error id the control's `aria-describedby` names —
   // so the field reads and announces exactly like the other three.
-  const timeMessage = messages.reservation_time ?? null;
-  const timeInvalid = timeMessage !== null;
+  const timeFieldMessage = messages.reservation_time ?? null;
+  const timeInvalid = timeFieldMessage !== null;
 
   return (
     <section className="stack" aria-labelledby="reservation-form-title">
-      <h1 className="page-title" id="reservation-form-title">Reserve a table</h1>
+      <h1 className="page-title" tabIndex={-1} id="reservation-form-title">Reserve a table</h1>
       <p className="field__hint">
         {`We seat ${MIN_PARTY_SIZE} to ${MAX_PARTY_SIZE} guests, from ${SERVICE_OPEN_TIME} to ${LAST_SEATING_TIME}, ` +
           `and take bookings up to ${RESERVATION_HORIZON_DAYS} days ahead.`}
       </p>
 
-      <form className="stack" onSubmit={handleSubmit} noValidate>
-        {unexpectedFailure ? (
-          <p className="error-summary" role="alert" data-code="INTERNAL_ERROR">
-            {UNEXPECTED_FAILURE_MESSAGE}
-          </p>
-        ) : null}
-        {summary ? <FormMessage error={summary} /> : null}
+      <form className="stack" onSubmit={handleSubmit} aria-busy={submitting} noValidate>
+        <FormFeedback error={summary} message={unexpectedFailure ? UNEXPECTED_FAILURE_MESSAGE : null} />
 
         <DateField
           id="reservation-date"
@@ -409,7 +522,7 @@ export function ReservationFormView(): JSX.Element {
           error={messages.reservation_date ?? null}
           onChange={(event: ChangeEvent<HTMLInputElement>) => {
             setReservationDate(event.target.value);
-            clearFailure('reservation_date');
+            handleEdit('reservation_date', event.target.value);
           }}
         />
 
@@ -430,7 +543,7 @@ export function ReservationFormView(): JSX.Element {
               : 'reservation-time-hint'}
             onChange={(event: ChangeEvent<HTMLSelectElement>) => {
               setReservationTime(event.target.value);
-              clearFailure('reservation_time');
+              handleEdit('reservation_time', event.target.value);
             }}
           >
             <option value="">Choose a time</option>
@@ -441,7 +554,11 @@ export function ReservationFormView(): JSX.Element {
           <p className="field__hint" id="reservation-time-hint">
             {`Seatings run from ${SERVICE_OPEN_TIME} to ${LAST_SEATING_TIME}.`}
           </p>
-          <FieldError id="reservation-time-error" message={timeMessage} />
+          {/* The same polite region the shared controls publish, so this field's
+              message is announced and its line is held open like the others'. */}
+          <div className="field__feedback" aria-live="polite" aria-atomic="true">
+            <FieldError id="reservation-time-error" message={timeFieldMessage} />
+          </div>
         </div>
 
         <NumberField
@@ -454,7 +571,7 @@ export function ReservationFormView(): JSX.Element {
           error={messages.party_size ?? null}
           onChange={(event: ChangeEvent<HTMLInputElement>) => {
             setPartySize(event.target.value);
-            clearFailure('party_size');
+            handleEdit('party_size', event.target.value);
           }}
         />
 
@@ -465,11 +582,11 @@ export function ReservationFormView(): JSX.Element {
           value={notes}
           onChange={(event: ChangeEvent<HTMLInputElement>) => {
             setNotes(event.target.value);
-            clearFailure();
+            clearFormFailure();
           }}
         />
 
-        {submitting ? <p className="field__hint" role="status">{SUBMITTING_MESSAGE}</p> : null}
+        <BusyStatus message={submitting ? SUBMITTING_MESSAGE : null} />
 
         <div className="row">
           <button className="button" type="submit" disabled={submitting}>

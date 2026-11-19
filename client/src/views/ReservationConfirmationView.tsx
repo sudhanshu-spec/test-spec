@@ -129,7 +129,7 @@ interface ReservationSectionProps {
 function ReservationSection({ title, children }: ReservationSectionProps): JSX.Element {
   return (
     <section className="stack" aria-labelledby={HEADING_ID}>
-      <h1 className="page-title" id={HEADING_ID}>
+      <h1 className="page-title" tabIndex={-1} id={HEADING_ID}>
         {title}
       </h1>
       {children}

@@ -25,9 +25,9 @@
  *
  * Four states are explicit: the empty form, which offers the way to the sign-in
  * screen; the populated form once values are typed; the submitting state,
- * announced through `role="status"` with the submit control disabled; and the
- * failure state, which names each offending field and leaves the submit control
- * live so the registration can be retried.
+ * carried by the form's `aria-busy` and one `role="status"` sentence with the
+ * submit control disabled; and the failure state, which names each offending
+ * field and leaves the submit control live so the registration can be retried.
  *
  * @module client/src/views/RegisterView
  */
@@ -39,7 +39,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ApiError } from '../api/client';
 import type { ApiFieldDetail } from '../api/client';
 import { register } from '../api/auth';
-import { EmailField, FormMessage, PasswordField, TextField } from '../components/FormControls';
+import { BusyStatus, EmailField, FormFeedback, PasswordField, TextField } from '../components/FormControls';
 import { useSession } from '../state/session';
 
 /** Longest accepted name, in characters. Matches the registration endpoint. */
@@ -94,6 +94,71 @@ function byteLength(value: string): number {
   return new TextEncoder().encode(value).length;
 }
 
+/**
+ * The courtesy check for the name, applied to the value as it stands: trimmed
+ * exactly as the request body is, present, and within the length the endpoint
+ * accepts.
+ *
+ * @param value - The name as typed.
+ * @returns The message the field shows while the value is unusable, or
+ *   undefined when the value may be sent.
+ */
+function nameMessage(value: string): string | undefined {
+  const trimmed = value.trim();
+
+  if (trimmed === '') {
+    return NAME_REQUIRED_MESSAGE;
+  }
+
+  return trimmed.length > NAME_MAX_LENGTH ? NAME_TOO_LONG_MESSAGE : undefined;
+}
+
+/**
+ * The courtesy check for the address: trimmed as the request body is, present,
+ * and of the shape the endpoint applies.
+ *
+ * @param value - The address as typed.
+ * @returns The message the field shows while the value is unusable, or
+ *   undefined when the value may be sent.
+ */
+function emailMessage(value: string): string | undefined {
+  const trimmed = value.trim();
+
+  if (trimmed === '') {
+    return EMAIL_REQUIRED_MESSAGE;
+  }
+
+  return EMAIL_PATTERN.test(trimmed) ? undefined : EMAIL_INVALID_MESSAGE;
+}
+
+/**
+ * The courtesy check for the password, in the order the endpoint applies it:
+ * present, then at least the minimum number of characters, then within the byte
+ * ceiling scrypt input is capped at.
+ *
+ * @param value - The password as typed.
+ * @returns The message the field shows while the value is unusable, or
+ *   undefined when the value may be sent.
+ */
+function passwordMessage(value: string): string | undefined {
+  if (value === '') {
+    return PASSWORD_REQUIRED_MESSAGE;
+  }
+
+  if (value.length < PASSWORD_MIN_LENGTH) {
+    return PASSWORD_TOO_SHORT_MESSAGE;
+  }
+
+  return byteLength(value) > PASSWORD_MAX_BYTES ? PASSWORD_TOO_LONG_MESSAGE : undefined;
+}
+
+/** The courtesy rule each field of this form is held to, keyed the API's way. */
+const FIELD_RULES: Record<ValidatedField, (value: string) => string | undefined> = {
+  name: nameMessage,
+  email: emailMessage,
+  password: passwordMessage,
+};
+
 /** @returns The map with the field's entry removed, or the same map when it had none. */
 function withoutField<T>(
   current: Partial<Record<ValidatedField, T>>,
@@ -104,6 +169,43 @@ function withoutField<T>(
   }
   const next = { ...current };
   delete next[field];
+  return next;
+}
+
+/**
+ * Re-checks a message that is already on screen against the value that replaced
+ * it, so the rule a user is being shown stays visible for as long as the value
+ * breaks it. A message the field kept passes through unchanged, the message is
+ * dropped the moment the value satisfies the rule, and a field with no message
+ * gets none — nothing is checked before the first submit.
+ *
+ * @param current - The messages on screen.
+ * @param field - The field being edited.
+ * @param value - The value that replaced what the message was about.
+ * @returns The messages after the re-check, or the same map when the field had
+ *   no message of its own.
+ */
+function revisedMessages(
+  current: FieldMessages,
+  field: ValidatedField,
+  value: string,
+): FieldMessages {
+  if (current[field] === undefined) {
+    return current;
+  }
+
+  const message = FIELD_RULES[field](value);
+
+  if (message === undefined) {
+    return withoutField(current, field);
+  }
+
+  if (message === current[field]) {
+    return current;
+  }
+
+  const next: FieldMessages = { ...current };
+  next[field] = message;
   return next;
 }
 
@@ -128,21 +230,24 @@ export function RegisterView(): JSX.Element {
   const [unexpectedFailure, setUnexpectedFailure] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const hasFailure = unexpectedFailure || summary !== null
-    || Object.keys(messages).length > 0 || Object.keys(details).length > 0;
+  const showingFieldFailure = Object.keys(messages).length > 0 || Object.keys(details).length > 0;
 
   /**
-   * Drops the failures a user edit has made stale: the message and the server
-   * detail of the field being edited, and every form-level message. The other
-   * fields keep theirs, so correcting one value does not hide the rest.
+   * Applies a user edit to the failures on screen: the edited field's message is
+   * re-checked against the new value instead of being discarded, its server
+   * `detail` is dropped because a verdict about the value that was submitted
+   * cannot be re-checked here, and every form-level message a submit produced is
+   * cleared. The other fields keep their own, so correcting one value does not
+   * hide the rest. The duplicate-address verdict is pinned to the email field as
+   * one of its messages, so what is left of it after a re-check describes the
+   * address the user is now typing rather than the one that was refused.
    *
-   * @param field - The field whose message is no longer accurate.
+   * @param field - The field being edited.
+   * @param value - The value it now holds.
    */
-  function clearFailure(field?: ValidatedField): void {
-    if (field !== undefined) {
-      setMessages((current) => withoutField(current, field));
-      setDetails((current) => withoutField(current, field));
-    }
+  function handleEdit(field: ValidatedField, value: string): void {
+    setMessages((current) => revisedMessages(current, field, value));
+    setDetails((current) => withoutField(current, field));
     setSummary(null);
     setUnexpectedFailure(false);
   }
@@ -196,33 +301,28 @@ export function RegisterView(): JSX.Element {
    * The courtesy checks, reproducing exactly the registration rules the API
    * documents and nothing more. The name counts characters, the password counts
    * characters for its minimum and bytes for its maximum, so no value the API
-   * would accept is rejected here.
+   * would accept is rejected here. The field rules are the ones the same fields
+   * are re-checked against while they are edited, so a message reads the same
+   * whether it arrived on submit or stayed through a correction.
    *
    * @returns A message per offending field; empty when every value looks usable.
    */
   function courtesyMessages(): FieldMessages {
     const found: FieldMessages = {};
-    const trimmedName = name.trim();
-    const trimmedEmail = email.trim();
+    const nameFailure = nameMessage(name);
+    const emailFailure = emailMessage(email);
+    const passwordFailure = passwordMessage(password);
 
-    if (trimmedName === '') {
-      found.name = NAME_REQUIRED_MESSAGE;
-    } else if (trimmedName.length > NAME_MAX_LENGTH) {
-      found.name = NAME_TOO_LONG_MESSAGE;
+    if (nameFailure !== undefined) {
+      found.name = nameFailure;
     }
 
-    if (trimmedEmail === '') {
-      found.email = EMAIL_REQUIRED_MESSAGE;
-    } else if (!EMAIL_PATTERN.test(trimmedEmail)) {
-      found.email = EMAIL_INVALID_MESSAGE;
+    if (emailFailure !== undefined) {
+      found.email = emailFailure;
     }
 
-    if (password === '') {
-      found.password = PASSWORD_REQUIRED_MESSAGE;
-    } else if (password.length < PASSWORD_MIN_LENGTH) {
-      found.password = PASSWORD_TOO_SHORT_MESSAGE;
-    } else if (byteLength(password) > PASSWORD_MAX_BYTES) {
-      found.password = PASSWORD_TOO_LONG_MESSAGE;
+    if (passwordFailure !== undefined) {
+      found.password = passwordFailure;
     }
 
     return found;
@@ -271,18 +371,17 @@ export function RegisterView(): JSX.Element {
 
   return (
     <section className="stack" aria-labelledby="register-title">
-      <h1 className="page-title" id="register-title">Create your account</h1>
+      <h1 className="page-title" tabIndex={-1} id="register-title">Create your account</h1>
       <p className="field__hint">
         One account is all you need to order burgers and reserve a table.
       </p>
 
       <form className="stack" onSubmit={handleSubmit} aria-busy={submitting} noValidate>
-        {unexpectedFailure ? (
-          <p className="error-summary" role="alert" data-code="INTERNAL_ERROR">
-            {UNEXPECTED_FAILURE_MESSAGE}
-          </p>
-        ) : null}
-        {summary ? <FormMessage error={summary} /> : null}
+        <FormFeedback
+          error={summary}
+          message={unexpectedFailure ? UNEXPECTED_FAILURE_MESSAGE : null}
+          hint={showingFieldFailure && !submitting ? RETRY_MESSAGE : null}
+        />
 
         <TextField
           id="register-name"
@@ -294,7 +393,7 @@ export function RegisterView(): JSX.Element {
           detail={details.name ?? null}
           onChange={(event: ChangeEvent<HTMLInputElement>) => {
             setName(event.target.value);
-            clearFailure('name');
+            handleEdit('name', event.target.value);
           }}
         />
 
@@ -308,7 +407,7 @@ export function RegisterView(): JSX.Element {
           detail={details.email ?? null}
           onChange={(event: ChangeEvent<HTMLInputElement>) => {
             setEmail(event.target.value);
-            clearFailure('email');
+            handleEdit('email', event.target.value);
           }}
         />
 
@@ -323,12 +422,11 @@ export function RegisterView(): JSX.Element {
           detail={details.password ?? null}
           onChange={(event: ChangeEvent<HTMLInputElement>) => {
             setPassword(event.target.value);
-            clearFailure('password');
+            handleEdit('password', event.target.value);
           }}
         />
 
-        {submitting ? <p className="field__hint" role="status">{SUBMITTING_MESSAGE}</p> : null}
-        {hasFailure && !submitting ? <p className="field__hint">{RETRY_MESSAGE}</p> : null}
+        <BusyStatus message={submitting ? SUBMITTING_MESSAGE : null} />
 
         <div className="row">
           <button className="button" type="submit" disabled={submitting}>

@@ -132,7 +132,7 @@ function OrderConfirmation({ order }: OrderConfirmationProps): JSX.Element {
 
   return (
     <div className="cart">
-      <h1 className="page-title">Order placed</h1>
+      <h1 className="page-title" tabIndex={-1}>Order placed</h1>
 
       <section className="card stack" aria-label="Order details">
         <div className="row">
@@ -302,7 +302,7 @@ export function OrderConfirmationView(): JSX.Element {
   if (state.kind === 'not-found') {
     return (
       <div className="stack">
-        <h1 className="page-title">Order not found</h1>
+        <h1 className="page-title" tabIndex={-1}>Order not found</h1>
         <div className="state-panel">
           <p>We could not find that order in your account.</p>
           <div className="row">
@@ -321,7 +321,7 @@ export function OrderConfirmationView(): JSX.Element {
   if (state.kind === 'error') {
     return (
       <div className="stack">
-        <h1 className="page-title">Your order</h1>
+        <h1 className="page-title" tabIndex={-1}>Your order</h1>
         <div className="error-summary" role="alert" data-code={state.code}>
           <p>{state.message}</p>
         </div>
@@ -344,7 +344,7 @@ export function OrderConfirmationView(): JSX.Element {
   if (state.orders.length === 0) {
     return (
       <section className="stack">
-        <h1 className="page-title">Your orders</h1>
+        <h1 className="page-title" tabIndex={-1}>Your orders</h1>
         <div className="state-panel">
           <p>No orders yet</p>
           <p>Once you place an order, its confirmation appears here.</p>
@@ -360,7 +360,7 @@ export function OrderConfirmationView(): JSX.Element {
 
   return (
     <div className="cart">
-      <h1 className="page-title">Your orders</h1>
+      <h1 className="page-title" tabIndex={-1}>Your orders</h1>
       <p className="cart-line__unit-price">
         {countLabel(state.orders.length, 'order', 'orders')} so far, most recent first.
       </p>

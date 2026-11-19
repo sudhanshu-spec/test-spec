@@ -18,15 +18,23 @@
  * Boundaries this file keeps:
  * - Money is never computed here. `MenuCard` renders `formatCents(price_cents)`;
  *   no price is summed, rounded or formatted in this module.
- * - The cart is only ever `useCart().add`. Nothing is persisted and no cart
- *   request is made (rule R-8); whether a visitor is signed in is the cart
- *   screen's guard, not the catalog's.
+ * - The cart is reached only through `useCart()`: `add` puts an item in, and
+ *   `items` is what tells the card that answered how many of that item the cart
+ *   now holds. Nothing is persisted and no cart request is made (rule R-8);
+ *   whether a visitor is signed in is the cart screen's guard, not the catalog's.
  * - `ApiError` is the only failure type (rule R-6). `CATEGORY_NOT_FOUND` means
  *   the filter named no category, so it is reported beside the still-usable
  *   strip with the way back to every item; every other code renders as the
- *   failure panel carrying its field details and a retry.
+ *   failure panel carrying the API's sentence, its field details and a retry.
+ *   A failure's code stays on that panel as `data-code`, for the tests and hooks
+ *   that read it, and is never printed: an internal identifier is not something a
+ *   shopper can act on.
  * - An empty array is a normal answer, so an empty category reads as a state
  *   with a next step rather than as an error.
+ * - The strip is the only element on the screen that scrolls sideways
+ *   (`client/src/styles/catalog.css`). At the 360px minimum width the trailing
+ *   categories do not fit, so the chip carrying the selection is scrolled into the
+ *   strip's visible box rather than the chips wrapping or the page widening.
  *
  * Route protection and the route table live in `client/src/main.tsx`: this module
  * renders neither `Layout`, a guard, nor another view.
@@ -34,7 +42,7 @@
  * @module client/src/views/MenuCatalogView
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { JSX } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
@@ -50,6 +58,14 @@ const CATEGORY_QUERY_KEY = 'category';
 
 /** The one control of the strip that clears the filter instead of setting it. */
 const ALL_ITEMS_LABEL = 'All items';
+
+/**
+ * Gap left between the selected chip and the strip's edge when the strip is
+ * scrolled to it: the same 8px step as the strip's own `--space-2` gap, so a pill
+ * brought to the edge keeps the breathing room it has beside its neighbours
+ * instead of sitting flush against a border it would then look clipped by.
+ */
+const FILTER_SCROLL_MARGIN = 8;
 
 const PAGE_TITLE = 'Our menu';
 const FILTER_LABEL = 'Filter the menu by category';
@@ -147,10 +163,12 @@ interface RequestFailureProps {
 }
 
 /**
- * Renders one failed request: the API's message in the shared `.error-summary`
- * with its code carried in `data-code`, the field details when the API sent any,
- * and the retry control that re-runs that request alone. The code is never
- * repeated as text, so every failure panel on the client reads the same way.
+ * Renders one failed request: the sentence naming it and the API's own message
+ * in the shared `.error-summary`, the field details when the API sent any, and
+ * the retry control that re-runs that request alone. The failure's code rides on
+ * the panel as `data-code` — the tests and hooks that need to tell two failures
+ * apart read it there — and is never printed as text, so every failure panel on
+ * the client reads the same way.
  *
  * @param props - The failure, the sentence naming it and the retry action.
  * @returns The failure panel for one request.
@@ -189,20 +207,41 @@ function RequestFailure({ summary, failure, retryScope, onRetry }: RequestFailur
  * Choosing a category rewrites that key through `setSearchParams` and nothing
  * else, so the route never changes and no page is reloaded.
  *
+ * Adding an item is the cart's client state and nothing else: the item is added,
+ * and the card that was clicked is handed the count the cart now holds of it, so
+ * the add is acknowledged in the card itself rather than in a header the grid has
+ * scrolled past.
+ *
  * @returns The catalog, or one of the loading, empty and failure states.
  */
 export function MenuCatalogView(): JSX.Element {
   const [searchParams, setSearchParams] = useSearchParams();
-  const { add } = useCart();
+  const { add, items: cartItems } = useCart();
   const [categoryState, setCategoryState] = useState<LoadState<Category>>({ kind: 'loading' });
   const [itemState, setItemState] = useState<LoadState<MenuItem>>({ kind: 'loading' });
   const [categoryAttempt, setCategoryAttempt] = useState(0);
   const [itemAttempt, setItemAttempt] = useState(0);
+  const [confirmedItemId, setConfirmedItemId] = useState<string | null>(null);
+  const filterStripRef = useRef<HTMLDivElement | null>(null);
 
   const selectedSlug = searchParams.get(CATEGORY_QUERY_KEY) ?? undefined;
 
   /**
-   * Puts the chosen item in the cart.
+   * How many of the item the last add landed on the cart holds now, read from the
+   * cart at render time rather than counted per activation: a second add of the
+   * same item merges into its line, so the number the card shows is the line's
+   * quantity. Undefined when no card is acknowledging an add, and again if that
+   * line has since left the cart, so no card can claim an add that is no longer
+   * true.
+   */
+  const confirmedQuantity =
+    confirmedItemId === null
+      ? undefined
+      : cartItems.find((line) => line.menu_item_id === confirmedItemId)?.quantity;
+
+  /**
+   * Puts the chosen item in the cart and names the card that answered, so that
+   * card can confirm the add where the shopper clicked.
    *
    * Held in a `useCallback` because this view subscribes to the cart: every
    * cart mutation re-renders it, and the memoised `MenuCard` must not re-render
@@ -212,6 +251,7 @@ export function MenuCatalogView(): JSX.Element {
    */
   const handleAdd = useCallback((chosen: MenuItem): void => {
     add(chosen);
+    setConfirmedItemId(chosen.id);
   }, [add]);
 
   useEffect(() => {
@@ -245,6 +285,11 @@ export function MenuCatalogView(): JSX.Element {
     let ignore = false;
     setItemState({ kind: 'loading' });
 
+    // A reload replaces every card on the screen, so the add the previous cards
+    // acknowledged goes with them: the confirmation must not outlive the item it
+    // names, which a new selection may not list at all.
+    setConfirmedItemId(null);
+
     async function loadItems(): Promise<void> {
       try {
         const items = await listItems(selectedSlug);
@@ -265,6 +310,44 @@ export function MenuCatalogView(): JSX.Element {
       ignore = true;
     };
   }, [selectedSlug, itemAttempt]);
+
+  // The strip scrolls sideways instead of wrapping, so at the narrowest supported
+  // width the trailing categories sit outside its visible box. A selection made
+  // there — by a deep link, or by choosing the last chip after scrolling to it —
+  // would then be an empty item list with nothing on screen naming the filter that
+  // caused it. Measuring the chip against the strip and moving the strip's own
+  // scroll offset is what puts the active chip in view; `scrollIntoView` is not
+  // used because it would also scroll the page and can move focus.
+  useEffect(() => {
+    const strip = filterStripRef.current;
+
+    // Nothing to bring into view until the strip holds the options themselves,
+    // and while the strip is absent (a failed categories request renders the
+    // failure panel in its place) there is no active chip at all.
+    if (strip === null || categoryState.kind !== 'loaded') {
+      return;
+    }
+
+    const active = strip.querySelector('.category-filter__option--active');
+
+    if (active === null) {
+      return;
+    }
+
+    const stripBox = strip.getBoundingClientRect();
+    const chipBox = active.getBoundingClientRect();
+    // Positive when the chip ends past the strip's right edge, or when it starts
+    // before the left one; a layout engine that reports no geometry at all — jsdom
+    // returns an all-zero rect — leaves both at zero, so neither branch runs.
+    const clippedRight = chipBox.right - stripBox.right;
+    const clippedLeft = stripBox.left - chipBox.left;
+
+    if (clippedRight > 0) {
+      strip.scrollLeft += clippedRight + FILTER_SCROLL_MARGIN;
+    } else if (clippedLeft > 0) {
+      strip.scrollLeft -= clippedLeft + FILTER_SCROLL_MARGIN;
+    }
+  }, [selectedSlug, categoryState]);
 
   /**
    * Writes the selection into the query string, or removes the key for every
@@ -414,8 +497,19 @@ export function MenuCatalogView(): JSX.Element {
       <>
         <h2 className="section-title">{itemCountLabel(itemState.value.length)} available</h2>
         <div className="catalog-grid">
+          {/*
+           * One card carries the acknowledgement: the one whose item the last add
+           * landed on. Every other card is handed `undefined`, which is what keeps
+           * the memoised list from re-rendering on a cart change it has nothing to
+           * say about.
+           */}
           {itemState.value.map((item) => (
-            <MenuCard key={item.id} item={item} onAdd={handleAdd} />
+            <MenuCard
+              key={item.id}
+              item={item}
+              onAdd={handleAdd}
+              addedQuantity={item.id === confirmedItemId ? confirmedQuantity : undefined}
+            />
           ))}
         </div>
       </>
@@ -424,7 +518,7 @@ export function MenuCatalogView(): JSX.Element {
 
   return (
     <section className="catalog" aria-labelledby="catalog-title">
-      <h1 className="page-title" id="catalog-title">
+      <h1 className="page-title" tabIndex={-1} id="catalog-title">
         {PAGE_TITLE}
       </h1>
 
@@ -441,6 +535,7 @@ export function MenuCatalogView(): JSX.Element {
           role="group"
           aria-label={FILTER_LABEL}
           aria-busy={categoryState.kind === 'loading'}
+          ref={filterStripRef}
         >
           {renderFilterOptions()}
         </div>

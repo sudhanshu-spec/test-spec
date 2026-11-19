@@ -35,17 +35,33 @@
 .catalog-card__media { max-width: 100%; overflow: hidden; border-radius: var(--radius-md); }
 .catalog-card__media img { display: block; max-width: 100%; height: auto; }
 
-/* Both image branches carry this class, so the 4:3 box is reserved before the
-   picture decodes and a card whose image_url is null keeps the same height as
-   its neighbours. object-fit crops the picture instead of distorting it. */
+/* Both image branches carry this class, so the picture's box is reserved before
+   it decodes. The ratio itself differs per branch: 4:3 here for a real picture,
+   and the shorter band the placeholder branch below declares for an item whose
+   image_url is null. object-fit crops the picture instead of distorting it. */
 .catalog-card__image { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
 
 /* The decorative complement of the image, shown for an item with no image_url:
    a quiet surface with the same hairline every other bordered surface uses. The
-   radius and the clipping come from .catalog-card__media above. */
-.catalog-card__image--placeholder { background: var(--color-surface-muted); border: 1px solid var(--color-border); }
+   radius and the clipping come from .catalog-card__media above.
+   It is a band, not a picture frame. With no picture to reserve space for, the
+   4:3 box above would be the largest surface on the card and would say nothing,
+   so this branch packs its glyph and its label into a short 16:5 strip instead
+   and leaves the 4:3 ratio to the branch that has a picture to show. */
+.catalog-card__image--placeholder { display: flex; align-items: center; justify-content: center;
+  gap: var(--space-2); aspect-ratio: 16 / 5; background: var(--color-surface-muted);
+  border: 1px solid var(--color-border); color: var(--color-text-muted); font-size: var(--font-size-sm); }
 
-.catalog-card__body { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+/* The glyph draws in currentColor at its own 20px intrinsic size and never
+   stretches or shrinks the band it sits in. */
+.catalog-card__placeholder-glyph { flex: 0 0 auto; }
+
+/* The body takes the card's free height. Cards in one grid row are stretched to
+   the same height, so without this the footer sits directly under a description
+   that may run one line shorter than its neighbour's, and the price/availability/
+   action rows of sibling cards step apart. Growing the body pushes every footer to
+   the bottom of its own card, where the row of them shares one baseline. */
+.catalog-card__body { display: flex; flex-direction: column; flex: 1 1 auto; gap: var(--space-2); min-width: 0; }
 .catalog-card__title { overflow-wrap: anywhere; line-height: var(--line-height-tight); }
 
 /* The item name is a link, so it is an interactive control and takes the same

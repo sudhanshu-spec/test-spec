@@ -1,11 +1,14 @@
 /**
- * @fileoverview Shared form controls — labelled inputs, inline field errors and
- * the form-level error summary.
+ * @fileoverview Shared form feedback — labelled inputs, each field's message
+ * carried in its own polite live region, the persistent form-level region that
+ * holds either the failure panel or the retry hint, and the sentence a form
+ * announces while its submit is in flight.
  *
  * One responsibility: render a labelled input with the API's own message for
- * it. No state, no async work, no network — it takes the error envelope's types
- * only, so the text a user reads for a failure is always the server's, never a
- * client-side substitute for it.
+ * it, and the form-level messages a submit produces, in the one shape every
+ * screen uses. No state, no async work, no network — it takes the error
+ * envelope's types only, so the text a user reads for a failure is always the
+ * server's, never a client-side substitute for it.
  *
  * Consumers: `LoginView`, `RegisterView`, `ReservationFormView` and the Place
  * Order (checkout) step of `CartView`.
@@ -62,12 +65,33 @@ export interface FormMessageProps {
   message?: string | null;
 }
 
+/** Props of {@link FormFeedback}. */
+export interface FormFeedbackProps {
+  /** The failure as the transport reported it; its `code` becomes the panel's `data-code`. */
+  error?: ApiError | null;
+  /** Fixed copy for a failure that is not an `ApiError`; the panel reports it as `INTERNAL_ERROR`. */
+  message?: string | null;
+  /** The retry sentence, shown only when the panel has nothing to report. */
+  hint?: string | null;
+}
+
+/** Props of {@link BusyStatus}. */
+export interface BusyStatusProps {
+  /** The sentence to announce; nothing is rendered when there is none. */
+  message?: string | null;
+}
+
 /**
  * Renders one field's failure with the server's `issue` string as the visible
  * text; `data-field`/`data-issue` carry the envelope's own values so a test
- * locates an entry without parsing it. No `role`: field errors are announced
- * through the input's `aria-describedby`, so a second live region would make
- * `getByRole('alert')` ambiguous.
+ * locates an entry without parsing it.
+ *
+ * The announcement is the polite live region {@link Field} keeps around this
+ * paragraph: it is in the DOM before any message is inserted, so the insertion
+ * is what a screen reader reads, and it leaves the input's `aria-describedby`
+ * as the association a reader returns to. This paragraph therefore carries no
+ * `role` of its own — a `role="alert"` would announce the same text twice and
+ * make the form-level panel's `getByRole('alert')` ambiguous.
  *
  * @param props - The server detail, or the plain message used instead of it.
  * @returns The error paragraph, or null when there is nothing to report.
@@ -109,6 +133,54 @@ export function FormMessage({ error, message }: FormMessageProps): JSX.Element |
   );
 }
 
+/**
+ * Renders the form-level feedback region — the one block above a form's
+ * controls that holds whatever the form itself has to say. The region is
+ * rendered whether or not it has a message, at the height global.css reserves
+ * for it, so a message appearing never moves the controls below it.
+ *
+ * A failure and the invitation to retry are the same moment, so the panel wins
+ * and the hint is shown only when there is no panel text: the two never stack.
+ * An `ApiError` reports its own `code`; the fixed copy a view supplies instead
+ * of one reports `INTERNAL_ERROR`, which is the server's code for exactly that
+ * failure.
+ *
+ * @param props - The transport's error, the fixed copy used instead of one, and
+ *   the retry sentence shown when neither is present.
+ * @returns The region, holding at most one message.
+ */
+export function FormFeedback({ error, message, hint }: FormFeedbackProps): JSX.Element {
+  const panelText = error ? error.message || error.code : message;
+  const hintText = panelText ? null : hint;
+
+  return (
+    <div className="form-feedback">
+      {panelText ? (
+        <div className="error-summary" role="alert" data-code={error ? error.code : 'INTERNAL_ERROR'}>
+          {panelText}
+        </div>
+      ) : null}
+      {hintText ? <p className="field__hint">{hintText}</p> : null}
+    </div>
+  );
+}
+
+/**
+ * Renders the sentence a form announces while its submit is in flight, in a
+ * `role="status"` region: a screen reader hears the wait without the rest of
+ * the page being interrupted, and the sentence is the same on every form.
+ *
+ * @param props - The in-flight sentence, which the calling form owns.
+ * @returns The status paragraph, or null when no submit is in flight.
+ */
+export function BusyStatus({ message }: BusyStatusProps): JSX.Element | null {
+  if (!message) {
+    return null;
+  }
+
+  return <p className="field__hint" role="status">{message}</p>;
+}
+
 /** @returns The ids that exist, space-separated, or undefined when none do. */
 function describedByIds(...ids: (string | undefined)[]): string | undefined {
   const present = ids.filter((value): value is string => value !== undefined);
@@ -123,6 +195,12 @@ interface FieldProps extends FormControlProps {
 /**
  * Renders the label, the input and the messages beneath it — the single wrapper
  * all six exported field controls delegate to.
+ *
+ * The field's message sits inside a polite live region that is rendered from
+ * the first paint, empty or not: a live region inserted together with its text
+ * is not announced by a screen reader, while text inserted into a region that
+ * was already there is. The region is the field's last child so it also holds
+ * the message's reserved line height in global.css.
  *
  * @param props - The shared form props plus the input type this field fixes.
  * @returns The field element.
@@ -151,7 +229,9 @@ function Field({ id, label, hint, error, detail, type, required, value, onChange
         aria-describedby={describedByIds(hintId, errorId)}
       />
       {hint ? <p className="field__hint" id={`${id}-hint`}>{hint}</p> : null}
-      <FieldError id={`${id}-error`} detail={detail} message={error} />
+      <div className="field__feedback" aria-live="polite" aria-atomic="true">
+        <FieldError id={`${id}-error`} detail={detail} message={error} />
+      </div>
     </div>
   );
 }

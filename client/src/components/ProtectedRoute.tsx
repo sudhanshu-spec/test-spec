@@ -4,7 +4,9 @@
  * One responsibility: decide whether the guarded screen may render. It wraps exactly six routes in
  * `client/src/main.tsx` — `/cart`, `/orders`, `/orders/:id`, `/reservations`, `/reservations/new`
  * and `/reservations/:id` — rendering the screen once a session exists and sending an anonymous
- * visitor to `/login`; while the session is still being restored it shows a neutral status line.
+ * visitor to `/login`, with the address they asked for carried in the {@link RETURN_PATH_PARAM}
+ * query parameter so the sign-in screen can say why they were sent there and return them to it
+ * afterwards; while the session is still being restored it shows a neutral status line.
  * It reads no route parameter, compares no ownership and renders no "forbidden" state: another
  * user's order or reservation answers 404 from the API, which is where ownership is enforced, so
  * an authorization check here would produce the 403 that rule forbids. Session restore, login,
@@ -14,8 +16,16 @@
  */
 
 import type { JSX, ReactNode } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useSession } from '../state/session';
+
+/**
+ * Query parameter of the sign-in address that carries the guarded address the visitor asked for.
+ *
+ * The guard discards nothing it can pass on: the login screen reads this parameter to name what the
+ * visitor was trying to open and to send them back once the session is open.
+ */
+export const RETURN_PATH_PARAM = 'from';
 
 /** Props of {@link ProtectedRoute}: the guarded screen, rendered once a session is established. */
 export interface ProtectedRouteProps {
@@ -23,13 +33,31 @@ export interface ProtectedRouteProps {
 }
 
 /**
+ * The redirect an anonymous visitor receives, carrying the address they were trying to open.
+ *
+ * A component of its own so that the current location is read only on the branch that redirects:
+ * `useLocation`, like the `Navigate` it feeds, requires a router above it, and an authenticated
+ * child must keep rendering for a caller that mounts the guard without one.
+ *
+ * @returns The `replace` navigation to the sign-in screen, with the guarded address in
+ * {@link RETURN_PATH_PARAM}.
+ */
+function LoginRedirect(): JSX.Element {
+  const location = useLocation();
+  const returnPath = `${location.pathname}${location.search}`;
+
+  return <Navigate to={`/login?${RETURN_PATH_PARAM}=${encodeURIComponent(returnPath)}`} replace />;
+}
+
+/**
  * Guards a screen on the presence of a session.
  *
  * @param props - The guarded screen.
  * @returns The screen when the visitor is authenticated, a redirect to `/login` when anonymous,
- * or a status line while a stored token is being verified. `'loading'` deliberately does not
- * redirect: the session is neither verified nor absent yet, so redirecting would bounce a
- * returning visitor to the login screen on every reload.
+ * or a status line while a stored token is being verified. The redirect carries the guarded
+ * address in {@link RETURN_PATH_PARAM}, so the sign-in screen can explain the redirect and resume
+ * it; `'loading'` deliberately does not redirect: the session is neither verified nor absent yet,
+ * so redirecting would bounce a returning visitor to the login screen on every reload.
  */
 export function ProtectedRoute({ children }: ProtectedRouteProps): JSX.Element {
   const { status } = useSession();
@@ -45,7 +73,9 @@ export function ProtectedRoute({ children }: ProtectedRouteProps): JSX.Element {
 
   if (status === 'anonymous') {
     // `replace` keeps the guarded path out of history, so Back cannot re-enter it unauthenticated.
-    return <Navigate to="/login" replace />;
+    // The address travels in the query string instead of the history stack: the sign-in screen
+    // reads it to explain the redirect and to return the visitor here once the session is open.
+    return <LoginRedirect />;
   }
 
   // A fragment, not a wrapper element: the guard adds no box to the guarded screen's layout.

@@ -3,11 +3,10 @@
  * at `/menu/:id` from the route table owned by `client/src/main.tsx`.
  *
  * The view reads exactly one item through `client/src/api/menu`'s `getItem` and
- * shows it in full: the name, the description unclamped, the category it belongs
- * to, a visible availability state and the price. The image and the compact card
- * summary come from `MenuCard`, rendered here with its own action suppressed
- * (`showAction={false}`) and its name at heading level `2`, so this view owns the
- * one real add action and the screen reads `h1` → `h2` with no skipped level.
+ * shows it in full, once: the name as the screen's `h1`, the category and the
+ * availability state as badges, the price and the description unclamped, then the
+ * quantity control and the one real add-to-cart action. Nothing repeats the item
+ * in a second presentation, so the action stays in view on a 900px-tall viewport.
  *
  * Money is the server's alone (rule R-3). The price shown is
  * `item.price_cents` passed through `formatCents`; nothing on this screen sums,
@@ -20,7 +19,9 @@
  * `MENU_ITEM_NOT_FOUND` and an id that is not a UUID with `VALIDATION_ERROR`;
  * both mean "there is nothing here to show", so both render the same not-found
  * state with the catalog as the positive next step. Every other failure is
- * reported through the API's own `code` and `message`.
+ * reported through the API's own `message`, with its `code` carried non-visibly
+ * on the panel's `data-code` for the tests and hooks that read it: a machine
+ * identifier is not copy a shopper can act on.
  *
  * @module client/src/views/MenuItemView
  */
@@ -34,7 +35,6 @@ import { formatCents } from '../api/format';
 import { getItem } from '../api/menu';
 import type { MenuItem } from '../api/types';
 import { NumberField } from '../components/FormControls';
-import { MenuCard } from '../components/MenuCard';
 import { useCart } from '../state/cart';
 
 /** Fewest of an item one order line may carry; also the control's starting value. */
@@ -221,7 +221,7 @@ function ItemDetail({ item }: ItemDetailProps): JSX.Element {
       </div>
 
       <article className="item-detail" aria-labelledby="menu-item-name">
-        <h1 className="page-title" id="menu-item-name">
+        <h1 className="page-title" tabIndex={-1} id="menu-item-name">
           {item.name}
         </h1>
 
@@ -235,8 +235,6 @@ function ItemDetail({ item }: ItemDetailProps): JSX.Element {
           <p className="item-detail__price">{formatCents(item.price_cents)}</p>
           <p>{item.description}</p>
         </div>
-
-        <MenuCard item={item} headingLevel={2} showAction={false} />
 
         <div className="item-detail__actions">
           <NumberField
@@ -354,7 +352,7 @@ export function MenuItemView(): JSX.Element {
   if (state.kind === 'not-found') {
     return (
       <div className="stack">
-        <h1 className="page-title">Item not found</h1>
+        <h1 className="page-title" tabIndex={-1}>Item not found</h1>
         <div className="state-panel">
           <p>We could not find that item on the menu. It may have been taken off the menu, or the link may be incomplete.</p>
           <div className="row">
@@ -370,7 +368,7 @@ export function MenuItemView(): JSX.Element {
   if (state.kind === 'error') {
     return (
       <div className="stack">
-        <h1 className="page-title">Menu item</h1>
+        <h1 className="page-title" tabIndex={-1}>Menu item</h1>
         <div className="error-summary" role="alert" data-code={state.code}>
           <p>{state.message}</p>
         </div>

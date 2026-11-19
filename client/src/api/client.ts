@@ -73,13 +73,10 @@ export interface ApiClientConfig {
   /** Returns the session token to send as a bearer credential, or null. */
   getToken(): string | null;
   /**
-   * Called whenever the API answers 401, before the `ApiError` is thrown: the TOKEN_REQUIRED,
-   * TOKEN_INVALID and TOKEN_EXPIRED family that ends a session, and equally a rejected sign-in,
-   * which the API answers with INVALID_CREDENTIALS under the same status. The transport holds the
-   * status before it can read the envelope's code, so it reports the fact it has rather than
-   * guessing at the code. A rejected sign-in usually arrives with no session open, where the reset
-   * changes nothing; from a visitor who is already signed in it does end that session, which is the
-   * accepted cost of reporting every 401 the API answers with.
+   * Called when the API answers 401 to a call that carries the session credential, before the
+   * `ApiError` is thrown: the TOKEN_REQUIRED, TOKEN_INVALID and TOKEN_EXPIRED family, which is how
+   * the API refuses a session. A call that carries none — the public calls, the sign-in among them
+   * — has no session of this client's to lose, so its 401 is only a failure left to the caller.
    */
   onUnauthorized(): void;
 }
@@ -149,24 +146,23 @@ function toApiError(payload: unknown, status: number): ApiError {
 }
 
 /**
- * Sends one request to the JSON API and returns its parsed body. A 401 invokes the registered
- * `onUnauthorized` before the error is thrown, so the session is cleared even when the failing
- * request was itself a login attempt. That is deliberate and it is what the hook means: only the
- * status is known at that point, and the API's own vocabulary makes a rejected sign-in a 401 too —
- * INVALID_CREDENTIALS beside the TOKEN_REQUIRED, TOKEN_INVALID and TOKEN_EXPIRED family — so the
- * hook reports "the API refused the credential offered" without waiting to read the code. A sign-in
- * rejected while no session is open leaves nothing to clear; one rejected from a signed-in visitor
- * ends that session too, which is the cost this rule accepts. A 204 returns undefined without
- * reading a body, which is what `POST /api/auth/logout` answers with.
+ * Sends one request to the JSON API and returns its parsed body, or undefined for the 204 that
+ * `POST /api/auth/logout` answers with.
  *
  * The session credential travels unless the caller passes `credential: false`. The seven protected
  * calls — GET /auth/session, POST /auth/logout, POST and GET /orders, GET /orders/:id, and POST
  * and GET /reservations — keep the default, because the API answers them only to a caller it can
- * identify from that header. The five public calls — POST /auth/register, POST /auth/login, GET
- * /categories, GET /menu-items and GET /menu-items/:id — pass `credential: false`: no route
- * behind them registers a guard, so they carry nothing that could identify the caller. The default
- * is to attach, so a forgotten opt-out can at worst re-add a harmless same-origin header the API
- * ignores, while a protected call is never left without its credential.
+ * identify from that header; the five public calls — POST /auth/register, POST /auth/login, GET
+ * /categories, GET /menu-items and GET /menu-items/:id — opt out. The default is to attach, so a
+ * forgotten opt-out can at worst re-add a harmless same-origin header the API ignores, while a
+ * protected call is never left without its credential.
+ *
+ * A 401 on a call that carries the credential invokes `onUnauthorized` before the error is thrown,
+ * which is how a refused session is cleared. A call that carries none has nothing of the session's
+ * to clear, and the API answers one of those with a 401 as well: INVALID_CREDENTIALS refuses the
+ * credentials a sign-in offered to be checked, not a session this client holds, so it reaches the
+ * view as an `ApiError` alone and the visitor keeps the address they submitted from, the notice
+ * explaining why they are on it, and the way back to the screen the guard intercepted.
  *
  * @param path - Path below `/api`, beginning with `/` (for example `/categories`).
  * @param init - Method, body, query parameters and the credential opt-out; GET, credential
@@ -214,7 +210,8 @@ export async function apiFetch<T>(path: string, init: ApiRequestInit = {}): Prom
     payload = undefined;
   }
   if (!response.ok) {
-    if (response.status === 401) {
+    // Only a call that carries the session credential can have it refused.
+    if (response.status === 401 && init.credential !== false) {
       clientConfig?.onUnauthorized();
     }
 

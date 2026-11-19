@@ -705,26 +705,28 @@ describe('401 handling', () => {
   });
 
   /**
-   * The two 401s the API reports through one status: a rejected sign-in, which ends no session, and
-   * an expired token, which does. The transport fires the hook on the status it holds rather than
-   * on the envelope's code, so both invoke it once and both still throw that code unchanged.
+   * The two 401s the API reports through one status: a rejected sign-in, which refuses the
+   * credentials that request offered to be checked, and an expired token, which refuses the session
+   * the client holds. Only the second has a session behind it to end, so only the second reaches
+   * the unauthorized hook; both still throw the code their envelope carried.
    */
   const UNAUTHORIZED_RESPONSES: ReadonlyArray<{
     readonly code: ApiErrorCode;
     readonly send: () => Promise<unknown>;
+    readonly reportsSession: boolean;
   }> = [
-    { code: 'INVALID_CREDENTIALS', send: () => login(LOGIN_INPUT) },
-    { code: 'TOKEN_EXPIRED', send: () => session() },
+    { code: 'INVALID_CREDENTIALS', send: () => login(LOGIN_INPUT), reportsSession: false },
+    { code: 'TOKEN_EXPIRED', send: () => session(), reportsSession: true },
   ];
 
-  it('invokes the unauthorized hook once for any 401 and still throws the code it carried', async () => {
-    for (const { code, send } of UNAUTHORIZED_RESPONSES) {
+  it('reports only a refused session to the unauthorized hook, and throws either code unchanged', async () => {
+    for (const { code, send, reportsSession } of UNAUTHORIZED_RESPONSES) {
       const onUnauthorized = registerHooks(() => TEST_TOKEN);
       fetchMock.mockResolvedValue(fakeResponse(401, errorEnvelope(code, 'Refused by the API.')));
 
       const error = await rejectionOf(send());
 
-      expect(onUnauthorized, code).toHaveBeenCalledTimes(1);
+      expect(onUnauthorized, code).toHaveBeenCalledTimes(reportsSession ? 1 : 0);
       expect(error).toBeInstanceOf(ApiError);
       expect(error.status, code).toBe(401);
       expect(error.code, code).toBe(code);

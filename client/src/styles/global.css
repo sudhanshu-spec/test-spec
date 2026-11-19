@@ -51,6 +51,11 @@
   --line-height-tight: 1.25; /* headings */
   --line-height-base: 1.55; /* body copy */
   --font-weight-bold: 700; /* headings, labels, prices */
+  /* ---- Feedback: the space a message needs, held open before it appears ---- */
+  --feedback-line-height: calc(var(--font-size-sm) * var(--line-height-base)); /* one line of a field's message */
+  --feedback-panel-height: calc(var(--font-size-base) * var(--line-height-base) + var(--space-3) * 2 + 2px); /* one .error-summary line, its 12px padding and its 1px borders */
+  --feedback-message-height: calc(var(--feedback-line-height) * 2); /* the two lines a field's message wraps to in the narrow column */
+  --feedback-banner-height: calc(var(--feedback-panel-height) + var(--font-size-base) * var(--line-height-base)); /* one .error-summary line plus the second line a banner wraps to in the narrow column */
   /* ---- Layout ---- */
   --layout-max-width: 68rem; /* content column ceiling */
   --layout-gutter: 16px; /* page padding below the breakpoint */
@@ -208,7 +213,14 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .field__label { font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); color: var(--color-text); }
 .field__hint { font-size: var(--font-size-sm); color: var(--color-text-muted); }
 .field-error { font-size: var(--font-size-sm); color: var(--color-danger); }
+/* The message slot keeps open the two lines a message can wrap to in the narrow
+   column, populated or not, so an inserted message never moves the control that
+   follows it; the single breakpoint returns it to one line. */
+.field__feedback { min-height: var(--feedback-message-height); }
 .field--invalid .control { border-color: var(--color-danger); }
+/* The form-level message holds two panel lines open for the same reason, and
+   keeps the panel and the retry hint in one column so they never stack. */
+.form-feedback { display: flex; flex-direction: column; gap: var(--space-4); min-height: var(--feedback-banner-height); }
 
 /* ---- Content: cards and availability badges ---- */
 
@@ -228,4 +240,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   .app-nav { flex-wrap: nowrap; }
   .app-main { padding: var(--space-6); }
   .button--block { width: auto; }
+  /* The wide column fits a message on one line, so both slots hold one. */
+  .field__feedback { min-height: var(--feedback-line-height); }
+  .form-feedback { min-height: var(--feedback-panel-height); }
 }

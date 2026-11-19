@@ -34,7 +34,7 @@
  * @module client/src/views/CartView
  */
 
-import { memo, useCallback, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import type { ChangeEvent, FormEvent, JSX } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
@@ -504,6 +504,17 @@ export function CartView(): JSX.Element {
   // The shopper's own text for each line's quantity field while it is being edited, keyed by menu
   // item id. Absent for a line nobody is editing, whose field shows the quantity the cart holds.
   const [quantityTexts, setQuantityTexts] = useState<Record<string, string | undefined>>({});
+  // The rendered lines, so a removal can find the row that inherited the position it dropped.
+  const linesRef = useRef<HTMLUListElement | null>(null);
+  // The page heading, focused when the last line goes and no row is left to receive focus.
+  const headingRef = useRef<HTMLHeadingElement | null>(null);
+  // Position of the row a removal dropped, recorded by the handler and consumed once by the effect
+  // that moves focus, so an unrelated re-render never moves it again.
+  const removedIndex = useRef<number | null>(null);
+  // The lines as of the latest commit. The removal handler reads the dropped row's position from
+  // here rather than from `items`, so it keeps the stable identity the memoised rows rely on and a
+  // quantity keystroke re-renders only the line being edited.
+  const committedLines = useRef(items);
   // Why a line's typed quantity had to be corrected, keyed by menu item id. Present only while the
   // field holds a corrected reading, so the explanation never outlives the number it describes.
   const [quantityNotices, setQuantityNotices] = useState<Record<string, string | undefined>>({});
@@ -512,6 +523,13 @@ export function CartView(): JSX.Element {
   const clearFailure = useCallback((): void => {
     setFailure(null);
   }, []);
+
+  // Keeps the removal handler's view of the lines current without making that handler depend on
+  // them: a dependency on `items` would give `handleRemove` a new identity on every cart edit and
+  // re-render every memoised row, a quantity keystroke included.
+  useEffect(() => {
+    committedLines.current = items;
+  }, [items]);
 
   /**
    * Forgets a line's in-progress text, so its field shows the committed quantity
@@ -588,10 +606,17 @@ export function CartView(): JSX.Element {
    * forgets the line's in-progress text and its notice so neither outlives the
    * line.
    *
+   * The dropped row's position is recorded before the cart changes, because that
+   * position is what tells the effect below which row inherits focus once the list
+   * has been re-rendered.
+   *
    * @param menuItemId - The line to drop.
    */
   const handleRemove = useCallback(
     (menuItemId: string): void => {
+      removedIndex.current = committedLines.current.findIndex(
+        (line) => line.menu_item_id === menuItemId,
+      );
       clearFailure();
       forgetQuantityText(menuItemId);
       forgetQuantityNotice(menuItemId);
@@ -599,6 +624,52 @@ export function CartView(): JSX.Element {
     },
     [clearFailure, forgetQuantityNotice, forgetQuantityText, remove],
   );
+
+  /**
+   * Moves focus to a stable neighbour once a removal has re-rendered the lines.
+   *
+   * The Remove control the visitor activated unmounts with its row, which would
+   * otherwise leave focus on the document body and the next Tab resuming from an
+   * unrelated place. The row that now occupies the dropped position takes focus,
+   * so the visitor carries on from the list as it is now; when the dropped row was
+   * the last one that position belongs to the row before it, and when no row is
+   * left the page heading receives focus, so nobody is stranded on an empty list
+   * with focus nowhere.
+   *
+   * The recorded position is consumed here rather than kept, so a later render — a
+   * quantity edit or a failed placement — never moves focus on its own.
+   */
+  useEffect(() => {
+    const index = removedIndex.current;
+
+    if (index === null) {
+      return;
+    }
+
+    // Consumed either way: a position no line held, which `remove` can report for an id the cart
+    // no longer carried, leaves focus untouched rather than pointing at an unrelated row.
+    removedIndex.current = null;
+
+    if (index < 0) {
+      return;
+    }
+
+    const list = linesRef.current;
+    const neighbour =
+      list === null ? undefined : (list.children[index] ?? list.children[index - 1]);
+    const removeButton =
+      neighbour === undefined ? null : neighbour.querySelector<HTMLButtonElement>('button');
+
+    if (removeButton !== null) {
+      removeButton.focus();
+
+      if (document.activeElement === removeButton) {
+        return;
+      }
+    }
+
+    headingRef.current?.focus();
+  }, [items]);
 
   /**
    * Places the order and moves to its confirmation, or renders why it was not
@@ -644,7 +715,7 @@ export function CartView(): JSX.Element {
   if (items.length === 0) {
     return (
       <section className="stack" aria-labelledby="cart-title">
-        <h1 className="page-title" id="cart-title">{CART_TITLE}</h1>
+        <h1 className="page-title" ref={headingRef} tabIndex={-1} id="cart-title">{CART_TITLE}</h1>
         <div className="state-panel">
           <p>{EMPTY_TITLE}</p>
           <p>{EMPTY_MESSAGE}</p>
@@ -660,7 +731,7 @@ export function CartView(): JSX.Element {
 
   return (
     <section className="cart" aria-labelledby="cart-title">
-      <h1 className="page-title" id="cart-title">{CART_TITLE}</h1>
+      <h1 className="page-title" ref={headingRef} tabIndex={-1} id="cart-title">{CART_TITLE}</h1>
 
       <form className="stack" onSubmit={handlePlaceOrder} aria-busy={submitting} noValidate>
         {failure === null ? null : <OrderFailure failure={failure} submitting={submitting} />}
@@ -668,7 +739,7 @@ export function CartView(): JSX.Element {
         <section className="cart-summary" aria-label="Cart lines and total">
           <div className="cart-summary__lines">
             <h2 className="section-title">{countLabel(itemCount, 'item', 'items')} in your cart</h2>
-            <ul className="cart-lines">
+            <ul className="cart-lines" ref={linesRef}>
               {items.map((line, index) => (
                 <CartLineRow
                   key={line.menu_item_id}

@@ -15,7 +15,10 @@
  *   `INVALID_CREDENTIALS`, `RESERVATION_CONFLICT`, `MENU_ITEM_UNAVAILABLE` and
  *   anything outside the vocabulary;
  * - and never as the other kind, which is what stops an indistinguishable
- *   sign-in failure from leaking which half of the credential was wrong.
+ *   sign-in failure from leaking which half of the credential was wrong;
+ * - and, for the shared feedback primitives, that a field message is inserted
+ *   into a polite region that is already on the pristine form and that the
+ *   form-level region holds one alert whichever way a failure reached it.
  *
  * Two further contracts are asserted from the request bodies the views build:
  * a cart line carries a menu item id and a quantity and no amount, because the
@@ -37,9 +40,11 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ApiError } from '../api/client';
 import type { ApiErrorCode, ApiFieldDetail } from '../api/client';
 import { RESERVATION_ISSUES } from '../api/types';
 import type { ErrorEnvelope, MenuItem, Order, Reservation, User } from '../api/types';
+import { FormFeedback } from '../components/FormControls';
 import { CartProvider, useCart } from '../state/cart';
 import { SessionProvider } from '../state/session';
 import { CartView } from '../views/CartView';
@@ -58,6 +63,8 @@ import { ReservationFormView } from '../views/ReservationFormView';
 const LOGIN_EMAIL_REQUIRED_MESSAGE = 'Enter your email address.';
 const LOGIN_EMAIL_INVALID_MESSAGE = 'Enter an email address such as name@example.com.';
 const LOGIN_PASSWORD_REQUIRED_MESSAGE = 'Enter your password.';
+/** The retry sentence the sign-in form offers while a field is highlighted. */
+const LOGIN_RETRY_MESSAGE = 'Check the details above, then submit the form again to retry.';
 
 const REGISTER_NAME_REQUIRED_MESSAGE = 'Enter your name.';
 const REGISTER_EMAIL_REQUIRED_MESSAGE = 'Enter your email address.';
@@ -76,6 +83,8 @@ const RESERVATION_TIME_INVALID_MESSAGE =
   'We seat on the half hour, so choose one of the seatings we offer between 17:00 and 21:30.';
 const RESERVATION_PARTY_REQUIRED_MESSAGE = 'Enter the number of guests.';
 const RESERVATION_PARTY_INVALID_MESSAGE = 'Enter a whole number of guests.';
+/** The sentence the booking form announces while its submit is in flight. */
+const RESERVATION_SUBMITTING_MESSAGE = 'Booking your table…';
 /**
  * The sentence the API sends beside `party_size` when its fourth checkpoint — a
  * range this client does not own — refuses the value.
@@ -308,6 +317,25 @@ function stubFetch(handler: (call: RecordedCall) => StubReply): RecordedCall[] {
   return calls;
 }
 
+/**
+ * Replaces the global `fetch` with a request that is never answered, so a form
+ * stays in its submitting state while the test reads what it announces. The
+ * unanswered reply is discarded when the test ends and nothing waits on it.
+ *
+ * @returns The requests observed, in order, populated as the test runs.
+ */
+function stubPendingFetch(): RecordedCall[] {
+  const calls: RecordedCall[] = [];
+
+  const mock = vi.fn((input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    calls.push(toRecordedCall(input, init));
+    return new Promise<Response>(() => undefined);
+  });
+
+  vi.stubGlobal('fetch', mock);
+  return calls;
+}
+
 /** @returns An unexpected request as a failure the page will visibly render. */
 function unexpectedRequestReply(call: RecordedCall): StubReply {
   return errorReply(500, 'INTERNAL_ERROR', `Unexpected request: ${call.method} ${call.url}`);
@@ -390,6 +418,18 @@ function errorNode(control: HTMLElement): HTMLElement {
 /** @returns The text of the message the control is currently described by. */
 function errorText(control: HTMLElement): string {
   return errorNode(control).textContent ?? '';
+}
+
+/**
+ * @param control - The input or select to inspect.
+ * @returns The live region the shared field wrapper carries its message in,
+ *   asserting the field has one — it is rendered before any message arrives.
+ */
+function feedbackRegion(control: HTMLElement): HTMLElement {
+  const region = fieldOf(control).querySelector('.field__feedback');
+
+  expect(region).not.toBeNull();
+  return region as HTMLElement;
 }
 
 // ---------------------------------------------------------------------------
@@ -721,6 +761,43 @@ describe('LoginView', () => {
     expect(within(fieldOf(password)).queryByText(GENERIC_MESSAGE)).toBeNull();
   });
 
+  it('offers the retry sentence only while a field is highlighted, never after a plain sign-in failure', async () => {
+    const user = userEvent.setup();
+    const GENERIC_MESSAGE = 'Those details do not match an account.';
+    stubFetch(() => errorReply(401, 'INVALID_CREDENTIALS', GENERIC_MESSAGE));
+
+    renderLogin();
+
+    const email = screen.getByLabelText<HTMLInputElement>(/^Email/);
+    const password = screen.getByLabelText<HTMLInputElement>(/^Password/);
+
+    await user.type(email, VALID_EMAIL);
+    await user.type(password, VALID_PASSWORD);
+    await user.click(screen.getByRole('button', { name: LOGIN_SUBMIT_LABEL }));
+
+    const alert = await screen.findByRole('alert');
+
+    // A 401 highlights no field, so a retry sentence would point at nothing: the
+    // panel is the whole of what the region says.
+    expect(alert.getAttribute('data-code')).toBe('INVALID_CREDENTIALS');
+    expect(alert.textContent).toBe(GENERIC_MESSAGE);
+    expect(screen.queryByText(LOGIN_RETRY_MESSAGE)).toBeNull();
+    expect(email.getAttribute('aria-invalid')).toBe('false');
+    expect(password.getAttribute('aria-invalid')).toBe('false');
+
+    // An empty submit does highlight every field, and the same region then
+    // carries the retry sentence in place of a panel.
+    await user.clear(email);
+    await user.clear(password);
+    await user.click(screen.getByRole('button', { name: LOGIN_SUBMIT_LABEL }));
+
+    expect(screen.queryAllByRole('alert')).toHaveLength(0);
+    const hint = screen.getByText(LOGIN_RETRY_MESSAGE);
+    expect(hint.closest('.form-feedback')).not.toBeNull();
+    expect(errorText(email)).toBe(LOGIN_EMAIL_REQUIRED_MESSAGE);
+    expect(errorText(password)).toBe(LOGIN_PASSWORD_REQUIRED_MESSAGE);
+  });
+
   it('posts the typed credentials and renders no error when the session is opened', async () => {
     const user = userEvent.setup();
     const calls = stubFetch(() => successReply(200, { user: ACCOUNT, token: 'opaque-session-token' }));
@@ -819,6 +896,36 @@ describe('RegisterView', () => {
     expect(calls).toHaveLength(0);
     expect(errorText(password)).toBe(REGISTER_PASSWORD_TOO_LONG_MESSAGE);
     expect(queryErrorNode(email)).toBeNull();
+  });
+
+  it('keeps the short-password message until the password reaches the eight-character floor', async () => {
+    const user = userEvent.setup();
+    const calls = stubFetch(() => successReply(201, {}));
+
+    renderRegister();
+    const { password } = controls();
+
+    await user.click(screen.getByRole('button', { name: REGISTER_SUBMIT_LABEL }));
+    expect(errorText(password)).toBe(REGISTER_PASSWORD_REQUIRED_MESSAGE);
+
+    // Six characters is still short of the floor, so the rule the user is acting
+    // on stays on screen: the message, the invalid state and the wrapper
+    // modifier the stylesheet turns into the red border all survive the edit.
+    await user.type(password, 'short1');
+
+    expect(errorText(password)).toBe(REGISTER_PASSWORD_TOO_SHORT_MESSAGE);
+    expect(password.getAttribute('aria-invalid')).toBe('true');
+    expect(fieldOf(password).className).toBe('field field--invalid');
+
+    // The eighth character satisfies the rule, and the message, the invalid
+    // state and the modifier leave with it.
+    await user.type(password, '23');
+
+    expect(queryErrorNode(password)).toBeNull();
+    expect(password.getAttribute('aria-invalid')).toBe('false');
+    expect(fieldOf(password).className).toBe('field');
+    // Typing is not submitting: no correction is sent on its own.
+    expect(calls).toHaveLength(0);
   });
 
   it('renders a duplicate address on the email control and nowhere else', async () => {
@@ -1362,6 +1469,39 @@ describe('ReservationFormView', () => {
     expect(call.body).not.toHaveProperty('notes');
   });
 
+  it('marks the form busy and announces the wait in one status region while the booking is in flight', async () => {
+    const user = userEvent.setup();
+    const calls = stubPendingFetch();
+
+    renderReservationForm();
+    const controls = reservationControls();
+
+    await fillReservation(user, controls, { date: FUTURE_DATE, time: OFFERED_SLOT, party: '2' });
+
+    const submit = screen.getByRole('button', { name: RESERVE_SUBMIT_LABEL });
+    const form = submit.closest('form');
+
+    expect(form).not.toBeNull();
+    // The pristine form is neither busy nor saying anything about a wait.
+    expect(form?.getAttribute('aria-busy')).toBe('false');
+    expect(screen.queryAllByRole('status')).toHaveLength(0);
+
+    await user.click(submit);
+
+    await waitFor(() => {
+      expect(form?.getAttribute('aria-busy')).toBe('true');
+    });
+
+    // One status region holding the sentence, on the same form that reports
+    // itself busy, and the submit control out of action meanwhile.
+    const statuses = screen.getAllByRole('status');
+
+    expect(statuses).toHaveLength(1);
+    expect(statuses[0]?.textContent).toBe(RESERVATION_SUBMITTING_MESSAGE);
+    expect(submit.hasAttribute('disabled')).toBe(true);
+    onlyCall(calls, RESERVATIONS_URL, 'POST');
+  });
+
   // Two submits dispatched in one task used to post twice: the rendered
   // `disabled` attribute only arrives with the next render, so the duplicate was
   // stopped by the database's unique constraint and its 409 went unshown. The
@@ -1434,5 +1574,89 @@ describe('error envelope discipline', () => {
     expect(queryErrorNode(password)).toBeNull();
     expect(within(fieldOf(email)).queryByText(SERVER_MESSAGE)).toBeNull();
     expect(within(fieldOf(password)).queryByText(SERVER_MESSAGE)).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The two feedback regions the shared module owns: the field's polite live
+// region, and the form-level region that is on screen before it has a message
+// ---------------------------------------------------------------------------
+
+describe('field message announcement', () => {
+  it('announces a field message from a polite region that exists before the message', async () => {
+    const user = userEvent.setup();
+    stubFetch(() => successReply(200, {}));
+
+    renderLogin();
+
+    const email = screen.getByLabelText<HTMLInputElement>(/^Email/);
+    const region = feedbackRegion(email);
+
+    // A live region created together with its text is not announced, so the
+    // region is on the pristine form already and only the message arrives.
+    expect(region.getAttribute('aria-live')).toBe('polite');
+    expect(region.getAttribute('aria-atomic')).toBe('true');
+    // The form-level panel owns role="alert"; a role here would announce twice.
+    expect(region.getAttribute('role')).toBeNull();
+    expect(queryErrorNode(email)).toBeNull();
+    expect(region.textContent).toBe('');
+
+    await user.click(screen.getByRole('button', { name: LOGIN_SUBMIT_LABEL }));
+
+    // The message lands inside that region, and aria-describedby still names it.
+    expect(region.contains(errorNode(email))).toBe(true);
+    expect(region.textContent).toBe(LOGIN_EMAIL_REQUIRED_MESSAGE);
+    expect(screen.queryAllByRole('alert')).toHaveLength(0);
+  });
+});
+
+describe('FormFeedback', () => {
+  const SERVER_MESSAGE = 'That table is already booked. Choose another seating time.';
+  const FIXED_COPY = 'Something went wrong while booking your table. Please try again.';
+  const RETRY_HINT = 'Correct what is highlighted above, then submit the form again to retry.';
+
+  it.each([
+    {
+      source: 'the API error itself',
+      error: new ApiError(SERVER_MESSAGE, 409, 'RESERVATION_CONFLICT'),
+      message: null,
+      expectedCode: 'RESERVATION_CONFLICT',
+      expectedText: SERVER_MESSAGE,
+    },
+    {
+      source: 'fixed copy for a failure that is not an ApiError',
+      error: null,
+      message: FIXED_COPY,
+      expectedCode: 'INTERNAL_ERROR',
+      expectedText: FIXED_COPY,
+    },
+  ])('renders $source as the one alert inside the region', ({ error, message, expectedCode, expectedText }) => {
+    const { container } = render(<FormFeedback error={error} message={message} hint={RETRY_HINT} />);
+
+    const region = container.querySelector('.form-feedback');
+    const alert = screen.getByRole('alert');
+
+    expect(region).not.toBeNull();
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
+    expect(alert.getAttribute('data-code')).toBe(expectedCode);
+    expect(alert.textContent).toBe(expectedText);
+    expect((region as HTMLElement).contains(alert)).toBe(true);
+    // A failure and the invitation to retry are one moment: the hint stands down.
+    expect(screen.queryByText(RETRY_HINT)).toBeNull();
+  });
+
+  it.each([
+    { source: 'the retry hint alone', hint: RETRY_HINT, expectedText: RETRY_HINT },
+    { source: 'nothing to report', hint: null, expectedText: '' },
+  ])('renders its region with $source and no alert', ({ hint, expectedText }) => {
+    const { container } = render(<FormFeedback hint={hint} />);
+
+    // The region is what holds the height global.css reserves, so it is here
+    // whether or not it has anything to say.
+    const region = container.querySelector('.form-feedback');
+
+    expect(region).not.toBeNull();
+    expect(region?.textContent).toBe(expectedText);
+    expect(screen.queryAllByRole('alert')).toHaveLength(0);
   });
 });

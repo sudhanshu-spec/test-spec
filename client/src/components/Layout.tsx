@@ -7,7 +7,7 @@
  * only for its badge count.
  *
  * Both contexts it consumes are required above it in the tree, together with a router context for
- * `NavLink`, `Outlet` and `useNavigate` (supplied by `client/src/main.tsx`):
+ * `NavLink`, `Outlet`, `useLocation` and `useNavigate` (supplied by `client/src/main.tsx`):
  * - `useSession` (`client/src/state/session.tsx`) supplies `status`, the signed-in `user`, the
  *   `logout` transition and `unauthorizedCount`; that provider owns restore, login, logout and the
  *   401 path, and records a 401 as a signal instead of routing, because it mounts above the router.
@@ -19,6 +19,23 @@
  * screen, so it turns each new `unauthorizedCount` into the `replace` navigation to `/login` that
  * the session contract owes the visitor, on a public screen exactly as on a guarded one.
  *
+ * It is also where a page change becomes a change of keyboard position. A routed screen swaps
+ * inside `<main>`, so the control that had focus unmounts with the outgoing screen and focus falls
+ * to the document body, leaving the next Tab to resume from the top of the page. This shell
+ * therefore moves focus to the new screen's heading — or to `<main>` itself when a screen renders
+ * no `<h1>` — on a pathname change only, so a query-string change such as the catalog's category
+ * filter leaves focus exactly where the visitor put it.
+ *
+ * One commit is not enough to place that focus, because a screen keeps committing after the route
+ * change that mounted it. A screen that loads its data either renders a heading before the request
+ * settles and then replaces the section holding it with another component, or renders its loading
+ * card first and its heading once the request settles; either way the element a hand-over focused
+ * leaves the document a moment after it received focus, and the browser drops focus to the document
+ * body with it. The shell therefore owns the position on the page for as long as the screen it moved
+ * into is settling — an ownership flag rather than a one-shot — and watches the page body for the
+ * moment that element is replaced. The flag follows the page body rather than the pathname, because
+ * the replacement happens when the data arrives, not when the route changes.
+ *
  * Every visual rule lives in the layout-shell classes of `client/src/styles/global.css`: the
  * 44x44px control floor and the single 768px breakpoint — stacked navigation below it, a header row
  * at and above it — belong to that stylesheet, so this module declares no style, no media query and
@@ -28,7 +45,7 @@
  */
 
 import { useEffect, useRef, type JSX } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 
 import { useCart } from '../state/cart';
 import { useSession } from '../state/session';
@@ -49,6 +66,17 @@ function navLinkClass({ isActive }: { isActive: boolean }): string {
 }
 
 /**
+ * The landing point of a hand-over into the page body: the first heading the screen renders, or the
+ * page body itself when it renders none.
+ *
+ * @param main - The page body every screen renders into.
+ * @returns The element that takes the hand-over.
+ */
+function resolveFocusTarget(main: HTMLElement): HTMLElement {
+  return main.querySelector<HTMLElement>('h1') ?? main;
+}
+
+/**
  * Screen 9: the shell wrapped around every screen of the client.
  *
  * The navigation shows the catalog always, and then one of two account sets: while a session is
@@ -62,6 +90,28 @@ export function Layout(): JSX.Element {
   const { status, user, logout, unauthorizedCount } = useSession();
   const { itemCount } = useCart();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  /** The page body every screen renders into, and the fallback focus target of a route change. */
+  const mainRef = useRef<HTMLElement | null>(null);
+  // Seeded with the pathname of the first render, so mounting a screen never moves focus.
+  const renderedPathname = useRef(location.pathname);
+  /**
+   * Whether the position on the page is still this shell's to place.
+   *
+   * Set by a route change and cleared the moment the visitor takes the position back, this flag is
+   * what makes the hand-over survive a screen that keeps committing: it stays true across the
+   * later commits that replace the element the route change focused, and ends at the first press
+   * anywhere or the first focus that lands somewhere else. It is deliberately not a one-shot armed
+   * only when a route change found no heading — the case that broke the first version of this
+   * hand-over, where a found heading was replaced a moment later and nothing was left to answer it.
+   */
+  const ownsFocus = useRef(false);
+  /**
+   * The element the latest hand-over focused, which is the node whose replacement the observer
+   * below has to notice. `null` until a route change places focus.
+   */
+  const focusTarget = useRef<HTMLElement | null>(null);
 
   const isAuthenticated = status === 'authenticated';
   const isAnonymous = status === 'anonymous';
@@ -111,6 +161,155 @@ export function Layout(): JSX.Element {
     navigate('/login', { replace: true });
   }, [navigate, unauthorizedCount]);
 
+  /**
+   * Gives the page position to the screen now on display: its first heading, or the page body when
+   * it renders none.
+   *
+   * The element that took the hand-over is recorded, because it is the node whose replacement the
+   * observer below has to notice: a heading that the next commit removes is exactly how focus ends
+   * up back on the document body. A heading that refuses the focus must not leave focus there
+   * either, so the container takes the position in its place.
+   *
+   * Reads refs only, so the single observer created on mount can call it for the life of the shell.
+   */
+  const handOverFocus = (): void => {
+    const main = mainRef.current;
+
+    if (main === null) {
+      return;
+    }
+
+    const target = resolveFocusTarget(main);
+
+    focusTarget.current = target;
+    target.focus();
+
+    if (target !== main && document.activeElement !== target) {
+      focusTarget.current = main;
+      main.focus();
+    }
+  };
+
+  /**
+   * Completes a hand-over whose target the screen replaced, and gives the position back as soon as
+   * the visitor takes it.
+   *
+   * The element a hand-over focused leaves the document whenever the screen it moved into commits
+   * again: `ReservationConfirmationView` renders its loading section and then swaps in a different
+   * component that holds the same heading, and `OrderConfirmationView` replaces the outgoing
+   * screen's heading with a heading-less loading card. The browser answers the removal by moving
+   * focus to the document body, so the observer focuses the heading the screen now renders — or
+   * `<main>` while it still renders none — and keeps doing so for as long as the position is the
+   * shell's. It also finishes what a route change alone cannot: a screen with no heading takes
+   * `<main>`, and the heading it renders once its data arrives replaces that once focus is still on
+   * the container.
+   *
+   * The ownership flag in front of every branch is what keeps this from moving focus behind the
+   * visitor's back. A quantity keystroke, a refetch, a list re-render or a failed placement commits
+   * DOM of its own, and each of those mutations finds focus exactly where it was left — on the
+   * recorded element, still in the document — so nothing moves. The flag is set by the route change
+   * below and cleared by the visitor's own next press or focus move, so once they have taken the
+   * position back the observer is inert for the rest of that screen.
+   *
+   * One observer serves the life of the shell: `<main>` is the same element on every route, so it is
+   * created once on mount, disconnected on unmount, and reads the live refs rather than state
+   * captured when it was created. `pointerdown` and `focusin` are the two ways a visitor takes the
+   * position back — a press anywhere, or focus landing on anything but the element this shell last
+   * focused — and both sit on `document` because the control that takes it back may be in the
+   * header or the footer rather than in the page body.
+   *
+   * A focus event whose target is the document body is not the visitor taking anything: it is the
+   * browser resetting focus after a removal, which is the very case this observer answers, so it
+   * leaves the flag alone. Focusing an element mutates nothing, so a completed hand-over produces
+   * no mutation of its own and the exchange stops there.
+   */
+  useEffect(() => {
+    const main = mainRef.current;
+
+    if (main === null) {
+      return;
+    }
+
+    const observer = new MutationObserver(() => {
+      if (!ownsFocus.current) {
+        return;
+      }
+
+      const target = focusTarget.current;
+      const replaced = target === null || !target.isConnected;
+      const onBody = document.activeElement === document.body;
+      // The route change could only reach `<main>` because the screen rendered no heading yet, so
+      // the heading it renders once its data arrives is the landing point — while focus is still on
+      // the container that stood in for it.
+      const headingArrived =
+        target === main && document.activeElement === main && main.querySelector('h1') !== null;
+
+      if (!replaced && !onBody && !headingArrived) {
+        return;
+      }
+
+      handOverFocus();
+    });
+
+    /** Ends the hand-over once the position on the page is the visitor's again. */
+    const releaseFocus = (): void => {
+      ownsFocus.current = false;
+    };
+
+    /**
+     * @param event - A focus event anywhere in the document.
+     */
+    const handleFocusIn = (event: FocusEvent): void => {
+      if (event.target === document.body || event.target === document.documentElement) {
+        return;
+      }
+
+      if (event.target !== focusTarget.current) {
+        ownsFocus.current = false;
+      }
+    };
+
+    observer.observe(main, { childList: true, subtree: true });
+    document.addEventListener('pointerdown', releaseFocus, true);
+    document.addEventListener('focusin', handleFocusIn, true);
+
+    return () => {
+      observer.disconnect();
+      document.removeEventListener('pointerdown', releaseFocus, true);
+      document.removeEventListener('focusin', handleFocusIn, true);
+    };
+  }, []);
+
+  /**
+   * Hands a route change's focus to the screen that route change rendered.
+   *
+   * The control a keyboard visitor had focus on belongs to the outgoing screen and unmounts with
+   * it, which leaves focus on the document body; the next Tab then resumes from the top of the page
+   * rather than from the screen now on display. The new screen's `<h1>` is the natural landing
+   * point — every page heading carries `tabIndex={-1}` so it can receive focus without joining the
+   * tab order — and `<main>`, programmatically focusable for the same reason, is the fallback for a
+   * screen that renders no heading or whose heading refuses the focus.
+   *
+   * The pathname alone triggers this: the catalog's category filter changes only the query string,
+   * and stealing focus mid-filter would move the visitor away from the control they are using. The
+   * seeded ref makes the first render focus nothing, so arriving on a page never overrides
+   * something the visitor already focused themselves.
+   *
+   * Every route change takes ownership of the position for what the new screen does next, which is
+   * how the observer above answers a screen that replaces the very element this focused — the
+   * replacement arrives commits later, when its data does.
+   */
+  useEffect(() => {
+    if (renderedPathname.current === location.pathname) {
+      return;
+    }
+
+    renderedPathname.current = location.pathname;
+    // The position on the page is the shell's again until the visitor takes it back.
+    ownsFocus.current = true;
+    handOverFocus();
+  }, [location.pathname]);
+
   return (
     <div className="app">
       <header className="app-header">
@@ -153,7 +352,7 @@ export function Layout(): JSX.Element {
           </p>
         ) : null}
       </header>
-      <main className="app-main">
+      <main className="app-main" ref={mainRef} tabIndex={-1}>
         <Outlet />
       </main>
       <footer className="app-footer">

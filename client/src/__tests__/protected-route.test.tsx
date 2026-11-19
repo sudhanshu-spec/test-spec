@@ -6,7 +6,7 @@
  * the one production mounts: `ProtectedRoute` is applied by the manifest's `requiresAuth` rows, the
  * session comes from the real `SessionProvider` and the cart from the real `CartProvider`.
  *
- * Four concerns, one module (rule R-10):
+ * Five concerns, one module (rule R-10):
  *
  * 1. An anonymous visitor is sent to `/login` from each of the six guarded paths, and the guarded
  *    screen is never mounted, so its data is never requested. The three token codes the API answers
@@ -20,6 +20,10 @@
  * 4. The guard's own contract: an authenticated child renders unchanged and unboxed, `/login` is
  *    the only address of the login screen, and the guarded paths are exactly the manifest's
  *    `requiresAuth` rows.
+ * 5. A refused sign-in keeps everything the guard handed over: the `from` parameter, the notice and
+ *    the history entry survive the 401 a wrong password is answered with, and the corrected sign-in
+ *    still returns the visitor to the guarded screen. A credential refusal is not a session expiry,
+ *    so the shell has nothing to navigate away from.
  *
  * No request leaves the process (rule R-7): `fetch` is replaced through `vi.stubGlobal` in every
  * case and answers from a canned table, and an unsanctioned URL is answered with the documented 500
@@ -34,6 +38,7 @@
  */
 
 import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { RouterProvider, createMemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -46,7 +51,7 @@ import type {
   SessionResponse,
   User,
 } from '../api/types';
-import { ProtectedRoute } from '../components/ProtectedRoute';
+import { ProtectedRoute, RETURN_PATH_PARAM } from '../components/ProtectedRoute';
 import { routeManifest, routes } from '../main';
 import { CartProvider } from '../state/cart';
 import { SessionProvider } from '../state/session';
@@ -511,5 +516,95 @@ describe('guard contract', () => {
     expect(await screen.findByRole('heading', { name: 'Order not found', level: 1 })).not.toBeNull();
     expect(screen.getByText('We could not find that order in your account.')).not.toBeNull();
     expect(document.body.textContent ?? '').not.toContain('403');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// A refused sign-in: the guard's hand-over outlives it
+// ---------------------------------------------------------------------------
+
+/** Notice the guard's `from=%2Fcart` produces above the sign-in form. */
+const CART_RETURN_NOTICE = "Sign in to see your cart. We'll take you back there afterwards.";
+
+/** Retry sentence the sign-in form offers only beside a highlighted field, never after a refusal. */
+const LOGIN_RETRY_MESSAGE = 'Check the details above, then submit the form again to retry.';
+
+/** Message the API answers a wrong password with; it names neither field. */
+const REFUSED_MESSAGE = 'The email or password is incorrect.';
+
+describe('rejected sign-in', () => {
+  /**
+   * @returns One answer per path: the first sign-in is refused with the documented envelope, the
+   *   next one opens the session.
+   */
+  function refusingFirstSignIn(): Record<string, ApiAnswer> {
+    let refused = false;
+
+    return {
+      '/auth/login': () => {
+        if (refused) {
+          return jsonResponse(200, { user: USER, token: STORED_TOKEN });
+        }
+
+        refused = true;
+        return jsonResponse(401, { error: { code: 'INVALID_CREDENTIALS', message: REFUSED_MESSAGE } });
+      },
+    };
+  }
+
+  it('keeps the address, the notice and the way back when the password is refused', async () => {
+    const user = userEvent.setup();
+    installApi(refusingFirstSignIn());
+
+    const router = createMemoryRouter(routes, { initialEntries: ['/cart'] });
+    render(
+      <SessionProvider>
+        <CartProvider>
+          <RouterProvider router={router} />
+        </CartProvider>
+      </SessionProvider>,
+    );
+
+    // The guard handed the anonymous visitor to the sign-in screen with the cart carried along.
+    await expectLoginScreen();
+    const handedOver = router.state.location;
+    expect(handedOver.pathname).toBe('/login');
+    expect(handedOver.search).toBe(`?${RETURN_PATH_PARAM}=%2Fcart`);
+    expect(screen.getByRole('status').textContent).toBe(CART_RETURN_NOTICE);
+
+    const email = screen.getByLabelText<HTMLInputElement>(/^Email/);
+    const password = screen.getByLabelText<HTMLInputElement>(/^Password/);
+
+    await user.type(email, USER.email);
+    await user.type(password, 'wrong-password');
+    await user.click(screen.getByRole('button', { name: LOGIN_HEADING }));
+
+    const alert = await screen.findByRole('alert');
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
+    expect(alert.getAttribute('data-code')).toBe('INVALID_CREDENTIALS');
+    expect(alert.textContent).toBe(REFUSED_MESSAGE);
+    expect(screen.queryByText(LOGIN_RETRY_MESSAGE)).toBeNull();
+
+    // A credential refusal is not a session expiry: the shell has no 401 to navigate away from, so
+    // the address, the history entry and the notice the guard left behind all survive the refusal.
+    expect(router.state.location.pathname).toBe(handedOver.pathname);
+    expect(router.state.location.search).toBe(handedOver.search);
+    expect(router.state.location.key).toBe(handedOver.key);
+    expect(screen.getByRole('status').textContent).toBe(CART_RETURN_NOTICE);
+
+    // Neither field is refused on its own: the whole of what the visitor learns is that one panel.
+    expect(email.getAttribute('aria-invalid')).toBe('false');
+    expect(password.getAttribute('aria-invalid')).toBe('false');
+
+    // The corrected password still completes the hand-over the guard began.
+    await user.clear(password);
+    await user.type(password, 'correct-password');
+    await user.click(screen.getByRole('button', { name: LOGIN_HEADING }));
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/cart');
+    });
+    expect(await screen.findByRole('heading', { name: 'Your cart', level: 1 })).not.toBeNull();
+    expect(screen.queryByText(CART_RETURN_NOTICE)).toBeNull();
   });
 });

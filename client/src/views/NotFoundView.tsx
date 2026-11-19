@@ -42,7 +42,7 @@ export function NotFoundView(): JSX.Element {
 
   return (
     <div className="stack">
-      <h1 className="page-title">Page not found</h1>
+      <h1 className="page-title" tabIndex={-1}>Page not found</h1>
 
       <div className="state-panel">
         <p>We could not find the page you were looking for. It may have moved, or the link may be incomplete.</p>
