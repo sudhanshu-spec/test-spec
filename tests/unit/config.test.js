@@ -137,4 +137,156 @@ describe('Configuration Module', () => {
       expect(config.env).toBeDefined();
     });
   });
+
+  describe('Database File Configuration', () => {
+    test('should default dbFile to data/app.db when DB_FILE not set', () => {
+      const config = loadConfigWithoutEnv(['DB_FILE']);
+      expect(config.dbFile).toBe('data/app.db');
+    });
+
+    test('should use DB_FILE env var when set', () => {
+      const config = loadConfigWithEnv({ DB_FILE: '/tmp/custom.db' });
+      expect(config.dbFile).toBe('/tmp/custom.db');
+    });
+
+    test('should return dbFile as a string type', () => {
+      const config = loadConfigWithoutEnv(['DB_FILE']);
+      expect(typeof config.dbFile).toBe('string');
+    });
+  });
+
+  describe('CORS Origin Configuration', () => {
+    test('should default corsOrigin to http://localhost:5173 when CORS_ORIGIN not set', () => {
+      const config = loadConfigWithoutEnv(['CORS_ORIGIN']);
+      expect(config.corsOrigin).toBe('http://localhost:5173');
+    });
+
+    test('should use CORS_ORIGIN env var when set', () => {
+      const config = loadConfigWithEnv({ CORS_ORIGIN: 'http://localhost:4000' });
+      expect(config.corsOrigin).toBe('http://localhost:4000');
+    });
+
+    test('should return corsOrigin as a string type', () => {
+      const config = loadConfigWithoutEnv(['CORS_ORIGIN']);
+      expect(typeof config.corsOrigin).toBe('string');
+    });
+  });
+
+  describe('Token TTL Configuration', () => {
+    test('should default tokenTtlHours to 24 when TOKEN_TTL_HOURS not set', () => {
+      const config = loadConfigWithoutEnv(['TOKEN_TTL_HOURS']);
+      expect(config.tokenTtlHours).toBe(24);
+    });
+
+    test('should parse TOKEN_TTL_HOURS env var as a number when set', () => {
+      const config = loadConfigWithEnv({ TOKEN_TTL_HOURS: '48' });
+      expect(config.tokenTtlHours).toBe(48);
+    });
+
+    test('should return tokenTtlHours as a number type', () => {
+      const config = loadConfigWithoutEnv(['TOKEN_TTL_HOURS']);
+      expect(typeof config.tokenTtlHours).toBe('number');
+    });
+  });
+
+  describe('Service Window Configuration', () => {
+    test('should default serviceOpenTime to 17:00 when SERVICE_OPEN_TIME not set', () => {
+      const config = loadConfigWithoutEnv(['SERVICE_OPEN_TIME']);
+      expect(config.serviceOpenTime).toBe('17:00');
+    });
+
+    test('should use SERVICE_OPEN_TIME env var when set', () => {
+      const config = loadConfigWithEnv({ SERVICE_OPEN_TIME: '16:30' });
+      expect(config.serviceOpenTime).toBe('16:30');
+    });
+
+    test('should default serviceCloseTime to 22:00 when SERVICE_CLOSE_TIME not set', () => {
+      const config = loadConfigWithoutEnv(['SERVICE_CLOSE_TIME']);
+      expect(config.serviceCloseTime).toBe('22:00');
+    });
+
+    test('should use SERVICE_CLOSE_TIME env var when set', () => {
+      const config = loadConfigWithEnv({ SERVICE_CLOSE_TIME: '23:00' });
+      expect(config.serviceCloseTime).toBe('23:00');
+    });
+
+    test('should return both service window times as string types', () => {
+      const config = loadConfigWithoutEnv(['SERVICE_OPEN_TIME', 'SERVICE_CLOSE_TIME']);
+      expect(typeof config.serviceOpenTime).toBe('string');
+      expect(typeof config.serviceCloseTime).toBe('string');
+    });
+  });
+
+  describe('Reservation Horizon Configuration', () => {
+    test('should default reservationHorizonDays to 90 when RESERVATION_HORIZON_DAYS not set', () => {
+      const config = loadConfigWithoutEnv(['RESERVATION_HORIZON_DAYS']);
+      expect(config.reservationHorizonDays).toBe(90);
+    });
+
+    test('should parse RESERVATION_HORIZON_DAYS env var as a number when set', () => {
+      const config = loadConfigWithEnv({ RESERVATION_HORIZON_DAYS: '30' });
+      expect(config.reservationHorizonDays).toBe(30);
+    });
+
+    test('should return reservationHorizonDays as a number type', () => {
+      const config = loadConfigWithoutEnv(['RESERVATION_HORIZON_DAYS']);
+      expect(typeof config.reservationHorizonDays).toBe('number');
+    });
+  });
+
+  describe('Party Size Configuration', () => {
+    test('should default maxPartySize to 12 when MAX_PARTY_SIZE not set', () => {
+      const config = loadConfigWithoutEnv(['MAX_PARTY_SIZE']);
+      expect(config.maxPartySize).toBe(12);
+    });
+
+    test('should parse MAX_PARTY_SIZE env var as a number when set', () => {
+      const config = loadConfigWithEnv({ MAX_PARTY_SIZE: '8' });
+      expect(config.maxPartySize).toBe(8);
+    });
+
+    test('should return maxPartySize as a number type', () => {
+      const config = loadConfigWithoutEnv(['MAX_PARTY_SIZE']);
+      expect(typeof config.maxPartySize).toBe('number');
+    });
+  });
+
+  describe('Extended Configuration Object Structure', () => {
+    test('should expose all seven extended configuration properties', () => {
+      const config = require('../../src/config');
+      expect(config).toHaveProperty('dbFile');
+      expect(config).toHaveProperty('corsOrigin');
+      expect(config).toHaveProperty('tokenTtlHours');
+      expect(config).toHaveProperty('serviceOpenTime');
+      expect(config).toHaveProperty('serviceCloseTime');
+      expect(config).toHaveProperty('maxPartySize');
+      expect(config).toHaveProperty('reservationHorizonDays');
+      expect(config.dbFile).toBeDefined();
+      expect(config.corsOrigin).toBeDefined();
+      expect(config.tokenTtlHours).toBeDefined();
+      expect(config.serviceOpenTime).toBeDefined();
+      expect(config.serviceCloseTime).toBeDefined();
+      expect(config.maxPartySize).toBeDefined();
+      expect(config.reservationHorizonDays).toBeDefined();
+    });
+
+    test('should keep host, port and env defaults while every extended variable is set', () => {
+      const config = loadConfigWithEnv({
+        HOST: undefined,
+        PORT: undefined,
+        NODE_ENV: undefined,
+        DB_FILE: 'data/test.db',
+        CORS_ORIGIN: 'http://localhost:4000',
+        TOKEN_TTL_HOURS: '12',
+        SERVICE_OPEN_TIME: '16:30',
+        SERVICE_CLOSE_TIME: '23:00',
+        MAX_PARTY_SIZE: '8',
+        RESERVATION_HORIZON_DAYS: '30'
+      });
+
+      expect(config.host).toBe('127.0.0.1');
+      expect(config.port).toBe(3000);
+      expect(config.env).toBe('development');
+    });
+  });
 });
