@@ -6,11 +6,11 @@
  * details; the one table pairing every code with the status it is answered
  * with; and the two reservation issue strings the API contract fixes verbatim.
  *
- * Consumers: the four API routers, the four services, the authentication
- * middleware, the API-scoped not-found and error-handler middleware, and the
- * HTTP entry point. No other module defines a code, a status number or an
- * issue string, so the envelope's `code` field and its status can never drift
- * apart across routers.
+ * Consumers: the three API routers that validate their own input (auth, menu
+ * and orders), the four services, the authentication middleware, and the
+ * API-scoped not-found and error-handler middleware. No other module defines a
+ * code, a status number or an issue string, so the envelope's `code` field and
+ * its status can never drift apart across routers.
  *
  * @module src/errors
  */

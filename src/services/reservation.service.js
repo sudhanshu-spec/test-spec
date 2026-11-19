@@ -187,8 +187,8 @@ function createReservationService({ reservations, config, now = () => new Date()
 }
 
 /**
- * The application's reservation service, over the real repository, settings and
- * clock. Requiring this module opens no connection; the first use does.
+ * The reservation service over the real repository, settings and clock; it opens no connection until first use.
+ * @type {{createReservation: Function, listReservations: Function}}
  */
 const reservationService = createReservationService({
   reservations: require('../repositories/reservation.repository'),

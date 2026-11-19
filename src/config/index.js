@@ -5,9 +5,7 @@
  * variable support following the Twelve-Factor App methodology for configuration
  * externalization.
  * 
- * Default values preserve backward compatibility with original server.js implementation:
- * - host: '127.0.0.1' (from original server.js line 3)
- * - port: 3000 (from original server.js line 4)
+ * Default values: host '127.0.0.1', port 3000.
  * 
  * This module is the only reader of process.env in the application; every other
  * module reads the already-evaluated values off the exported object.

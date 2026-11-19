@@ -30,10 +30,6 @@ const path = require('node:path');
  * @typedef {import('supertest').Response} SupertestResponse
  */
 
-// =============================================================================
-// Suite database
-// =============================================================================
-
 /** DB_FILE as this process found it, restored once the suite ends. @type {string|undefined} */
 const previousDbFile = process.env.DB_FILE;
 
@@ -49,10 +45,6 @@ jest.resetModules();
 const request = require('supertest');
 const app = require('../../src/app');
 const { getDb, closeDb } = require('../../src/db');
-
-// =============================================================================
-// Contracts under test
-// =============================================================================
 
 /** The four fields a public user projection carries, in alphabetical order. */
 const PUBLIC_USER_KEYS = ['created_at', 'email', 'id', 'name'];
@@ -71,10 +63,6 @@ const VALID_PASSWORD = 'correct-horse-battery';
 
 /** Number of addresses this suite has minted, so none repeats another's. */
 let emailSequence = 0;
-
-// =============================================================================
-// Helpers
-// =============================================================================
 
 /**
  * An address no earlier test in this suite used, so no row of this suite's
@@ -231,10 +219,6 @@ function expectNoSecrets(response) {
     expect(serialised).not.toContain(key);
   });
 }
-
-// =============================================================================
-// Teardown
-// =============================================================================
 
 afterAll(() => {
   // Closing first releases the file and its WAL companions; unlinking an open

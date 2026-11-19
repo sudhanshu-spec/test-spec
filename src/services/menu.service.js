@@ -26,11 +26,9 @@ const { AppError } = require('../errors');
 const categoryRepository = require('../repositories/category.repository');
 const menuItemRepository = require('../repositories/menu-item.repository');
 
-/*
- * Failures are raised by code name, never by status number: AppError resolves
- * the 404 from the one status table in src/errors and rejects a name that is not
- * a key of it, so no status number is written here.
- */
+// Failures are raised by code name, never by status number: AppError resolves
+// the 404 from the one status table in src/errors and rejects a name that is not
+// a key of it, so no status number is written here.
 
 /**
  * Project a joined menu_items row onto the API's `item` contract.
