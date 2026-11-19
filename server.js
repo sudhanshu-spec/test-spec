@@ -156,7 +156,10 @@ function shutdown(signal) {
       console.error(`Failed to close the database: ${dbError.message}`);
     }
 
-    process.exit(0);
+    // Exit through the event loop, never by terminating the process directly: a
+    // pipe is written asynchronously on POSIX, so an explicit exit can drop the
+    // shutdown line logged above; nothing is left open, so Node exits by itself.
+    process.exitCode = 0;
   });
 }
 

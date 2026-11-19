@@ -339,9 +339,10 @@ describe('Server Entry Point - error and shutdown paths', () => {
         expect(mockCloseDb).toHaveBeenCalledTimes(1);
         expect(mockServer.close.mock.invocationCallOrder[0])
           .toBeLessThan(mockCloseDb.mock.invocationCallOrder[0]);
-        expect(processExitSpy).toHaveBeenCalledWith(0);
-        expect(processExitSpy.mock.invocationCallOrder[0])
-          .toBeGreaterThan(mockCloseDb.mock.invocationCallOrder[0]);
+        // The exit code is the contract, and exiting explicitly is what the
+        // shutdown path must not do: a pipe drains after the process returns.
+        expect(process.exitCode).toBe(0);
+        expect(processExitSpy).not.toHaveBeenCalled();
         expect(capturedOutput(consoleLogSpy)).toContain(signal);
       }
     );
@@ -371,7 +372,8 @@ describe('Server Entry Point - error and shutdown paths', () => {
 
       expect(mockServer.close).toHaveBeenCalledTimes(1);
       expect(mockCloseDb).toHaveBeenCalledTimes(1);
-      expect(processExitSpy).toHaveBeenCalledTimes(1);
+      expect(process.exitCode).toBe(0);
+      expect(processExitSpy).not.toHaveBeenCalled();
     });
 
     test('should release the database only after the HTTP server finishes closing', () => {
@@ -387,12 +389,14 @@ describe('Server Entry Point - error and shutdown paths', () => {
 
       expect(mockServer.close).toHaveBeenCalledTimes(1);
       expect(mockCloseDb).not.toHaveBeenCalled();
+      expect(process.exitCode).toBe(originalExitCode);
       expect(processExitSpy).not.toHaveBeenCalled();
 
       expect(typeof pendingClose).toBe('function');
       expect(() => pendingClose()).not.toThrow();
       expect(mockCloseDb).toHaveBeenCalledTimes(1);
-      expect(processExitSpy).toHaveBeenCalledWith(0);
+      expect(process.exitCode).toBe(0);
+      expect(processExitSpy).not.toHaveBeenCalled();
     });
 
     test('should report a failing close during shutdown but still release the database', () => {
@@ -405,7 +409,8 @@ describe('Server Entry Point - error and shutdown paths', () => {
 
       expect(capturedOutput(consoleErrorSpy)).toContain('server close failed during shutdown');
       expect(mockCloseDb).toHaveBeenCalledTimes(1);
-      expect(processExitSpy).toHaveBeenCalledWith(0);
+      expect(process.exitCode).toBe(0);
+      expect(processExitSpy).not.toHaveBeenCalled();
     });
 
     test('should exit successfully even when closing the database fails', () => {
@@ -419,7 +424,8 @@ describe('Server Entry Point - error and shutdown paths', () => {
 
       expect(mockCloseDb).toHaveBeenCalledTimes(1);
       expect(capturedOutput(consoleErrorSpy)).toContain('database is locked');
-      expect(processExitSpy).toHaveBeenCalledWith(0);
+      expect(process.exitCode).toBe(0);
+      expect(processExitSpy).not.toHaveBeenCalled();
     });
   });
 
