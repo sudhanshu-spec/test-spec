@@ -43,7 +43,7 @@ const app = require('./src/app');
 /**
  * Application configuration settings.
  * Values are sourced from environment variables with sensible defaults.
- * @type {{ host: string, port: number, env: string }}
+ * @type {import('./src/config')}
  */
 const config = require('./src/config');
 
@@ -98,7 +98,7 @@ function handleListenError(error) {
   const code = error && error.code ? ` (${error.code})` : '';
   const reason = (error && error.message) || String(error);
 
-  console.error(`Failed to listen on http://${config.host}:${config.port}/${code}: ${reason}`);
+  console.error(`Failed to listen on http://${config.host}:${config.port}${code}: ${reason}`);
 
   try {
     server.close((closeError) => {

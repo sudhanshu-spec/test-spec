@@ -60,25 +60,6 @@ function toPublicItem(row) {
 }
 
 /**
- * Reduce a caller's category filter to the slug worth resolving.
- *
- * Every spelling of "no filter" — undefined, null, empty, whitespace — reduces
- * to '' and skips the category lookup; undefined and null come first so
- * String() cannot invent the slug "undefined". Trimming and case folding of a
- * real slug stay in category.repository.findBySlug.
- *
- * @param {*} categorySlug - Raw filter value, typically req.query.category.
- * @returns {string} The trimmed slug, or '' when no filter was requested.
- */
-function normaliseSlug(categorySlug) {
-  if (categorySlug === undefined || categorySlug === null) {
-    return '';
-  }
-
-  return String(categorySlug).trim();
-}
-
-/**
  * Build a menu service over the repositories it reads through.
  *
  * The factory takes stub repositories and needs no HTTP request, no database and
@@ -115,19 +96,30 @@ function createMenuService({ categories, items }) {
   /**
    * List the available menu items, optionally restricted to one category slug.
    *
-   * A filtered list is the available catalog restricted to the resolved
-   * category. A known category with no available items yields [], which is a
-   * normal result and never an error.
+   * The filter contract: only a single `category` parameter names a category.
+   * An absent or blank filter lists the whole available catalog, and any other
+   * value must resolve — a repeated parameter arrives as an array, names no
+   * category and is therefore answered CATEGORY_NOT_FOUND rather than silently
+   * widening the list. A known category with no available items yields [], which
+   * is a normal result and never an error.
    *
    * @param {Object} [options] - Filter options.
-   * @param {*} [options.categorySlug] - Category slug from the query string; an
-   *   absent, empty or whitespace value lists the whole catalog.
+   * @param {*} [options.categorySlug] - Raw filter value from the query string;
+   *   undefined, null or a whitespace-only string lists the whole catalog, and
+   *   every other value is resolved as a slug.
    * @returns {Array<Object>} The matching items, projected by
    *   {@link toPublicItem}.
-   * @throws {AppError} CATEGORY_NOT_FOUND (404) when the slug names no category.
+   * @throws {AppError} CATEGORY_NOT_FOUND (404) when the filter names no
+   *   category, including for a value that is not a string at all.
    */
   function listItems({ categorySlug } = {}) {
-    const slug = normaliseSlug(categorySlug);
+    if (categorySlug === undefined || categorySlug === null) {
+      return items.listAvailable().map(toPublicItem);
+    }
+
+    // Only a string can be a slug; anything else is passed to the lookup as it
+    // arrived, which resolves to no row without issuing a query.
+    const slug = typeof categorySlug === 'string' ? categorySlug.trim() : categorySlug;
 
     if (slug === '') {
       return items.listAvailable().map(toPublicItem);
@@ -137,10 +129,8 @@ function createMenuService({ categories, items }) {
 
     if (!category) {
       // No `details`: an unknown slug is a missing resource, not malformed input.
-      throw new AppError(
-        'CATEGORY_NOT_FOUND',
-        `No menu category matches the slug "${slug}"`
-      );
+      // Fixed text, so no caller-supplied value is echoed back in the envelope.
+      throw new AppError('CATEGORY_NOT_FOUND', 'No menu category matches that slug.');
     }
 
     return items.listByCategoryId(category.id).map(toPublicItem);

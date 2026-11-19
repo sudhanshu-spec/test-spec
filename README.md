@@ -10,14 +10,16 @@ Before running this application, ensure you have the following installed:
 
 | Requirement | Minimum Version | Recommended Version |
 |-------------|-----------------|---------------------|
-| Node.js | 18.x | 20.19.x (LTS) |
+| Node.js | 20.19.x | 20.19.x (LTS) |
 | npm | 8.x | 10.8.x |
+
+The client's Vite 8 build requires Node.js `^20.19.0 || >=22.12.0` and Vitest 4 requires `^20.0.0 || ^22.0.0 || >=24.0.0`, both declared in `client/package-lock.json`, so Node.js 20.19.x is the minimum this project supports — and the version it is verified on.
 
 ### Verify Installation
 
 ```bash
 node --version
-# Expected: v20.x.x or higher
+# Expected: v20.19.x, or a later version both engine ranges accept
 
 npm --version
 # Expected: 10.x.x or higher

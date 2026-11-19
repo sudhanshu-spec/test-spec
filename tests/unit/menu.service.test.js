@@ -308,15 +308,23 @@ describe('Menu service - menu.service.js', () => {
       expect(repositories.categories.findBySlug).toHaveBeenCalledWith('ClassiCs');
     });
 
-    test('reduces a repeated query parameter to a single slug', () => {
-      const { service, repositories } = buildMenuService({
-        category: categoryRow(),
-        categoryItems: [itemRow()]
-      });
+    test('refuses a repeated query parameter instead of coercing it to a slug', async () => {
+      // Express parses ?category=a&category=b into an array. The service must not
+      // weld it into the slug "a,b": the value is delegated as it arrived, the
+      // lookup resolves nothing, and the filter is refused rather than widened.
+      const { service, repositories } = buildMenuService({ category: null });
 
-      service.listItems({ categorySlug: ['classics'] });
+      const error = await captureError(() =>
+        service.listItems({ categorySlug: ['classics', 'chicken'] })
+      );
 
-      expect(repositories.categories.findBySlug).toHaveBeenCalledWith('classics');
+      expect(repositories.categories.findBySlug).toHaveBeenCalledTimes(1);
+      expect(repositories.categories.findBySlug).toHaveBeenCalledWith(['classics', 'chicken']);
+      expect(repositories.items.listByCategoryId).not.toHaveBeenCalled();
+      expect(repositories.items.listAvailable).not.toHaveBeenCalled();
+      expect(error).toBeInstanceOf(AppError);
+      expect(error).toMatchObject({ code: 'CATEGORY_NOT_FOUND', status: 404 });
+      expect(error.details).toBeUndefined();
     });
 
     test('ignores a caller-supplied user id, because reading the menu takes no identity', () => {
@@ -362,7 +370,9 @@ describe('Menu service - menu.service.js', () => {
       // resource carries no `details` — those belong to validation failures only.
       expect(error).toMatchObject({ code: 'CATEGORY_NOT_FOUND', status: 404 });
       expect(error.details).toBeUndefined();
-      expect(error.message).toContain(categorySlug.trim());
+      // Fixed text: the caller-chosen filter is never echoed back in the envelope.
+      expect(error.message).toBe('No menu category matches that slug.');
+      expect(error.message).not.toContain(categorySlug.trim());
     });
   });
 

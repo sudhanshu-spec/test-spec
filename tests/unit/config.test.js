@@ -290,3 +290,170 @@ describe('Configuration Module', () => {
     });
   });
 });
+
+/**
+ * Domain validation of the environment settings. A value that parses but lies
+ * outside what the application can honour stops the require with an error that
+ * names the offending variable; an unset, empty or unparsable value keeps the
+ * documented default. The describe block restores process.env itself, so a
+ * throwing require cannot leak its value into a later case.
+ */
+describe('Configuration Domain Validation', () => {
+  /** @type {NodeJS.ProcessEnv} */
+  const originalEnv = process.env;
+
+  beforeEach(() => {
+    jest.resetModules();
+    process.env = { ...originalEnv };
+  });
+
+  afterAll(() => {
+    process.env = originalEnv;
+  });
+
+  describe('PORT', () => {
+    test.each(['-1', '99999', '70000'])('rejects the out-of-domain value %s, naming PORT', (value) => {
+      expect(() => loadConfigWithEnv({ PORT: value }))
+        .toThrow('Invalid PORT: ' + value + '. Expected an integer between 1 and 65535.');
+    });
+
+    test.each([
+      ['0', 3000],
+      ['abc', 3000],
+      ['', 3000],
+      ['1', 1],
+      ['65535', 65535]
+    ])('keeps PORT=%j at its documented value %i', (value, expected) => {
+      expect(loadConfigWithEnv({ PORT: value }).port).toBe(expected);
+    });
+  });
+
+  describe('TOKEN_TTL_HOURS', () => {
+    test.each(['-5', '-1'])('rejects the out-of-domain value %s, naming TOKEN_TTL_HOURS', (value) => {
+      expect(() => loadConfigWithEnv({ TOKEN_TTL_HOURS: value }))
+        .toThrow('Invalid TOKEN_TTL_HOURS: ' + value + '. Expected an integer of at least 1.');
+    });
+
+    test.each([
+      ['abc', 24],
+      ['', 24],
+      ['1', 1],
+      ['48', 48]
+    ])('keeps TOKEN_TTL_HOURS=%j at its documented value %i', (value, expected) => {
+      expect(loadConfigWithEnv({ TOKEN_TTL_HOURS: value }).tokenTtlHours).toBe(expected);
+    });
+  });
+
+  describe('RESERVATION_HORIZON_DAYS', () => {
+    test.each(['-3', '-1'])('rejects the out-of-domain value %s, naming RESERVATION_HORIZON_DAYS', (value) => {
+      expect(() => loadConfigWithEnv({ RESERVATION_HORIZON_DAYS: value }))
+        .toThrow('Invalid RESERVATION_HORIZON_DAYS: ' + value + '. Expected an integer of at least 1.');
+    });
+
+    test.each([
+      ['abc', 90],
+      ['', 90],
+      ['30', 30]
+    ])('keeps RESERVATION_HORIZON_DAYS=%j at its documented value %i', (value, expected) => {
+      expect(loadConfigWithEnv({ RESERVATION_HORIZON_DAYS: value }).reservationHorizonDays).toBe(expected);
+    });
+  });
+
+  describe('MAX_PARTY_SIZE', () => {
+    test.each(['13', '20'])('rejects the value %s above the schema ceiling, naming MAX_PARTY_SIZE', (value) => {
+      expect(() => loadConfigWithEnv({ MAX_PARTY_SIZE: value }))
+        .toThrow('Invalid MAX_PARTY_SIZE: ' + value + '. Expected an integer between 1 and 12.');
+    });
+
+    test.each([
+      ['1', 1],
+      ['12', 12],
+      ['abc', 12],
+      ['', 12]
+    ])('keeps MAX_PARTY_SIZE=%j at its documented value %i', (value, expected) => {
+      expect(loadConfigWithEnv({ MAX_PARTY_SIZE: value }).maxPartySize).toBe(expected);
+    });
+  });
+
+  describe('Service window', () => {
+    test.each([
+      ['SERVICE_OPEN_TIME', 'garbage'],
+      ['SERVICE_OPEN_TIME', '7:00'],
+      ['SERVICE_OPEN_TIME', '24:00'],
+      ['SERVICE_CLOSE_TIME', 'nonsense'],
+      ['SERVICE_CLOSE_TIME', '18:60']
+    ])('rejects %s=%j as not an HH:MM time', (name, value) => {
+      expect(() => loadConfigWithEnv({ [name]: value }))
+        .toThrow('Invalid ' + name + ': ' + value + '. Expected a 24-hour HH:MM time.');
+    });
+
+    test.each([
+      ['23:00', '17:00'],
+      ['18:00', '18:00']
+    ])('rejects the non-positive window %s-%s, naming both variables', (open, close) => {
+      expect(() => loadConfigWithEnv({ SERVICE_OPEN_TIME: open, SERVICE_CLOSE_TIME: close }))
+        .toThrow('Invalid SERVICE_OPEN_TIME: ' + open + ' with SERVICE_CLOSE_TIME: ' + close + '. '
+          + 'Expected SERVICE_OPEN_TIME earlier than SERVICE_CLOSE_TIME.');
+    });
+
+    test.each(['', '   '])('keeps the default open time when SERVICE_OPEN_TIME is %j', (value) => {
+      const config = loadConfigWithEnv({ SERVICE_OPEN_TIME: value, SERVICE_CLOSE_TIME: undefined });
+      expect(config.serviceOpenTime).toBe('17:00');
+      expect(config.serviceCloseTime).toBe('22:00');
+    });
+
+    test('keeps the default close time when SERVICE_CLOSE_TIME is empty', () => {
+      const config = loadConfigWithEnv({ SERVICE_OPEN_TIME: undefined, SERVICE_CLOSE_TIME: '' });
+      expect(config.serviceOpenTime).toBe('17:00');
+      expect(config.serviceCloseTime).toBe('22:00');
+    });
+
+    test('accepts a valid window and trims a padded time', () => {
+      const config = loadConfigWithEnv({ SERVICE_OPEN_TIME: ' 11:00 ', SERVICE_CLOSE_TIME: '23:30' });
+      expect(config.serviceOpenTime).toBe('11:00');
+      expect(config.serviceCloseTime).toBe('23:30');
+    });
+  });
+
+  describe('CORS_ORIGIN', () => {
+    test.each(['*', ' * '])('rejects the wildcard %j, naming CORS_ORIGIN', (value) => {
+      expect(() => loadConfigWithEnv({ CORS_ORIGIN: value }))
+        .toThrow("Invalid CORS_ORIGIN: '*'. Expected a single origin, not a wildcard.");
+    });
+
+    test.each(['', '   '])('keeps the default origin when CORS_ORIGIN is %j', (value) => {
+      expect(loadConfigWithEnv({ CORS_ORIGIN: value }).corsOrigin).toBe('http://localhost:5173');
+    });
+
+    test('keeps a concrete configured origin', () => {
+      expect(loadConfigWithEnv({ CORS_ORIGIN: 'https://burger.example' }).corsOrigin).toBe('https://burger.example');
+    });
+  });
+
+  describe('Valid override set', () => {
+    test('accepts every variable at a valid override and keeps the ten-key shape', () => {
+      const config = loadConfigWithEnv({
+        PORT: '3100',
+        CORS_ORIGIN: 'http://localhost:4173',
+        TOKEN_TTL_HOURS: '2',
+        SERVICE_OPEN_TIME: '11:00',
+        SERVICE_CLOSE_TIME: '23:30',
+        MAX_PARTY_SIZE: '6',
+        RESERVATION_HORIZON_DAYS: '14'
+      });
+
+      expect(Object.keys(config)).toEqual([
+        'host', 'port', 'env', 'dbFile', 'corsOrigin', 'tokenTtlHours',
+        'serviceOpenTime', 'serviceCloseTime', 'maxPartySize', 'reservationHorizonDays'
+      ]);
+      expect(config.port).toBe(3100);
+      expect(config.corsOrigin).toBe('http://localhost:4173');
+      expect(config.tokenTtlHours).toBe(2);
+      expect(config.serviceOpenTime).toBe('11:00');
+      expect(config.serviceCloseTime).toBe('23:30');
+      expect(config.maxPartySize).toBe(6);
+      expect(config.reservationHorizonDays).toBe(14);
+    });
+  });
+});
+

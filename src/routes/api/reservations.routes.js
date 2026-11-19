@@ -60,7 +60,7 @@ router.use(authenticate);
 router.post('/', async (req, res) => {
   const body = req.body ?? {};
 
-  const reservation = await reservationService.createReservation({
+  const reservation = reservationService.createReservation({
     userId: req.user.id,
     reservation_date: body.reservation_date,
     reservation_time: body.reservation_time,
@@ -83,7 +83,7 @@ router.post('/', async (req, res) => {
  * @returns {Promise<void>} Resolves once the response has been sent.
  */
 router.get('/', async (req, res) => {
-  const reservations = await reservationService.listReservations({ userId: req.user.id });
+  const reservations = reservationService.listReservations({ userId: req.user.id });
 
   res.json({ reservations });
 });

@@ -130,7 +130,7 @@ function readLogin(body) {
 router.post('/register', async (req, res) => {
   const body = req.body ?? {};
   const { name, email, password } = readRegistration(body);
-  const { user, token } = await authService.register({ name, email, password });
+  const { user, token } = authService.register({ name, email, password });
 
   res.status(201).json({ user, token });
 });
@@ -145,7 +145,7 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
   const body = req.body ?? {};
   const { email, password } = readLogin(body);
-  const { user, token } = await authService.login({ email, password });
+  const { user, token } = authService.login({ email, password });
 
   res.json({ user, token });
 });
@@ -175,7 +175,7 @@ router.post('/logout', authenticate, async (req, res) => {
   const match = BEARER_PATTERN.exec(header);
   const rawToken = req.token ?? (match ? match[1] : '');
 
-  await authService.revokeToken(rawToken);
+  authService.revokeToken(rawToken);
 
   res.status(204).end();
 });

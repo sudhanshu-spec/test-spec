@@ -137,7 +137,7 @@ router.post('/', async (req, res) => {
   const body = req.body ?? {};
   const { items, notes } = validateOrderRequest(body);
 
-  const order = await orderService.createOrder({ userId: req.user.id, items, notes });
+  const order = orderService.createOrder({ userId: req.user.id, items, notes });
 
   res.status(201).json({ order });
 });
@@ -154,7 +154,7 @@ router.post('/', async (req, res) => {
  * @returns {Promise<void>} Resolves once the response has been sent.
  */
 router.get('/', async (req, res) => {
-  const orders = await orderService.listOrders({ userId: req.user.id });
+  const orders = orderService.listOrders({ userId: req.user.id });
 
   res.json({ orders });
 });
@@ -181,7 +181,7 @@ router.get('/:id', async (req, res) => {
     );
   }
 
-  const order = await orderService.getOrder({ id: req.params.id, userId: req.user.id });
+  const order = orderService.getOrder({ id: req.params.id, userId: req.user.id });
 
   res.json({ order });
 });

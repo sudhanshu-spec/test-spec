@@ -366,14 +366,24 @@ describe('API routers over an in-process Express pipeline', () => {
         }
       });
 
-      test('lists the whole catalog when the filter is blank or not a single string', async () => {
+      test('lists the whole catalog for a blank filter and refuses a repeated one', async () => {
         const blank = await request(app).get('/api/menu-items?category=%20').expect(200);
         expect(blank.body.items.map((item) => item.id)).toEqual(availableItems.map((item) => item.id));
 
+        // ?category=a&category=b parses to an array: it names no category, so the
+        // filter is resolved like any other unknown slug rather than dropped.
         const repeated = await request(app)
           .get('/api/menu-items?category=classics&category=chicken')
-          .expect(200);
-        expect(repeated.body.items.map((item) => item.id)).toEqual(availableItems.map((item) => item.id));
+          .expect(404);
+        expect(repeated.body.error.code).toBe('CATEGORY_NOT_FOUND');
+        expect('details' in repeated.body.error).toBe(false);
+      });
+
+      test('ignores a bracketed category[] parameter, which is not the filter', async () => {
+        // A bracketed key parses to a separate, unknown query parameter, so no
+        // filter is sent at all and the whole available catalog is listed.
+        const response = await request(app).get('/api/menu-items?category%5B%5D=classics').expect(200);
+        expect(response.body.items.map((item) => item.id)).toEqual(availableItems.map((item) => item.id));
       });
 
       test('answers 404 CATEGORY_NOT_FOUND for a slug no category carries', async () => {

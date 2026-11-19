@@ -56,7 +56,7 @@ const router = express.Router();
  * @returns {Object} {categories: [{id, name, slug, display_order}]}
  */
 router.get('/categories', async (req, res) => {
-  const categories = await menuService.listCategories();
+  const categories = menuService.listCategories();
 
   res.json({ categories });
 });
@@ -65,22 +65,19 @@ router.get('/categories', async (req, res) => {
  * Menu item list handler
  * Responds with the available items, optionally restricted to one category
  *
- * The filter is read only when it is a non-blank string: Express 5's query
- * parser can yield an array or object for a repeated or bracketed parameter,
- * and such a value must reach neither the service nor a SQL comparison.
- * Omitting the filter lists the whole available catalog; an unknown slug is
- * the service's CATEGORY_NOT_FOUND.
+ * Only a single `category` parameter is the filter, and it reaches the service
+ * exactly as the query parser produced it: an absent or blank filter lists the
+ * whole available catalog, and any other filter must name a category, so an
+ * unknown slug is the service's 404 CATEGORY_NOT_FOUND. A repeated parameter
+ * parses to an array, which names no category and is refused the same way; a
+ * bracketed `category[]` is a separate, unknown query parameter and is ignored
+ * like any other.
  *
  * @route GET /menu-items
  * @returns {Object} {items: [{id, name, description, price_cents, image_url, is_available, category}]}
  */
 router.get('/menu-items', async (req, res) => {
-  const categorySlug =
-    typeof req.query.category === 'string' && req.query.category.trim() !== ''
-      ? req.query.category
-      : undefined;
-
-  const items = await menuService.listItems({ categorySlug });
+  const items = menuService.listItems({ categorySlug: req.query.category });
 
   res.json({ items });
 });
@@ -105,7 +102,7 @@ router.get('/menu-items/:id', async (req, res) => {
     );
   }
 
-  const item = await menuService.getItem({ id: req.params.id });
+  const item = menuService.getItem({ id: req.params.id });
 
   res.json({ item });
 });
