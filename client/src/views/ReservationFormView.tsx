@@ -18,13 +18,13 @@
  * - A booking is never priced, cancelled or edited: no money is formatted and no
  *   cancel, delete or update control exists, because the API has no such route.
  *
- * The seating time is picked from the seatings the documented window offers —
- * opening time through the last seating, on the slot the restaurant seats on —
- * and is sent as nothing but that `HH:MM` string. The list is a client
- * convenience derived from the window, so the form checks presence and the
- * offered slot only: the service window, the past, the horizon, the party cap and
- * uniqueness are the API's checkpoints, and each verdict arrives in `details`
- * rendered against the field it names.
+ * The seating time is the shared time control, sent as nothing but the `HH:MM`
+ * string it holds. The booking window — the hours the restaurant seats and how
+ * far ahead it takes bookings — is configuration the API reads and this package
+ * cannot, so the form names no window: it refuses only a missing time, one not
+ * written as `HH:MM` and one off the half-hour slot grid. The past, the window,
+ * the horizon, the party cap and uniqueness are the API's checkpoints, and each
+ * verdict arrives in `details` rendered against the field it names.
  *
  * @module client/src/views/ReservationFormView
  */
@@ -37,33 +37,24 @@ import { ApiError } from '../api/client';
 import type { ApiFieldDetail } from '../api/client';
 import { createReservation } from '../api/reservations';
 import { RESERVATION_ISSUES } from '../api/types';
-import { BusyStatus, DateField, FieldError, FormFeedback, NumberField, TextField } from '../components/FormControls';
+import { BusyStatus, DateField, FormFeedback, NumberField, TextField, TimeField } from '../components/FormControls';
 
 /** Length of one seating slot in minutes; the server places seating on the same step. */
 const SLOT_MINUTES = 30;
-/** Minutes from midnight at which the documented default window opens (17:00). */
-const SERVICE_OPEN_MINUTES = 17 * 60;
-/** Minutes from midnight at which the documented default window closes (22:00). */
-const SERVICE_CLOSE_MINUTES = 22 * 60;
-/** Last seating in the documented default window: one slot before closing (21:30). */
-const LAST_SEATING_MINUTES = SERVICE_CLOSE_MINUTES - SLOT_MINUTES;
 
-/** Smallest party the form's hint names; the server owns the cap it enforces. */
+/** Smallest party the form states: the floor the stored column itself enforces. */
 const MIN_PARTY_SIZE = 1;
-/** Largest party the form's hint names, which is the documented default cap. */
-const MAX_PARTY_SIZE = 12;
 /** Party size the form starts at, so the common case needs no edit. */
 const DEFAULT_PARTY_SIZE = '2';
-/** Days ahead the documented default horizon takes bookings for (90). */
-const RESERVATION_HORIZON_DAYS = 90;
 
 /** Shape of a date as the API's `reservation_date` field states it. */
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 /**
  * Shape of a time as the API's `reservation_time` field states it: `HH:MM` on a
  * 24-hour clock, which is the pattern the server's own shape checkpoint applies.
- * It is read here only to tell a time on the seating grid from one off it when a
- * window verdict comes back; which times the window offers is the server's rule.
+ * It is read here to tell a time on the half-hour seating grid from one off it,
+ * both before a value is sent and when a window verdict comes back; which hours
+ * the window runs between is the server's rule.
  */
 const TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
@@ -76,37 +67,12 @@ const UNEXPECTED_FAILURE_MESSAGE = 'Something went wrong while booking your tabl
 const SUBMIT_LABEL = 'Reserve a table';
 const SUBMITTING_MESSAGE = 'Booking your table…';
 
-/** @returns A minute offset from midnight rendered on the 24-hour clock as `HH:MM`. */
-function formatMinutes(minutes: number): string {
-  const hours = Math.floor(minutes / 60);
-  const remainder = minutes % 60;
-  return `${String(hours).padStart(2, '0')}:${String(remainder).padStart(2, '0')}`;
-}
-
-/** Wall-clock bounds of the documented default window, formatted for the messages and hints. */
-const SERVICE_OPEN_TIME = formatMinutes(SERVICE_OPEN_MINUTES);
-const LAST_SEATING_TIME = formatMinutes(LAST_SEATING_MINUTES);
-const SERVICE_CLOSE_TIME = formatMinutes(SERVICE_CLOSE_MINUTES);
-
 /**
- * Every seating the documented window offers, in order: from the moment it opens
- * to the last seating, one per slot. The picker offers exactly these — a client
- * convenience, not a rule of the form's own, since the server remains
- * authoritative for which times it accepts.
+ * Message for a seating time the form cannot use: one not written as `HH:MM`, or
+ * one off the half-hour grid. Which hours the window runs between is the server's
+ * rule and is named nowhere here.
  */
-const SEATING_TIMES: readonly string[] = Array.from(
-  { length: (LAST_SEATING_MINUTES - SERVICE_OPEN_MINUTES) / SLOT_MINUTES + 1 },
-  (_unused, slot) => formatMinutes(SERVICE_OPEN_MINUTES + slot * SLOT_MINUTES),
-);
-
-/**
- * Message for a time that is not one of the seatings on offer. The API answers a
- * time off the seating grid under the same `issue` as a time outside its window,
- * so this sentence names the grid whenever the value the form sent is off it.
- */
-const TIME_INVALID_MESSAGE =
-  'We seat on the half hour, so choose one of the seatings we offer between ' +
-  `${SERVICE_OPEN_TIME} and ${LAST_SEATING_TIME}.`;
+const TIME_INVALID_MESSAGE = 'We seat on the half hour, so choose a time such as 19:00 or 19:30.';
 
 /**
  * @param value - A time the form sent as `reservation_time`.
@@ -129,13 +95,11 @@ function minutesFromMidnight(value: string): number | null {
 const PAST_MESSAGE = 'That date and time has already passed. Choose a later date or a later seating time.';
 
 /**
- * Message for a booking outside the service window — the server's third
- * checkpoint, reported against `reservation_time`.
+ * Fallback for the server's third checkpoint, read only when its envelope carried
+ * no sentence of its own: the API states the window it enforces in that sentence,
+ * which is the one place the hours are known, and this copy names none.
  */
-const OUTSIDE_SERVICE_HOURS_MESSAGE =
-  'This time is outside our service hours: the service window runs from ' +
-  `${SERVICE_OPEN_TIME} to ${LAST_SEATING_TIME}, with the last seating ` +
-  `${SLOT_MINUTES} minutes before we close at ${SERVICE_CLOSE_TIME}.`;
+const OUTSIDE_SERVICE_HOURS_FALLBACK = 'This time is outside the hours the restaurant serves.';
 
 /** One field of this form that the API validates. */
 type ValidatedField = 'reservation_date' | 'reservation_time' | 'party_size';
@@ -188,12 +152,13 @@ function dateMessage(value: string): string | undefined {
 }
 
 /**
- * The courtesy check for the seating time, applied to the value the picker
- * offers: a seating has to be chosen, and only the seatings on the grid can be.
- * The window the value falls in, and every other checkpoint, belong to the
- * server.
+ * The courtesy check for the seating time, applied to the value as typed: a time
+ * has to be present, written as `HH:MM` and on the half-hour grid the restaurant
+ * seats on. Which hours it seats between is the server's third checkpoint and
+ * how many guests it takes the fourth, so neither is judged here — a booking the
+ * API would accept is never blocked.
  *
- * @param value - The seating time as chosen.
+ * @param value - The seating time as typed.
  * @returns The message the field shows while the value is unusable, or
  *   undefined when the value may be sent.
  */
@@ -202,7 +167,8 @@ function timeMessage(value: string): string | undefined {
     return TIME_REQUIRED_MESSAGE;
   }
 
-  return SEATING_TIMES.includes(value) ? undefined : TIME_INVALID_MESSAGE;
+  const minutes = minutesFromMidnight(value);
+  return minutes !== null && minutes % SLOT_MINUTES === 0 ? undefined : TIME_INVALID_MESSAGE;
 }
 
 /**
@@ -291,11 +257,12 @@ function revisedMessages(
  * sentence, so no client wording stands in for a rule the server reported.
  *
  * The window verdict is read against the time the form sent, because the API
- * reports a time off the seating grid under the same `issue` as a time outside
+ * reports a time off the half-hour grid under the same `issue` as a time outside
  * its window. The grid is what decides which sentence is true for the value that
- * was sent: a time on the half hour can only have failed the window, while a time
- * off it names the grid — 19:15 is inside the window and must never be told it is
- * outside it.
+ * was sent: a time off it names the grid — 19:15 is a time the restaurant cannot
+ * seat at, and must never be told the hours are the problem — while a time on it
+ * shows the API's own sentence, which names the window the server enforces, since
+ * that window is configuration this package cannot read.
  *
  * @param detail - The `{field, issue}` entry the API returned.
  * @param serverMessage - The API's own sentence, used for every other issue.
@@ -308,9 +275,10 @@ function messageForIssue(detail: ApiFieldDetail, serverMessage: string, submitte
   }
   if (detail.issue === RESERVATION_ISSUES.OUTSIDE_SERVICE_HOURS) {
     const minutes = minutesFromMidnight(submittedTime);
-    return minutes !== null && minutes % SLOT_MINUTES === 0
-      ? OUTSIDE_SERVICE_HOURS_MESSAGE
-      : TIME_INVALID_MESSAGE;
+    if (minutes !== null && minutes % SLOT_MINUTES !== 0) {
+      return TIME_INVALID_MESSAGE;
+    }
+    return serverMessage || OUTSIDE_SERVICE_HOURS_FALLBACK;
   }
   return serverMessage;
 }
@@ -347,18 +315,14 @@ export function ReservationFormView(): JSX.Element {
   // dispatched in the same task would both pass a state check and post twice. The
   // ref is released on every exit — the courtesy failure and the settled request.
   const inFlight = useRef(false);
-  // Both bounds come from one reading of the browser clock at mount, and both
-  // only hint the range a user should pick from: whether a booking is in the
-  // past or beyond the horizon is the server's second and fifth checkpoints, so
-  // neither attribute rejects the value.
+  // The one bound is arithmetic rather than configuration: a date before today
+  // has already passed. It only hints the range a user should pick from — the
+  // form keeps `noValidate`, so whether a booking is in the past or beyond the
+  // horizon is the server's second and fifth checkpoints, and how far ahead the
+  // restaurant takes bookings is a setting this package cannot read, so the
+  // control carries no `max` at all.
   const today = useMemo(() => new Date(), []);
   const earliestDate = useMemo(() => toDateInputValue(today), [today]);
-  const latestDate = useMemo(
-    () => toDateInputValue(
-      new Date(today.getFullYear(), today.getMonth(), today.getDate() + RESERVATION_HORIZON_DAYS),
-    ),
-    [today],
-  );
 
   /**
    * Clears the form-level failures a submit produced, for an edit no field rule
@@ -416,13 +380,13 @@ export function ReservationFormView(): JSX.Element {
 
   /**
    * The courtesy checks and nothing else: every value present, a real calendar
-   * date, a seating time the picker offers, and a whole number of guests.
+   * date, a seating time on the half-hour grid, and a whole number of guests.
    * Deliberately silent on the past, the window, the party cap, the horizon and
-   * uniqueness, which the API decides — the picker offers no time the window
-   * refuses, so no booking the server would accept is blocked here. The field
-   * rules are the ones the same fields are re-checked against while they are
-   * edited, so a message reads the same whether it arrived on submit or stayed
-   * through a correction.
+   * uniqueness, which the API decides — no value the window refuses is refused
+   * here, so no booking the server would accept is blocked. The field rules are
+   * the ones the same fields are re-checked against while they are edited, so a
+   * message reads the same whether it arrived on submit or stayed through a
+   * correction.
    *
    * @returns A message per offending field; empty when every value looks usable.
    */
@@ -492,20 +456,13 @@ export function ReservationFormView(): JSX.Element {
     }
   }
 
-  // The seating time is rendered here rather than through the shared time field:
-  // the seatings are a closed list, so the picker that offers them is a select.
-  // It repeats the wiring `FormControls`' own field publishes — the label's
-  // `htmlFor`, and a hint and error id the control's `aria-describedby` names —
-  // so the field reads and announces exactly like the other three.
-  const timeFieldMessage = messages.reservation_time ?? null;
-  const timeInvalid = timeFieldMessage !== null;
-
   return (
     <section className="stack" aria-labelledby="reservation-form-title">
       <h1 className="page-title" tabIndex={-1} id="reservation-form-title">Reserve a table</h1>
       <p className="field__hint">
-        {`We seat ${MIN_PARTY_SIZE} to ${MAX_PARTY_SIZE} guests, from ${SERVICE_OPEN_TIME} to ${LAST_SEATING_TIME}, ` +
-          `and take bookings up to ${RESERVATION_HORIZON_DAYS} days ahead.`}
+        Choose a date, a seating time and the number of guests joining you. The booking window —
+        the hours the restaurant seats and how far ahead it takes bookings — is the restaurant's
+        own, and a date or time outside it is answered here with the reason.
       </p>
 
       <form className="stack" onSubmit={handleSubmit} aria-busy={submitting} noValidate>
@@ -516,7 +473,7 @@ export function ReservationFormView(): JSX.Element {
           label="Date"
           required
           min={earliestDate}
-          max={latestDate}
+          hint="We take bookings from today onwards; how far ahead is set by the restaurant."
           autoComplete="off"
           value={reservationDate}
           error={messages.reservation_date ?? null}
@@ -526,47 +483,25 @@ export function ReservationFormView(): JSX.Element {
           }}
         />
 
-        <div className={timeInvalid ? 'field field--invalid' : 'field'}>
-          <label className="field__label" htmlFor="reservation-time">
-            Seating time
-            <span className="visually-hidden"> (required)</span>
-          </label>
-          <select
-            id="reservation-time"
-            name="reservation-time"
-            className="control control--select"
-            required
-            value={reservationTime}
-            aria-invalid={timeInvalid}
-            aria-describedby={timeInvalid
-              ? 'reservation-time-hint reservation-time-error'
-              : 'reservation-time-hint'}
-            onChange={(event: ChangeEvent<HTMLSelectElement>) => {
-              setReservationTime(event.target.value);
-              handleEdit('reservation_time', event.target.value);
-            }}
-          >
-            <option value="">Choose a time</option>
-            {SEATING_TIMES.map((seating) => (
-              <option key={seating} value={seating}>{seating}</option>
-            ))}
-          </select>
-          <p className="field__hint" id="reservation-time-hint">
-            {`Seatings run from ${SERVICE_OPEN_TIME} to ${LAST_SEATING_TIME}.`}
-          </p>
-          {/* The same polite region the shared controls publish, so this field's
-              message is announced and its line is held open like the others'. */}
-          <div className="field__feedback" aria-live="polite" aria-atomic="true">
-            <FieldError id="reservation-time-error" message={timeFieldMessage} />
-          </div>
-        </div>
+        <TimeField
+          id="reservation-time"
+          label="Seating time"
+          required
+          hint="We seat on the half hour."
+          autoComplete="off"
+          value={reservationTime}
+          error={messages.reservation_time ?? null}
+          onChange={(event: ChangeEvent<HTMLInputElement>) => {
+            setReservationTime(event.target.value);
+            handleEdit('reservation_time', event.target.value);
+          }}
+        />
 
         <NumberField
           id="party-size"
           label="Party size"
           required
           min={MIN_PARTY_SIZE}
-          max={MAX_PARTY_SIZE}
           value={partySize}
           error={messages.party_size ?? null}
           onChange={(event: ChangeEvent<HTMLInputElement>) => {

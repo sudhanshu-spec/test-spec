@@ -77,10 +77,15 @@ const REGISTER_EMAIL_DUPLICATE_MESSAGE =
 
 const RESERVATION_DATE_REQUIRED_MESSAGE = 'Choose the date of your booking.';
 const RESERVATION_DATE_INVALID_MESSAGE = 'Enter a real calendar date, for example 2031-05-14.';
+/** The hint the shared date control carries: the window it bounds belongs to the restaurant. */
+const RESERVATION_DATE_HINT =
+  'We take bookings from today onwards; how far ahead is set by the restaurant.';
 const RESERVATION_TIME_REQUIRED_MESSAGE = 'Choose a seating time.';
-/** The form's sentence for a time that is not one of the seatings it offers. */
+/** The hint the shared time control carries. */
+const RESERVATION_TIME_HINT = 'We seat on the half hour.';
+/** The form's sentence for a time that is not on the half-hour seating grid. */
 const RESERVATION_TIME_INVALID_MESSAGE =
-  'We seat on the half hour, so choose one of the seatings we offer between 17:00 and 21:30.';
+  'We seat on the half hour, so choose a time such as 19:00 or 19:30.';
 const RESERVATION_PARTY_REQUIRED_MESSAGE = 'Enter the number of guests.';
 const RESERVATION_PARTY_INVALID_MESSAGE = 'Enter a whole number of guests.';
 /** The sentence the booking form announces while its submit is in flight. */
@@ -93,10 +98,15 @@ const RESERVATION_PARTY_OUT_OF_RANGE_MESSAGE = 'The party size must be between 1
 /** The form's reading of `RESERVATION_ISSUES.DATETIME_IN_PAST`. */
 const RESERVATION_PAST_MESSAGE =
   'That date and time has already passed. Choose a later date or a later seating time.';
-/** The form's reading of `RESERVATION_ISSUES.OUTSIDE_SERVICE_HOURS`. */
-const RESERVATION_OUTSIDE_HOURS_MESSAGE =
-  'This time is outside our service hours: the service window runs from 17:00 to 21:30, ' +
-  'with the last seating 30 minutes before we close at 22:00.';
+/**
+ * The API's own sentence for `RESERVATION_ISSUES.OUTSIDE_SERVICE_HOURS`, naming the
+ * window the server enforces. Written as a real deployment states it — the window
+ * of the service this suite runs against, not the client's idea of one — because
+ * the form has to render whatever the API sent, unchanged.
+ */
+const API_OUTSIDE_HOURS_MESSAGE =
+  'The reservation time is outside the service hours: we seat from 12:00 to 23:00, ' +
+  'with the last seating 30 minutes before we close.';
 
 /** Label text of the four submit controls, as each view renders it. */
 const LOGIN_SUBMIT_LABEL = 'Sign in';
@@ -171,14 +181,12 @@ const CREATED_RESERVATION: Reservation = {
   created_at: '2031-05-01T10:00:00.000Z',
 };
 
-/** A date well inside any horizon, so only the checkpoint under test can reject it. */
+/** A date in the future, so only the checkpoint under test can reject it. */
 const FUTURE_DATE = '2031-05-14';
-/** A seating time inside the documented default window (17:00 through 21:30). */
+/** A seating time on the half-hour grid. */
 const OFFERED_SLOT = '19:00';
-/** The last seating the documented default window offers. */
+/** A later seating on the grid: the last slot the API's default window seats at. */
 const LAST_SEATING = '21:30';
-/** How many days ahead the form's date control reaches, as the API's horizon states it. */
-const RESERVATION_HORIZON_DAYS = 90;
 
 /** Valid values for the sign-in form's two courtesy checks. */
 const VALID_EMAIL = 'ada@example.com';
@@ -366,7 +374,7 @@ function onlyCall(calls: readonly RecordedCall[], url: string, method: string): 
 // ---------------------------------------------------------------------------
 
 /**
- * @param control - The input or select inside a `FormControls` field.
+ * @param control - The input inside a `FormControls` field.
  * @returns The field wrapper the control and its message share.
  */
 function fieldOf(control: HTMLElement): HTMLElement {
@@ -376,7 +384,7 @@ function fieldOf(control: HTMLElement): HTMLElement {
 }
 
 /**
- * @param control - The input or select to inspect.
+ * @param control - The input to inspect.
  * @returns The message node its `aria-describedby` points at as an error, or
  *   null when the control is described by nothing but its hint.
  */
@@ -402,7 +410,7 @@ function queryErrorNode(control: HTMLElement): HTMLElement | null {
 }
 
 /**
- * @param control - The input or select whose error is being read.
+ * @param control - The input whose error is being read.
  * @returns That message node, asserting the control currently has one.
  */
 function errorNode(control: HTMLElement): HTMLElement {
@@ -418,7 +426,7 @@ function errorText(control: HTMLElement): string {
 }
 
 /**
- * @param control - The input or select to inspect.
+ * @param control - The input to inspect.
  * @returns The live region the shared field wrapper carries its message in,
  *   asserting the field has one — it is rendered before any message arrives.
  */
@@ -521,7 +529,7 @@ function ReservationConfirmationProbe(): JSX.Element {
 /** The four controls of the reservation form, each found through its label. */
 interface ReservationControls {
   readonly date: HTMLInputElement;
-  readonly time: HTMLSelectElement;
+  readonly time: HTMLInputElement;
   readonly party: HTMLInputElement;
   readonly notes: HTMLInputElement;
 }
@@ -530,7 +538,7 @@ interface ReservationControls {
 function reservationControls(): ReservationControls {
   return {
     date: screen.getByLabelText<HTMLInputElement>(/^Date/),
-    time: screen.getByLabelText<HTMLSelectElement>(/^Seating time/),
+    time: screen.getByLabelText<HTMLInputElement>(/^Seating time/),
     party: screen.getByLabelText<HTMLInputElement>(/^Party size/),
     notes: screen.getByLabelText<HTMLInputElement>(/^Notes/),
   };
@@ -546,12 +554,10 @@ interface ReservationValues {
 
 /**
  * Fills the booking form without submitting it. The date, the seating time and
- * the party size are each set with a change event: jsdom drives no date picker
- * and formats no date control, so typing into it depends on a locale the
- * application never reads, while a real change event carries the same
- * `YYYY-MM-DD`, offered `HH:MM` and count strings the form posts. The seating
- * time is a `<select>`, which `fireEvent.change` drives exactly as a choice from
- * its list does.
+ * the party size are each set with a change event: jsdom drives no date or time
+ * picker, so typing into either depends on a locale the application never reads,
+ * while a real change event carries the same `YYYY-MM-DD`, `HH:MM` and count
+ * strings a visitor's picker would put on the control and the form posts.
  *
  * @param user - The user-event session driving the form.
  * @param controls - The controls to fill.
@@ -1123,40 +1129,29 @@ describe('CartView checkout', () => {
 // ---------------------------------------------------------------------------
 
 describe('ReservationFormView', () => {
-  it('offers the seatings on the half hour as the only times that can be chosen', () => {
+  it('renders the seating time as the shared time control, carrying no window of its own', () => {
     renderReservationForm();
 
-    const time = screen.getByLabelText<HTMLSelectElement>(/^Seating time/);
+    const time = reservationControls().time;
 
-    // The control is a labelled select, not a free-form time input, and the list
-    // it offers is the documented window: a placeholder, then every seating from
-    // opening time to the last seating in order. No off-grid time and no time the
-    // window refuses can be entered at all, so neither reaches the API as a
-    // round trip that comes back rejected.
-    expect(time.tagName).toBe('SELECT');
-    expect(Array.from(time.options, (option) => option.value)).toEqual([
-      '',
-      '17:00',
-      '17:30',
-      '18:00',
-      '18:30',
-      '19:00',
-      '19:30',
-      '20:00',
-      '20:30',
-      '21:00',
-      '21:30',
-    ]);
-    expect(time.options[0]?.textContent).toBe('Choose a time');
+    // One control, the shared `TimeField`: a labelled time input on the half-hour
+    // step a browser's own picker reads, and no list of seatings anywhere on the
+    // form — the hours the restaurant seats between are configuration the API owns,
+    // so no option and no bound of them is rendered here.
+    expect(screen.getAllByLabelText(/^Seating time/)).toHaveLength(1);
+    expect(document.querySelectorAll('select')).toHaveLength(0);
+    expect(time.tagName).toBe('INPUT');
+    expect(time.getAttribute('type')).toBe('time');
+    expect(time.getAttribute('step')).toBe('1800');
     expect(time.value).toBe('');
-    // The picker keeps the shared control classes, so the 44x44px floor and the
-    // select treatment of global.css apply exactly as they do to an input.
-    expect(time.className).toBe('control control--select');
+    expect(time.className).toBe('control');
     expect(time.getAttribute('name')).toBe('reservation-time');
     expect(time.hasAttribute('required')).toBe(true);
     expect(time.getAttribute('aria-describedby')).toBe('reservation-time-hint');
+    expect(time.hasAttribute('min')).toBe(false);
+    expect(time.hasAttribute('max')).toBe(false);
     expect(document.getElementById('reservation-time-hint')?.textContent)
-      .toBe('Seatings run from 17:00 to 21:30.');
+      .toBe(RESERVATION_TIME_HINT);
   });
 
   it('reports a missing date, seating time and party size beside their own controls', async () => {
@@ -1227,9 +1222,12 @@ describe('ReservationFormView', () => {
     expect(screen.queryAllByRole('alert')).toHaveLength(0);
   });
 
-  it('renders the outside-service-hours issue beside the seating-time control', async () => {
+  // The window is configuration the API reads and this package cannot, so the
+  // sentence the server sends is the one the user reads, verbatim: it is the only
+  // statement of the hours on the screen.
+  it('renders the API\'s own window sentence beside the seating-time control', async () => {
     const user = userEvent.setup();
-    stubFetch(() => errorReply(400, 'VALIDATION_ERROR', 'The booking could not be validated.', [
+    stubFetch(() => errorReply(400, 'VALIDATION_ERROR', API_OUTSIDE_HOURS_MESSAGE, [
       { field: 'reservation_time', issue: RESERVATION_ISSUES.OUTSIDE_SERVICE_HOURS },
     ]));
 
@@ -1239,13 +1237,42 @@ describe('ReservationFormView', () => {
     await fillReservation(user, controls, { date: FUTURE_DATE, time: OFFERED_SLOT, party: '2' });
     await user.click(screen.getByRole('button', { name: RESERVE_SUBMIT_LABEL }));
 
-    expect(await screen.findByText(RESERVATION_OUTSIDE_HOURS_MESSAGE)).not.toBeNull();
-    expect(errorText(controls.time)).toBe(RESERVATION_OUTSIDE_HOURS_MESSAGE);
+    expect(await screen.findByText(API_OUTSIDE_HOURS_MESSAGE)).not.toBeNull();
+    expect(errorText(controls.time)).toBe(API_OUTSIDE_HOURS_MESSAGE);
     expect(errorText(controls.time)).not.toBe(RESERVATION_ISSUES.OUTSIDE_SERVICE_HOURS);
+    // No window of the client's own is rendered anywhere on the screen.
+    expect(screen.queryByText(/service window runs from/)).toBeNull();
+    expect(screen.queryByText(/17:00/)).toBeNull();
     expect(controls.time.getAttribute('aria-invalid')).toBe('true');
     expect(queryErrorNode(controls.date)).toBeNull();
     expect(queryErrorNode(controls.party)).toBeNull();
     expect(within(fieldOf(controls.time)).queryByText(RESERVATION_PAST_MESSAGE)).toBeNull();
+    expect(screen.queryAllByRole('alert')).toHaveLength(0);
+  });
+
+  // A verdict whose envelope carried no sentence of its own still says something,
+  // and what it says is never a window: the hours are the server's to state.
+  it('names no hours of its own when that verdict arrives without a message', async () => {
+    const user = userEvent.setup();
+    stubFetch(() => errorReply(400, 'VALIDATION_ERROR', '', [
+      { field: 'reservation_time', issue: RESERVATION_ISSUES.OUTSIDE_SERVICE_HOURS },
+    ]));
+
+    renderReservationForm();
+    const controls = reservationControls();
+
+    await fillReservation(user, controls, { date: FUTURE_DATE, time: OFFERED_SLOT, party: '2' });
+    await user.click(screen.getByRole('button', { name: RESERVE_SUBMIT_LABEL }));
+
+    await waitFor(() => {
+      expect(errorText(controls.time)).not.toBe('');
+    });
+
+    expect(errorText(controls.time)).not.toBe(RESERVATION_ISSUES.OUTSIDE_SERVICE_HOURS);
+    expect(errorText(controls.time)).not.toMatch(/\d\d:\d\d/);
+    expect(controls.time.getAttribute('aria-invalid')).toBe('true');
+    expect(queryErrorNode(controls.date)).toBeNull();
+    expect(queryErrorNode(controls.party)).toBeNull();
     expect(screen.queryAllByRole('alert')).toHaveLength(0);
   });
 
@@ -1304,11 +1331,12 @@ describe('ReservationFormView', () => {
     expect(queryErrorNode(controls.time)).toBeNull();
   });
 
-  // The horizon is discoverable in the date control — a `min` of today and a
-  // `max` of today plus the documented ninety days — without blocking anything:
-  // the form keeps `noValidate`, so only the API's own checkpoints refuse a date,
-  // and the one calendar check the form makes is its own.
-  it('bounds the date control by the horizon and refuses an impossible calendar date before any request', async () => {
+  // The date control's one bound is arithmetic rather than configuration: a date
+  // before today has passed. How far ahead the restaurant takes bookings is its own
+  // setting, which this package cannot read, so the control carries no `max` and
+  // only the API's horizon checkpoint refuses a distant date. The one calendar
+  // check the form makes is its own.
+  it('bounds the date control at today and refuses an impossible calendar date before any request', async () => {
     const user = userEvent.setup();
     const calls = stubFetch(() => successReply(201, {}));
 
@@ -1316,14 +1344,10 @@ describe('ReservationFormView', () => {
     const controls = reservationControls();
 
     const today = new Date();
-    const lastBookableDay = new Date(
-      today.getFullYear(),
-      today.getMonth(),
-      today.getDate() + RESERVATION_HORIZON_DAYS,
-    );
 
     expect(controls.date.getAttribute('min')).toBe(localDateString(today));
-    expect(controls.date.getAttribute('max')).toBe(localDateString(lastBookableDay));
+    expect(controls.date.hasAttribute('max')).toBe(false);
+    expect(document.getElementById('reservation-date-hint')?.textContent).toBe(RESERVATION_DATE_HINT);
 
     // A date control sanitises an impossible calendar date to nothing on
     // assignment, exactly as a browser's own picker does, so the value the API's
@@ -1345,27 +1369,19 @@ describe('ReservationFormView', () => {
     expect(queryErrorNode(controls.party)).toBeNull();
   });
 
-  // The picker offers only seatings on the half hour, so a time off the grid can
-  // reach the form from nowhere inside it. It is still refused locally with the
-  // sentence that names the real cause, rather than sent for the API to answer
-  // with a window verdict that would be untrue of an in-window time.
-  it('refuses a time off the seating grid before any request, naming the half-hour seating', async () => {
+  // The time control is a free-form input, so a time off the grid is reachable
+  // from the form. It is still refused locally with the sentence that names the
+  // real cause, rather than sent for the API to answer with a window verdict that
+  // would be untrue of a time inside the window.
+  it('refuses a time off the half-hour grid before any request, naming the half-hour seating', async () => {
     const user = userEvent.setup();
     const calls = stubFetch(() => successReply(201, {}));
 
     renderReservationForm();
     const controls = reservationControls();
 
-    await fillReservation(user, controls, { date: FUTURE_DATE, party: '2' });
-
-    // The control has no such option, so 19:15 — an in-window time off the grid —
-    // is written onto it to carry that value into the change event.
-    Object.defineProperty(controls.time, 'value', {
-      configurable: true,
-      get: () => '19:15',
-      set: () => undefined,
-    });
-    fireEvent.change(controls.time);
+    // 19:15 is a time a visitor can type, inside the default window and off the grid.
+    await fillReservation(user, controls, { date: FUTURE_DATE, time: '19:15', party: '2' });
 
     await user.click(screen.getByRole('button', { name: RESERVE_SUBMIT_LABEL }));
 
@@ -1378,10 +1394,10 @@ describe('ReservationFormView', () => {
 
   // The server stays authoritative for the window: the form sends the slot that
   // was chosen, unchanged, and the verdict comes back to the field that owns it.
-  // 21:30 is on the half hour, so the window sentence is the true one there.
-  it('sends the last offered seating and renders the server window verdict beside it', async () => {
+  // 21:30 is on the half hour, so the API's window sentence is the true one there.
+  it('posts the chosen seating unchanged and renders the API window verdict beside it', async () => {
     const user = userEvent.setup();
-    const calls = stubFetch(() => errorReply(400, 'VALIDATION_ERROR', 'The booking could not be validated.', [
+    const calls = stubFetch(() => errorReply(400, 'VALIDATION_ERROR', API_OUTSIDE_HOURS_MESSAGE, [
       { field: 'reservation_time', issue: RESERVATION_ISSUES.OUTSIDE_SERVICE_HOURS },
     ]));
 
@@ -1391,7 +1407,7 @@ describe('ReservationFormView', () => {
     await fillReservation(user, controls, { date: FUTURE_DATE, time: LAST_SEATING, party: '2' });
     await user.click(screen.getByRole('button', { name: RESERVE_SUBMIT_LABEL }));
 
-    expect(await screen.findByText(RESERVATION_OUTSIDE_HOURS_MESSAGE)).not.toBeNull();
+    expect(await screen.findByText(API_OUTSIDE_HOURS_MESSAGE)).not.toBeNull();
 
     await waitFor(() => {
       expect(calls).toHaveLength(1);
@@ -1404,8 +1420,46 @@ describe('ReservationFormView', () => {
       reservation_time: LAST_SEATING,
       party_size: 2,
     });
-    expect(errorText(controls.time)).toBe(RESERVATION_OUTSIDE_HOURS_MESSAGE);
+    expect(errorText(controls.time)).toBe(API_OUTSIDE_HOURS_MESSAGE);
     expect(queryErrorNode(controls.date)).toBeNull();
+    expect(queryErrorNode(controls.party)).toBeNull();
+    expect(screen.queryAllByRole('alert')).toHaveLength(0);
+  });
+
+  // Nothing the documented default configuration would refuse is refused here:
+  // the window, the horizon and the party cap are settings the API reads and this
+  // package cannot (R-2), so a value outside the defaults leaves the form unchanged
+  // and only the API's own checkpoints decide it.
+  it('posts values the API defaults would refuse, so only the API decides them', async () => {
+    const user = userEvent.setup();
+    const calls = stubFetch(() => successReply(201, { reservation: CREATED_RESERVATION }));
+
+    renderReservationForm();
+    const controls = reservationControls();
+
+    const today = new Date();
+    const farAhead = localDateString(
+      new Date(today.getFullYear(), today.getMonth(), today.getDate() + 400),
+    );
+
+    // 12:00 is before the default 17:00 opening, 400 days is past the default
+    // ninety-day horizon, and 20 guests is above the default party cap.
+    await fillReservation(user, controls, { date: farAhead, time: '12:00', party: '20' });
+    await user.click(screen.getByRole('button', { name: RESERVE_SUBMIT_LABEL }));
+
+    await waitFor(() => {
+      expect(calls).toHaveLength(1);
+    });
+
+    const call = onlyCall(calls, RESERVATIONS_URL, 'POST');
+
+    expect(call.body).toEqual({
+      reservation_date: farAhead,
+      reservation_time: '12:00',
+      party_size: 20,
+    });
+    expect(queryErrorNode(controls.date)).toBeNull();
+    expect(queryErrorNode(controls.time)).toBeNull();
     expect(queryErrorNode(controls.party)).toBeNull();
     expect(screen.queryAllByRole('alert')).toHaveLength(0);
   });

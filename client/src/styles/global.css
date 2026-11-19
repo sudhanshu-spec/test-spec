@@ -184,16 +184,14 @@ button, input, select, textarea { font: inherit; color: inherit; }
   padding: var(--space-2) var(--space-3); font: inherit; color: var(--color-text);
   background: var(--color-surface-raised); border: 1px solid var(--color-border);
   border-radius: var(--radius-md); }
-.control--select { padding-inline-end: var(--space-2); cursor: pointer; }
 /* The pointer state stays ahead of :focus-visible so the equal-specificity focus, pressed,
    disabled and invalid rules below keep winning their own properties: a disabled field never
    reacts to the pointer, and an invalid field shows the hover tint under its danger border. */
 .control:hover { border-color: var(--color-brand); background: var(--color-surface-muted); }
 .control:focus-visible { border-color: var(--color-brand); }
-/* Pressed and disabled treatments for the text fields and selects: a pressed
-   field darkens its border, and a field disabled mid-submit reads as inert
-   exactly as .button[disabled] does — without this it looks enabled while
-   swallowing every keystroke. */
+/* Pressed and disabled treatments for the shared controls: a pressed field darkens its
+   border, and a field disabled mid-submit reads as inert exactly as .button[disabled]
+   does — without this it looks enabled while swallowing every keystroke. */
 .control:active { border-color: var(--color-brand-strong); }
 .control[disabled] { color: var(--color-text-muted); background: var(--color-surface-muted); border-color: var(--color-border); cursor: not-allowed; }
 

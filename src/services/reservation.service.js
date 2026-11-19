@@ -29,8 +29,6 @@ const TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
 /** Messages of the fixed failures this service raises. @type {Object<string, string>} */
 const MESSAGES = Object.freeze({
   past: 'The reservation date and time must not be in the past.',
-  window: 'The reservation time is outside the service hours.',
-  horizon: 'The reservation date is outside the reservation horizon.',
   duplicate: 'You already hold a reservation for that date and time.'
 });
 
@@ -134,8 +132,7 @@ function createReservationService({ reservations, config, now = () => new Date()
       failValidation('reservation_date', RESERVATION_ISSUES.DATETIME_IN_PAST, MESSAGES.past);
     }
 
-    // Last seating is one slot before closing, so SERVICE_CLOSE_TIME moves it
-    // with the window; an unparsable configured time makes the window unusable.
+    // Last seating is one slot before the configured close; an unparsable configured time closes the window.
     const openTime = parseTimeParts(config.serviceOpenTime);
     const closeTime = parseTimeParts(config.serviceCloseTime);
     const minutes = timeParts.totalMinutes;
@@ -143,14 +140,17 @@ function createReservationService({ reservations, config, now = () => new Date()
     const inWindow = openTime !== null && closeTime !== null &&
       minutes >= openTime.totalMinutes && minutes <= closeTime.totalMinutes - SLOT_MINUTES;
     if (!onSlot || !inWindow) {
-      failValidation('reservation_time', RESERVATION_ISSUES.TIME_OUTSIDE_SERVICE_HOURS, MESSAGES.window);
+      failValidation('reservation_time', RESERVATION_ISSUES.TIME_OUTSIDE_SERVICE_HOURS,
+        `The reservation time is outside the service hours: we seat from ${config.serviceOpenTime} to `
+        + `${config.serviceCloseTime}, with the last seating ${SLOT_MINUTES} minutes before we close.`);
     }
     const partyLimit = Math.min(config.maxPartySize, MAX_STORED_PARTY_SIZE);
     if (party_size < 1 || party_size > partyLimit) {
       failValidation('party_size', 'out_of_range', `The party size must be between 1 and ${partyLimit}.`);
     }
     if (calendarDaysBetween(currentInstant, requestedStart) > config.reservationHorizonDays) {
-      failValidation('reservation_date', 'outside_reservation_horizon', MESSAGES.horizon);
+      failValidation('reservation_date', 'outside_reservation_horizon',
+        `The reservation date is more than ${config.reservationHorizonDays} days ahead of today.`);
     }
     if (reservations.findByUserAndSlot(userId, reservation_date, reservation_time)) {
       throw new AppError('RESERVATION_CONFLICT', MESSAGES.duplicate);
