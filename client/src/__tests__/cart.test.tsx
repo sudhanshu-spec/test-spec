@@ -30,9 +30,18 @@
  *   its own: a deep link lists only that category's items, and choosing another
  *   filter control re-reads the items through a new query while the category
  *   strip is fetched once and the screen is never remounted (screen 3);
+ * - the strip is one control set, as it presents itself: a single roving tab stop
+ *   on the selected chip, arrow keys and Home/End moving focus without moving the
+ *   selection, and Enter applying the filter of the option the arrows reached;
+ * - a load that fails both of the catalog's requests is announced once, from the
+ *   one live region the screen keeps, and a retry that fails again changes that
+ *   announcement and says the same sentence inside the panel;
  * - the item detail's own add action moves the real cart state by the quantity
  *   the shopper chose, announces it in place, and asks the API for no cart
- *   (screen 4, rule R-8).
+ *   (screen 4, rule R-8);
+ * - the item detail tells an id the API refuses as malformed apart from an id
+ *   that names no item, echoing the API's own message for the refusal instead of
+ *   discarding it behind the not-found copy (screen 4).
  *
  * Those two screens are covered here rather than in suites of their own because
  * the client's test inventory is closed at the six suites this delivery names,
@@ -136,7 +145,8 @@ interface RecordedCall {
 interface StubRoute {
   readonly path: string;
   readonly method: 'GET' | 'POST';
-  readonly respond: () => Response;
+  /** The answer, or a promise that stays pending while a case reads an in-flight state. */
+  readonly respond: () => Response | Promise<Response>;
 }
 
 /** The stub installed as the global `fetch`, with every call it recorded. */
@@ -409,6 +419,17 @@ const ORDER_ROUTES: readonly StubRoute[] = [
   },
 ];
 
+/**
+ * The order endpoint's answer that never settles, so a case can read the state the
+ * screen renders while the request is still in flight. Nothing waits on it and the
+ * pending reply is discarded when the test ends.
+ */
+const PENDING_ORDER_ROUTE: StubRoute = {
+  path: '/api/orders',
+  method: 'POST',
+  respond: () => new Promise<Response>(() => undefined),
+};
+
 /** The cart screen and the confirmation destination it navigates to on success. */
 const CHECKOUT_CONTENT = (
   <Routes>
@@ -416,6 +437,10 @@ const CHECKOUT_CONTENT = (
     <Route path="/orders/:id" element={<OrderConfirmationProbe />} />
   </Routes>
 );
+
+/** The checkout action's label, and the one it carries while the order is in flight. */
+const PLACE_ORDER_LABEL = 'Place order';
+const PLACING_ORDER_LABEL = 'Placing order…';
 
 /** The mounted checkout flow, with the request it posted. */
 interface PlacedOrder {
@@ -455,8 +480,8 @@ const DRINKS_ITEMS_URL = '/api/menu-items?category=drinks';
 /** The URL the unfiltered call builds, which the 'All items' control asks for. */
 const ALL_ITEMS_URL = '/api/menu-items';
 
-/** Labels copied from the screens themselves: the filter strip's group, and the add affordance. */
-const FILTER_GROUP_LABEL = 'Filter the menu by category';
+/** Labels copied from the screens themselves: the filter strip's toolbar, and the add affordance. */
+const FILTER_STRIP_LABEL = 'Filter the menu by category';
 const ALL_ITEMS_LABEL = 'All items';
 const ADD_TO_CART_LABEL = 'Add to cart';
 
@@ -477,6 +502,39 @@ const CATEGORIES_ROUTE: StubRoute = {
   method: 'GET',
   respond: () => fakeResponse({ status: 200, body: { categories: [BURGERS_CATEGORY, DRINKS_CATEGORY] } }),
 };
+
+/** The sentence the catalog prefixes each failed request with, copied from the screen. */
+const CATEGORY_REQUEST_SUMMARY = 'The menu categories could not be loaded.';
+const ITEMS_REQUEST_SUMMARY = 'The menu could not be loaded.';
+
+/** The sentence the catalog adds to a failure once that request has been retried. */
+const RETRY_NOTE = 'Tried again, and it is still unavailable.';
+
+/** What the stubbed API says when a request fails: every case asserts on these words, never the transport's. */
+const CATEGORY_FAILURE_MESSAGE = 'The categories could not be read just now.';
+const ITEMS_FAILURE_MESSAGE = 'The items could not be read just now.';
+
+/**
+ * Builds one endpoint that answers 502 with the documented envelope, so the view
+ * renders the API's own sentence for the failure.
+ *
+ * @param path - The URL the failing request is made to, query string included.
+ * @param message - The envelope's message for that failure.
+ * @returns The stub route for that endpoint.
+ */
+function failureRoute(path: string, message: string): StubRoute {
+  return {
+    path,
+    method: 'GET',
+    respond: () => fakeResponse({ status: 502, body: { error: { code: 'INTERNAL_ERROR', message } } }),
+  };
+}
+
+/** Both of the catalog's requests failing, at the URLs a bare '/menu' calls. */
+const FAILING_CATALOG_ROUTES: readonly StubRoute[] = [
+  failureRoute(CATEGORIES_ROUTE.path, CATEGORY_FAILURE_MESSAGE),
+  failureRoute(ALL_ITEMS_URL, ITEMS_FAILURE_MESSAGE),
+];
 
 /** The deep-link case's answers: the strip and the one category the query names. */
 const BURGERS_ONLY_ROUTES: readonly StubRoute[] = [CATEGORIES_ROUTE, itemsRoute(BURGERS_ITEMS_URL, [BURGER])];
@@ -512,17 +570,85 @@ const DETAIL_ROUTES: readonly StubRoute[] = [
   },
 ];
 
+/** A menu item id the API refuses as malformed: `GET /api/menu-items/:id` validates before it looks. */
+const MALFORMED_ITEM_ID = 'not-a-uuid-142857';
+
+/** An id in the shape the API mints that names no item, which the API answers with its not-found code. */
+const UNKNOWN_ITEM_ID = '11111111-2222-3333-4444-555555555555';
+
+/** The message the API answers a malformed menu item id with; the screen echoes it verbatim. */
+const INVALID_ID_MESSAGE = 'The menu item id must be a valid UUID.';
+
+/** The API's two answers for the two id failures the detail screen has to tell apart. */
+const ID_FAILURE_ROUTES: readonly StubRoute[] = [
+  {
+    path: `/api/menu-items/${MALFORMED_ITEM_ID}`,
+    method: 'GET',
+    respond: () =>
+      fakeResponse({
+        status: 400,
+        body: {
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: INVALID_ID_MESSAGE,
+            details: [{ field: 'id', issue: 'not_a_valid_uuid' }],
+          },
+        },
+      }),
+  },
+  {
+    path: `/api/menu-items/${UNKNOWN_ITEM_ID}`,
+    method: 'GET',
+    respond: () =>
+      fakeResponse({
+        status: 404,
+        body: { error: { code: 'MENU_ITEM_NOT_FOUND', message: 'No menu item matches that id.' } },
+      }),
+  },
+];
+
+/**
+ * @returns The catalog's filter strip, found by the composite-widget role it
+ *   presents itself with.
+ */
+function filterStrip(): HTMLElement {
+  return screen.getByRole('toolbar', { name: FILTER_STRIP_LABEL });
+}
+
+/** @returns The strip's options, in render order. */
+function filterOptions(): readonly HTMLButtonElement[] {
+  return within(filterStrip()).getAllByRole<HTMLButtonElement>('button');
+}
+
 /**
  * @returns The labels of the filter strip's pressed controls, in render order —
  *   that is, the selection the catalog is showing.
  */
 function pressedFilterLabels(): readonly string[] {
-  const strip = screen.getByRole('group', { name: FILTER_GROUP_LABEL });
-
-  return within(strip)
-    .getAllByRole('button')
+  return filterOptions()
     .filter((control) => control.getAttribute('aria-pressed') === 'true')
     .map((control) => control.textContent ?? '');
+}
+
+/**
+ * @returns The labels of the options Tab reaches, in render order: the strip's
+ *   roving tab stop, which is one option and never none.
+ */
+function tabStopLabels(): readonly string[] {
+  return filterOptions()
+    .filter((option) => option.tabIndex === 0)
+    .map((option) => option.textContent ?? '');
+}
+
+/**
+ * @returns The label of the option holding focus, or null when focus is not inside
+ *   the strip at all.
+ */
+function focusedFilterLabel(): string | null {
+  const active = document.activeElement;
+  const focused = filterOptions().find((option) => option === active);
+
+  return focused === undefined ? null : (focused.textContent ?? '');
 }
 
 /**
@@ -843,11 +969,13 @@ describe('quantity field', () => {
       expect(screen.getByText(formatCents(shown * BURGER.price_cents)).className).toBe('cart-line__total');
       expect(screen.getByText(formatCents(shown * BURGER.price_cents + FRIES.price_cents))).not.toBeNull();
 
-      // The correction is announced rather than silent: the field is marked
-      // invalid and described by the message that explains the limit.
-      expect(quantity.getAttribute('aria-invalid')).toBe('true');
+      // The correction is explained rather than silent, and it explains a number the
+      // cart accepted: the message is the neutral hint style, the control keeps the
+      // valid state and the wrapper carries no invalid modifier.
+      expect(quantity.getAttribute('aria-invalid')).toBe('false');
+      expect(quantity.closest('.field')?.className).toBe('field');
       const notice = describedElement(quantity);
-      expect(notice?.className).toBe('field-error');
+      expect(notice?.className).toBe('field__hint');
       expect(notice?.textContent).toContain('Set to ' + String(shown));
       expect(notice?.textContent).toContain('1 to 20');
 
@@ -865,6 +993,65 @@ describe('quantity field', () => {
       expect((body.items ?? []).map((line) => line['quantity'])).toEqual([shown, 1]);
     },
   );
+  it('explains an emptied field and marks it invalid while the line stands unchanged', async () => {
+    const user = userEvent.setup();
+    const harness = renderHarness({ entries: ['/cart'], content: CHECKOUT_CONTENT });
+    await awaitAuthenticated(harness.probe);
+
+    act(() => {
+      const cart = cartOf(harness.probe);
+      cart.add(BURGER, 3);
+      cart.add(FRIES, 1);
+    });
+
+    const quantity = screen.getByRole<HTMLInputElement>('spinbutton', { name: 'Quantity of Classic Burger' });
+
+    await user.clear(quantity);
+
+    // The field holds no quantity at all, so it says which ones the order takes and
+    // marks itself invalid — while nothing is committed and the line, the count and
+    // the total stand as they were.
+    expect(quantity.value).toBe('');
+    expect(quantity.getAttribute('aria-invalid')).toBe('true');
+    expect(quantity.closest('.field')?.className).toBe('field field--invalid');
+    const message = describedElement(quantity);
+    expect(message?.className).toBe('field-error');
+    expect(message?.textContent).toBe('Enter a quantity between 1 and 20.');
+
+    const cart = cartOf(harness.probe);
+    expect(cart.items[0]?.quantity).toBe(3);
+    expect(cart.itemCount).toBe(4);
+    expect(screen.getByText(formatCents(3 * BURGER.price_cents)).className).toBe('cart-line__total');
+  });
+
+  it('restores the quantity the cart holds on blur and says which one it kept', async () => {
+    const user = userEvent.setup();
+    const harness = renderHarness({ entries: ['/cart'], content: CHECKOUT_CONTENT });
+    await awaitAuthenticated(harness.probe);
+
+    act(() => {
+      cartOf(harness.probe).add(BURGER, 3);
+    });
+
+    const quantity = screen.getByRole<HTMLInputElement>('spinbutton', { name: 'Quantity of Classic Burger' });
+
+    await user.clear(quantity);
+    await user.tab();
+
+    // The field settles on the cart's own number and the sentence names it, so the
+    // restore is explained rather than silent; the control is valid again because
+    // the number it holds is one the order takes.
+    expect(quantity.value).toBe('3');
+    expect(quantity.getAttribute('aria-invalid')).toBe('false');
+    expect(quantity.closest('.field')?.className).toBe('field');
+    const message = describedElement(quantity);
+    expect(message?.className).toBe('field__hint');
+    expect(message?.textContent).toBe('Kept at 3: enter a quantity between 1 and 20.');
+
+    const cart = cartOf(harness.probe);
+    expect(cart.items[0]?.quantity).toBe(3);
+    expect(cart.itemCount).toBe(3);
+  });
 });
 
 describe('remove', () => {
@@ -1034,6 +1221,36 @@ describe('place order in flight', () => {
     // The one order sent carries the line the cart held.
     const body = JSON.parse(posted[0]?.body ?? '{}') as { items?: readonly Record<string, unknown>[] };
     expect((body.items ?? []).map((line) => line['quantity'])).toEqual([2]);
+  });
+
+  it('states the wait on the Place order control itself while the request is pending', async () => {
+    const user = userEvent.setup();
+    const harness = renderHarness({
+      entries: ['/cart'],
+      content: CHECKOUT_CONTENT,
+      routes: [PENDING_ORDER_ROUTE],
+    });
+    await awaitAuthenticated(harness.probe);
+
+    act(() => {
+      cartOf(harness.probe).add(BURGER, 2);
+    });
+
+    const control = screen.getByRole<HTMLButtonElement>('button', { name: PLACE_ORDER_LABEL });
+    expect(control.getAttribute('aria-busy')).toBe('false');
+
+    await user.click(control);
+
+    await waitFor(() => {
+      expect(control.getAttribute('aria-busy')).toBe('true');
+    });
+
+    // The wait reaches the control as well as the form: aria-busy states it to a
+    // reader that does not read the label, and the label says in visible text what
+    // is happening rather than leaving the native disabled attribute to imply it.
+    expect(control.textContent).toBe(PLACING_ORDER_LABEL);
+    expect(control.disabled).toBe(true);
+    expect(harness.fetchStub.calls.filter((call) => call.method === 'POST')).toHaveLength(1);
   });
 });
 
@@ -1249,6 +1466,167 @@ describe('menu catalog filter', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Screen 3 — the strip presents itself as one control set, so it carries the
+// keyboard model of one: a single roving tab stop and arrow-key movement among
+// its pressed options, with Enter making the selection
+// ---------------------------------------------------------------------------
+
+describe('menu catalog filter keyboard model', () => {
+  it.each([
+    { entry: '/menu?category=burgers', tabStop: BURGERS_CATEGORY.name },
+    { entry: '/menu', tabStop: ALL_ITEMS_LABEL },
+  ])('keeps one filter option in the tab order at $entry: $tabStop', async ({ entry, tabStop }) => {
+    const harness = renderHarness({
+      entries: [entry],
+      content: CATALOG_CONTENT,
+      routes: CATALOG_ROUTES,
+    });
+    await awaitAuthenticated(harness.probe);
+    await within(filterStrip()).findByRole('button', { name: DRINKS_CATEGORY.name });
+
+    expect(filterOptions().map((option) => option.textContent)).toEqual([
+      ALL_ITEMS_LABEL,
+      BURGERS_CATEGORY.name,
+      DRINKS_CATEGORY.name,
+    ]);
+    // One stop for Tab, on the chip the selection sits on, and -1 on the rest: the
+    // strip is neither a run of stops nor a control Tab can walk past.
+    expect(tabStopLabels()).toEqual([tabStop]);
+    expect(filterOptions().map((option) => option.tabIndex).sort()).toEqual([-1, -1, 0]);
+  });
+
+  it('moves focus with the arrow keys and Home/End without changing the selection', async () => {
+    const user = userEvent.setup();
+    const harness = renderHarness({ entries: ['/menu'], content: CATALOG_CONTENT, routes: CATALOG_ROUTES });
+    await awaitAuthenticated(harness.probe);
+    await within(filterStrip()).findByRole('button', { name: DRINKS_CATEGORY.name });
+
+    const selection = pressedFilterLabels();
+    const stops = tabStopLabels();
+    const first = filterOptions()[0];
+
+    // Tab lands on the strip's one stop, which is where the walk starts.
+    first?.focus();
+    expect(focusedFilterLabel()).toBe(ALL_ITEMS_LABEL);
+
+    await user.keyboard('{ArrowRight}');
+    expect(focusedFilterLabel()).toBe(BURGERS_CATEGORY.name);
+    await user.keyboard('{ArrowLeft}');
+    expect(focusedFilterLabel()).toBe(ALL_ITEMS_LABEL);
+    // Off either end the focus arrives on the other one.
+    await user.keyboard('{ArrowLeft}');
+    expect(focusedFilterLabel()).toBe(DRINKS_CATEGORY.name);
+    await user.keyboard('{ArrowRight}');
+    expect(focusedFilterLabel()).toBe(ALL_ITEMS_LABEL);
+    await user.keyboard('{End}');
+    expect(focusedFilterLabel()).toBe(DRINKS_CATEGORY.name);
+    await user.keyboard('{Home}');
+    expect(focusedFilterLabel()).toBe(ALL_ITEMS_LABEL);
+
+    // Movement only: no arrow press re-filters the list or moves the tab stop.
+    expect(pressedFilterLabels()).toEqual(selection);
+    expect(tabStopLabels()).toEqual(stops);
+  });
+
+  it('applies the filter of an option reached with the arrow keys when Enter is pressed', async () => {
+    const user = userEvent.setup();
+    const harness = renderHarness({
+      entries: ['/menu?category=burgers'],
+      content: CATALOG_CONTENT,
+      routes: CATALOG_ROUTES,
+    });
+    await awaitAuthenticated(harness.probe);
+    expect(await screen.findByRole('link', { name: BURGER.name })).not.toBeNull();
+    const selected = await within(filterStrip()).findByRole<HTMLButtonElement>('button', {
+      name: BURGERS_CATEGORY.name,
+    });
+
+    // The selected chip is the tab stop, so the walk starts on it.
+    expect(selected.tabIndex).toBe(0);
+    selected.focus();
+
+    await user.keyboard('{ArrowRight}');
+    expect(focusedFilterLabel()).toBe(DRINKS_CATEGORY.name);
+    expect(pressedFilterLabels()).toEqual([BURGERS_CATEGORY.name]);
+
+    await user.keyboard('{Enter}');
+
+    // The activation, not the arrow press, moved the selection and re-read the items.
+    expect(await screen.findByRole('link', { name: SHAKE.name })).not.toBeNull();
+    expect(screen.queryByRole('link', { name: BURGER.name })).toBeNull();
+    expect(pressedFilterLabels()).toEqual([DRINKS_CATEGORY.name]);
+    const requested = harness.fetchStub.calls.map((call) => call.url);
+    expect(requested.filter((url) => url === DRINKS_ITEMS_URL)).toHaveLength(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Screen 3 — one page load is one announcement, and a retry that fails again
+// says so: the screen keeps one live region and reports the retries it took
+// ---------------------------------------------------------------------------
+
+describe('menu catalog load failures', () => {
+  it('announces a load that fails both requests once, in reading order', async () => {
+    const harness = renderHarness({
+      entries: ['/menu'],
+      content: CATALOG_CONTENT,
+      routes: FAILING_CATALOG_ROUTES,
+    });
+    await awaitAuthenticated(harness.probe);
+
+    // Both panels are on screen, each still naming its own request…
+    expect(await screen.findByText(CATEGORY_REQUEST_SUMMARY)).not.toBeNull();
+    expect(await screen.findByText(ITEMS_REQUEST_SUMMARY)).not.toBeNull();
+
+    // …and the pair is one live region, carrying both failures in that order.
+    const alerts = screen.getAllByRole('alert');
+    expect(alerts).toHaveLength(1);
+
+    const spoken = alerts[0]?.textContent ?? '';
+    expect(spoken).toContain(`${CATEGORY_REQUEST_SUMMARY} ${CATEGORY_FAILURE_MESSAGE}`);
+    expect(spoken).toContain(`${ITEMS_REQUEST_SUMMARY} ${ITEMS_FAILURE_MESSAGE}`);
+    expect(spoken.indexOf(CATEGORY_REQUEST_SUMMARY)).toBeLessThan(spoken.indexOf(ITEMS_REQUEST_SUMMARY));
+    // The first failure of either request reports no retry.
+    expect(spoken).not.toContain(RETRY_NOTE);
+  });
+
+  it.each([
+    { scope: ' loading the categories', summary: CATEGORY_REQUEST_SUMMARY, message: CATEGORY_FAILURE_MESSAGE },
+    { scope: ' loading the menu', summary: ITEMS_REQUEST_SUMMARY, message: ITEMS_FAILURE_MESSAGE },
+  ])('speaks again when the retry for$scope fails again', async ({ scope, summary, message }) => {
+    const user = userEvent.setup();
+    const harness = renderHarness({
+      entries: ['/menu'],
+      content: CATALOG_CONTENT,
+      routes: FAILING_CATALOG_ROUTES,
+    });
+    await awaitAuthenticated(harness.probe);
+    expect(await screen.findByText(summary)).not.toBeNull();
+
+    const before = screen.getAllByRole('alert');
+    expect(before).toHaveLength(1);
+    const spokenBefore = before[0]?.textContent ?? '';
+    expect(spokenBefore).toContain(`${summary} ${message}`);
+    expect(spokenBefore).not.toContain(RETRY_NOTE);
+
+    await user.click(screen.getByRole('button', { name: `Try again${scope}` }));
+
+    // The same sentence is written where a sighted reader sees it…
+    await screen.findByText(RETRY_NOTE);
+    const retriedPanel = screen.getByText(summary).closest('.error-summary');
+    expect(retriedPanel?.textContent).toContain(RETRY_NOTE);
+
+    // …and the one live region now says something new, so it is announced again.
+    const after = screen.getAllByRole('alert');
+    expect(after).toHaveLength(1);
+    const spokenAfter = after[0]?.textContent ?? '';
+    expect(spokenAfter).not.toBe(spokenBefore);
+    expect(spokenAfter).toContain(RETRY_NOTE);
+    expect(spokenAfter).toContain(`${summary} ${message}`);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Screen 4 — the item detail's add action feeds the client cart, not the API
 // ---------------------------------------------------------------------------
 
@@ -1314,11 +1692,13 @@ describe('menu item detail add to cart', () => {
     await user.clear(quantityControl);
     await user.type(quantityControl, '21');
 
-    // The field holds a number an order line accepts, and says why it changed.
+    // The field holds a number an order line accepts, and says why it changed: the
+    // explanation is the neutral hint under the control, which stays valid because
+    // the number it holds is one the order takes.
     expect(quantityControl.value).toBe('20');
-    expect(quantityControl.getAttribute('aria-invalid')).toBe('true');
+    expect(quantityControl.getAttribute('aria-invalid')).toBe('false');
     const notice = describedElement(quantityControl);
-    expect(notice?.className).toBe('field-error');
+    expect(notice?.className).toBe('field__hint');
     expect(notice?.textContent).toContain('Set to 20');
     expect(notice?.textContent).toContain('1 to 20');
 
@@ -1339,5 +1719,84 @@ describe('menu item detail add to cart', () => {
     // the number it describes.
     expect(quantityControl.value).toBe('20');
     expect(describedElement(quantityControl)?.textContent).toContain('Set to 20');
+  });
+
+  it('explains an emptied quantity field, then restores a quantity and says which one it kept', async () => {
+    const user = userEvent.setup();
+    const harness = renderHarness({
+      entries: [`/menu/${BURGER.id}`],
+      content: ITEM_DETAIL_CONTENT,
+      routes: DETAIL_ROUTES,
+    });
+    await awaitAuthenticated(harness.probe);
+
+    const quantityControl = await screen.findByLabelText<HTMLInputElement>('Quantity');
+
+    await user.clear(quantityControl);
+
+    // The field holds no quantity an order line could carry, so it says which ones
+    // it takes and marks itself invalid rather than staying blank and silent.
+    expect(quantityControl.value).toBe('');
+    expect(quantityControl.getAttribute('aria-invalid')).toBe('true');
+    const message = describedElement(quantityControl);
+    expect(message?.className).toBe('field-error');
+    expect(message?.textContent).toBe('Enter a quantity between 1 and 20.');
+
+    await user.tab();
+
+    // Losing focus puts a quantity back and names it, so the number that reappears
+    // is explained rather than sprung back to; the control is valid again because
+    // the field now holds one the order takes.
+    expect(quantityControl.value).toBe('1');
+    expect(quantityControl.getAttribute('aria-invalid')).toBe('false');
+    const restored = describedElement(quantityControl);
+    expect(restored?.className).toBe('field__hint');
+    expect(restored?.textContent).toBe('Kept at 1: enter a quantity between 1 and 20.');
+  });
+});
+
+describe('menu item detail id failures', () => {
+  it('tells an id the API refused apart from an id that names no item', async () => {
+    const malformed = renderHarness({
+      entries: [`/menu/${MALFORMED_ITEM_ID}`],
+      content: ITEM_DETAIL_CONTENT,
+      routes: ID_FAILURE_ROUTES,
+    });
+    await awaitAuthenticated(malformed.probe);
+
+    // The API refused the address itself, so the screen says that and echoes the message the API
+    // wrote rather than reporting the item as absent.
+    const refusalHeading = await screen.findByRole('heading', { name: 'Item link not valid', level: 1 });
+    expect(refusalHeading).not.toBeNull();
+    const refusal = screen.getByRole('alert');
+    expect(refusal.getAttribute('data-code')).toBe('VALIDATION_ERROR');
+    expect(refusal.textContent).toBe(INVALID_ID_MESSAGE);
+    expect(
+      screen.getByText(
+        'The link that brought you here is not a valid menu item address. Check it, or browse the menu for what you were looking for.',
+      ),
+    ).not.toBeNull();
+    // The same malformed id cannot succeed on a second attempt, so no retry is offered.
+    expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Item not found', level: 1 })).toBeNull();
+
+    malformed.view.unmount();
+
+    const unknown = renderHarness({
+      entries: [`/menu/${UNKNOWN_ITEM_ID}`],
+      content: ITEM_DETAIL_CONTENT,
+      routes: ID_FAILURE_ROUTES,
+    });
+    await awaitAuthenticated(unknown.probe);
+
+    // An id that names no item keeps the not-found screen and its copy, which the distinction above
+    // must not have changed.
+    expect(await screen.findByRole('heading', { name: 'Item not found', level: 1 })).not.toBeNull();
+    expect(
+      screen.getByText(
+        'We could not find that item on the menu. It may have been taken off the menu, or the link may be incomplete.',
+      ),
+    ).not.toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Item link not valid', level: 1 })).toBeNull();
   });
 });

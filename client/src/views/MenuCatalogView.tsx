@@ -29,12 +29,24 @@
  *   A failure's code stays on that panel as `data-code`, for the tests and hooks
  *   that read it, and is never printed: an internal identifier is not something a
  *   shopper can act on.
+ * - Failures are announced once. The panels themselves carry no live-region role:
+ *   the screen keeps one `role="alert"` region mounted and writes every current
+ *   failure into it in reading order, so a load that fails both requests speaks one
+ *   sentence rather than two. A retry that fails again changes that sentence, and
+ *   the panel's own copy, to say how many retries the request has taken.
  * - An empty array is a normal answer, so an empty category reads as a state
  *   with a next step rather than as an error.
  * - The strip is the only element on the screen that scrolls sideways
  *   (`client/src/styles/catalog.css`). At the 360px minimum width the trailing
  *   categories do not fit, so the chip carrying the selection is scrolled into the
- *   strip's visible box rather than the chips wrapping or the page widening.
+ *   strip's visible box rather than the chips wrapping or the page widening, and
+ *   the frame around the strip fades whichever edge holds options that are still
+ *   off screen in that direction — the cue that the first or last options are
+ *   there to swipe to, so no option is ever cut off without one.
+ * - The strip presents itself as one control set, so it behaves as one: a
+ *   `role="toolbar"` whose pressed options share a single roving tab stop, with
+ *   the arrow keys and Home/End moving focus among them, and Enter, Space or a
+ *   click making the selection.
  *
  * Route protection and the route table live in `client/src/main.tsx`: this module
  * renders neither `Layout`, a guard, nor another view.
@@ -43,7 +55,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { JSX } from 'react';
+import type { JSX, KeyboardEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
 import { ApiError } from '../api/client';
@@ -94,6 +106,15 @@ interface Failure {
   readonly details: readonly ApiFieldDetail[];
 }
 
+/**
+ * Which edges of the filter strip hold options the strip cannot show right now:
+ * `start` once it has scrolled away from the first option, `end` while categories
+ * remain past its right edge, `both` in the middle of the strip, and `none` for a
+ * strip whose options all fit or which is scrolled flush to an end. Each named edge
+ * carries a fade, so no option is ever cut off without a cue saying it is there.
+ */
+type FilterOverflow = 'none' | 'start' | 'end' | 'both';
+
 /** The branch both requests settle into when they fail. */
 interface FailedState {
   readonly kind: 'failed';
@@ -140,6 +161,37 @@ function itemCountLabel(count: number): string {
 }
 
 /**
+ * Names the retries one request has already performed, so a retry that fails again
+ * reads differently from the first failure instead of re-rendering the same copy.
+ *
+ * Undefined until that request has been retried once, which is what leaves the
+ * first failure's panel and its announcement exactly as they were.
+ *
+ * @param retries - How many retries that request has performed.
+ * @returns The sentence to append, or undefined before the first retry.
+ */
+function retryNote(retries: number): string | undefined {
+  if (retries < 1) {
+    return undefined;
+  }
+
+  return retries === 1
+    ? 'Tried again, and it is still unavailable.'
+    : `Tried again ${retries} times, and it is still unavailable.`;
+}
+
+/**
+ * Joins the parts of one announcement with a single space, dropping the ones a
+ * request did not contribute.
+ *
+ * @param parts - Sentences and messages, any of which may be absent.
+ * @returns The joined text, empty when every part is absent.
+ */
+function joinSentences(parts: readonly (string | undefined)[]): string {
+  return parts.filter((part): part is string => part !== undefined && part !== '').join(' ');
+}
+
+/**
  * @param slug - The slug currently selected, if any.
  * @param optionSlug - The slug this option stands for, `undefined` for every item.
  * @returns The classes of one filter option, marked active when it is the selection.
@@ -158,27 +210,35 @@ interface RequestFailureProps {
   readonly failure: Failure;
   /** Appended, visually hidden, to the retry control so two retries stay distinct. */
   readonly retryScope: string;
+  /** Said below the message once this request has been retried; absent before that. */
+  readonly note?: string;
   /** Re-runs the failed request. */
   readonly onRetry: () => void;
 }
 
 /**
- * Renders one failed request: the sentence naming it and the API's own message
- * in the shared `.error-summary`, the field details when the API sent any, and
- * the retry control that re-runs that request alone. The failure's code rides on
- * the panel as `data-code` — the tests and hooks that need to tell two failures
- * apart read it there — and is never printed as text, so every failure panel on
- * the client reads the same way.
+ * Renders one failed request: the sentence naming it, the API's own message and,
+ * once that request has been retried, the line reporting how many tries it has
+ * taken — all in the shared `.error-summary` — the field details when the API sent
+ * any, and the retry control that re-runs that request alone.
  *
- * @param props - The failure, the sentence naming it and the retry action.
+ * The panel carries no `role="alert"` of its own: the view keeps one live region
+ * mounted and announces every current failure there, so a second alert inside the
+ * panel would say the same thing twice. The failure's code rides on the panel as
+ * `data-code` — the tests and hooks that need to tell two failures apart read it
+ * there — and is never printed as text, so every failure panel on the client reads
+ * the same way.
+ *
+ * @param props - The failure, the sentence naming it, any retry note and the retry action.
  * @returns The failure panel for one request.
  */
-function RequestFailure({ summary, failure, retryScope, onRetry }: RequestFailureProps): JSX.Element {
+function RequestFailure({ summary, failure, retryScope, note, onRetry }: RequestFailureProps): JSX.Element {
   return (
     <div className="stack">
-      <div className="error-summary" role="alert" data-code={failure.code}>
+      <div className="error-summary" data-code={failure.code}>
         <p>{summary}</p>
         <p>{failure.message}</p>
+        {note === undefined ? null : <p>{note}</p>}
         {failure.details.length > 0 ? (
           <ul>
             {failure.details.map((detail) => (
@@ -222,6 +282,7 @@ export function MenuCatalogView(): JSX.Element {
   const [categoryAttempt, setCategoryAttempt] = useState(0);
   const [itemAttempt, setItemAttempt] = useState(0);
   const [confirmedItemId, setConfirmedItemId] = useState<string | null>(null);
+  const [filterOverflow, setFilterOverflow] = useState<FilterOverflow>('none');
   const filterStripRef = useRef<HTMLDivElement | null>(null);
 
   const selectedSlug = searchParams.get(CATEGORY_QUERY_KEY) ?? undefined;
@@ -238,6 +299,50 @@ export function MenuCatalogView(): JSX.Element {
     confirmedItemId === null
       ? undefined
       : cartItems.find((line) => line.menu_item_id === confirmedItemId)?.quantity;
+
+  /**
+   * The slug whose option is the strip's one tab stop: the current selection when
+   * the strip lists it, and undefined — the "All items" control — when nothing is
+   * selected or the selection names no rendered category, which is also the case
+   * while the categories are still loading. Falling back that way is what keeps
+   * the strip reachable by Tab at every moment.
+   */
+  const tabStopSlug =
+    selectedSlug !== undefined &&
+    categoryState.kind === 'loaded' &&
+    categoryState.value.some((category) => category.slug === selectedSlug)
+      ? selectedSlug
+      : undefined;
+
+  /**
+   * A slug that names no category is a filter that matched nothing rather than a
+   * request that broke: it carries no retry, so it takes no retry note and does
+   * not announce the items request as failed.
+   */
+  const filteredNothing = itemState.kind === 'failed' && itemState.failure.code === 'CATEGORY_NOT_FOUND';
+
+  /** The line saying how many tries a failed request has taken, once it has been retried. */
+  const categoryNote = categoryState.kind === 'failed' ? retryNote(categoryAttempt) : undefined;
+  const itemNote = itemState.kind === 'failed' && !filteredNothing ? retryNote(itemAttempt) : undefined;
+
+  /**
+   * What the screen's one live region says: the failures on screen, in the order
+   * they appear, each with the retries it has already survived. A load that fails
+   * both requests therefore announces one sentence, and a retry that fails again
+   * rewrites this text — which is what makes it announced again.
+   */
+  const announcement = joinSentences([
+    categoryState.kind === 'failed'
+      ? joinSentences([CATEGORY_REQUEST_SUMMARY, categoryState.failure.message, categoryNote])
+      : undefined,
+    itemState.kind === 'failed'
+      ? joinSentences([
+          filteredNothing ? undefined : ITEMS_REQUEST_SUMMARY,
+          itemState.failure.message,
+          itemNote,
+        ])
+      : undefined,
+  ]);
 
   /**
    * Puts the chosen item in the cart and names the card that answered, so that
@@ -349,6 +454,54 @@ export function MenuCatalogView(): JSX.Element {
     }
   }, [selectedSlug, categoryState]);
 
+  // Which edges of the strip hold options it cannot show, and so which edges the
+  // frame fades: `end` while categories remain past the right edge, `start` after
+  // the strip has been scrolled away from the first option. The measurement runs
+  // once as the effect mounts, and again whenever the strip scrolls or is resized —
+  // the categories arriving change both its content width and, on a narrow screen,
+  // whether it overflows at all. It measures synchronously because a test
+  // environment's `ResizeObserver` stub never invokes its callback: without that
+  // first call the cue would never appear there, and on mount it is the only
+  // measurement a short page ever takes.
+  useEffect(() => {
+    const strip = filterStripRef.current;
+
+    function measure(): void {
+      const hiddenStart = strip !== null && strip.scrollLeft > 1;
+      const hiddenEnd = strip !== null && strip.scrollWidth - strip.clientWidth - strip.scrollLeft > 1;
+      const next: FilterOverflow = hiddenStart
+        ? hiddenEnd
+          ? 'both'
+          : 'start'
+        : hiddenEnd
+          ? 'end'
+          : 'none';
+
+      // One state write per real change: a scroll event fires for every pixel of
+      // travel and must not re-render the item cards beside the strip.
+      setFilterOverflow((current) => (current === next ? current : next));
+    }
+
+    measure();
+
+    // A failed categories request renders its panel in the strip's place, so there
+    // is no box to measure and nothing to listen to until a retry brings it back.
+    if (strip === null) {
+      return;
+    }
+
+    strip.addEventListener('scroll', measure, { passive: true });
+    // Guarded because the observer is not universal in the environments this view
+    // is rendered in; the synchronous measurement above already covers that case.
+    const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(measure) : null;
+    observer?.observe(strip);
+
+    return () => {
+      strip.removeEventListener('scroll', measure);
+      observer?.disconnect();
+    };
+  }, [categoryState]);
+
   /**
    * Writes the selection into the query string, or removes the key for every
    * item. The path, and therefore the route, never changes.
@@ -376,10 +529,64 @@ export function MenuCatalogView(): JSX.Element {
   }
 
   /**
-   * @returns The "All items" control followed by one control per category. The
-   *   categories' own failure is not rendered here: a panel placed inside the
-   *   strip would be squeezed to the strip's width, so it is rendered in the
-   *   catalog column instead, at the width of every other panel on the screen.
+   * Moves focus among the strip's options with the arrow keys and Home/End, the
+   * model a toolbar promises. Focus only moves: the selection changes on Enter,
+   * Space or a click, so arrowing past a chip never re-filters the list under the
+   * shopper. Every other key is left to the option that received it.
+   *
+   * @param event - The key press on the strip or on one of its options.
+   */
+  function handleFilterKeyDown(event: KeyboardEvent<HTMLDivElement>): void {
+    const options = Array.from(
+      event.currentTarget.querySelectorAll<HTMLButtonElement>('.category-filter__option'),
+    );
+
+    if (options.length === 0) {
+      return;
+    }
+
+    // The option the press came from, so a synthetic event that never took focus
+    // still moves from the chip it was dispatched on rather than from nothing.
+    const origin = event.target instanceof Element ? event.target.closest('.category-filter__option') : null;
+    const current = options.findIndex((option) => option === origin);
+    const last = options.length - 1;
+    let next: number;
+
+    switch (event.key) {
+      case 'ArrowRight':
+        // Off one end lands on the other: the strip is a ring of options, not a list
+        // with an edge the focus can fall off.
+        next = current < 0 || current === last ? 0 : current + 1;
+        break;
+      case 'ArrowLeft':
+        next = current < 0 ? last : (current - 1 + options.length) % options.length;
+        break;
+      case 'Home':
+        next = 0;
+        break;
+      case 'End':
+        next = last;
+        break;
+      default:
+        return;
+    }
+
+    event.preventDefault();
+    const option = options[next];
+
+    if (option !== undefined) {
+      option.focus();
+    }
+  }
+
+  /**
+   * @returns The "All items" control followed by one control per category. Exactly
+   *   one of them is the strip's tab stop — the selected chip, or "All items" when
+   *   the selection names no rendered category — and the rest sit at `tabIndex`
+   *   -1 until the arrow keys move focus to them. The categories' own failure is
+   *   not rendered here: a panel placed inside the strip would be squeezed to the
+   *   strip's width, so it is rendered in the catalog column instead, at the width
+   *   of every other panel on the screen.
    */
   function renderFilterOptions(): JSX.Element {
     return (
@@ -388,6 +595,7 @@ export function MenuCatalogView(): JSX.Element {
           type="button"
           className={filterOptionClass(undefined, selectedSlug)}
           aria-pressed={selectedSlug === undefined}
+          tabIndex={tabStopSlug === undefined ? 0 : -1}
           onClick={() => {
             selectCategory(undefined);
           }}
@@ -406,6 +614,7 @@ export function MenuCatalogView(): JSX.Element {
                 type="button"
                 className={filterOptionClass(category.slug, selectedSlug)}
                 aria-pressed={category.slug === selectedSlug}
+                tabIndex={category.slug === tabStopSlug ? 0 : -1}
                 onClick={() => {
                   selectCategory(category.slug);
                 }}
@@ -463,11 +672,12 @@ export function MenuCatalogView(): JSX.Element {
     if (itemState.kind === 'failed') {
       // A slug that names no category is a filter that matched nothing, not
       // a broken request: the strip stays usable and the way back to every
-      // item sits beside the message.
-      if (itemState.failure.code === 'CATEGORY_NOT_FOUND') {
+      // item sits beside the message. Its panel carries no live-region role —
+      // the screen's one region announces it with every other failure.
+      if (filteredNothing) {
         return (
           <div className="stack">
-            <div className="error-summary" role="alert" data-code={itemState.failure.code}>
+            <div className="error-summary" data-code={itemState.failure.code}>
               <p>{itemState.failure.message}</p>
             </div>
             <div className="row">
@@ -484,6 +694,7 @@ export function MenuCatalogView(): JSX.Element {
           summary={ITEMS_REQUEST_SUMMARY}
           failure={itemState.failure}
           retryScope={ITEMS_RETRY_SCOPE}
+          note={itemNote}
           onRetry={retryItems}
         />
       );
@@ -518,6 +729,16 @@ export function MenuCatalogView(): JSX.Element {
 
   return (
     <section className="catalog" aria-labelledby="catalog-title">
+      {/*
+       * One live region for the whole screen, mounted from the first render so the
+       * text it later holds is an update to a region already on the page. Every
+       * failure the view is showing is written here in reading order, which is what
+       * makes a load that fails both requests one announcement instead of two.
+       */}
+      <p className="visually-hidden" role="alert">
+        {announcement}
+      </p>
+
       <h1 className="page-title" tabIndex={-1} id="catalog-title">
         {PAGE_TITLE}
       </h1>
@@ -527,17 +748,29 @@ export function MenuCatalogView(): JSX.Element {
           summary={CATEGORY_REQUEST_SUMMARY}
           failure={categoryState.failure}
           retryScope={CATEGORY_RETRY_SCOPE}
+          note={categoryNote}
           onRetry={retryCategories}
         />
       ) : (
-        <div
-          className="category-filter"
-          role="group"
-          aria-label={FILTER_LABEL}
-          aria-busy={categoryState.kind === 'loading'}
-          ref={filterStripRef}
-        >
-          {renderFilterOptions()}
+        /*
+         * The cues live on the frame, a sibling of the strip rather than a child of
+         * it: the strip is the scroll container, so a mask inside it would scroll
+         * away with the very content it has to sit over, while the frame stays put
+         * on the visible edges. `data-overflow` names the edges that hold options
+         * the strip cannot show, and each of those edges carries a fade.
+         */
+        <div className="category-filter-frame" data-overflow={filterOverflow}>
+          <div
+            className="category-filter"
+            role="toolbar"
+            aria-label={FILTER_LABEL}
+            aria-orientation="horizontal"
+            aria-busy={categoryState.kind === 'loading'}
+            onKeyDown={handleFilterKeyDown}
+            ref={filterStripRef}
+          >
+            {renderFilterOptions()}
+          </div>
         </div>
       )}
 

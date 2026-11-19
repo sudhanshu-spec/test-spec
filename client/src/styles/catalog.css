@@ -13,7 +13,13 @@
  * content is minmax(0, ...) — a cart line's middle `auto` track holds only
  * its quantity cell or its status badge, never the item name, and the amount
  * column is the last track, `minmax(var(--amount-column-width), max-content)`
- * — so a long item name can never widen the page.
+ * — so a long item name can never widen the page. The strip's overflow cues are
+ * the edge fades on .category-filter-frame, which stays a sibling of the strip: an
+ * overlay drawn inside a scroll container travels away with the content it has to
+ * sit over. The sentence a quantity control renders under itself is bounded by
+ * `--cart-line-message-width` inside that breakpoint for the same reason: an
+ * unbounded message would size the middle track to its own max-content and take
+ * the width from the item name.
  *
  * Prices reach these elements already formatted by client/src/api/format.ts;
  * this file sizes and aligns that string and never emits a currency symbol.
@@ -89,6 +95,28 @@
 
 /* ---- Category filter strip: the one element allowed to scroll sideways ---- */
 
+/* The strip's visible box, and the element that carries the cues saying the strip
+   continues past an edge. It scrolls nothing itself: the strip inside it stays the
+   one element in either stylesheet that scrolls sideways. */
+.category-filter-frame { position: relative; max-width: 100%; }
+
+/* One fade per edge, pinned to that box rather than travelling with the content,
+   and hidden until the view reports that options sit past that edge
+   (data-overflow names the edges: 'start', 'end', 'both'). Their width and the
+   surface they fade from are global.css tokens, so a clipped chip washes out into
+   the page instead of ending in a hard edge with nothing to say it continues.
+   pointer-events: none keeps the chip a fade covers clickable. */
+.category-filter-frame::before, .category-filter-frame::after { content: ''; position: absolute;
+  inset-block: 0; width: var(--space-6); pointer-events: none; opacity: 0; }
+
+.category-filter-frame::before { inset-inline-start: 0; background: linear-gradient(to right, var(--color-surface), transparent); }
+.category-filter-frame::after { inset-inline-end: 0; background: linear-gradient(to left, var(--color-surface), transparent); }
+
+.category-filter-frame[data-overflow='start']::before,
+.category-filter-frame[data-overflow='both']::before,
+.category-filter-frame[data-overflow='end']::after,
+.category-filter-frame[data-overflow='both']::after { opacity: 1; }
+
 .category-filter { display: flex; gap: var(--space-2); max-width: 100%; padding-bottom: var(--space-1);
   overflow-x: auto; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; }
 
@@ -134,8 +162,43 @@
 .item-detail__price { font-variant-numeric: tabular-nums; font-size: var(--font-size-lg);
   font-weight: var(--font-weight-bold); color: var(--color-text); white-space: nowrap; }
 
-.item-detail__actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3);
+/* The quantity field and the Add to cart button share one grid row, so the two
+   controls in this row start at the same y at every width. The field wrapper is
+   display: contents, which lifts its label, control, hint and message slot into
+   this grid as items of their own: rows 1 to 4 for the four of them, with the
+   button in row 2 beside the control. Do not replace this with flex centring of
+   the field wrapper and the button: a field is a label, a control, a hint and a
+   reserved message slot, so centring the button against that whole taller box
+   drops it by half the extra height instead of aligning it to the control.
+
+   Column 1 is minmax(0, max-content): the control keeps the width it has on its
+   own rather than stretching to the column the view is laid out in, and that
+   track still shrinks when the narrow column cannot hold it, so nothing widens
+   the page at 360px. The hint and the message slot span both columns, which is
+   what keeps their text out of that width: a longer clamp message then wraps
+   under the row instead of growing the control the shopper is about to press.
+   Column 2 sizes to the button, which keeps the row's 44px touch-target floor. */
+.item-detail__actions { display: grid; grid-template-columns: minmax(0, max-content) max-content;
+  align-items: center; column-gap: var(--space-3); row-gap: var(--space-1);
   min-height: var(--control-min-size); min-width: var(--control-min-size); }
+
+/* The wrapper drops its box but stays in the DOM, which is what keeps the field's
+   own rules working: `.field--invalid .control`, the label's htmlFor and the
+   input's aria-describedby are all descendant selectors and attributes on the
+   elements themselves, so none of them depends on this box existing. The gap it
+   put between those children is now this grid's row-gap, from the same token. */
+.item-detail__actions > .field { display: contents; }
+
+.item-detail__actions > .field > .field__label { grid-row: 1; grid-column: 1; }
+.item-detail__actions > .field > .control { grid-row: 2; grid-column: 1; }
+.item-detail__actions > .field > .field__hint { grid-row: 3; grid-column: 1 / -1; }
+.item-detail__actions > .field > .field__feedback { grid-row: 4; grid-column: 1 / -1; }
+
+/* The button keeps its own width instead of filling its track: a clamp message
+   wide enough to widen that track then has somewhere to go without stretching
+   the control, so the button the shopper is about to press never changes size
+   as a message appears. */
+.item-detail__actions > .button { grid-row: 2; grid-column: 2; justify-self: start; }
 
 /* ---- Cart lines: one grid column per line below the breakpoint ---- */
 
@@ -208,6 +271,14 @@
      its amount on the same x position instead of sizing a track per line. */
   .cart-line { grid-template-columns: minmax(0, 1fr) auto minmax(var(--amount-column-width), max-content);
     gap: var(--space-3); }
+
+  /* The message under the quantity control is bounded here, in the row layout that
+     puts the control in a track of its own: an unbounded sentence contributes its
+     max-content to that track and takes the width from the item name beside it. The
+     bound is wide enough for two lines of the longest sentence the control shows and
+     narrow enough that the name keeps its column, and it leaves the pristine row —
+     label and input only — untouched. */
+  .cart-line__quantity .field { max-width: var(--cart-line-message-width); }
 
   /* The amount is placed in the last track rather than following its siblings in
      source order: a line with no middle cell — the order confirmation's, which

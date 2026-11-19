@@ -28,11 +28,12 @@ export type FormControlType = 'text' | 'email' | 'password' | 'date' | 'time' | 
 
 /**
  * Props shared by the six controls: every native input attribute except the
- * ones this module owns, plus the label and the two error sources. `id` and
- * `label` are required because a real `<label htmlFor>` is, and `className` is
- * omitted so the component itself puts `.control` on the input — which is what
- * keeps the 44x44px touch target. An exported control pins its own `type`, so a
- * caller may state a `type` only as the default the control overrides.
+ * ones this module owns, plus the label, the two error sources and the advisory
+ * sentence. `id` and `label` are required because a real `<label htmlFor>` is,
+ * and `className` is omitted so the component itself puts `.control` on the
+ * input — which is what keeps the 44x44px touch target. An exported control
+ * pins its own `type`, so a caller may state a `type` only as the default the
+ * control overrides.
  */
 export interface FormControlProps
   extends Omit<
@@ -49,6 +50,14 @@ export interface FormControlProps
   error?: string | null;
   /** The server's own `details` entry for this field; it wins over `error`. */
   detail?: ApiFieldDetail | null;
+  /**
+   * A sentence about the value the control now holds — a correction the field
+   * made, for instance — announced through `aria-describedby` and rendered in
+   * the field's own polite live region. It describes a value the field accepts,
+   * so it never marks the control invalid; a supplied `error` or `detail`
+   * reports a value the field refuses and wins over it.
+   */
+  advisory?: string | null;
 }
 
 /** Props of {@link FieldError}. */
@@ -205,13 +214,33 @@ interface FieldProps extends FormControlProps {
  * was already there is. The region is the field's last child so it also holds
  * the message's reserved line height in global.css.
  *
+ * The region holds one sentence at a time: the failure a value was refused with
+ * while there is one, and otherwise the advisory sentence a caller supplied
+ * about the value the field now holds. Only the failure marks the control
+ * invalid, which is what lets a correction be explained without leaving a valid
+ * control in the invalid state.
+ *
  * @param props - The shared form props plus the input type this field fixes.
  * @returns The field element.
  */
-function Field({ id, label, hint, error, detail, type, required, value, onChange, ...rest }: FieldProps): JSX.Element {
+function Field({
+  id,
+  label,
+  hint,
+  error,
+  detail,
+  advisory,
+  type,
+  required,
+  value,
+  onChange,
+  ...rest
+}: FieldProps): JSX.Element {
   const hasError = Boolean(detail?.issue ?? error);
   const hintId = hint ? `${id}-hint` : undefined;
   const errorId = hasError ? `${id}-error` : undefined;
+  const advisoryText = hasError ? null : (advisory ?? null);
+  const advisoryId = advisoryText ? `${id}-advisory` : undefined;
 
   return (
     <div className={hasError ? 'field field--invalid' : 'field'}>
@@ -229,11 +258,12 @@ function Field({ id, label, hint, error, detail, type, required, value, onChange
         value={value}
         onChange={onChange}
         aria-invalid={hasError}
-        aria-describedby={describedByIds(hintId, errorId)}
+        aria-describedby={describedByIds(hintId, advisoryId, errorId)}
       />
       {hint ? <p className="field__hint" id={`${id}-hint`}>{hint}</p> : null}
       <div className="field__feedback" aria-live="polite" aria-atomic="true">
         <FieldError id={`${id}-error`} detail={detail} message={error} />
+        {advisoryText ? <p className="field__hint" id={`${id}-advisory`}>{advisoryText}</p> : null}
       </div>
     </div>
   );

@@ -17,9 +17,12 @@ import type { ErrorEnvelope } from './types';
 /** Path prefix of the JSON API, which Vite proxies verbatim to Express. */
 const API_BASE = '/api';
 
-/** Messages for a failure whose response carried no envelope, and for one that never arrived. */
-const FALLBACK_ERROR_MESSAGE = 'The request failed.';
+/** Copy for a failure that never reached the API: no response at all, or a gateway answering in its place. */
 const UNREACHABLE_MESSAGE = 'Unable to reach the server.';
+/** Copy for a response that is not the API's error envelope: a fault on the server side of the seam. */
+const SERVER_FAILURE_MESSAGE = 'Something went wrong on the server. Try again in a moment.';
+/** The statuses a gateway answers with when the API it proxies could not be reached. */
+const GATEWAY_STATUSES: readonly number[] = [502, 503, 504];
 
 /**
  * The API's complete error vocabulary, in src/errors.js order. A code outside this list becomes
@@ -132,17 +135,22 @@ function toErrorEnvelope(payload: unknown): ErrorEnvelope | null {
   return { error: { code: envelope.code, message: envelope.message, details: toFieldDetails(envelope.details) } };
 }
 
-/** @returns The error to throw for a failed response, read from its envelope when it has one. */
+/**
+ * @returns The error to throw for a failed response: in the API's own words when the response carried
+ *   its envelope, as unreachable when a gateway answered for an API that could not be reached, and as
+ *   a server fault when something other than the API answered.
+ */
 function toApiError(payload: unknown, status: number): ApiError {
   const envelope = toErrorEnvelope(payload);
 
   if (envelope === null) {
-    return new ApiError(FALLBACK_ERROR_MESSAGE, status, 'INTERNAL_ERROR');
+    const message = GATEWAY_STATUSES.includes(status) ? UNREACHABLE_MESSAGE : SERVER_FAILURE_MESSAGE;
+    return new ApiError(message, status, 'INTERNAL_ERROR');
   }
 
   const { code, message, details } = envelope.error;
   const known = (API_ERROR_CODES as readonly string[]).includes(code);
-  return new ApiError(message || FALLBACK_ERROR_MESSAGE, status, known ? (code as ApiErrorCode) : 'INTERNAL_ERROR', details);
+  return new ApiError(message || SERVER_FAILURE_MESSAGE, status, known ? (code as ApiErrorCode) : 'INTERNAL_ERROR', details);
 }
 
 /**
@@ -168,7 +176,9 @@ function toApiError(payload: unknown, status: number): ApiError {
  * @param init - Method, body, query parameters and the credential opt-out; GET, credential
  *   attached, with no body by default.
  * @returns The parsed body, untouched, typed as the caller's declared contract.
- * @throws {ApiError} On any non-2xx response, and with status 0 when the request never arrived.
+ * @throws {ApiError} On any non-2xx response: in the API's own words when the response carried its
+ *   error envelope, as unreachable when the request never arrived or a gateway answered for an API it
+ *   could not reach, and as a server fault when anything other than the API answered.
  */
 export async function apiFetch<T>(path: string, init: ApiRequestInit = {}): Promise<T> {
   const params = new URLSearchParams();

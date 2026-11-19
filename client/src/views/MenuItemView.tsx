@@ -14,14 +14,16 @@
  * `useCart().add` receives the item and a quantity, and the order endpoint prices
  * the order from stored menu data.
  *
- * Four states are explicit: loading, populated, empty (an item that cannot be
- * read) and failure, which offers a retry. The API answers an unknown id with
- * `MENU_ITEM_NOT_FOUND` and an id that is not a UUID with `VALIDATION_ERROR`;
- * both mean "there is nothing here to show", so both render the same not-found
- * state with the catalog as the positive next step. Every other failure is
- * reported through the API's own `message`, with its `code` carried non-visibly
- * on the panel's `data-code` for the tests and hooks that read it: a machine
- * identifier is not copy a shopper can act on.
+ * Five states are explicit: loading, populated, not found, an id the API refused
+ * as malformed, and failure, which offers a retry. The API tells the two id
+ * failures apart and so does this screen: an unknown id is `MENU_ITEM_NOT_FOUND`
+ * and renders the not-found state with the catalog as the positive next step,
+ * while an id that is not a UUID is a `VALIDATION_ERROR` refused before any
+ * lookup, and renders its own state echoing the API's own `message` with no
+ * retry — the same malformed id cannot succeed on a second attempt. Every other
+ * failure is reported through the API's own `message` too, with its `code`
+ * carried non-visibly on the panel's `data-code` for the tests and hooks that
+ * read it: a machine identifier is not copy a shopper can act on.
  *
  * @module client/src/views/MenuItemView
  */
@@ -56,6 +58,7 @@ type ViewState =
   | { readonly kind: 'loading' }
   | { readonly kind: 'item'; readonly item: MenuItem }
   | { readonly kind: 'not-found' }
+  | { readonly kind: 'invalid-id'; readonly code: string; readonly message: string }
   | { readonly kind: 'error'; readonly code: string; readonly message: string };
 
 /** Props of the internal {@link ItemDetail}. */
@@ -135,6 +138,32 @@ function correctionNotice(quantity: number): string {
   );
 }
 
+/** What the quantity control says about the number it holds, and whether it holds one. */
+interface QuantityFeedback {
+  /** The sentence rendered under the input. */
+  readonly message: string;
+  /** Whether the field is holding a value an order line refuses, which is an empty one. */
+  readonly invalid: boolean;
+}
+
+/**
+ * The sentence for a field that was left empty: the range an order line accepts,
+ * so the field blocks the add with a reason rather than only staying blank.
+ */
+const QUANTITY_REQUIRED_MESSAGE =
+  `Enter a quantity between ${MIN_QUANTITY} and ${MAX_QUANTITY}.`;
+
+/**
+ * Explains a field that was left empty and has been put back to a quantity, so
+ * the number that reappears is never a silent change.
+ *
+ * @param quantity - The quantity the field now shows again.
+ * @returns The sentence to render under the input.
+ */
+function restoredNotice(quantity: number): string {
+  return `Kept at ${quantity}: enter a quantity between ${MIN_QUANTITY} and ${MAX_QUANTITY}.`;
+}
+
 /**
  * The populated state: one item in full, with the quantity selector and the one
  * real add-to-cart action.
@@ -145,7 +174,10 @@ function correctionNotice(quantity: number): string {
  *
  * The quantity field corrects a reading an order line would not accept as it is
  * typed and explains the correction, so the number the field shows is the number
- * the confirmation and the cart carry.
+ * the confirmation and the cart carry. A field left empty holds no quantity at
+ * all: it says which values it takes, and losing focus puts the field back to a
+ * quantity and says which one, so neither the empty state nor the restored
+ * number is silent.
  *
  * @param props - The item to present.
  * @returns The item detail for one menu item.
@@ -157,7 +189,11 @@ function ItemDetail({ item }: ItemDetailProps): JSX.Element {
   // reading the order line would not accept is corrected into that text as it is
   // typed, and the notice explains why, so what the field shows is what is added.
   const [quantityText, setQuantityText] = useState<string>(String(MIN_QUANTITY));
-  const [quantityNotice, setQuantityNotice] = useState<string | null>(null);
+  // What the control says about the number it holds. The two kinds are kept apart
+  // on purpose: an emptied field holds no quantity and is reported as invalid,
+  // while a corrected one holds a number the order line accepts and is only
+  // explained, so the control is never left marked invalid over a value it took.
+  const [quantityFeedback, setQuantityFeedback] = useState<QuantityFeedback | null>(null);
   const [confirmation, setConfirmation] = useState<string>('');
   const confirmationRef = useRef<HTMLDivElement | null>(null);
 
@@ -184,21 +220,34 @@ function ItemDetail({ item }: ItemDetailProps): JSX.Element {
     if (rawValue.trim() === '') {
       // An emptied field is a value mid-edit rather than a quantity, so it stays
       // empty instead of snapping to a number the next keystroke would extend.
+      // It is also the one reading the field cannot use: there is no quantity to
+      // add yet, so it says which values it takes instead of leaving the field
+      // blank and unmarked.
       setQuantityText(rawValue);
-      setQuantityNotice(null);
+      setQuantityFeedback({ message: QUANTITY_REQUIRED_MESSAGE, invalid: true });
       return;
     }
 
     const reading = readQuantity(rawValue);
     setQuantityText(String(reading.quantity));
-    setQuantityNotice(reading.corrected ? correctionNotice(reading.quantity) : null);
+    setQuantityFeedback(
+      reading.corrected ? { message: correctionNotice(reading.quantity), invalid: false } : null,
+    );
   };
 
   const handleQuantityBlur = (): void => {
-    setQuantityText(String(readQuantity(quantityText).quantity));
-    // The notice is kept here: it describes the number the field still holds, and
-    // dropping it as the field loses focus would move the add control between the
-    // press and the release of the click that took the focus away, losing that click.
+    const restored = readQuantity(quantityText).quantity;
+    setQuantityText(String(restored));
+
+    // A field left empty is put back to a quantity rather than left blank, and the
+    // sentence says which one, so the number that reappears is explained. The
+    // explanation a corrected reading already carries is kept: it describes the
+    // number the field still holds, and dropping it as the field loses focus would
+    // move the add control between the press and the release of the click that took
+    // the focus away, losing that click.
+    if (quantityText.trim() === '') {
+      setQuantityFeedback({ message: restoredNotice(restored), invalid: false });
+    }
   };
 
   const handleAdd = (): void => {
@@ -208,6 +257,10 @@ function ItemDetail({ item }: ItemDetailProps): JSX.Element {
 
     const quantity = readQuantity(quantityText).quantity;
     setQuantityText(String(quantity));
+    // The number the field now shows is the number being added, so a message
+    // saying the field held no usable quantity no longer describes it. The
+    // explanation a corrected reading carries still does, and stays.
+    setQuantityFeedback((current) => (current !== null && current.invalid ? null : current));
     add(item, quantity);
     setConfirmation(`${quantity} × ${item.name} added to your cart.`);
   };
@@ -247,7 +300,10 @@ function ItemDetail({ item }: ItemDetailProps): JSX.Element {
             onChange={handleQuantityChange}
             onBlur={handleQuantityBlur}
             hint={`Between ${MIN_QUANTITY} and ${MAX_QUANTITY}.`}
-            error={quantityNotice}
+            error={quantityFeedback?.invalid === true ? quantityFeedback.message : null}
+            advisory={
+              quantityFeedback !== null && !quantityFeedback.invalid ? quantityFeedback.message : null
+            }
           />
           <button type="button" className="button" disabled={!item.is_available} onClick={handleAdd}>
             Add to cart
@@ -284,7 +340,8 @@ function ItemDetail({ item }: ItemDetailProps): JSX.Element {
  * A route with no id at all has nothing to fetch, so it renders the not-found
  * state without a request.
  *
- * @returns The item detail, or one of the loading, not-found and failure states.
+ * @returns The item detail, or one of the loading, not-found, malformed-id and
+ *   failure states.
  */
 export function MenuItemView(): JSX.Element {
   const { id } = useParams<{ id: string }>();
@@ -318,15 +375,24 @@ export function MenuItemView(): JSX.Element {
         }
 
         const failure = toFailure(error);
-        // An id that names no item and an id that is not a UUID both leave
-        // nothing to show, so both render the same not-found state.
-        const missing = failure.code === 'MENU_ITEM_NOT_FOUND' || failure.code === 'VALIDATION_ERROR';
 
-        if (missing) {
-          setState({ kind: 'not-found' });
-        } else {
-          setState({ kind: 'error', code: failure.code, message: failure.message });
+        // The API refuses an id that is not a UUID before any lookup, which is a
+        // different failure from an id that names no item: the first is refused
+        // for its shape and cannot be retried into success, so it keeps the API's
+        // own message on a state of its own.
+        if (failure.code === 'VALIDATION_ERROR') {
+          setState({ kind: 'invalid-id', code: failure.code, message: failure.message });
+          return;
         }
+
+        // An id that names no item leaves nothing to show, so it renders the
+        // not-found state with the catalog as the positive next step.
+        if (failure.code === 'MENU_ITEM_NOT_FOUND') {
+          setState({ kind: 'not-found' });
+          return;
+        }
+
+        setState({ kind: 'error', code: failure.code, message: failure.message });
       }
     }
 
@@ -360,6 +426,25 @@ export function MenuItemView(): JSX.Element {
               Back to the menu
             </Link>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (state.kind === 'invalid-id') {
+    return (
+      <div className="stack">
+        <h1 className="page-title" tabIndex={-1}>Item link not valid</h1>
+        <div className="error-summary" role="alert" data-code={state.code}>
+          <p>{state.message}</p>
+        </div>
+        <p>
+          The link that brought you here is not a valid menu item address. Check it, or browse the menu for what you were looking for.
+        </p>
+        <div className="row">
+          <Link className="button" to="/menu">
+            Back to the menu
+          </Link>
         </div>
       </div>
     );

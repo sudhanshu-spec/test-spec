@@ -14,17 +14,26 @@
  * rule is honoured on this side: the list only ever holds the caller's bookings,
  * so an id that is absent from it — another account's booking or a stale link —
  * renders the same not-found message, with no client-side ownership check and
- * nothing to distinguish the two cases.
+ * nothing to distinguish the two cases. A reference that is not a UUID at all
+ * never named a booking, because every stored id is a `crypto.randomUUID()`:
+ * such a link fails {@link RESERVATION_ID_PATTERN} and renders its own
+ * malformed-link state rather than the not-found one.
  *
  * The date, the seating time and the `created_at` instant all reach the screen
  * through `client/src/api/format`, so the two stored wall-clock values and the
  * timestamp are presented in one set of formats and nothing here formats one for
  * itself.
  *
- * Four states are rendered explicitly: loading, populated, empty (no bookings,
- * or a booking not in the list) and failure. Every failure is reported as the
- * transport's `ApiError` and by its `code` alone; the session provider owns the
- * 401 redirect, so nothing here reacts to an expired token.
+ * The booking's `id` is the first row of both detail lists — the confirmation's
+ * and each history card's — under a "Booking" label, so the record on screen can
+ * be quoted when contacting the restaurant, exactly as the order screens print
+ * "Order <id>".
+ *
+ * Five states are rendered explicitly: loading, populated, empty (no bookings,
+ * or a booking not in the list), a booking reference that is not a valid id, and
+ * failure. Every failure is reported as the transport's `ApiError` and by its
+ * `code` alone; the session provider owns the 401 redirect, so nothing here
+ * reacts to an expired token.
  *
  * Deliberately absent: `fetch`, any route guard or redirect, `Layout`, money
  * formatting (a reservation carries no price), and any cancellation or editing
@@ -48,7 +57,16 @@ const LOAD_FAILURE_MESSAGE = 'Your reservations could not be loaded.';
 /** The id the page heading carries, so the section's landmark name points at it. */
 const HEADING_ID = 'reservation-view-title';
 
-/** The view's four states, kept apart so each one is rendered from its own branch. */
+/**
+ * The shape of every reservation id the API mints: the reservation repository
+ * stores `crypto.randomUUID()`, and this is the same pattern the server's own
+ * path validators apply to an id. Case-insensitive because UUIDs are hex. A
+ * reference that does not match never named a booking, so it is reported as a
+ * malformed link rather than as a booking the caller cannot see.
+ */
+const RESERVATION_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** The load states, kept apart so each one is rendered from its own branch. */
 type LoadState =
   | { status: 'loading' }
   | { status: 'ready'; reservations: Reservation[] }
@@ -145,8 +163,10 @@ interface ReservationHistoryProps {
 
 /**
  * Renders the caller's booking history at `/reservations`, preserving the
- * server's date-then-time order rather than re-sorting it. Each entry links to
- * its own confirmation, which is how single-booking mode is reachable from here.
+ * server's date-then-time order rather than re-sorting it. Each card opens with
+ * the booking's own id, so a booking can be quoted from the list as it can from
+ * the confirmation, and closes with a link to that booking's confirmation, which
+ * is how single-booking mode is reachable from here.
  *
  * The "Book a table" action that opens the booking form is rendered above the
  * list in this state as it is in the empty one, so a returning customer reaches
@@ -182,6 +202,7 @@ function ReservationHistory({ reservations }: ReservationHistoryProps): JSX.Elem
         {reservations.map((reservation) => (
           <article className="card stack" key={reservation.id}>
             <div className="detail-list">
+              <DetailRow label="Booking">{reservation.id}</DetailRow>
               <DetailRow label="Date">
                 <time dateTime={reservation.reservation_date}>
                   {formatCalendarDate(reservation.reservation_date)}
@@ -290,6 +311,24 @@ export function ReservationConfirmationView(): JSX.Element {
   const reservation = state.reservations.find((entry) => entry.id === id);
 
   if (reservation === undefined) {
+    if (!RESERVATION_ID_PATTERN.test(id)) {
+      // A reference that is not a UUID never named a booking at all, so it is a
+      // malformed link rather than a booking this caller cannot see.
+      return (
+        <ReservationSection title="Booking link not valid">
+          <div className="state-panel">
+            <p>That booking reference is not a valid booking id.</p>
+            <p>Check the link you followed, or see every booking you have made.</p>
+            <div className="row">
+              <Link className="button" to="/reservations">
+                See all your bookings
+              </Link>
+            </div>
+          </div>
+        </ReservationSection>
+      );
+    }
+
     // The heading names the state, as the item and order screens' headings do, so
     // all four not-found states read the same way instead of this one keeping the
     // page's own title.
@@ -311,6 +350,7 @@ export function ReservationConfirmationView(): JSX.Element {
     <ReservationSection title={title}>
       <div className="card stack">
         <div className="detail-list">
+          <DetailRow label="Booking">{reservation.id}</DetailRow>
           <DetailRow label="Date">
             <time dateTime={reservation.reservation_date}>
               {formatCalendarDate(reservation.reservation_date)}

@@ -61,6 +61,7 @@
   --layout-gutter: 16px; /* page padding below the breakpoint */
   --quantity-field-width: 5rem; /* width of the cart's quantity input */
   --amount-column-width: 6rem; /* amount column shared by cart lines and order rows */
+  --cart-line-message-width: 11rem; /* bound of the cart line's quantity message, so it wraps inside its own column instead of sizing that column */
   --shadow-card: 0 1px 2px rgba(31, 26, 23, 0.08), 0 6px 16px rgba(31, 26, 23, 0.06); /* card lift */
   /* ---- Controls ---- */
   --control-min-size: 44px; /* touch-target floor for every interactive control */

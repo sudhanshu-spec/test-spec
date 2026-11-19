@@ -2,11 +2,18 @@
  * @fileoverview Order confirmation and order history — screen 6 of the ten-screen
  * inventory, rendered by one component in two modes.
  *
- * `/orders/:id` renders a single order as the confirmation of the purchase that
- * produced it; `/orders` (no id in the path) renders the signed-in caller's own
- * orders, in the order the API returns them, newest first. Both routes are
- * wrapped in `ProtectedRoute` by `client/src/main.tsx`, so this module renders no
- * guard, performs no redirect and holds no route-table knowledge.
+ * `/orders/:id` renders a single order as a record of the purchase that produced
+ * it, and titles itself `Order details` when it is reached that way. The one
+ * arrival that is not a record is the checkout step: the cart's Place order action
+ * navigates to the same address with `orderPlaced: true` in the router location
+ * state, and only then does the view title itself `Order placed`, as the moment of
+ * placing. The history link, a cold open of the address and a reload of a page
+ * opened as a record all arrive without the flag and read as the record they are.
+ *
+ * `/orders` (no id in the path) renders the signed-in caller's own orders, in the
+ * order the API returns them, newest first. Both routes are wrapped in
+ * `ProtectedRoute` by `client/src/main.tsx`, so this module renders no guard,
+ * performs no redirect and holds no route-table knowledge.
  *
  * Money is the server's alone. Every amount shown here is an `Order` field passed
  * through `formatCents` unchanged — no amount is summed, rounded or re-derived
@@ -18,17 +25,22 @@
  * account exactly as it answers an id that names no order, both with
  * `ORDER_NOT_FOUND`. That single response is rendered as one plain not-found
  * state: the scoping already happened in the server's user-scoped query, so no
- * ownership check is attempted here and the two cases are not distinguished.
+ * ownership check is attempted here and neither of those two cases is
+ * distinguished. An id the API refuses as malformed is a different failure —
+ * `VALIDATION_ERROR`, answered before any lookup — and renders its own state
+ * echoing the API's own `message`, because a refused address is not an order
+ * this caller cannot see.
  *
- * All four states are explicit: loading, populated, empty (an empty history, or
- * an order that cannot be read) and failure, which offers a retry control.
+ * All five states are explicit: loading, populated, empty (an empty history, or
+ * an order that cannot be read), an id the API refused as malformed, and
+ * failure, which offers a retry control.
  *
  * @module client/src/views/OrderConfirmationView
  */
 
 import type { JSX } from 'react';
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
 
 import { ApiError } from '../api/client';
 import { formatCents, formatStatusLabel, formatTimestamp } from '../api/format';
@@ -60,12 +72,29 @@ type ViewState =
   | { readonly kind: 'order'; readonly order: Order }
   | { readonly kind: 'history'; readonly orders: readonly Order[] }
   | { readonly kind: 'not-found' }
+  | { readonly kind: 'invalid-id'; readonly code: string; readonly message: string }
   | { readonly kind: 'error'; readonly code: string; readonly message: string };
+
+/**
+ * The router location state the checkout step attaches to the confirmation
+ * address. `state` is whatever the history entry carries, so it is read through
+ * this narrow shape rather than trusted: only an exact `true` marks an arrival
+ * that placed the order, and an absent or foreign state means a record view.
+ */
+interface OrderPlacedState {
+  /** `true` when the cart's Place order action navigated here with a new order. */
+  readonly orderPlaced?: unknown;
+}
 
 /** Props of {@link OrderConfirmation}. */
 interface OrderConfirmationProps {
   /** The order to present, exactly as the API returned it. */
   readonly order: Order;
+  /**
+   * Whether this arrival placed the order. `true` titles the view as the moment
+   * of placing; `false` titles it `Order details`, as a record reopened by id.
+   */
+  readonly justPlaced: boolean;
 }
 
 /** Props of {@link OrderHistoryEntry}. */
@@ -120,21 +149,27 @@ function unitCount(order: Order): number {
 }
 
 /**
- * Renders one order as the confirmation of the purchase that produced it: its
- * status and placement time, its id, the note when one was left, every line with
- * the quantity and the server's unit and line amounts, and the server's total.
+ * Renders one order: its status and placement time, its id, the note when one was
+ * left, every line with the quantity and the server's unit and line amounts, and
+ * the server's total.
  *
- * @param props - The order to present.
- * @returns The confirmation for one order.
+ * The heading follows the arrival. Reached from the checkout step, which is what
+ * `justPlaced` reports, the order is the purchase that was just submitted and the
+ * heading says `Order placed`. Reached any other way — the history link, a cold
+ * open of the address, a reload of a page opened as a record — the same order is a
+ * record and the heading says `Order details`.
+ *
+ * @param props - The order to present and whether this arrival placed it.
+ * @returns The confirmation or record for one order.
  */
-function OrderConfirmation({ order }: OrderConfirmationProps): JSX.Element {
+function OrderConfirmation({ order, justPlaced }: OrderConfirmationProps): JSX.Element {
   const hasNotes = order.notes !== null && order.notes.trim() !== '';
 
   return (
     <div className="cart">
-      <h1 className="page-title" tabIndex={-1}>Order placed</h1>
+      <h1 className="page-title" tabIndex={-1}>{justPlaced ? 'Order placed' : 'Order details'}</h1>
 
-      <section className="card stack" aria-label="Order details">
+      <section className="card stack" aria-label="Order summary">
         <div className="row">
           <span className={STATUS_BADGE_CLASSES[order.status]}>{formatStatusLabel(order.status)}</span>
           <span className="cart-line__unit-price">Placed {formatTimestamp(order.created_at)}</span>
@@ -225,7 +260,9 @@ function OrderHistoryEntry({ order }: OrderHistoryEntryProps): JSX.Element {
 
 /**
  * Screen 6 of the ten-screen inventory. With an `:id` in the path it shows that
- * order's confirmation; without one it shows the caller's order history.
+ * order — titled as the moment of placing when the checkout step is what sent the
+ * visitor here, and as a record otherwise; without an id it shows the caller's
+ * order history.
  *
  * The id-keyed effect is the only data access: an ignore flag on cleanup stops a
  * response from a superseded request from overwriting the state of a newer one,
@@ -233,11 +270,12 @@ function OrderHistoryEntry({ order }: OrderHistoryEntryProps): JSX.Element {
  * No ownership check, no redirect and no cart mutation happen here — the API
  * scopes every read to the caller, and the route guard is `ProtectedRoute`'s.
  *
- * @returns The confirmation, the history, or one of the loading, empty and
- *   failure states.
+ * @returns The confirmation, the record, the history, or one of the loading,
+ *   empty, malformed-id and failure states.
  */
 export function OrderConfirmationView(): JSX.Element {
   const { id } = useParams<{ id: string }>();
+  const justPlaced = (useLocation().state as OrderPlacedState | null)?.orderPlaced === true;
   const [state, setState] = useState<ViewState>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
 
@@ -268,15 +306,23 @@ export function OrderConfirmationView(): JSX.Element {
         }
 
         const failure = toFailure(error);
+
+        // The API refuses an id that is not a UUID before any lookup, so a
+        // malformed address is not an order this caller cannot see: it keeps the
+        // API's own message on a state of its own.
+        if (failure.code === 'VALIDATION_ERROR') {
+          setState({ kind: 'invalid-id', code: failure.code, message: failure.message });
+          return;
+        }
+
         // An order held by another account and an id that names none are
         // answered identically, so both render the same not-found state.
-        const missing = failure.code === 'ORDER_NOT_FOUND' || failure.code === 'VALIDATION_ERROR';
-
-        if (missing) {
+        if (failure.code === 'ORDER_NOT_FOUND') {
           setState({ kind: 'not-found' });
-        } else {
-          setState({ kind: 'error', code: failure.code, message: failure.message });
+          return;
         }
+
+        setState({ kind: 'error', code: failure.code, message: failure.message });
       }
     }
 
@@ -318,6 +364,28 @@ export function OrderConfirmationView(): JSX.Element {
     );
   }
 
+  if (state.kind === 'invalid-id') {
+    return (
+      <div className="stack">
+        <h1 className="page-title" tabIndex={-1}>Order link not valid</h1>
+        <div className="error-summary" role="alert" data-code={state.code}>
+          <p>{state.message}</p>
+        </div>
+        <p>
+          The link that brought you here is not a valid order address. Check it, or open your order history.
+        </p>
+        <div className="row">
+          <Link className="button" to="/orders">
+            View your orders
+          </Link>
+          <Link className="button button--secondary" to="/menu">
+            Browse the menu
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   if (state.kind === 'error') {
     return (
       <div className="stack">
@@ -338,7 +406,7 @@ export function OrderConfirmationView(): JSX.Element {
   }
 
   if (state.kind === 'order') {
-    return <OrderConfirmation order={state.order} />;
+    return <OrderConfirmation order={state.order} justPlaced={justPlaced} />;
   }
 
   if (state.orders.length === 0) {

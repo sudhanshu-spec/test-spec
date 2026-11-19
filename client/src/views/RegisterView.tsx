@@ -70,7 +70,8 @@ const EMAIL_ALREADY_REGISTERED_MESSAGE =
   'An account already uses this email address. Sign in instead of registering again.';
 const UNEXPECTED_FAILURE_MESSAGE =
   'Something went wrong while creating your account. Nothing was saved, and you can try again.';
-const RETRY_MESSAGE = 'Correct what is highlighted above, then submit the form again to retry.';
+/** Names the fields rather than a position: this region sits above them, while the highlighted field and its message sit below. */
+const RETRY_MESSAGE = 'Correct the highlighted fields, then submit the form again to retry.';
 const PASSWORD_HINT = `At least ${PASSWORD_MIN_LENGTH} characters.`;
 const SUBMIT_LABEL = 'Create account';
 const SUBMITTING_MESSAGE = 'Creating your account…';

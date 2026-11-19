@@ -27,9 +27,9 @@
  *
  * Four states are explicit: empty, which offers the way back to the menu and no
  * Place order action; populated, with the lines and the totals panel; submitting,
- * announced through `role="status"` with every control disabled; and failure,
- * which names the offending item or field and leaves a retry control live with
- * the cart untouched.
+ * announced through `role="status"` and carried on the Place order control's own
+ * `aria-busy` and label, with every control disabled; and failure, which names the
+ * offending item or field and leaves a retry control live with the cart untouched.
  *
  * @module client/src/views/CartView
  */
@@ -66,6 +66,8 @@ const NOTES_LABEL = 'Notes (optional)';
 const NOTES_HINT = 'Anything the kitchen should know about this order.';
 const PRICING_HINT = 'The kitchen prices every line when you place the order.';
 const PLACE_ORDER_LABEL = 'Place order';
+/** The Place order control's own label while the placement is in flight. */
+const SUBMITTING_LABEL = 'Placing order…';
 const SUBMITTING_MESSAGE = 'Placing your order…';
 const RETRY_LABEL = 'Try again';
 const RETAINED_MESSAGE = 'Nothing was ordered and your cart is unchanged.';
@@ -118,14 +120,14 @@ interface CartLineRowProps {
   readonly quantityText: string | undefined;
   /** The server's own detail for this line's quantity, when it named one. */
   readonly quantityDetail: ApiFieldDetail | null;
-  /** Why this line's typed quantity was corrected, or null when it needed no correction. */
-  readonly quantityNotice: string | null;
+  /** What this line's quantity control says about the number it holds, or null when it says nothing. */
+  readonly quantityFeedback: QuantityFeedback | null;
   /** Whether a placement is in flight, which disables every control of the row. */
   readonly disabled: boolean;
   /** Sets the line's quantity from the control's text. */
   onQuantityChange(menuItemId: string, rawValue: string): void;
-  /** Drops the line's in-progress text, so the control shows the committed quantity. */
-  onQuantityBlur(menuItemId: string): void;
+  /** Drops the line's in-progress text, taking the value it held so its fate can be explained. */
+  onQuantityBlur(menuItemId: string, rawText: string): void;
   /** Drops the line. */
   onRemove(menuItemId: string): void;
 }
@@ -191,6 +193,37 @@ function correctionNotice(quantity: number): string {
     String(MAX_QUANTITY) +
     '.'
   );
+}
+
+/**
+ * What a line's quantity control says about the number it holds, and whether it
+ * holds one. The two kinds are kept apart because only an empty field is a value
+ * the order refuses: a correction explains a number the line already took, and
+ * marking it invalid would leave a valid control in the invalid state.
+ */
+interface QuantityFeedback {
+  /** The sentence rendered under the input. */
+  readonly message: string;
+  /** Whether the field holds no quantity the order could carry, which is an empty one. */
+  readonly invalid: boolean;
+}
+
+/**
+ * The sentence for a field that was left empty: the range one line accepts, so
+ * the empty state is explained rather than only shown.
+ */
+const QUANTITY_REQUIRED_MESSAGE =
+  `Enter a quantity between ${MIN_QUANTITY} and ${MAX_QUANTITY}.`;
+
+/**
+ * Explains a field that was left empty and has been put back to the quantity the
+ * cart holds, so the number that reappears is never a silent change.
+ *
+ * @param quantity - The quantity the field now shows again.
+ * @returns The sentence to render under the input.
+ */
+function restoredNotice(quantity: number): string {
+  return `Kept at ${quantity}: enter a quantity between ${MIN_QUANTITY} and ${MAX_QUANTITY}.`;
 }
 
 /**
@@ -394,30 +427,42 @@ function OrderFailure({ failure, submitting }: OrderFailureProps): JSX.Element {
  * snapping back; losing focus drops that text and the field settles on the
  * quantity the cart holds. A reading outside the range one line may carry is
  * corrected as it is typed, so the number on screen is always the number the cart
- * and the order will hold, and the correction is explained: the notice, or the
- * server's own detail for the line when it named one, is announced through
- * `aria-describedby` and rendered under the input, never instead of the input.
+ * and the order will hold.
+ *
+ * The message under the input is announced through `aria-describedby`, and it is
+ * one of two kinds: the server's own detail for this line, or the note this view
+ * has about the value the control took — the range an empty field accepts, the
+ * correction it made, the quantity it restored. Only the empty field and the
+ * server's detail mark the line invalid, so a control holding a number the cart
+ * accepted never keeps the invalid state a correction produced. Both kinds share
+ * the one message node, so the id `aria-describedby` names never changes under an
+ * interaction.
  *
  * The row is memoised, so editing one line's quantity re-renders that line only;
  * the view hands it stable callbacks for exactly that reason.
  *
- * @param props - The line, the text being edited, the notice or detail that names
- * it and the mutations.
+ * @param props - The line, the text being edited, the server's detail or the
+ *   view's note about it, and the mutations.
  * @returns The list item for one cart line.
  */
 const CartLineRow = memo(function CartLineRow({
   line,
   quantityText,
   quantityDetail,
-  quantityNotice,
+  quantityFeedback,
   disabled,
   onQuantityChange,
   onQuantityBlur,
   onRemove,
 }: CartLineRowProps): JSX.Element {
   const quantityId = 'cart-quantity-' + line.menu_item_id;
-  const errorId = quantityId + '-error';
-  const hasError = quantityDetail !== null || quantityNotice !== null;
+  // One message node per line, whatever kind of message it holds: an id that never
+  // changes keeps `aria-describedby` pointing at the same element as the field's
+  // state changes, which is what makes the polite announcement reliable.
+  const messageId = quantityId + '-error';
+  const message =
+    quantityDetail !== null ? quantityDetail.issue : (quantityFeedback?.message ?? null);
+  const invalid = quantityDetail !== null || quantityFeedback?.invalid === true;
 
   return (
     <li className="cart-line">
@@ -427,7 +472,7 @@ const CartLineRow = memo(function CartLineRow({
       </div>
 
       <div className="cart-line__quantity">
-        <div className={hasError ? 'field field--invalid' : 'field'}>
+        <div className={invalid ? 'field field--invalid' : 'field'}>
           <label className="field__label" htmlFor={quantityId}>
             Quantity<span className="visually-hidden"> of {line.name}</span>
           </label>
@@ -442,16 +487,25 @@ const CartLineRow = memo(function CartLineRow({
             step={1}
             value={quantityText ?? String(line.quantity)}
             disabled={disabled}
-            aria-invalid={hasError}
-            aria-describedby={hasError ? errorId : undefined}
+            aria-invalid={invalid}
+            aria-describedby={message === null ? undefined : messageId}
             onChange={(event: ChangeEvent<HTMLInputElement>) => {
               onQuantityChange(line.menu_item_id, event.target.value);
             }}
             onBlur={() => {
-              onQuantityBlur(line.menu_item_id);
+              onQuantityBlur(line.menu_item_id, quantityText ?? String(line.quantity));
             }}
           />
-          <FieldError id={errorId} detail={quantityDetail} message={quantityNotice} />
+          {message === null ? null : (
+            <p
+              id={messageId}
+              className={invalid ? 'field-error' : 'field__hint'}
+              data-field={quantityDetail?.field}
+              data-issue={quantityDetail?.issue}
+            >
+              {message}
+            </p>
+          )}
         </div>
       </div>
 
@@ -515,9 +569,9 @@ export function CartView(): JSX.Element {
   // here rather than from `items`, so it keeps the stable identity the memoised rows rely on and a
   // quantity keystroke re-renders only the line being edited.
   const committedLines = useRef(items);
-  // Why a line's typed quantity had to be corrected, keyed by menu item id. Present only while the
-  // field holds a corrected reading, so the explanation never outlives the number it describes.
-  const [quantityNotices, setQuantityNotices] = useState<Record<string, string | undefined>>({});
+  // What each line's quantity control says about the number it holds, keyed by menu item id. Absent
+  // for a line with nothing to say, so no message outlives the value it describes.
+  const [quantityFeedback, setQuantityFeedback] = useState<Record<string, QuantityFeedback | undefined>>({});
 
   /** Drops the failure a cart or note edit has made stale. */
   const clearFailure = useCallback((): void => {
@@ -536,11 +590,6 @@ export function CartView(): JSX.Element {
    * again. Used when the field loses focus and when the line goes: neither leaves
    * text behind that a later render would show.
    *
-   * The correction notice is deliberately not dropped here. It describes the number
-   * the field still holds, and removing it as the field loses focus would change the
-   * row's height between the press and the release of the click that took the focus
-   * away, which is how a click on the next control gets lost.
-   *
    * @param menuItemId - The line whose text is dropped.
    */
   const forgetQuantityText = useCallback((menuItemId: string): void => {
@@ -548,13 +597,13 @@ export function CartView(): JSX.Element {
   }, []);
 
   /**
-   * Drops a line's correction notice, for the one case where the line goes and no
-   * field is left holding the reading it explained.
+   * Drops the message a line's quantity control carries, for the one case where
+   * the line goes and no field is left holding the value it described.
    *
-   * @param menuItemId - The line whose notice is dropped.
+   * @param menuItemId - The line whose message is dropped.
    */
-  const forgetQuantityNotice = useCallback((menuItemId: string): void => {
-    setQuantityNotices((current) => ({ ...current, [menuItemId]: undefined }));
+  const forgetQuantityFeedback = useCallback((menuItemId: string): void => {
+    setQuantityFeedback((current) => ({ ...current, [menuItemId]: undefined }));
   }, []);
 
   /**
@@ -564,13 +613,15 @@ export function CartView(): JSX.Element {
    * The text is held per line so clearing the field never snaps back to the
    * committed number, which the next keystroke would otherwise append to. An
    * emptied field is a value mid-edit rather than a request, so nothing is
-   * committed and no correction is pending.
+   * committed; it is also the one value the field cannot use, so the line says
+   * which quantities the order takes while the field holds nothing.
    *
    * Every other reading is corrected here, as it is typed, and the correction is
    * written back into the field and committed as the same number: the field holds
    * the quantity the cart holds, the header count and the totals follow it, and the
    * order that is placed asks for it. A reading that had to change is explained by
-   * the notice the row renders under the input.
+   * the message the row renders under the input, which describes a number the cart
+   * accepted and so never marks the control invalid.
    *
    * The identity is stable, so a quantity edit re-renders only its own line
    * rather than every memoised `CartLineRow`.
@@ -582,7 +633,10 @@ export function CartView(): JSX.Element {
     (menuItemId: string, rawValue: string): void => {
       if (rawValue.trim() === '') {
         setQuantityTexts((current) => ({ ...current, [menuItemId]: rawValue }));
-        setQuantityNotices((current) => ({ ...current, [menuItemId]: undefined }));
+        setQuantityFeedback((current) => ({
+          ...current,
+          [menuItemId]: { message: QUANTITY_REQUIRED_MESSAGE, invalid: true },
+        }));
         return;
       }
 
@@ -590,9 +644,11 @@ export function CartView(): JSX.Element {
       const correctedText = String(reading.quantity);
 
       setQuantityTexts((current) => ({ ...current, [menuItemId]: correctedText }));
-      setQuantityNotices((current) => ({
+      setQuantityFeedback((current) => ({
         ...current,
-        [menuItemId]: reading.corrected ? correctionNotice(reading.quantity) : undefined,
+        [menuItemId]: reading.corrected
+          ? { message: correctionNotice(reading.quantity), invalid: false }
+          : undefined,
       }));
 
       clearFailure();
@@ -602,8 +658,49 @@ export function CartView(): JSX.Element {
   );
 
   /**
+   * Drops a line's in-progress text when its field loses focus.
+   *
+   * A field left empty settles on the quantity the cart holds, and the sentence
+   * that replaces the empty-field message names that quantity, so the number that
+   * reappears is explained rather than silent. The message is replaced rather than
+   * dropped or removed, because both sentences are one line: the row keeps its
+   * height between the press and the release of the click that took the focus away,
+   * which is how a click on the control beside it would otherwise be lost.
+   *
+   * The explanation a corrected reading already carries is left untouched: it
+   * describes the number the field still holds.
+   *
+   * @param menuItemId - The line whose field lost focus.
+   * @param rawText - The text the field held as it lost focus.
+   */
+  const handleQuantityBlur = useCallback(
+    (menuItemId: string, rawText: string): void => {
+      forgetQuantityText(menuItemId);
+
+      if (rawText.trim() !== '') {
+        return;
+      }
+
+      // The quantity the field settles on is the cart's own, read from the latest
+      // committed lines so the handler keeps the stable identity the memoised rows
+      // rely on.
+      const committed = committedLines.current.find((entry) => entry.menu_item_id === menuItemId);
+
+      if (committed === undefined) {
+        return;
+      }
+
+      setQuantityFeedback((current) => ({
+        ...current,
+        [menuItemId]: { message: restoredNotice(committed.quantity), invalid: false },
+      }));
+    },
+    [forgetQuantityText],
+  );
+
+  /**
    * Drops a line. Stable for the same reason as the quantity handler, and it
-   * forgets the line's in-progress text and its notice so neither outlives the
+   * forgets the line's in-progress text and its message so neither outlives the
    * line.
    *
    * The dropped row's position is recorded before the cart changes, because that
@@ -619,10 +716,10 @@ export function CartView(): JSX.Element {
       );
       clearFailure();
       forgetQuantityText(menuItemId);
-      forgetQuantityNotice(menuItemId);
+      forgetQuantityFeedback(menuItemId);
       remove(menuItemId);
     },
-    [clearFailure, forgetQuantityNotice, forgetQuantityText, remove],
+    [clearFailure, forgetQuantityFeedback, forgetQuantityText, remove],
   );
 
   /**
@@ -703,7 +800,12 @@ export function CartView(): JSX.Element {
         ...(trimmedNotes === '' ? {} : { notes: trimmedNotes }),
       });
       clear();
-      navigate('/orders/' + encodeURIComponent(order.id), { replace: true });
+      // The state flag is what lets the confirmation title itself as the moment of placing; every
+      // other arrival at the same address — the history link, a reload, a cold open — is a record.
+      navigate('/orders/' + encodeURIComponent(order.id), {
+        replace: true,
+        state: { orderPlaced: true },
+      });
     } catch (error) {
       setFailure(toFailure(error, items));
     } finally {
@@ -746,10 +848,10 @@ export function CartView(): JSX.Element {
                   line={line}
                   quantityText={quantityTexts[line.menu_item_id]}
                   quantityDetail={detailAt(failure, index)}
-                  quantityNotice={quantityNotices[line.menu_item_id] ?? null}
+                  quantityFeedback={quantityFeedback[line.menu_item_id] ?? null}
                   disabled={submitting}
                   onQuantityChange={handleQuantityChange}
-                  onQuantityBlur={forgetQuantityText}
+                  onQuantityBlur={handleQuantityBlur}
                   onRemove={handleRemove}
                 />
               ))}
@@ -780,8 +882,19 @@ export function CartView(): JSX.Element {
 
             <div className="cart-summary__actions">
               {submitting ? <p className="field__hint" role="status">{SUBMITTING_MESSAGE}</p> : null}
-              <button className="button button--block" type="submit" disabled={submitting}>
-                {PLACE_ORDER_LABEL}
+              {/*
+               * The wait is stated on the control itself as well as in the status
+               * sentence: the label says in visible text what is happening, aria-busy
+               * says it to a reader that does not read the label, and disabled keeps a
+               * second click from reaching the handler.
+               */}
+              <button
+                className="button button--block"
+                type="submit"
+                disabled={submitting}
+                aria-busy={submitting}
+              >
+                {submitting ? SUBMITTING_LABEL : PLACE_ORDER_LABEL}
               </button>
             </div>
           </div>

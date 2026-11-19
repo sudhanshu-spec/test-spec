@@ -17,7 +17,10 @@
  *
  * The router context is also where a 401 becomes a page change: this shell wraps every routed
  * screen, so it turns each new `unauthorizedCount` into the `replace` navigation to `/login` that
- * the session contract owes the visitor, on a public screen exactly as on a guarded one.
+ * the session contract owes the visitor, on a public screen exactly as on a guarded one. The
+ * address it navigates to is the guard's own, built by `loginRedirectTarget` from the address the
+ * visitor was on, so an expired session loses nothing: signing in again returns them to the screen
+ * they asked for, exactly as an anonymous visit behind the guard does.
  *
  * It is also where a page change becomes a change of keyboard position. A routed screen swaps
  * inside `<main>`, so the control that had focus unmounts with the outgoing screen and focus falls
@@ -49,6 +52,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 
 import { useCart } from '../state/cart';
 import { useSession } from '../state/session';
+import { loginRedirectTarget } from './ProtectedRoute';
 
 /**
  * Classes of a navigation link, adding the stylesheet's active modifier for the page being shown.
@@ -145,13 +149,19 @@ export function Layout(): JSX.Element {
   const seenUnauthorized = useRef(unauthorizedCount);
 
   /**
-   * Performs the navigation a 401 owes the visitor: `/login`, in `replace` mode.
+   * Performs the navigation a 401 owes the visitor: the sign-in screen, in `replace` mode.
    *
    * The provider that reports a 401 mounts above the router and owns no router API, so it records
    * the unauthorized signal and this shell acts on it — the layout route around every screen, where
    * `useNavigate` is available, on a public screen exactly as behind the guard. The ref is seeded at
    * mount so a first render navigates nothing, and it holds the signal already acted on so a later
    * re-render cannot repeat that navigation; each new 401 is a new signal and navigates again.
+   *
+   * The address comes from `loginRedirectTarget`, the builder the guard redirects through, and
+   * carries the address the visitor was on in the guard's return-path parameter: an expired session
+   * therefore loses nothing, and signing in again returns the visitor to the screen they asked for.
+   * On the sign-in screen itself the address already carries that destination, and the builder
+   * leaves it as it is rather than nesting one `from` inside another.
    */
   useEffect(() => {
     if (seenUnauthorized.current === unauthorizedCount) {
@@ -159,8 +169,8 @@ export function Layout(): JSX.Element {
     }
 
     seenUnauthorized.current = unauthorizedCount;
-    navigate('/login', { replace: true });
-  }, [navigate, unauthorizedCount]);
+    navigate(loginRedirectTarget(`${location.pathname}${location.search}`), { replace: true });
+  }, [location.pathname, location.search, navigate, unauthorizedCount]);
 
   /**
    * Gives the page position to the screen now on display: its first heading, or the page body when

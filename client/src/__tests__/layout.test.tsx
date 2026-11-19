@@ -9,7 +9,8 @@
  *    `SessionProvider` and `CartProvider` with `fetch` stubbed, so the navigation each status
  *    produces is asserted as rendered: the signed-out set, the signed-in set with its cart badge and
  *    logout control, no account action at all while a stored token is still being verified, and the
- *    `replace` navigation to `/login` that a 401 reported on a public screen performs.
+ *    `replace` navigation to `/login` that a 401 reported on a public screen performs, carrying the
+ *    address the visitor was on so an expired session loses nothing.
  * 2. The responsive contract, proved mechanically from the text of the two stylesheets: the 44px
  *    control floor, the single 768px breakpoint, the one-column catalog grid and its two-column
  *    rule inside that breakpoint, and the 360px minimum supported width kept free of horizontal
@@ -29,9 +30,9 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { useEffect, type JSX } from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import Layout from '../components/Layout';
@@ -244,12 +245,21 @@ function MenuProbe({ seedCart = false }: { seedCart?: boolean }): JSX.Element {
 
 /**
  * The login screen's stand-in: one marker paragraph, no form, so a case observes the route the
- * shell navigated to and nothing else.
+ * shell navigated to and nothing else. It renders the query string it was reached with, and the
+ * location key, which a `replace` navigation mints afresh even when it lands on the address it
+ * started from — the key is how a case waits for the shell's own navigation instead of observing
+ * the entry it began on.
  *
  * @returns The routed content the shell's `<main>` holds once it has navigated to `/login`.
  */
 function LoginProbe(): JSX.Element {
-  return <p>{LOGIN_PROBE_TEXT}</p>;
+  const location = useLocation();
+
+  return (
+    <p data-search={location.search} data-key={location.key}>
+      {LOGIN_PROBE_TEXT}
+    </p>
+  );
 }
 
 /**
@@ -260,12 +270,20 @@ function LoginProbe(): JSX.Element {
  * own marker text.
  *
  * @param seedCart - Whether the routed screen seeds a cart line.
+ * @param initialEntries - The history the router starts on, `/menu` unless a case needs another
+ *   starting address.
  */
-function renderShell({ seedCart = false }: { seedCart?: boolean } = {}): void {
+function renderShell({
+  seedCart = false,
+  initialEntries = ['/menu'],
+}: {
+  seedCart?: boolean;
+  initialEntries?: string[];
+} = {}): void {
   render(
     <SessionProvider>
       <CartProvider>
-        <MemoryRouter initialEntries={['/menu']}>
+        <MemoryRouter initialEntries={initialEntries}>
           <Routes>
             <Route element={<Layout />}>
               <Route path="/menu" element={<MenuProbe seedCart={seedCart} />} />
@@ -580,6 +598,32 @@ describe('unauthorized session', () => {
     // Clearing the stored token is the other half of the same contract, and it still happens.
     expect(window.localStorage.getItem(TOKEN_STORAGE_KEY)).toBeNull();
   });
+
+  // One case over two starting addresses that differ only in their input, which is what the address
+  // the shell was on decides: the destination the visitor asked for travels in `from`, and the
+  // sign-in screen, which may already carry that destination, is never given a second `from`.
+  it.each([
+    { start: '/menu', landed: '?from=%2Fmenu' },
+    { start: '/login?from=%2Forders', landed: '?from=%2Forders' },
+  ])(
+    'carries the address a $start 401 was on into the sign-in address',
+    async ({ start, landed }) => {
+      window.localStorage.setItem(TOKEN_STORAGE_KEY, STORED_TOKEN);
+      // The same dead stored token, rejected with the documented envelope (rule R-6).
+      installFetch({ kind: 'rejected', code: 'TOKEN_INVALID' });
+
+      renderShell({ initialEntries: [start] });
+
+      // The shell's navigation is a `replace`, which mints a new location key even where it lands
+      // on the address it started from, so the key is what says the shell has acted.
+      await waitFor(() => {
+        expect(screen.getByText(LOGIN_PROBE_TEXT).getAttribute('data-key')).not.toBe('default');
+      });
+      // An expired session loses nothing: the screen the visitor asked for is still the way back.
+      expect(screen.getByText(LOGIN_PROBE_TEXT).getAttribute('data-search')).toBe(landed);
+      expect(window.localStorage.getItem(TOKEN_STORAGE_KEY)).toBeNull();
+    },
+  );
 });
 
 // ---------------------------------------------------------------------------

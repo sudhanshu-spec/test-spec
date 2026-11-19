@@ -64,7 +64,7 @@ const LOGIN_EMAIL_REQUIRED_MESSAGE = 'Enter your email address.';
 const LOGIN_EMAIL_INVALID_MESSAGE = 'Enter an email address such as name@example.com.';
 const LOGIN_PASSWORD_REQUIRED_MESSAGE = 'Enter your password.';
 /** The retry sentence the sign-in form offers while a field is highlighted. */
-const LOGIN_RETRY_MESSAGE = 'Check the details above, then submit the form again to retry.';
+const LOGIN_RETRY_MESSAGE = 'Check the highlighted fields, then submit the form again to retry.';
 
 const REGISTER_NAME_REQUIRED_MESSAGE = 'Enter your name.';
 const REGISTER_EMAIL_REQUIRED_MESSAGE = 'Enter your email address.';
@@ -83,13 +83,17 @@ const RESERVATION_DATE_HINT =
 const RESERVATION_TIME_REQUIRED_MESSAGE = 'Choose a seating time.';
 /** The hint the shared time control carries. */
 const RESERVATION_TIME_HINT = 'We seat on the half hour.';
-/** The form's sentence for a time that is not on the half-hour seating grid. */
-const RESERVATION_TIME_INVALID_MESSAGE =
-  'We seat on the half hour, so choose a time such as 19:00 or 19:30.';
+/** The form's sentence for a seating time that is not written as `HH:MM`. */
+const RESERVATION_TIME_INVALID_MESSAGE = 'Enter a time as HH:MM, for example 19:00.';
 const RESERVATION_PARTY_REQUIRED_MESSAGE = 'Enter the number of guests.';
 const RESERVATION_PARTY_INVALID_MESSAGE = 'Enter a whole number of guests.';
 /** The sentence the booking form announces while its submit is in flight. */
-const RESERVATION_SUBMITTING_MESSAGE = 'Booking your table…';
+const RESERVATION_SUBMITTING_MESSAGE = 'Sending your booking…';
+/**
+ * The submit control's own label while the booking is in flight: the same moment in
+ * visible text, stated on the control rather than only in the status region.
+ */
+const RESERVATION_SUBMITTING_LABEL = 'Booking your table…';
 /**
  * The sentence the API sends beside `party_size` when its fourth checkpoint — a
  * range this client does not own — refuses the value.
@@ -187,6 +191,8 @@ const FUTURE_DATE = '2031-05-14';
 const OFFERED_SLOT = '19:00';
 /** A later seating on the grid: the last slot the API's default window seats at. */
 const LAST_SEATING = '21:30';
+/** One minute past that last seating: the boundary the API's window checkpoint refuses. */
+const OFF_GRID_SEATING = '21:31';
 
 /** Valid values for the sign-in form's two courtesy checks. */
 const VALID_EMAIL = 'ada@example.com';
@@ -1369,19 +1375,67 @@ describe('ReservationFormView', () => {
     expect(queryErrorNode(controls.party)).toBeNull();
   });
 
-  // The time control is a free-form input, so a time off the grid is reachable
-  // from the form. It is still refused locally with the sentence that names the
-  // real cause, rather than sent for the API to answer with a window verdict that
-  // would be untrue of a time inside the window.
-  it('refuses a time off the half-hour grid before any request, naming the half-hour seating', async () => {
+  // The window and the half-hour slot grid are the API's third checkpoint, so the
+  // form sends whatever was chosen and the server's own verdict is what the field
+  // shows. 21:30 is that checkpoint's last seating and 21:31 is the boundary it
+  // refuses as outside the service hours, so neither is judged here.
+  it.each([LAST_SEATING, OFF_GRID_SEATING])(
+    'posts a seating of %s unchanged and renders the API window verdict beside it',
+    async (seating) => {
+      const user = userEvent.setup();
+      const calls = stubFetch(() => errorReply(400, 'VALIDATION_ERROR', API_OUTSIDE_HOURS_MESSAGE, [
+        { field: 'reservation_time', issue: RESERVATION_ISSUES.OUTSIDE_SERVICE_HOURS },
+      ]));
+
+      renderReservationForm();
+      const controls = reservationControls();
+
+      await fillReservation(user, controls, { date: FUTURE_DATE, time: seating, party: '2' });
+      await user.click(screen.getByRole('button', { name: RESERVE_SUBMIT_LABEL }));
+
+      expect(await screen.findByText(API_OUTSIDE_HOURS_MESSAGE)).not.toBeNull();
+
+      await waitFor(() => {
+        expect(calls).toHaveLength(1);
+      });
+
+      const call = onlyCall(calls, RESERVATIONS_URL, 'POST');
+
+      // The time travels exactly as it was typed: the form judged neither the hours
+      // nor the grid, so the sentence on the field is the API's own.
+      expect(call.body).toEqual({
+        reservation_date: FUTURE_DATE,
+        reservation_time: seating,
+        party_size: 2,
+      });
+      expect(errorText(controls.time)).toBe(API_OUTSIDE_HOURS_MESSAGE);
+      expect(errorText(controls.time)).not.toBe(RESERVATION_TIME_INVALID_MESSAGE);
+      expect(controls.time.getAttribute('aria-invalid')).toBe('true');
+      expect(queryErrorNode(controls.date)).toBeNull();
+      expect(queryErrorNode(controls.party)).toBeNull();
+      expect(screen.queryAllByRole('alert')).toHaveLength(0);
+    },
+  );
+
+  // The one rule the form keeps for the seating time is the shape the API's own
+  // shape checkpoint applies, so a value it would refuse never leaves the form. A
+  // time control sanitises a value that is not `HH:MM` away on assignment, exactly
+  // as a browser's picker does, so the value is written onto the control to carry
+  // it into the change — the technique the impossible-calendar-date case uses.
+  it('refuses a seating time that is not written as HH:MM before any request', async () => {
     const user = userEvent.setup();
     const calls = stubFetch(() => successReply(201, {}));
 
     renderReservationForm();
     const controls = reservationControls();
 
-    // 19:15 is a time a visitor can type, inside the default window and off the grid.
-    await fillReservation(user, controls, { date: FUTURE_DATE, time: '19:15', party: '2' });
+    fireEvent.change(controls.date, { target: { value: FUTURE_DATE } });
+    Object.defineProperty(controls.time, 'value', {
+      configurable: true,
+      get: () => 'half past seven',
+      set: () => undefined,
+    });
+    fireEvent.change(controls.time);
 
     await user.click(screen.getByRole('button', { name: RESERVE_SUBMIT_LABEL }));
 
@@ -1390,40 +1444,6 @@ describe('ReservationFormView', () => {
     expect(controls.time.getAttribute('aria-invalid')).toBe('true');
     expect(queryErrorNode(controls.date)).toBeNull();
     expect(queryErrorNode(controls.party)).toBeNull();
-  });
-
-  // The server stays authoritative for the window: the form sends the slot that
-  // was chosen, unchanged, and the verdict comes back to the field that owns it.
-  // 21:30 is on the half hour, so the API's window sentence is the true one there.
-  it('posts the chosen seating unchanged and renders the API window verdict beside it', async () => {
-    const user = userEvent.setup();
-    const calls = stubFetch(() => errorReply(400, 'VALIDATION_ERROR', API_OUTSIDE_HOURS_MESSAGE, [
-      { field: 'reservation_time', issue: RESERVATION_ISSUES.OUTSIDE_SERVICE_HOURS },
-    ]));
-
-    renderReservationForm();
-    const controls = reservationControls();
-
-    await fillReservation(user, controls, { date: FUTURE_DATE, time: LAST_SEATING, party: '2' });
-    await user.click(screen.getByRole('button', { name: RESERVE_SUBMIT_LABEL }));
-
-    expect(await screen.findByText(API_OUTSIDE_HOURS_MESSAGE)).not.toBeNull();
-
-    await waitFor(() => {
-      expect(calls).toHaveLength(1);
-    });
-
-    const call = onlyCall(calls, RESERVATIONS_URL, 'POST');
-
-    expect(call.body).toEqual({
-      reservation_date: FUTURE_DATE,
-      reservation_time: LAST_SEATING,
-      party_size: 2,
-    });
-    expect(errorText(controls.time)).toBe(API_OUTSIDE_HOURS_MESSAGE);
-    expect(queryErrorNode(controls.date)).toBeNull();
-    expect(queryErrorNode(controls.party)).toBeNull();
-    expect(screen.queryAllByRole('alert')).toHaveLength(0);
   });
 
   // Nothing the documented default configuration would refuse is refused here:
@@ -1520,7 +1540,7 @@ describe('ReservationFormView', () => {
     expect(call.body).not.toHaveProperty('notes');
   });
 
-  it('marks the form busy and announces the wait in one status region while the booking is in flight', async () => {
+  it('marks the form and the submit control busy while the booking is in flight', async () => {
     const user = userEvent.setup();
     const calls = stubPendingFetch();
 
@@ -1533,9 +1553,12 @@ describe('ReservationFormView', () => {
     const form = submit.closest('form');
 
     expect(form).not.toBeNull();
-    // The pristine form is neither busy nor saying anything about a wait.
+    // The pristine form is neither busy nor saying anything about a wait, and the
+    // control offers the action rather than reporting one.
     expect(form?.getAttribute('aria-busy')).toBe('false');
     expect(screen.queryAllByRole('status')).toHaveLength(0);
+    expect(submit.getAttribute('aria-busy')).toBe('false');
+    expect(submit.textContent).toBe(RESERVE_SUBMIT_LABEL);
 
     await user.click(submit);
 
@@ -1549,6 +1572,11 @@ describe('ReservationFormView', () => {
 
     expect(statuses).toHaveLength(1);
     expect(statuses[0]?.textContent).toBe(RESERVATION_SUBMITTING_MESSAGE);
+    // The wait reaches the control itself as well: a reader that does not look at
+    // the status region hears it, and the visible text says what is happening
+    // rather than only relying on the native disabled attribute.
+    expect(submit.getAttribute('aria-busy')).toBe('true');
+    expect(submit.textContent).toBe(RESERVATION_SUBMITTING_LABEL);
     expect(submit.hasAttribute('disabled')).toBe(true);
     onlyCall(calls, RESERVATIONS_URL, 'POST');
   });
@@ -1663,7 +1691,7 @@ describe('field message announcement', () => {
 describe('FormFeedback', () => {
   const SERVER_MESSAGE = 'That table is already booked. Choose another seating time.';
   const FIXED_COPY = 'Something went wrong while booking your table. Please try again.';
-  const RETRY_HINT = 'Correct what is highlighted above, then submit the form again to retry.';
+  const RETRY_HINT = 'Correct the highlighted fields, then submit the form again to retry.';
 
   it.each([
     {

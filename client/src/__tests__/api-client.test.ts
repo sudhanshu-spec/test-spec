@@ -538,7 +538,7 @@ describe('error envelope mapping', () => {
 });
 
 describe('malformed responses', () => {
-  it('maps a body that is not JSON onto INTERNAL_ERROR and keeps the status', async () => {
+  it('maps a gateway status with a body that is not JSON onto INTERNAL_ERROR and the unreachable copy', async () => {
     registerHooks(() => null);
     fetchMock.mockResolvedValue(fakeResponse(502, undefined, { unparsable: true }));
 
@@ -547,9 +547,33 @@ describe('malformed responses', () => {
     expect(error).toBeInstanceOf(ApiError);
     expect(error.status).toBe(502);
     expect(error.code).toBe('INTERNAL_ERROR');
-    expect(error.message).toBe('The request failed.');
+    expect(error.message).toBe('Unable to reach the server.');
     expect(error.details).toEqual([]);
   });
+
+  it.each([
+    { status: 502, message: 'Unable to reach the server.' },
+    { status: 503, message: 'Unable to reach the server.' },
+    { status: 504, message: 'Unable to reach the server.' },
+    { status: 500, message: 'Something went wrong on the server. Try again in a moment.' },
+    { status: 400, message: 'Something went wrong on the server. Try again in a moment.' },
+  ])(
+    'reads a $status response with no error envelope as $message',
+    async ({ status, message }) => {
+      registerHooks(() => null);
+      fetchMock.mockResolvedValue(fakeResponse(status, undefined, { unparsable: true }));
+
+      const error = await rejectionOf(apiFetch('/categories'));
+
+      // A gateway answers for an API it could not reach; anything else that is not the API's own
+      // envelope is a fault on the server side. Neither invents a fourteenth code (R-6).
+      expect(error).toBeInstanceOf(ApiError);
+      expect(error.status).toBe(status);
+      expect(error.code).toBe('INTERNAL_ERROR');
+      expect(error.message).toBe(message);
+      expect(error.details).toEqual([]);
+    },
+  );
 
   it('maps a JSON body that is not an error envelope onto INTERNAL_ERROR', async () => {
     const payloads: unknown[] = [

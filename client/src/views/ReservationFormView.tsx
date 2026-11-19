@@ -19,12 +19,13 @@
  *   cancel, delete or update control exists, because the API has no such route.
  *
  * The seating time is the shared time control, sent as nothing but the `HH:MM`
- * string it holds. The booking window — the hours the restaurant seats and how
- * far ahead it takes bookings — is configuration the API reads and this package
- * cannot, so the form names no window: it refuses only a missing time, one not
- * written as `HH:MM` and one off the half-hour slot grid. The past, the window,
- * the horizon, the party cap and uniqueness are the API's checkpoints, and each
- * verdict arrives in `details` rendered against the field it names.
+ * string it holds. The booking window — the hours the restaurant seats, the
+ * half-hour slots it seats on and how far ahead it takes bookings — is
+ * configuration the API reads and this package cannot, so the form judges none of
+ * it and refuses only a missing time or one not written as `HH:MM`. The past, the
+ * window and its slot grid, the horizon, the party cap and uniqueness are the
+ * API's checkpoints, and each verdict arrives in `details` rendered against the
+ * field it names.
  *
  * @module client/src/views/ReservationFormView
  */
@@ -39,9 +40,6 @@ import { createReservation } from '../api/reservations';
 import { RESERVATION_ISSUES } from '../api/types';
 import { BusyStatus, DateField, FormFeedback, NumberField, TextField, TimeField } from '../components/FormControls';
 
-/** Length of one seating slot in minutes; the server places seating on the same step. */
-const SLOT_MINUTES = 30;
-
 /** Smallest party the form states: the floor the stored column itself enforces. */
 const MIN_PARTY_SIZE = 1;
 /** Party size the form starts at, so the common case needs no edit. */
@@ -52,9 +50,9 @@ const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 /**
  * Shape of a time as the API's `reservation_time` field states it: `HH:MM` on a
  * 24-hour clock, which is the pattern the server's own shape checkpoint applies.
- * It is read here to tell a time on the half-hour seating grid from one off it,
- * both before a value is sent and when a window verdict comes back; which hours
- * the window runs between is the server's rule.
+ * The form reads it to refuse a value that checkpoint would refuse and to decide
+ * nothing else: which hours the window runs between, and which minutes of an hour
+ * it seats at, are rules the API applies.
  */
 const TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
@@ -65,28 +63,22 @@ const PARTY_REQUIRED_MESSAGE = 'Enter the number of guests.';
 const PARTY_INVALID_MESSAGE = 'Enter a whole number of guests.';
 const UNEXPECTED_FAILURE_MESSAGE = 'Something went wrong while booking your table. Please try again.';
 const SUBMIT_LABEL = 'Reserve a table';
-const SUBMITTING_MESSAGE = 'Booking your table…';
+/** The Reserve a table control's own label while the booking is in flight. */
+const SUBMITTING_LABEL = 'Booking your table…';
+/**
+ * The sentence the form announces while the booking is in flight. It is deliberately
+ * not the control's label: the same words twice would be announced twice — once as the
+ * control's new name and once from this region — so the region says what is happening
+ * to the booking rather than repeating the button.
+ */
+const SUBMITTING_MESSAGE = 'Sending your booking…';
 
 /**
- * Message for a seating time the form cannot use: one not written as `HH:MM`, or
- * one off the half-hour grid. Which hours the window runs between is the server's
- * rule and is named nowhere here.
+ * Message for a seating time the form cannot send: one not written as `HH:MM`.
+ * The window and the half-hour slot grid are the server's third checkpoint, so
+ * neither is named here and no time this form sends is judged by them.
  */
-const TIME_INVALID_MESSAGE = 'We seat on the half hour, so choose a time such as 19:00 or 19:30.';
-
-/**
- * @param value - A time the form sent as `reservation_time`.
- * @returns Its minutes from midnight, or null when it is not written as `HH:MM`.
- */
-function minutesFromMidnight(value: string): number | null {
-  const [, hours, minutes] = TIME_PATTERN.exec(value) ?? [];
-
-  if (hours === undefined || minutes === undefined) {
-    return null;
-  }
-
-  return Number(hours) * 60 + Number(minutes);
-}
+const TIME_INVALID_MESSAGE = 'Enter a time as HH:MM, for example 19:00.';
 
 /**
  * Message for a booking whose date and time have already passed — the server's
@@ -153,13 +145,13 @@ function dateMessage(value: string): string | undefined {
 
 /**
  * The courtesy check for the seating time, applied to the value as typed: a time
- * has to be present, written as `HH:MM` and on the half-hour grid the restaurant
- * seats on. Which hours it seats between is the server's third checkpoint and
- * how many guests it takes the fourth, so neither is judged here — a booking the
- * API would accept is never blocked.
+ * has to be present and written as `HH:MM`. Which hours the restaurant seats
+ * between, and which minutes of an hour it seats at, are the API's third
+ * checkpoint rather than the form's, so a time off the half-hour grid is sent
+ * unchanged and the API's own verdict for that boundary is what the visitor reads.
  *
  * @param value - The seating time as typed.
- * @returns The message the field shows while the value is unusable, or
+ * @returns The message the field shows while the value cannot be sent, or
  *   undefined when the value may be sent.
  */
 function timeMessage(value: string): string | undefined {
@@ -167,8 +159,7 @@ function timeMessage(value: string): string | undefined {
     return TIME_REQUIRED_MESSAGE;
   }
 
-  const minutes = minutesFromMidnight(value);
-  return minutes !== null && minutes % SLOT_MINUTES === 0 ? undefined : TIME_INVALID_MESSAGE;
+  return TIME_PATTERN.test(value) ? undefined : TIME_INVALID_MESSAGE;
 }
 
 /**
@@ -254,30 +245,20 @@ function revisedMessages(
  *
  * The two `issue` values the API fixes are translated here, in one place, and
  * compared through `RESERVATION_ISSUES`; any other issue keeps the API's own
- * sentence, so no client wording stands in for a rule the server reported.
- *
- * The window verdict is read against the time the form sent, because the API
- * reports a time off the half-hour grid under the same `issue` as a time outside
- * its window. The grid is what decides which sentence is true for the value that
- * was sent: a time off it names the grid — 19:15 is a time the restaurant cannot
- * seat at, and must never be told the hours are the problem — while a time on it
- * shows the API's own sentence, which names the window the server enforces, since
- * that window is configuration this package cannot read.
+ * sentence, so no client wording stands in for a rule the server reported. The
+ * window verdict keeps the API's own sentence for the same reason: it is the one
+ * place the hours and the half-hour slots the server enforces are stated, since
+ * both are configuration this package cannot read.
  *
  * @param detail - The `{field, issue}` entry the API returned.
  * @param serverMessage - The API's own sentence, used for every other issue.
- * @param submittedTime - The `reservation_time` the form posted.
  * @returns The sentence to show against the field.
  */
-function messageForIssue(detail: ApiFieldDetail, serverMessage: string, submittedTime: string): string {
+function messageForIssue(detail: ApiFieldDetail, serverMessage: string): string {
   if (detail.issue === RESERVATION_ISSUES.DATETIME_IN_PAST) {
     return PAST_MESSAGE;
   }
   if (detail.issue === RESERVATION_ISSUES.OUTSIDE_SERVICE_HOURS) {
-    const minutes = minutesFromMidnight(submittedTime);
-    if (minutes !== null && minutes % SLOT_MINUTES !== 0) {
-      return TIME_INVALID_MESSAGE;
-    }
     return serverMessage || OUTSIDE_SERVICE_HOURS_FALLBACK;
   }
   return serverMessage;
@@ -288,10 +269,11 @@ function messageForIssue(detail: ApiFieldDetail, serverMessage: string, submitte
  *
  * Four states are explicit: the initial form, which offers the way to the
  * caller's existing bookings; the populated form once values are typed; the
- * submitting state, carried by the form's `aria-busy` and one `role="status"`
- * sentence with the submit control disabled; and a failure state that reports
- * each checkpoint against the field it names and leaves the submit control live
- * so the booking can be retried.
+ * submitting state, carried by the form's `aria-busy`, one `role="status"`
+ * sentence and the submit control's own `aria-busy` and in-flight label while the
+ * control is disabled; and a failure state that reports each checkpoint against
+ * the field it names and leaves the submit control live so the booking can be
+ * retried.
  *
  * A rejection that names a field this form renders is shown inline only, so the
  * same failure is never reported twice; anything else keeps the single
@@ -366,7 +348,7 @@ export function ReservationFormView(): JSX.Element {
     let formLevel = error.details.length === 0 || error.code !== 'VALIDATION_ERROR';
     for (const detail of error.details) {
       if (isValidatedField(detail.field)) {
-        inline[detail.field] = messageForIssue(detail, error.message, reservationTime);
+        inline[detail.field] = messageForIssue(detail, error.message);
       } else {
         // A field this form does not render would otherwise be dropped.
         formLevel = true;
@@ -380,11 +362,12 @@ export function ReservationFormView(): JSX.Element {
 
   /**
    * The courtesy checks and nothing else: every value present, a real calendar
-   * date, a seating time on the half-hour grid, and a whole number of guests.
-   * Deliberately silent on the past, the window, the party cap, the horizon and
-   * uniqueness, which the API decides — no value the window refuses is refused
-   * here, so no booking the server would accept is blocked. The field rules are
-   * the ones the same fields are re-checked against while they are edited, so a
+   * date, a seating time written as `HH:MM`, and a whole number of guests.
+   * Deliberately silent on the past, the service window and the half-hour slots it
+   * seats on, the party cap, the horizon and uniqueness, which the API decides — no
+   * value the API still judges is refused here, so no booking the server would
+   * accept is blocked and no verdict it would give is pre-empted. The field rules
+   * are the ones the same fields are re-checked against while they are edited, so a
    * message reads the same whether it arrived on submit or stayed through a
    * correction.
    *
@@ -524,8 +507,14 @@ export function ReservationFormView(): JSX.Element {
         <BusyStatus message={submitting ? SUBMITTING_MESSAGE : null} />
 
         <div className="row">
-          <button className="button" type="submit" disabled={submitting}>
-            {SUBMIT_LABEL}
+          {/*
+           * The wait is stated on the control itself as well as in the status sentence
+           * above it: the label says in visible text what is happening, aria-busy says
+           * it to a reader that does not read the label, and disabled keeps a second
+           * submit from reaching the handler.
+           */}
+          <button className="button" type="submit" disabled={submitting} aria-busy={submitting}>
+            {submitting ? SUBMITTING_LABEL : SUBMIT_LABEL}
           </button>
         </div>
       </form>

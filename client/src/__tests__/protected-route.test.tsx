@@ -6,7 +6,7 @@
  * the one production mounts: `ProtectedRoute` is applied by the manifest's `requiresAuth` rows, the
  * session comes from the real `SessionProvider` and the cart from the real `CartProvider`.
  *
- * Six concerns, one module (rule R-10):
+ * Seven concerns, one module (rule R-10):
  *
  * 1. An anonymous visitor is sent to `/login` from each of the six guarded paths, and the guarded
  *    screen is never mounted, so its data is never requested. The three token codes the API answers
@@ -27,6 +27,8 @@
  * 6. The hand-over is refused when resuming it would leave the application: a `from` value a prefix
  *    test alone accepts but URL resolution turns into another origin shows no notice and lands on
  *    the menu, where a plain `/login` visit goes.
+ * 7. The two order-id failures stay distinct: an id the API refuses as malformed renders its own
+ *    state echoing the API's message, while an id that names no order keeps the not-found copy.
  *
  * No request leaves the process (rule R-7): `fetch` is replaced through `vi.stubGlobal` in every
  * case and answers from a canned table, and an unsanctioned URL is answered with the documented 500
@@ -40,7 +42,7 @@
  * @module client/src/__tests__/protected-route.test
  */
 
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { RouterProvider, createMemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -88,6 +90,15 @@ const MENU_ITEM_ID = '9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d';
 const ORDER_ID = 'b7c8d9e0-1f2a-4b3c-9d4e-5f6a7b8c9d0e';
 const ORDER_LINE_ID = 'c8d9e0f1-2a3b-4c4d-ae5f-6a7b8c9d0e1f';
 const RESERVATION_ID = 'd9e0f1a2-3b4c-4d5e-8f60-7a8b9c0d1e2f';
+
+/** An order id the API refuses as malformed: `GET /api/orders/:id` validates the id before it looks. */
+const MALFORMED_ORDER_ID = 'not-a-uuid-142857';
+
+/** An id in the shape the API mints that names no order, which the API answers with its not-found code. */
+const UNKNOWN_ORDER_ID = '51c5e571-d8c0-4eba-a498-e21b0ce35629';
+
+/** The message the API answers a malformed order id with; the screen echoes it verbatim. */
+const INVALID_ORDER_ID_MESSAGE = 'The order id must be a valid UUID.';
 
 /** One stored line, priced by the server: the client sends only an id and a quantity (rule R-3). */
 const ORDER: Order = {
@@ -159,7 +170,7 @@ const GUARDED_PATHS: readonly GuardedPath[] = [
   {
     pattern: '/orders/:id',
     url: `/orders/${ORDER_ID}`,
-    heading: 'Order placed',
+    heading: 'Order details',
     resourcePath: `/orders/${ORDER_ID}`,
     requests: [`/orders/${ORDER_ID}`],
   },
@@ -523,6 +534,57 @@ describe('guard contract', () => {
 });
 
 // ---------------------------------------------------------------------------
+// A refused id is not a missing order: the screen says which failure it met
+// ---------------------------------------------------------------------------
+
+describe('order id failures', () => {
+  it('tells an id the API refused apart from an order the API cannot find', async () => {
+    window.localStorage.setItem(TOKEN_STORAGE_KEY, STORED_TOKEN);
+    installApi({
+      '/auth/session': () => jsonResponse(200, SESSION_RESPONSE),
+      [`/orders/${MALFORMED_ORDER_ID}`]: () =>
+        jsonResponse(400, {
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: INVALID_ORDER_ID_MESSAGE,
+            details: [{ field: 'id', issue: 'not_a_valid_uuid' }],
+          },
+        }),
+      [`/orders/${UNKNOWN_ORDER_ID}`]: () =>
+        jsonResponse(404, { error: { code: 'ORDER_NOT_FOUND', message: 'Order not found.' } }),
+    });
+
+    // The API validates the id before any lookup, so the screen reports the refusal itself and
+    // echoes the API's message instead of discarding it behind the not-found copy.
+    const refused = renderApp(`/orders/${MALFORMED_ORDER_ID}`);
+    const refusedHeading = await within(refused).findByRole('heading', {
+      name: 'Order link not valid',
+      level: 1,
+    });
+    expect(refusedHeading).not.toBeNull();
+    const refusal = within(refused).getByRole('alert');
+    expect(refusal.getAttribute('data-code')).toBe('VALIDATION_ERROR');
+    expect(refusal.textContent).toBe(INVALID_ORDER_ID_MESSAGE);
+    expect(
+      within(refused).getByText(
+        'The link that brought you here is not a valid order address. Check it, or open your order history.',
+      ),
+    ).not.toBeNull();
+    expect(within(refused).queryByRole('heading', { name: 'Order not found', level: 1 })).toBeNull();
+
+    // A well-formed id that names no order keeps the not-found state, so the two stay apart.
+    const missing = renderApp(`/orders/${UNKNOWN_ORDER_ID}`);
+    const missingHeading = await within(missing).findByRole('heading', {
+      name: 'Order not found',
+      level: 1,
+    });
+    expect(missingHeading).not.toBeNull();
+    expect(within(missing).getByText('We could not find that order in your account.')).not.toBeNull();
+    expect(within(missing).queryByRole('heading', { name: 'Order link not valid', level: 1 })).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
 // A refused sign-in: the guard's hand-over outlives it
 // ---------------------------------------------------------------------------
 
@@ -530,7 +592,7 @@ describe('guard contract', () => {
 const CART_RETURN_NOTICE = "Sign in to see your cart. We'll take you back there afterwards.";
 
 /** Retry sentence the sign-in form offers only beside a highlighted field, never after a refusal. */
-const LOGIN_RETRY_MESSAGE = 'Check the details above, then submit the form again to retry.';
+const LOGIN_RETRY_MESSAGE = 'Check the highlighted fields, then submit the form again to retry.';
 
 /** Message the API answers a wrong password with; it names neither field. */
 const REFUSED_MESSAGE = 'The email or password is incorrect.';
@@ -673,5 +735,46 @@ describe('return path guard', () => {
     // the page, the login screen it replaced must be gone.
     expect(await screen.findByRole('heading', { name: MENU_HEADING, level: 1 })).not.toBeNull();
     expect(screen.queryByRole('heading', { name: LOGIN_HEADING, level: 1 })).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// A booking reference the view refuses is not a booking it cannot find
+// ---------------------------------------------------------------------------
+
+/** A booking reference that is not an id at all: the API mints every reservation id as a UUID. */
+const MALFORMED_RESERVATION_ID = 'not-a-uuid-142857';
+
+/** An id in the shape the API mints that names no booking in the caller's own list. */
+const UNKNOWN_RESERVATION_ID = '51c5e571-d8c0-4eba-a498-e21b0ce35629';
+
+describe('booking id failures', () => {
+  it('tells a reference that never named a booking apart from a booking it cannot find', async () => {
+    window.localStorage.setItem(TOKEN_STORAGE_KEY, STORED_TOKEN);
+    // The API exposes no single-reservation read, so both cases answer from the one list the caller
+    // owns: the screen is what has to tell a reference that never named a booking from an id whose
+    // booking this list does not hold.
+    installApi(verifiedSessionAnswers());
+
+    const malformed = renderApp(`/reservations/${MALFORMED_RESERVATION_ID}`);
+    const refusedHeading = await within(malformed).findByRole('heading', {
+      name: 'Booking link not valid',
+      level: 1,
+    });
+    expect(refusedHeading).not.toBeNull();
+    expect(within(malformed).getByText('That booking reference is not a valid booking id.')).not.toBeNull();
+    expect(within(malformed).queryByRole('heading', { name: 'Booking not found', level: 1 })).toBeNull();
+
+    // A well-formed id the list does not hold keeps the not-found state, so the two stay apart.
+    const missing = renderApp(`/reservations/${UNKNOWN_RESERVATION_ID}`);
+    const missingHeading = await within(missing).findByRole('heading', {
+      name: 'Booking not found',
+      level: 1,
+    });
+    expect(missingHeading).not.toBeNull();
+    expect(
+      within(missing).getByText('We could not find that booking among your reservations.'),
+    ).not.toBeNull();
+    expect(within(missing).queryByRole('heading', { name: 'Booking link not valid', level: 1 })).toBeNull();
   });
 });

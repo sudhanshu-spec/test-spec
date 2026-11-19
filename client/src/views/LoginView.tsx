@@ -66,7 +66,8 @@ const EMAIL_INVALID_MESSAGE = 'Enter an email address such as name@example.com.'
 const PASSWORD_REQUIRED_MESSAGE = 'Enter your password.';
 const UNEXPECTED_FAILURE_MESSAGE =
   'Something went wrong while signing you in. You are not signed in, and you can try again.';
-const RETRY_MESSAGE = 'Check the details above, then submit the form again to retry.';
+/** Names the fields rather than a position: this region sits above them, while the highlighted field and its message sit below. */
+const RETRY_MESSAGE = 'Check the highlighted fields, then submit the form again to retry.';
 const EMAIL_HINT = 'The address you registered with.';
 const PASSWORD_HINT = 'The password belonging to your account.';
 const SUBMIT_LABEL = 'Sign in';
