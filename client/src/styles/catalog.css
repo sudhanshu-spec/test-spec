@@ -1,0 +1,166 @@
+/**
+ * Catalog Stylesheet — catalog grid, category filter, item detail and cart layout
+ *
+ * Imported by client/src/main.tsx after global.css, and carrying exactly one
+ * breakpoint at 768px: a single column below it, two columns at and above it.
+ * Every value comes from a global.css token — this file declares no colour,
+ * spacing, radius or control-size custom property of its own, and every
+ * interactive control it positions is sized by the shared
+ * `--control-min-size: 44px` token declared in global.css.
+ *
+ * Two things a later reader must not break: .category-filter is the only
+ * element allowed to scroll sideways, and every grid track below is
+ * minmax(0, ...) so a long item name can never widen the page at the
+ * narrowest supported width.
+ *
+ * Prices reach these elements already formatted by client/src/api/format.ts;
+ * this file sizes and aligns that string and never emits a currency symbol.
+ *
+ * @stylesheet client/src/styles/catalog.css
+ */
+
+/* ---- Catalog grid: one column by default ---- */
+
+.catalog { display: flex; flex-direction: column; gap: var(--space-4); max-width: 100%; }
+
+.catalog-grid {
+  display: grid; gap: var(--space-4);
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 100%;
+}
+
+/* Card children keep min-width: 0 so long content cannot blow the track out. */
+.catalog-card { display: flex; flex-direction: column; gap: var(--space-2); max-width: 100%; min-width: 0; }
+
+.catalog-card__media { max-width: 100%; overflow: hidden; border-radius: var(--radius-md); }
+.catalog-card__media img { display: block; max-width: 100%; height: auto; }
+
+.catalog-card__body { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+.catalog-card__title { overflow-wrap: anywhere; line-height: var(--line-height-tight); }
+
+/* Clamped to three lines so a long description cannot stretch a whole card row. */
+.catalog-card__description { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3; overflow-wrap: anywhere; color: var(--color-text-muted); }
+
+.catalog-card__meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); min-width: 0; }
+
+.catalog-card__price { font-variant-numeric: tabular-nums; font-weight: var(--font-weight-bold);
+  color: var(--color-text); white-space: nowrap; }
+
+/* Footer and actions wrap, so price and button stack instead of overflowing. */
+.catalog-card__footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: var(--space-2); min-height: var(--control-min-size); min-width: var(--control-min-size); }
+
+.catalog-card__actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2);
+  min-height: var(--control-min-size); min-width: var(--control-min-size); }
+
+/* ---- Category filter strip: the one element allowed to scroll sideways ---- */
+
+.category-filter { display: flex; gap: var(--space-2); max-width: 100%; padding-bottom: var(--space-1);
+  overflow-x: auto; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; }
+
+/* flex: 0 0 auto with nowrap makes the strip scroll instead of shredding labels. */
+.category-filter__option { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto;
+  min-height: var(--control-min-size); min-width: var(--control-min-size); padding: 0 var(--space-3);
+  border: 1px solid var(--color-border); border-radius: var(--radius-pill);
+  background: var(--color-surface-raised); color: var(--color-text); font: inherit;
+  white-space: nowrap; cursor: pointer; }
+
+/* Hover stays unwrapped: this file carries exactly one media query, the 768px
+   breakpoint, so no (hover: hover) or reduced-motion query is added here. */
+.category-filter__option:hover { background: var(--color-surface-muted); }
+
+/* The selected filter takes a brand fill and a bold weight: not hue alone. */
+.category-filter__option--active { border-color: var(--color-brand); background: var(--color-brand);
+  color: var(--color-brand-contrast); font-weight: var(--font-weight-bold); }
+
+/* ---- Item detail: stacked, no fixed column widths ---- */
+
+.item-detail { display: flex; flex-direction: column; gap: var(--space-4); max-width: 100%; }
+
+.item-detail__body { display: flex; flex-direction: column; gap: var(--space-3);
+  max-width: 100%; min-width: 0; overflow-wrap: anywhere; }
+
+.item-detail__meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); min-width: 0; }
+
+.item-detail__price { font-variant-numeric: tabular-nums; font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold); color: var(--color-text); white-space: nowrap; }
+
+.item-detail__actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3);
+  min-height: var(--control-min-size); min-width: var(--control-min-size); }
+
+/* ---- Cart lines: one grid column per line below the breakpoint ---- */
+
+.cart { display: flex; flex-direction: column; gap: var(--space-4); max-width: 100%; }
+
+.cart-lines { display: flex; flex-direction: column; gap: var(--space-3);
+  list-style: none; margin: 0; padding: 0; }
+
+.cart-line { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-2); align-items: center;
+  min-width: 0; max-width: 100%; padding: var(--space-3); border: 1px solid var(--color-border);
+  border-radius: var(--radius-md); background: var(--color-surface-raised); }
+
+.cart-line__info { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.cart-line__name { overflow-wrap: anywhere; }
+
+.cart-line__unit-price { font-variant-numeric: tabular-nums; color: var(--color-text-muted);
+  white-space: nowrap; }
+
+.cart-line__quantity { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2);
+  min-height: var(--control-min-size); min-width: var(--control-min-size); }
+
+/* The quantity input keeps the shared .control look; only its width and the
+   touch target are set here, so the 44x44px floor holds without restyling .control. */
+.cart-line__quantity .control { flex: 0 1 auto; width: 5rem; max-width: 100%; text-align: center;
+  min-height: var(--control-min-size); min-width: var(--control-min-size); }
+
+.cart-line__total { font-variant-numeric: tabular-nums; font-weight: var(--font-weight-bold);
+  white-space: nowrap; }
+
+.cart-line__actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2);
+  min-height: var(--control-min-size); min-width: var(--control-min-size); }
+
+/* ---- Cart summary: the line list above the totals panel below the breakpoint ---- */
+
+.cart-summary { display: grid; gap: var(--space-4); grid-template-columns: minmax(0, 1fr); max-width: 100%; }
+
+.cart-summary__lines { display: flex; flex-direction: column; gap: var(--space-3);
+  min-width: 0; max-width: 100%; }
+
+.cart-summary__totals { display: flex; flex-direction: column; gap: var(--space-2);
+  min-width: 0; max-width: 100%; padding: var(--space-4); border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg); background: var(--color-surface-raised); box-shadow: var(--shadow-card); }
+
+.cart-summary__total-row { display: flex; justify-content: space-between; gap: var(--space-3);
+  min-width: 0; font-variant-numeric: tabular-nums; }
+
+/* The grand total carries the emphasis: the row the view tags with --total, the
+   last row of the panel, or the row immediately before the actions block. A lone
+   :last-child would miss every case where .cart-summary__actions follows the
+   rows, which is the panel's usual shape. */
+.cart-summary__total-row--total,
+.cart-summary__total-row:last-child,
+.cart-summary__total-row:nth-last-child(2) { padding-block-start: var(--space-2);
+  border-block-start: 1px solid var(--color-border); font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold); }
+
+/* Full-width Place Order below the breakpoint, natural width above it. */
+.cart-summary__actions { display: flex; flex-direction: column; align-items: stretch; gap: var(--space-2);
+  margin-block-start: var(--space-2); min-height: var(--control-min-size); min-width: var(--control-min-size); }
+
+.cart-empty { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3);
+  max-width: 100%; padding: var(--space-5); text-align: left; }
+
+/* ---- The single breakpoint: two columns from 768px up ---- */
+
+@media (min-width: 768px) {
+  .catalog-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+  /* Name, quantity and total sit beside each other; further children wrap below. */
+  .cart-line { grid-template-columns: minmax(0, 1fr) auto auto; gap: var(--space-3); }
+
+  /* Lines beside the totals panel, which sticks while the list scrolls. */
+  .cart-summary { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); align-items: start; }
+  .cart-summary__totals { position: sticky; top: var(--space-4); }
+  .cart-summary__actions { align-items: flex-start; }
+}
