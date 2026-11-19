@@ -10,6 +10,7 @@
 
 'use strict';
 
+const zlib = require('node:zlib');
 const express = require('express');
 const request = require('supertest');
 const { errorHandler } = require('../../src/middleware/error-handler');
@@ -53,6 +54,21 @@ const REJECTED_BODY_CASES = [
       .send('{"a":1}')
   ]
 ];
+
+/**
+ * The content encodings `express.json()` inflates on its own, one entry per
+ * decoder it drives: `gzip`, `deflate` and `br`.
+ * @type {string[]}
+ */
+const INFLATED_ENCODINGS = ['gzip', 'deflate', 'br'];
+
+/**
+ * A body with no valid compressed framing at all. Sent as a raw buffer under an
+ * encoding the parser does inflate, it makes the decoder raise its own untagged
+ * failure rather than a body-parser rejection.
+ * @type {Buffer}
+ */
+const CORRUPT_COMPRESSED_BODY = Buffer.from('not-compressed-data');
 
 /**
  * Builds an Express app whose routes fail in each of the ways the handler must
@@ -232,6 +248,61 @@ describe('API error handler middleware', () => {
         expect(console.error).not.toHaveBeenCalled();
       }
     );
+  });
+
+  describe('a corrupt body sent with a supported content encoding', () => {
+    test.each(INFLATED_ENCODINGS)(
+      'answers 400 VALIDATION_ERROR with no details and no log for %s',
+      async (encoding) => {
+        // The identity serializer puts the corrupt bytes on the wire as they are;
+        // without it supertest would send a JSON rendering of the buffer.
+        const response = await request(app)
+          .post('/api/echo')
+          .set('Content-Type', 'application/json')
+          .set('Content-Encoding', encoding)
+          .serialize((body) => body)
+          .send(CORRUPT_COMPRESSED_BODY);
+
+        expect(response.status).toBe(400);
+        expect(response.body).toEqual({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Request body is not acceptable.'
+          }
+        });
+        expect('details' in response.body.error).toBe(false);
+        expect(console.error).not.toHaveBeenCalled();
+      }
+    );
+
+    test('keeps a well-formed compressed body carrying non-JSON a parse failure', async () => {
+      const response = await request(app)
+        .post('/api/echo')
+        .set('Content-Type', 'application/json')
+        .set('Content-Encoding', 'gzip')
+        .serialize((body) => body)
+        .send(zlib.gzipSync('not json at all'));
+
+      expect(response.status).toBe(400);
+      expect(response.body).toEqual({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Request body is not valid JSON.'
+        }
+      });
+      expect(console.error).not.toHaveBeenCalled();
+    });
+
+    test('keeps an untagged failure on a request that declares gzip a 500', async () => {
+      const response = await request(app)
+        .get('/api/crash')
+        .set('Content-Encoding', 'gzip');
+
+      expect(response.status).toBe(500);
+      expect(Object.keys(response.body.error).sort()).toEqual(['code', 'message']);
+      expect(response.body.error.code).toBe('INTERNAL_ERROR');
+      expect(console.error).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('domain failures', () => {

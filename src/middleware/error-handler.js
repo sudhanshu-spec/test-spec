@@ -20,6 +20,9 @@
 
 const { AppError, ERROR_CODES } = require('../errors');
 
+// Encodings express.json() inflates itself; their corrupt input fails untagged.
+const INFLATED_ENCODINGS = ['gzip', 'deflate', 'br'];
+
 /**
  * Message answered when the request body was not valid JSON. Fixed text, so the
  * body parser's own message, the raw body and its stack never reach the client.
@@ -100,24 +103,34 @@ function isParseFailure(err) {
  * Reports whether the JSON body parser rejected the request body outright,
  * before any of it was parsed.
  *
- * The parser tags each such rejection with a `type` from its own vocabulary: a
- * body above the configured size limit, a charset it cannot decode, and a
- * content encoding it cannot inflate. Only that tag is matched — the status the
- * rejection carries is the parser's, and the charset value is never inspected,
- * since a supported but undecodable charset is reported as a parse failure
- * instead.
+ * The parser tags most such rejections with a `type`: a body above the size
+ * limit, a charset it cannot decode, and a content encoding it cannot inflate.
+ * A body sent with an encoding the parser does inflate but whose bytes it cannot
+ * decode arrives as the decoder's own untagged error instead, recognised here by
+ * the declared encoding, the parser's own client-error status, and the `errno`
+ * and `code` such a failure carries.
  *
  * @param {unknown} err - Value an upstream stage passed to the handler.
+ * @param {import('express').Request} req - Request whose body was refused.
  * @returns {boolean} True when the request body was refused rather than parsed.
  */
-function isBodyRejected(err) {
+function isBodyRejected(err, req) {
   if (!err || typeof err !== 'object') {
     return false;
   }
 
-  return err.type === 'entity.too.large'
+  if (err.type === 'entity.too.large'
     || err.type === 'charset.unsupported'
-    || err.type === 'encoding.unsupported';
+    || err.type === 'encoding.unsupported') {
+    return true;
+  }
+
+  const declared = req && req.headers ? req.headers['content-encoding'] : undefined;
+
+  return INFLATED_ENCODINGS.includes(String(declared).trim().toLowerCase())
+    && err.status === ERROR_CODES.VALIDATION_ERROR
+    && typeof err.errno === 'number'
+    && typeof err.code === 'string';
 }
 
 /**
@@ -133,10 +146,10 @@ function isBodyRejected(err) {
  * 2. The JSON body parser could not parse the body — answer `VALIDATION_ERROR`
  *    with the fixed message and no details, since a syntax error names no
  *    field.
- * 3. The parser refused the body outright, for being too large or for carrying
- *    a charset or content encoding it cannot handle — answer `VALIDATION_ERROR`
- *    with its own fixed message and no details, since no such rejection names
- *    a field either.
+ * 3. The parser refused the body outright, for being too large, for carrying a
+ *    charset or content encoding it cannot handle, or for a supported encoding
+ *    whose bytes it cannot inflate — answer `VALIDATION_ERROR` with its own
+ *    fixed message and no details, since no such rejection names a field either.
  * 4. A domain failure (`AppError`) — answer its own status, code and message,
  *    plus its details when it carries field entries. Twelve of the vocabulary's
  *    thirteen codes arrive this way and are passed through unchanged, never
@@ -164,7 +177,7 @@ function errorHandler(err, req, res, next) {
     return sendEnvelope(res, new AppError('VALIDATION_ERROR', PARSE_FAILURE_MESSAGE));
   }
 
-  if (isBodyRejected(err)) {
+  if (isBodyRejected(err, req)) {
     return sendEnvelope(res, new AppError('VALIDATION_ERROR', BODY_REJECTED_MESSAGE));
   }
 
