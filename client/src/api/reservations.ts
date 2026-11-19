@@ -4,9 +4,10 @@
  * The client's two reservation calls: booking a table for the signed-in caller,
  * and listing the bookings that caller already holds. Authentication belongs to
  * the transport — `client.ts` attaches the session's Bearer token to every
- * request — so nothing here reads a token, sends a user id, or filters by owner:
- * the API scopes both endpoints to the authenticated caller, and this module
- * relays exactly what it answers for that caller.
+ * request that does not opt out, and both of these calls are guarded, so both
+ * carry it — leaving nothing here to read a token, send a user id, or filter by
+ * owner: the API scopes both endpoints to the authenticated caller, and this
+ * module relays exactly what it answers for that caller.
  *
  * The request body is relayed verbatim. `reservation_date` (`YYYY-MM-DD`),
  * `reservation_time` (`HH:MM`) and `party_size` travel as the form supplies

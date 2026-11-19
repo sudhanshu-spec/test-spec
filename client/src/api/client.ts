@@ -72,7 +72,15 @@ export class ApiError extends Error {
 export interface ApiClientConfig {
   /** Returns the session token to send as a bearer credential, or null. */
   getToken(): string | null;
-  /** Called when the API answers 401, before the `ApiError` is thrown. */
+  /**
+   * Called whenever the API answers 401, before the `ApiError` is thrown: the TOKEN_REQUIRED,
+   * TOKEN_INVALID and TOKEN_EXPIRED family that ends a session, and equally a rejected sign-in,
+   * which the API answers with INVALID_CREDENTIALS under the same status. The transport holds the
+   * status before it can read the envelope's code, so it reports the fact it has rather than
+   * guessing at the code. A rejected sign-in usually arrives with no session open, where the reset
+   * changes nothing; from a visitor who is already signed in it does end that session, which is the
+   * accepted cost of reporting every 401 the API answers with.
+   */
   onUnauthorized(): void;
 }
 
@@ -91,12 +99,15 @@ export function configureApiClient(config: ApiClientConfig | null): void {
 
 /**
  * How a request is described to {@link apiFetch}: a method defaulting to GET, an optional payload
- * serialised as JSON, and query parameters whose undefined values are left out.
+ * serialised as JSON, query parameters whose undefined values are left out, and the opt-out a
+ * public call uses to keep the session credential off the request.
  */
 export interface ApiRequestInit {
   method?: 'GET' | 'POST';
   body?: unknown;
   query?: Record<string, string | undefined>;
+  /** Whether the session credential travels with this request; see {@link apiFetch}. */
+  credential?: boolean;
 }
 
 /** @returns The value as a keyed record, or null when it is not an object. */
@@ -140,11 +151,26 @@ function toApiError(payload: unknown, status: number): ApiError {
 /**
  * Sends one request to the JSON API and returns its parsed body. A 401 invokes the registered
  * `onUnauthorized` before the error is thrown, so the session is cleared even when the failing
- * request was itself a login attempt. A 204 returns undefined without reading a body, which is
- * what `POST /api/auth/logout` answers with.
+ * request was itself a login attempt. That is deliberate and it is what the hook means: only the
+ * status is known at that point, and the API's own vocabulary makes a rejected sign-in a 401 too —
+ * INVALID_CREDENTIALS beside the TOKEN_REQUIRED, TOKEN_INVALID and TOKEN_EXPIRED family — so the
+ * hook reports "the API refused the credential offered" without waiting to read the code. A sign-in
+ * rejected while no session is open leaves nothing to clear; one rejected from a signed-in visitor
+ * ends that session too, which is the cost this rule accepts. A 204 returns undefined without
+ * reading a body, which is what `POST /api/auth/logout` answers with.
+ *
+ * The session credential travels unless the caller passes `credential: false`. The seven protected
+ * calls — GET /auth/session, POST /auth/logout, POST and GET /orders, GET /orders/:id, and POST
+ * and GET /reservations — keep the default, because the API answers them only to a caller it can
+ * identify from that header. The five public calls — POST /auth/register, POST /auth/login, GET
+ * /categories, GET /menu-items and GET /menu-items/:id — pass `credential: false`: no route
+ * behind them registers a guard, so they carry nothing that could identify the caller. The default
+ * is to attach, so a forgotten opt-out can at worst re-add a harmless same-origin header the API
+ * ignores, while a protected call is never left without its credential.
  *
  * @param path - Path below `/api`, beginning with `/` (for example `/categories`).
- * @param init - Method, body and query parameters; GET with no body by default.
+ * @param init - Method, body, query parameters and the credential opt-out; GET, credential
+ *   attached, with no body by default.
  * @returns The parsed body, untouched, typed as the caller's declared contract.
  * @throws {ApiError} On any non-2xx response, and with status 0 when the request never arrived.
  */
@@ -166,7 +192,7 @@ export async function apiFetch<T>(path: string, init: ApiRequestInit = {}): Prom
     request.body = JSON.stringify(init.body);
   }
 
-  if (token !== null && token !== '') {
+  if (init.credential !== false && token !== null && token !== '') {
     headers.Authorization = `Bearer ${token}`;
   }
 

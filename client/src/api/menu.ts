@@ -9,10 +9,11 @@
  *
  * Every path below is relative to the API root that `client/src/api/client`
  * owns: the request URL is its base plus the literal here, so these strings
- * never repeat '/api' and no call site builds an absolute origin. The three
- * menu routes are public reference data, so nothing here supplies a credential
- * — the transport reads the session token itself when there is one. Prices pass
- * through as the integer cents the API sends (`price_cents`); formatting them is
+ * never repeat '/api' and no call site builds an absolute origin. The three menu
+ * routes are public reference data and none of them is guarded, so every call
+ * here passes `credential: false` and no request of this module carries the
+ * session's Bearer header, even while a session is open. Prices pass through as
+ * the integer cents the API sends (`price_cents`); formatting them is
  * `client/src/api/format`'s single responsibility, not this module's.
  *
  * A failure surfaces as the transport's `ApiError`, unchanged, so a view can
@@ -43,7 +44,7 @@ import type { CategoriesResponse, Category, ItemResponse, ItemsResponse, MenuIte
  *   empty menu.
  */
 export async function listCategories(): Promise<Category[]> {
-  const { categories } = await apiFetch<CategoriesResponse>('/categories');
+  const { categories } = await apiFetch<CategoriesResponse>('/categories', { credential: false });
 
   return categories;
 }
@@ -52,20 +53,28 @@ export async function listCategories(): Promise<Category[]> {
  * Lists the available menu items, optionally restricted to one category.
  *
  * `categorySlug` is sent as the `category` query parameter, and only when it is
- * not `undefined`: callers asking for every category must omit the argument (or
- * pass `undefined`) rather than an empty string, because an empty string is an
- * unknown slug and the API answers it with `CATEGORY_NOT_FOUND` rather than the
- * whole catalog.
+ * not `undefined`: omitting the argument leaves the parameter out, while a
+ * string — an empty one included — travels as `category=`.
+ *
+ * The rule that reads that parameter is the server's, and it trims what it
+ * receives: an absent, empty or whitespace-only filter lists the whole
+ * available catalog, so a `?category=` deep link, or a bookmark of a filter the
+ * reader has since emptied, shows every available item rather than failing.
+ * Only a non-blank slug that names no category is refused.
  *
  * @param categorySlug - Slug of the category to filter by, as returned by
- *   {@link listCategories}; omit it for every available item.
+ *   {@link listCategories}; omit it, or pass an empty or whitespace-only
+ *   string, for every available item.
  * @returns The matching items, or an empty array when a known category holds
  *   none.
- * @throws {ApiError} `CATEGORY_NOT_FOUND` (404) when `categorySlug` names no
- *   category.
+ * @throws {ApiError} `CATEGORY_NOT_FOUND` (404) only when `categorySlug` is a
+ *   non-blank slug naming no category.
  */
 export async function listItems(categorySlug?: string): Promise<MenuItem[]> {
-  const { items } = await apiFetch<ItemsResponse>('/menu-items', { query: { category: categorySlug } });
+  const { items } = await apiFetch<ItemsResponse>('/menu-items', {
+    query: { category: categorySlug },
+    credential: false,
+  });
 
   return items;
 }
@@ -82,7 +91,9 @@ export async function listItems(categorySlug?: string): Promise<MenuItem[]> {
  *   `MENU_ITEM_NOT_FOUND` (404) when it names no item.
  */
 export async function getItem(id: string): Promise<MenuItem> {
-  const { item } = await apiFetch<ItemResponse>(`/menu-items/${encodeURIComponent(id)}`);
+  const { item } = await apiFetch<ItemResponse>(`/menu-items/${encodeURIComponent(id)}`, {
+    credential: false,
+  });
 
   return item;
 }

@@ -19,6 +19,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 
+import { login, logout, register, session } from '../api/auth';
 import {
   ApiError,
   apiFetch,
@@ -26,7 +27,17 @@ import {
   type ApiErrorCode,
   type ApiFieldDetail,
 } from '../api/client';
-import type { SessionResponse, User } from '../api/types';
+import { getItem, listCategories, listItems } from '../api/menu';
+import { createOrder, getOrder, listOrders } from '../api/orders';
+import { createReservation, listReservations } from '../api/reservations';
+import type {
+  CreateOrderInput,
+  CreateReservationInput,
+  LoginInput,
+  RegisterInput,
+  SessionResponse,
+  User,
+} from '../api/types';
 import { ProtectedRoute } from '../components/ProtectedRoute';
 import { CartProvider } from '../state/cart';
 import { SessionProvider } from '../state/session';
@@ -60,6 +71,29 @@ const LOGIN_HEADING = 'Sign in';
 
 /** A menu item id, shaped like the UUID the API issues. */
 const MENU_ITEM_ID = 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d';
+
+/** An order id, shaped like the UUID the API issues. */
+const ORDER_ID = 'b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e';
+
+/** Registration body the credential cases send; the API's own rules accept every value in it. */
+const REGISTER_INPUT: RegisterInput = {
+  name: 'Ada Lovelace',
+  email: 'ada@example.com',
+  password: 'correct-horse-battery',
+};
+
+/** Login body the credential cases send, naming the account registered above. */
+const LOGIN_INPUT: LoginInput = { email: REGISTER_INPUT.email, password: REGISTER_INPUT.password };
+
+/** Order body the credential cases send: one line, no note, and no amount a client could set (R-3). */
+const ORDER_INPUT: CreateOrderInput = { items: [{ menu_item_id: MENU_ITEM_ID, quantity: 2 }] };
+
+/** Reservation body the credential cases send: exactly the four fields the contract names. */
+const RESERVATION_INPUT: CreateReservationInput = {
+  reservation_date: '2030-01-01',
+  reservation_time: '18:00',
+  party_size: 2,
+};
 
 /**
  * The API's complete error vocabulary in `src/errors.js` order (R-6). Declared here rather than
@@ -266,6 +300,97 @@ describe('Authorization header', () => {
 
     expect(headersOf(callAt(fetchMock, 0)[1]).Authorization).toBe(`Bearer ${TEST_TOKEN}`);
     expect(headersOf(callAt(fetchMock, 1)[1]).Authorization).toBe(`Bearer ${NEXT_TOKEN}`);
+  });
+});
+
+describe('credential scoping', () => {
+  /**
+   * Every call the client makes that reaches a menu, auth, order or reservation route, split by the
+   * guard the API puts behind that route. The five public calls carry no credential; the seven
+   * protected ones carry it. Each row drives the domain module's own function rather than
+   * `apiFetch`, so a missing `credential: false` or a dropped default inside `menu.ts`, `auth.ts`,
+   * `orders.ts` or `reservations.ts` fails here rather than in a view.
+   */
+  const CALLS: ReadonlyArray<{
+    readonly call: string;
+    readonly send: () => Promise<unknown>;
+    readonly url: string;
+    readonly credentialed: boolean;
+  }> = [
+    {
+      call: 'listCategories()',
+      send: () => listCategories(),
+      url: '/api/categories',
+      credentialed: false,
+    },
+    { call: 'listItems()', send: () => listItems(), url: '/api/menu-items', credentialed: false },
+    {
+      call: "listItems('burgers')",
+      send: () => listItems('burgers'),
+      url: '/api/menu-items?category=burgers',
+      credentialed: false,
+    },
+    {
+      call: 'getItem(id)',
+      send: () => getItem(MENU_ITEM_ID),
+      url: `/api/menu-items/${MENU_ITEM_ID}`,
+      credentialed: false,
+    },
+    {
+      call: 'register(input)',
+      send: () => register(REGISTER_INPUT),
+      url: '/api/auth/register',
+      credentialed: false,
+    },
+    { call: 'login(input)', send: () => login(LOGIN_INPUT), url: '/api/auth/login', credentialed: false },
+    { call: 'session()', send: () => session(), url: '/api/auth/session', credentialed: true },
+    { call: 'logout()', send: () => logout(), url: '/api/auth/logout', credentialed: true },
+    {
+      call: 'createOrder(input)',
+      send: () => createOrder(ORDER_INPUT),
+      url: '/api/orders',
+      credentialed: true,
+    },
+    { call: 'listOrders()', send: () => listOrders(), url: '/api/orders', credentialed: true },
+    {
+      call: 'getOrder(id)',
+      send: () => getOrder(ORDER_ID),
+      url: `/api/orders/${ORDER_ID}`,
+      credentialed: true,
+    },
+    {
+      call: 'createReservation(input)',
+      send: () => createReservation(RESERVATION_INPUT),
+      url: '/api/reservations',
+      credentialed: true,
+    },
+    {
+      call: 'listReservations()',
+      send: () => listReservations(),
+      url: '/api/reservations',
+      credentialed: true,
+    },
+  ];
+
+  it('sends the Bearer credential on the protected calls and on no public call', async () => {
+    registerHooks(() => TEST_TOKEN);
+    fetchMock.mockImplementation(
+      async (url: string): Promise<Response> =>
+        url === '/api/auth/logout' ? fakeResponse(204) : fakeResponse(200, {}),
+    );
+
+    for (const { call, send, url, credentialed } of CALLS) {
+      const sent = fetchMock.mock.calls.length;
+      await send();
+
+      expect(fetchMock.mock.calls.length, call).toBe(sent + 1);
+      const [requestedUrl, init] = callAt(fetchMock, sent);
+      expect(requestedUrl, call).toBe(url);
+      expect(headersOf(init).Accept, call).toBe('application/json');
+      expect(headersOf(init).Authorization, call).toBe(
+        credentialed ? `Bearer ${TEST_TOKEN}` : undefined,
+      );
+    }
   });
 });
 
@@ -577,5 +702,32 @@ describe('401 handling', () => {
     expect(ordersInit?.method).toBe('GET');
     expect(headersOf(ordersInit).Authorization).toBe(`Bearer ${STORED_TOKEN}`);
     expect(fetchMock.mock.calls.map(([url]) => url)).toEqual(['/api/auth/session', '/api/orders']);
+  });
+
+  /**
+   * The two 401s the API reports through one status: a rejected sign-in, which ends no session, and
+   * an expired token, which does. The transport fires the hook on the status it holds rather than
+   * on the envelope's code, so both invoke it once and both still throw that code unchanged.
+   */
+  const UNAUTHORIZED_RESPONSES: ReadonlyArray<{
+    readonly code: ApiErrorCode;
+    readonly send: () => Promise<unknown>;
+  }> = [
+    { code: 'INVALID_CREDENTIALS', send: () => login(LOGIN_INPUT) },
+    { code: 'TOKEN_EXPIRED', send: () => session() },
+  ];
+
+  it('invokes the unauthorized hook once for any 401 and still throws the code it carried', async () => {
+    for (const { code, send } of UNAUTHORIZED_RESPONSES) {
+      const onUnauthorized = registerHooks(() => TEST_TOKEN);
+      fetchMock.mockResolvedValue(fakeResponse(401, errorEnvelope(code, 'Refused by the API.')));
+
+      const error = await rejectionOf(send());
+
+      expect(onUnauthorized, code).toHaveBeenCalledTimes(1);
+      expect(error).toBeInstanceOf(ApiError);
+      expect(error.status, code).toBe(401);
+      expect(error.code, code).toBe(code);
+    }
   });
 });

@@ -3,11 +3,13 @@
  *
  * The client's four authentication calls, each one a thin typed wrapper over the single transport
  * seam in `client/src/api/client.ts`. Nothing here builds a URL, reads or stores the token, or
- * reshapes a failure: `apiFetch` prefixes the relative `/api` base, attaches the Bearer credential
- * the session provider registered, and throws `ApiError` for every non-2xx answer, which this module
- * lets through unchanged so a calling view sees the server's status and code exactly as sent. The
- * token is opaque — minted by the server and handed straight to the provider, never decoded, split
- * or validated here — and a password appears only in the body of the two calls that need one.
+ * reshapes a failure: `apiFetch` prefixes the relative `/api` base and throws `ApiError` for every
+ * non-2xx answer, which this module lets through unchanged so a calling view sees the server's
+ * status and code exactly as sent. Registration and login are public, so they pass
+ * `credential: false` and carry no Bearer header; the session and logout calls are the two guarded
+ * ones and take the credential `apiFetch` attaches from the token the session provider registered.
+ * The token is opaque — minted by the server and handed straight to the provider, never decoded,
+ * split or validated here — and a password appears only in the body of the two calls that need one.
  *
  * Endpoints:
  * - POST '/auth/register' returns 201 { user: {id,name,email,created_at}, token } as JSON
@@ -32,7 +34,11 @@ import type { AuthResponse, LoginInput, RegisterInput, SessionResponse } from '.
  * `EMAIL_ALREADY_REGISTERED` (409) when the address is taken, compared case-insensitively.
  */
 export async function register(input: RegisterInput): Promise<AuthResponse> {
-  return apiFetch<AuthResponse>('/auth/register', { method: 'POST', body: input });
+  return apiFetch<AuthResponse>('/auth/register', {
+    method: 'POST',
+    body: input,
+    credential: false,
+  });
 }
 
 /**
@@ -47,7 +53,11 @@ export async function register(input: RegisterInput): Promise<AuthResponse> {
  * design, and this module adds no detail that would separate them.
  */
 export async function login(input: LoginInput): Promise<AuthResponse> {
-  return apiFetch<AuthResponse>('/auth/login', { method: 'POST', body: input });
+  return apiFetch<AuthResponse>('/auth/login', {
+    method: 'POST',
+    body: input,
+    credential: false,
+  });
 }
 
 /**

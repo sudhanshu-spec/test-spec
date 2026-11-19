@@ -2,12 +2,13 @@
  * Session State Module
  *
  * The client's single source of identity: the opaque token, the account it belongs to, the status
- * between them, and the one seam into `client/src/api/client.ts` — the token getter that stamps
- * every request's Bearer header and the handler that ends a 401'd session and counts it. Only the
- * token is persisted, in `localStorage` under the key declared below, opaque and never decoded; the
- * account is the API's secret-free projection, held in memory, so no password or hash is stored or
- * logged here. Routing, data fetching, cart state and view rendering are absent by design: this
- * provider mounts above the router, so `ProtectedRoute` acts on `status`, the shell on the count.
+ * between them, and the one seam into `client/src/api/client.ts` — the token getter the transport
+ * reads for the Bearer header of every request that does not opt out, and the handler that ends a
+ * 401'd session and counts it. Only the token is persisted, in `localStorage` under the key
+ * declared below, opaque and never decoded; the account is the API's secret-free projection, held
+ * in memory, so no password or hash is stored or logged here. Routing, data fetching, cart state
+ * and view rendering are absent by design: this provider mounts above the router, so
+ * `ProtectedRoute` acts on `status`, the shell on the count.
  *
  * @module client/src/state/session
  */
