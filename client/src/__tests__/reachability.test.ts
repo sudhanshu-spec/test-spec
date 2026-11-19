@@ -72,7 +72,7 @@ interface ExpectedScreenRow {
   readonly screen: number;
 }
 
-/** The ten-screen inventory: nine views, the layout shell (screen 9) and the not-found view. */
+/** The ten-screen inventory: ten screen rows covering screens 1 to 8, the layout shell (screen 9) and the not-found view (screen 10). */
 const EXPECTED_SCREEN_ROWS: readonly ExpectedScreenRow[] = [
   { path: '/register', kind: 'screen', screen: 1 },
   { path: '/login', kind: 'screen', screen: 2 },

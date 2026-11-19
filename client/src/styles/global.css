@@ -71,6 +71,15 @@
 *, *::before, *::after { box-sizing: border-box; }
 html, body { margin: 0; max-width: 100%; }
 
+/* Reserving the root's scrollbar gutter keeps the content box the same width whether or not the
+   document is taller than the viewport. A classic scrollbar takes its width out of that box the
+   moment one appears, so the catalog swapping its short loading panel for its twelve cards would
+   narrow the column and re-centre .app-main while .app-header's right-aligned nav jumped left; with
+   the gutter reserved the room is already there, so nothing shifts sideways when the cards arrive.
+   Platforms with overlay scrollbars reserve nothing, so the gutter is zero there and their layout
+   is unchanged. */
+html { scrollbar-gutter: stable; }
+
 body {
   font-family: var(--font-family-base); font-size: var(--font-size-base);
   line-height: var(--line-height-base); color: var(--color-text);

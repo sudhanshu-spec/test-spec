@@ -6,7 +6,7 @@
  * the one production mounts: `ProtectedRoute` is applied by the manifest's `requiresAuth` rows, the
  * session comes from the real `SessionProvider` and the cart from the real `CartProvider`.
  *
- * Five concerns, one module (rule R-10):
+ * Six concerns, one module (rule R-10):
  *
  * 1. An anonymous visitor is sent to `/login` from each of the six guarded paths, and the guarded
  *    screen is never mounted, so its data is never requested. The three token codes the API answers
@@ -24,6 +24,9 @@
  *    the history entry survive the 401 a wrong password is answered with, and the corrected sign-in
  *    still returns the visitor to the guarded screen. A credential refusal is not a session expiry,
  *    so the shell has nothing to navigate away from.
+ * 6. The hand-over is refused when resuming it would leave the application: a `from` value a prefix
+ *    test alone accepts but URL resolution turns into another origin shows no notice and lands on
+ *    the menu, where a plain `/login` visit goes.
  *
  * No request leaves the process (rule R-7): `fetch` is replaced through `vi.stubGlobal` in every
  * case and answers from a canned table, and an unsanctioned URL is answered with the documented 500
@@ -68,6 +71,9 @@ const LOGIN_HEADING = 'Sign in';
 
 /** Level-one heading of the registration screen, asserted absent to pin the target to `/login`. */
 const REGISTER_HEADING = 'Create your account';
+
+/** Level-one heading of the catalog screen, the destination a completed sign-in lands on. */
+const MENU_HEADING = 'Our menu';
 
 const USER: User = {
   id: '3f2b9c1e-0d4a-4b6f-9c8e-1a2b3c4d5e6f',
@@ -603,5 +609,69 @@ describe('rejected sign-in', () => {
     });
     expect(await screen.findByRole('heading', { name: 'Your cart', level: 1 })).not.toBeNull();
     expect(screen.queryByText(CART_RETURN_NOTICE)).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The return path the guard hands over: only a path on this application is resumed
+// ---------------------------------------------------------------------------
+
+/** The `from` value a prefix test alone would accept, which URL resolution turns into another origin. */
+const CROSS_ORIGIN_FROM_ENTRY = '/login?from=%2F%5Cevil.example';
+
+/** The promise every return notice ends with, absent whenever no notice is offered. */
+const RETURN_PROMISE = "We'll take you back there afterwards.";
+
+describe('return path guard', () => {
+  /**
+   * @returns One answer per path a successful sign-in and the catalog it lands on need, so the only
+   *   thing that decides where the visitor ends up is the guard's verdict on the `from` value.
+   */
+  function acceptedSignInAnswers(): Record<string, ApiAnswer> {
+    return {
+      '/auth/login': () => jsonResponse(200, { user: USER, token: STORED_TOKEN }),
+      '/categories': () => jsonResponse(200, { categories: [] }),
+      '/menu-items': () => jsonResponse(200, { items: [] }),
+    };
+  }
+
+  it('refuses a from value that resolves to another origin, so the sign-in lands on the menu', async () => {
+    const user = userEvent.setup();
+    installApi(acceptedSignInAnswers());
+
+    // `/\evil.example` starts with a single `/` and not with `//`, yet URL resolution reads the
+    // backslash as a path separator and makes it `http://evil.example/` — another origin, so the
+    // value is not an internal path and is refused.
+    const router = createMemoryRouter(routes, { initialEntries: [CROSS_ORIGIN_FROM_ENTRY] });
+    render(
+      <SessionProvider>
+        <CartProvider>
+          <RouterProvider router={router} />
+        </CartProvider>
+      </SessionProvider>,
+    );
+
+    await expectLoginScreen();
+    // No return notice: the refused value produces neither the status line nor its promise of a
+    // return, because there is no screen to return to.
+    expect(screen.queryByRole('status')).toBeNull();
+    expect(document.body.textContent ?? '').not.toContain(RETURN_PROMISE);
+    // The refused value is still on the address, so the refusal is the guard's, not the router's.
+    expect(router.state.location.search).toBe('?from=%2F%5Cevil.example');
+
+    await user.type(screen.getByLabelText<HTMLInputElement>(/^Email/), USER.email);
+    await user.type(screen.getByLabelText<HTMLInputElement>(/^Password/), 'correct-horse-battery');
+    await user.click(screen.getByRole('button', { name: LOGIN_HEADING }));
+
+    // Nothing to resume, so the completed sign-in lands exactly where a plain `/login` visit does.
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/menu');
+    });
+    expect(router.state.location.search).toBe('');
+    // The catalog is a route-chunk of its own and a route change keeps the screen it replaces on
+    // display until that chunk arrives, so the destination is awaited first: once the catalog is on
+    // the page, the login screen it replaced must be gone.
+    expect(await screen.findByRole('heading', { name: MENU_HEADING, level: 1 })).not.toBeNull();
+    expect(screen.queryByRole('heading', { name: LOGIN_HEADING, level: 1 })).toBeNull();
   });
 });

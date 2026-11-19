@@ -703,7 +703,7 @@ export function CartView(): JSX.Element {
         ...(trimmedNotes === '' ? {} : { notes: trimmedNotes }),
       });
       clear();
-      navigate('/orders/' + order.id, { replace: true });
+      navigate('/orders/' + encodeURIComponent(order.id), { replace: true });
     } catch (error) {
       setFailure(toFailure(error, items));
     } finally {

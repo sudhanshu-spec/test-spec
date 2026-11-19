@@ -31,8 +31,9 @@
  * usable {@link RETURN_PATH_PARAM} value, the form states what they were opening
  * and the completed sign-in returns them to it in `replace` mode instead of the
  * menu. Only an internal path is ever navigated to: the value is accepted only
- * when it starts with a single `/`, so it cannot become another origin. A plain
- * `/login` visit renders none of this and lands on the menu as before.
+ * when it is a root-relative path that resolves to this application's own
+ * origin, so it cannot become another origin. A plain `/login` visit renders
+ * none of this and lands on the menu as before.
  *
  * Four states are explicit: the empty form, which offers the way to the
  * registration screen; the populated form once values are typed; the submitting
@@ -156,15 +157,27 @@ function withoutField<T>(
  * @returns The internal path to return to once the session is open, or null when the parameter is
  * absent or is not an internal path.
  *
- * Only a value starting with a single `/` is accepted, so a protocol-relative `//host` address, an
- * absolute URL and a bare relative segment are all refused: the completed sign-in navigates to this
- * value, and it must never be able to leave this application.
+ * Only a root-relative path that resolves to this application's own origin is accepted, so a
+ * protocol-relative `//host` address, an absolute URL, a bare relative segment and a `/\host`
+ * address are all refused: the completed sign-in navigates to this value, and it must never be able
+ * to leave this application. A backslash is a path separator to URL resolution, which is how
+ * `/\host` becomes another origin, so the prefix alone does not settle it and the resolved origin
+ * decides.
  */
 function acceptedReturnPath(candidate: string | null): string | null {
   if (candidate === null || !candidate.startsWith('/') || candidate.startsWith('//')) {
     return null;
   }
-  return candidate;
+
+  const origin = window.location.origin;
+
+  try {
+    return new URL(candidate, origin).origin === origin ? candidate : null;
+  } catch {
+    // No base to resolve against — an opaque `null` origin, for one — or a candidate the parser
+    // refuses: neither can be shown to stay on this application, so neither is accepted.
+    return null;
+  }
 }
 
 /**

@@ -203,7 +203,7 @@ function ReservationHistory({ reservations }: ReservationHistoryProps): JSX.Elem
               {reservation.notes ? <DetailRow label="Notes">{reservation.notes}</DetailRow> : null}
             </div>
             <div className="row">
-              <Link className="button button--secondary" to={`/reservations/${reservation.id}`}>
+              <Link className="button button--secondary" to={`/reservations/${encodeURIComponent(reservation.id)}`}>
                 {`View booking for ${formatCalendarDate(reservation.reservation_date)}`}
               </Link>
             </div>

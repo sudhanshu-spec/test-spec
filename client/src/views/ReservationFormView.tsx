@@ -483,7 +483,7 @@ export function ReservationFormView(): JSX.Element {
         party_size: Number(partySize.trim()),
         ...(trimmedNotes === '' ? {} : { notes: trimmedNotes }),
       });
-      navigate(`/reservations/${reservation.id}`, { replace: true });
+      navigate(`/reservations/${encodeURIComponent(reservation.id)}`, { replace: true });
     } catch (error) {
       reportFailure(error);
     } finally {

@@ -3,10 +3,12 @@
  *
  * The browser loads this module from `client/index.html` and nothing else does, so it is the
  * client's composition root: it loads the two stylesheets, declares the route surface once, derives
- * the router from that declaration, mounts the providers around it and renders into `#root`. It
- * holds no business logic, fetches nothing and reads no state — every screen, provider and request
- * lives in its own module, the same way `src/app.js` composes the server's pipeline while holding
- * none of its rules. Importing it under a test runner therefore renders nothing.
+ * the router from that declaration, mounts the providers around it and renders into `#root`. Each
+ * screen is loaded with the route that names it, so a first load carries the shell and the visited
+ * screen only. It holds no business logic, fetches nothing and reads no state — every screen,
+ * provider and request lives in its own module, the same way `src/app.js` composes the server's
+ * pipeline while holding none of its rules. Importing it under a test runner therefore renders
+ * nothing.
  *
  * Exported symbols:
  * - `routeManifest` — the complete route inventory, and the only declaration of the surface.
@@ -19,6 +21,7 @@
 import './styles/global.css';
 import './styles/catalog.css';
 
+import { lazy, Suspense } from 'react';
 import type { ComponentType, JSX } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Navigate, RouterProvider, createBrowserRouter } from 'react-router-dom';
@@ -28,15 +31,17 @@ import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import { CartProvider } from './state/cart';
 import { SessionProvider } from './state/session';
-import CartView from './views/CartView';
-import LoginView from './views/LoginView';
-import MenuCatalogView from './views/MenuCatalogView';
-import MenuItemView from './views/MenuItemView';
-import NotFoundView from './views/NotFoundView';
-import OrderConfirmationView from './views/OrderConfirmationView';
-import RegisterView from './views/RegisterView';
-import ReservationConfirmationView from './views/ReservationConfirmationView';
-import ReservationFormView from './views/ReservationFormView';
+
+/** The nine views the manifest names, each fetched with the route that renders it, not with the shell. */
+const CartView = lazy(() => import('./views/CartView'));
+const LoginView = lazy(() => import('./views/LoginView'));
+const MenuCatalogView = lazy(() => import('./views/MenuCatalogView'));
+const MenuItemView = lazy(() => import('./views/MenuItemView'));
+const NotFoundView = lazy(() => import('./views/NotFoundView'));
+const OrderConfirmationView = lazy(() => import('./views/OrderConfirmationView'));
+const RegisterView = lazy(() => import('./views/RegisterView'));
+const ReservationConfirmationView = lazy(() => import('./views/ReservationConfirmationView'));
+const ReservationFormView = lazy(() => import('./views/ReservationFormView'));
 
 /** One row of the client's route surface. */
 export interface RouteManifestEntry {
@@ -53,12 +58,13 @@ export interface RouteManifestEntry {
 }
 
 /**
- * The complete route inventory: ten screens, the layout shell, the root redirect and the not-found
- * view. This array is the declared surface — a path exists because a row here describes it, so
- * adding a path means adding a row, and `routes` below can describe nothing this array omits.
- * There is no eleventh screen: `/cart` (screen 5) carries the checkout step as its Place Order
- * action, and `/orders` and `/reservations` render the history list of the same confirmation views
- * rather than screens of their own.
+ * The complete route inventory: thirteen rows — the layout shell (screen 9), the root redirect, ten
+ * screen rows covering inventory screens 1 to 8, and the not-found view (screen 10). This array is
+ * the declared surface — a path exists because a row here describes it, so adding a path means
+ * adding a row, and `routes` below can describe nothing this array omits. There is no eleventh
+ * screen: `/cart` (screen 5) carries the checkout step as its Place Order action, and `/orders` and
+ * `/reservations` render the history list of the same confirmation views rather than screens of
+ * their own.
  */
 export const routeManifest: readonly RouteManifestEntry[] = [
   { path: '/', kind: 'layout', screen: 9, requiresAuth: false, module: 'client/src/components/Layout.tsx' },
@@ -105,9 +111,21 @@ const VIEW_BY_MODULE: Readonly<Record<string, ComponentType>> = {
 };
 
 /**
+ * The wait a route shows while the module of the view it names is on its way: the same neutral
+ * status line the guard shows while it restores a session, so a screen never leaves the shell with
+ * an empty content box.
+ *
+ * @returns The status line, announced rather than silent.
+ */
+function ScreenLoading(): JSX.Element {
+  return <p className="state-panel" role="status">Loading…</p>;
+}
+
+/**
  * Renders the view a screen row names, behind the session guard when the row asks for one. The
  * guard only establishes that somebody is signed in: ownership of an order or a reservation is the
- * API's to enforce, and it answers another user's record with 404.
+ * API's to enforce, and it answers another user's record with 404. The boundary for the view's own
+ * module sits inside the guard, so the guard's session status is never replaced by a chunk fallback.
  *
  * @param entry - A screen row.
  * @returns The guarded or unguarded screen element.
@@ -119,14 +137,15 @@ function renderScreen(entry: ChildManifestEntry): JSX.Element {
     throw new Error(`Route manifest names no screen module "${String(entry.module)}".`);
   }
 
-  const screen = <View />;
+  const screen = <Suspense fallback={<ScreenLoading />}><View /></Suspense>;
 
   return entry.requiresAuth ? <ProtectedRoute>{screen}</ProtectedRoute> : screen;
 }
 
 /**
- * Layouts, screens and the splat are siblings under the root route, so their absolute manifest
- * paths are written relative to it and the rendered URLs stay exactly the manifest's paths.
+ * Screens and the splat are children of the root route — the layout is the root route itself — so
+ * their absolute manifest paths are written relative to it and the rendered URLs stay exactly the
+ * manifest's paths.
  *
  * @param path - An absolute React Router path from the manifest.
  * @returns The path relative to the root route.
@@ -147,7 +166,10 @@ function toChildRoute(entry: ChildManifestEntry): RouteObject {
     case 'redirect':
       return { index: true, element: <Navigate to="/menu" replace /> };
     case 'not-found':
-      return { path: toChildPath(entry.path), element: <NotFoundView /> };
+      return {
+        path: toChildPath(entry.path),
+        element: <Suspense fallback={<ScreenLoading />}><NotFoundView /></Suspense>,
+      };
     case 'screen':
       return { path: toChildPath(entry.path), element: renderScreen(entry) };
   }

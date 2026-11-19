@@ -210,7 +210,7 @@ function OrderHistoryEntry({ order }: OrderHistoryEntryProps): JSX.Element {
          * never share an accessible name.
          */}
         <div className="cart-line__actions">
-          <Link className="button button--secondary" to={'/orders/' + order.id}>
+          <Link className="button button--secondary" to={'/orders/' + encodeURIComponent(order.id)}>
             View order<span className="visually-hidden"> {order.id}</span>
           </Link>
         </div>

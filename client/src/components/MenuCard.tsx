@@ -126,7 +126,7 @@ export const MenuCard = memo(function MenuCard({
 
       <div className="catalog-card__body">
         <h3 className="catalog-card__title">
-          <Link to={`/menu/${item.id}`}>{item.name}</Link>
+          <Link to={`/menu/${encodeURIComponent(item.id)}`}>{item.name}</Link>
         </h3>
         <p className="catalog-card__description">{item.description}</p>
         <p className="catalog-card__meta">{item.category.name}</p>
