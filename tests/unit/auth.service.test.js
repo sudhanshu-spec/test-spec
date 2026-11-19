@@ -4,26 +4,33 @@
  * literal configuration and a pinned clock, so no database, no HTTP request and
  * no port is involved. What is pinned here is the scrypt salt-and-hash pair a
  * registration stores, the digest-only token storage, the single indistinguishable
- * login failure, revoking the session row the guard resolved in one statement, and
- * the four-field projection that keeps password_hash, password_salt and token_hash
- * out of every value the service returns (R-4).
+ * login failure, revoking the session row the guard resolved in one statement, the
+ * four-field projection that keeps password_hash, password_salt and token_hash out
+ * of every value the service returns (R-4), the stored row a registration projects
+ * its response from, and the module's reach into storage through the repository
+ * tier alone.
  * @module tests/unit/auth.service
  */
 
 'use strict';
 
 const crypto = require('node:crypto');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const { AppError } = require('../../src/errors');
 
 // The module's singleton is built at load over the real repositories, so they are
 // replaced for this whole suite. That is what lets the last test pin the clock the
 // singleton is wired with without any call reaching SQLite; getDb is stubbed to
-// throw, so an accidental database access fails the run that caused it.
+// throw, so an accidental database access fails the run that caused it. The users
+// repository carries the transaction runner the service commits a registration in,
+// which is why the replacement publishes one.
 jest.mock('../../src/repositories/user.repository', () => ({
   insert: jest.fn(),
   findByEmail: jest.fn(),
-  findById: jest.fn()
+  findById: jest.fn(),
+  runInTransaction: jest.fn((work) => work())
 }));
 
 jest.mock('../../src/repositories/token.repository', () => ({
@@ -135,6 +142,27 @@ function storedUser({ password = PASSWORD, passwordSalt, passwordHash, ...overri
 }
 
 /**
+ * Build the row userRepository.insert returns: the row read back out of the users
+ * table, in the schema's own column names, with the two secret columns included.
+ * It is derived from the argument the service handed the insert, so a registration
+ * that stores an address under a normalised form reads that form back.
+ *
+ * @param {Object} row - The values the service asked to store.
+ * @returns {Object} Stored user row.
+ */
+function insertedUser(row) {
+  return {
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    password_hash: row.passwordHash,
+    password_salt: row.passwordSalt,
+    created_at: row.createdAt,
+    updated_at: row.updatedAt
+  };
+}
+
+/**
  * Build a token row shaped as tokenRepository.findByHash returns it.
  *
  * @param {Object} [overrides] - Columns to replace.
@@ -155,30 +183,34 @@ function storedToken(overrides = {}) {
 /**
  * Build the service over stubbed repositories, a literal configuration and a
  * pinned clock, so every collaborator call can be asserted and nothing reaches a
- * database.
+ * database. The users stub also carries the transaction runner a registration is
+ * committed in, which is the one unit of work the service borrows from the
+ * repository layer.
  *
  * @param {Object} [options] - Stub outcomes.
  * @param {Object|null} [options.user] - Row users.findByEmail returns.
  * @param {Object|null} [options.token] - Row tokens.findByHash returns.
  * @param {string} [options.now] - Instant the stubbed clock reports.
- * @param {Function} [options.userInsert] - Behaviour of users.insert.
+ * @param {Function} [options.userInsert] - Behaviour of users.insert; returns the
+ *   stored row shaped as user.repository.insert returns one unless overridden.
  * @param {Function} [options.tokenInsert] - Behaviour of tokens.insert.
- * @param {Function} [options.transaction] - Runner handed to the service.
- * @returns {{service: Object, repositories: Object, clock: Function, runInTransaction: Function}}
- *   The service, its stubbed collaborators, the fake clock and the runner.
+ * @param {Function} [options.transaction] - Behaviour of users.runInTransaction.
+ * @returns {{service: Object, repositories: Object, clock: Function}}
+ *   The service, its stubbed collaborators and the fake clock.
  */
 function buildAuthService({
   user = null,
   token = null,
   now = NOW,
-  userInsert,
+  userInsert = insertedUser,
   tokenInsert,
   transaction
 } = {}) {
   const repositories = {
     users: {
       findByEmail: jest.fn(() => user),
-      insert: jest.fn(userInsert)
+      insert: jest.fn(userInsert),
+      runInTransaction: jest.fn(transaction || ((work) => work()))
     },
     tokens: {
       insert: jest.fn(tokenInsert),
@@ -187,16 +219,14 @@ function buildAuthService({
     }
   };
   const clock = jest.fn(() => new Date(now));
-  const runInTransaction = jest.fn(transaction || ((fn) => fn()));
   const service = createAuthService({
     users: repositories.users,
     tokens: repositories.tokens,
     config: CONFIG,
-    now: clock,
-    runInTransaction
+    now: clock
   });
 
-  return { service, repositories, clock, runInTransaction };
+  return { service, repositories, clock };
 }
 
 /**
@@ -394,13 +424,14 @@ describe('Auth service - auth.service.js', () => {
       expect(Date.parse(tokenRow.expiresAt) - Date.parse(tokenRow.createdAt)).toBe(TTL_MS);
     });
 
-    test('performs both inserts inside one runInTransaction call', async () => {
+    test('runs both inserts inside one call of the users repository runner', async () => {
       const trace = [];
-      const { service, repositories, runInTransaction } = buildAuthService({
+      const { service, repositories } = buildAuthService({
         transaction: (fn) => {
           trace.push('begin');
-          fn();
+          const outcome = fn();
           trace.push('commit');
+          return outcome;
         },
         userInsert: () => trace.push('users.insert'),
         tokenInsert: () => trace.push('tokens.insert')
@@ -408,15 +439,17 @@ describe('Auth service - auth.service.js', () => {
 
       await service.register({ name: 'Ada Lovelace', email: USER_EMAIL, password: PASSWORD });
 
-      expect(runInTransaction).toHaveBeenCalledTimes(1);
-      expect(typeof runInTransaction.mock.calls[0][0]).toBe('function');
+      const runner = repositories.users.runInTransaction;
+
+      expect(runner).toHaveBeenCalledTimes(1);
+      expect(typeof runner.mock.calls[0][0]).toBe('function');
       expect(trace).toEqual(['begin', 'users.insert', 'tokens.insert', 'commit']);
       expect(repositories.users.insert).toHaveBeenCalledTimes(1);
       expect(repositories.tokens.insert).toHaveBeenCalledTimes(1);
     });
 
     test('refuses a duplicate email from the pre-check without writing either row', async () => {
-      const { service, repositories, runInTransaction } = buildAuthService({ user: storedUser() });
+      const { service, repositories } = buildAuthService({ user: storedUser() });
 
       const error = await captureRejection(() =>
         service.register({ name: 'Ada Lovelace', email: '  ADA@Example.com  ', password: PASSWORD }));
@@ -428,7 +461,7 @@ describe('Auth service - auth.service.js', () => {
       expect(repositories.users.findByEmail).toHaveBeenCalledWith(USER_EMAIL);
       expect(repositories.users.insert).not.toHaveBeenCalled();
       expect(repositories.tokens.insert).not.toHaveBeenCalled();
-      expect(runInTransaction).not.toHaveBeenCalled();
+      expect(repositories.users.runInTransaction).not.toHaveBeenCalled();
     });
 
     test.each([
@@ -480,6 +513,31 @@ describe('Auth service - auth.service.js', () => {
       expect(Object.keys(result).sort()).toEqual(['token', 'user']);
       expect(Object.keys(result.user).sort()).toEqual(USER_KEYS);
       expect(JSON.stringify(result)).not.toMatch(/password_hash|password_salt|token_hash/);
+    });
+
+    test('projects the response user from the row users.insert returned', async () => {
+      // Provenance: a registration answers with what storage holds, so whatever
+      // the insert wrote is what comes back, never the request literal. The row
+      // stubbed here carries values that differ from the request in every field
+      // the contract exposes, plus the two secret columns a response must omit.
+      const storedRow = storedUser({
+        id: 'stored-row-id',
+        name: 'Stored Name',
+        email: 'stored@example.com',
+        created_at: '2025-12-31T00:00:00.000Z'
+      });
+      const { service } = buildAuthService({ userInsert: () => storedRow });
+
+      const result = await service.register({ name: 'Ada Lovelace', email: USER_EMAIL, password: PASSWORD });
+
+      expect(result.user).toEqual({
+        id: 'stored-row-id',
+        name: 'Stored Name',
+        email: 'stored@example.com',
+        created_at: '2025-12-31T00:00:00.000Z'
+      });
+      expect(Object.keys(result.user).sort()).toEqual(USER_KEYS);
+      expect(JSON.stringify(result.user)).not.toMatch(/password|salt|token/);
     });
   });
 
@@ -594,8 +652,12 @@ describe('Auth service - auth.service.js', () => {
   });
 
   describe('createAuthService', () => {
-    test('defaults the clock to now and the runner to a direct call', async () => {
-      const users = { findByEmail: jest.fn(() => null), insert: jest.fn() };
+    test('defaults the clock to now and takes its runner from the users repository', async () => {
+      const users = {
+        findByEmail: jest.fn(() => null),
+        insert: jest.fn(insertedUser),
+        runInTransaction: jest.fn((work) => work())
+      };
       const tokens = { insert: jest.fn(), findByHash: jest.fn(), revoke: jest.fn() };
       const service = createAuthService({ users, tokens, config: CONFIG });
 
@@ -603,6 +665,7 @@ describe('Auth service - auth.service.js', () => {
       const result = await service.register({ name: 'Ada Lovelace', email: USER_EMAIL, password: PASSWORD });
       const after = Date.now();
 
+      expect(users.runInTransaction).toHaveBeenCalledTimes(1);
       expect(users.insert).toHaveBeenCalledTimes(1);
       expect(tokens.insert).toHaveBeenCalledTimes(1);
       expect(Object.keys(result).sort()).toEqual(['token', 'user']);
@@ -613,6 +676,20 @@ describe('Auth service - auth.service.js', () => {
       expect(issuedAt).toBeGreaterThanOrEqual(before);
       expect(issuedAt).toBeLessThanOrEqual(after);
       expect(Date.parse(tokenRow.expiresAt) - issuedAt).toBe(TTL_MS);
+    });
+  });
+
+  describe('module dependencies', () => {
+    test('reaches storage through the repository modules only, never src/db', () => {
+      // The service layer calls repositories and nothing else, so the connection
+      // handle stays owned by src/db and the repository tier. A require('../db')
+      // here would hand this module the store directly, whatever it did with it.
+      const source = fs.readFileSync(path.join(__dirname, '../../src/services/auth.service.js'), 'utf8');
+      const specifiers = Array.from(source.matchAll(/require\(\s*(['"])([^'"]+)\1\s*\)/g), (match) => match[2]);
+
+      expect(specifiers).toContain('../repositories/user.repository');
+      expect(specifiers).toContain('../repositories/token.repository');
+      expect(specifiers).not.toContain('../db');
     });
   });
 

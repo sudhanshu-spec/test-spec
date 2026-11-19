@@ -3,9 +3,15 @@
  *
  * The users table accessor: the only module in the codebase that holds SQL
  * touching users. It reads and writes that one table and nothing else — no
- * token, order or reservation statement, no transaction of its own, no hashing,
- * no response shaping and no error vocabulary. Every method returns a plain row
- * keyed by the schema's own column names, or null when no row matches.
+ * token, order or reservation statement, no hashing, no response shaping and no
+ * error vocabulary. Every statement method returns a plain row keyed by the
+ * schema's own column names, or null when no row matches.
+ *
+ * Beyond those statements it publishes one unit-of-work facility,
+ * runInTransaction, so a caller that needs several writes to commit together
+ * runs them through this module instead of reaching src/db itself; the
+ * connection handle, its pragmas and its lifecycle stay inside src/db, and no
+ * statement of this module's is added or moved to provide it.
  *
  * The rows returned here carry password_hash and password_salt, because
  * src/services/auth.service.js needs both to verify a password; keeping those
@@ -14,7 +20,7 @@
  * error and this module lets it propagate untouched, so the service can
  * recognise a duplicate registration from the driver's own error code.
  *
- * Exports: insert, findByEmail, findById.
+ * Exports: insert, findByEmail, findById, runInTransaction.
  *
  * @module src/repositories/user.repository
  */
@@ -126,4 +132,26 @@ function findById(id) {
   return row ?? null;
 }
 
-module.exports = { insert, findByEmail, findById };
+/**
+ * Run one unit of work inside a single transaction on the shared connection.
+ *
+ * Registering an account writes a users row and that account's first
+ * auth_tokens row, and the two must commit or fail together: a failure has to
+ * leave neither row behind. The caller that owns that rule reaches the store
+ * through its repositories only, so the unit of work it needs is published here
+ * rather than opened by the caller. better-sqlite3 runs the function
+ * synchronously and rolls back if it throws, and the throw propagates once the
+ * rollback has completed. The transaction is deferred, not immediate, because
+ * registration has never taken a reserved write lock; the function is also
+ * synchronous by contract, so no caller can hold a write lock across an await.
+ *
+ * @param {Function} work - The statements to run as one unit of work; called
+ *   once, with no arguments.
+ * @returns {*} Whatever work returned, once the transaction has committed.
+ * @throws {*} Whatever work threw, after the transaction has rolled back.
+ */
+function runInTransaction(work) {
+  return getDb().transaction(work)();
+}
+
+module.exports = { insert, findByEmail, findById, runInTransaction };

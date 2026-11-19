@@ -13,7 +13,6 @@
 const crypto = require('node:crypto');
 const { promisify } = require('node:util');
 const { AppError } = require('../errors');
-const { getDb } = require('../db');
 const appConfig = require('../config');
 const userRepository = require('../repositories/user.repository');
 const tokenRepository = require('../repositories/token.repository');
@@ -97,15 +96,13 @@ function isDuplicateEmailError(error) {
 }
 
 /**
- * Build the authentication service over injected collaborators; `now` and
- * `runInTransaction` are defaulted so a unit suite pins the clock and needs no
- * database, while the singleton below supplies the real ones.
- * @param {Object} deps - { users, tokens, config, now, runInTransaction }.
+ * Build the authentication service over injected collaborators; `now` is defaulted
+ * so a unit suite pins the clock, and the transaction a registration commits in
+ * travels with the injected `users` repository, so this module opens none itself.
+ * @param {Object} deps - { users, tokens, config, now }.
  * @returns {{register: Function, login: Function, revokeSession: Function}} The service.
  */
-function createAuthService({
-  users, tokens, config, now = () => new Date(), runInTransaction = (fn) => fn()
-}) {
+function createAuthService({ users, tokens, config, now = () => new Date() }) {
   /**
    * Create an account and its first session token in one transaction, deriving the
    * password digest before the runner is entered so no write lock spans the await.
@@ -126,18 +123,22 @@ function createAuthService({
     const passwordHash = (await deriveKey(password, Buffer.from(passwordSalt, 'hex'), KEY_LENGTH)).toString('hex');
     const issued = issueToken(userId, issuedAt, config.tokenTtlHours);
     try {
-      // One runner call for both inserts, so a failure leaves neither row behind.
-      runInTransaction(() => {
-        users.insert({ id: userId, name, email: normalisedEmail, passwordHash, passwordSalt, createdAt, updatedAt: createdAt });
+      // One runner call for both inserts, so a failure leaves neither row behind;
+      // the row the insert returns is what the response is projected from.
+      const stored = users.runInTransaction(() => {
+        const row = users.insert({
+          id: userId, name, email: normalisedEmail, passwordHash, passwordSalt, createdAt, updatedAt: createdAt
+        });
         tokens.insert(issued.row);
+        return row;
       });
+      return { user: toPublicUser(stored), token: issued.token };
     } catch (error) {
       if (isDuplicateEmailError(error)) {
         throw emailAlreadyRegistered(normalisedEmail);
       }
       throw error;
     }
-    return { user: toPublicUser({ id: userId, name, email: normalisedEmail, created_at: createdAt }), token: issued.token };
   }
 
   /**
@@ -187,8 +188,7 @@ const authService = createAuthService({
   users: userRepository,
   tokens: tokenRepository,
   config: appConfig,
-  now: () => new Date(),
-  runInTransaction: (fn) => getDb().transaction(fn)()
+  now: () => new Date()
 });
 
 module.exports = {
