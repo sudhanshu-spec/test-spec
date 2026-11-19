@@ -2,7 +2,8 @@
  * @fileoverview Integration tests for the database connection module
  * (src/db/index.js), exercised only through its public API { getDb, closeDb }
  * against a real SQLite file. The suite covers the lazy open, the creation of
- * the missing parent directory, the connection pragmas, the schema application,
+ * the missing parent directory, the owner-only permissions of the directory, the
+ * database file and its sidecars, the connection pragmas, the schema application,
  * the seed of the menu reference data, the memoised handle, the close and
  * re-open cycle, and the recovery of a failed open.
  *
@@ -197,6 +198,56 @@ describe('database connection module (src/db/index.js)', () => {
       expect(module.getDb()).toBe(db);
       expect(module.getDb()).toBe(db);
       expect(db.open).toBe(true);
+    });
+  });
+
+  describe('file permissions', () => {
+    /**
+     * The permission bits of a path, masked so a setgid bit inherited from the
+     * parent directory is not compared.
+     * @param {string} target - Absolute path to stat
+     * @returns {number} The mode masked to its permission bits
+     */
+    const permissions = (target) => fs.statSync(target).mode & 0o777;
+
+    test('creates the directory and every database file readable by its owner alone', () => {
+      const module = loadDatabaseModule(path.join(workDir, 'permissions', 'nested', 'app.db'));
+
+      module.getDb();
+
+      expect(permissions(path.dirname(module.dbFile))).toBe(0o700);
+      expect(permissions(module.dbFile)).toBe(0o600);
+
+      // The WAL sidecars take the database file's mode. They exist while the
+      // handle is open, and no sidecar may be readable by another account.
+      const sidecars = ['-wal', '-shm']
+        .map((suffix) => `${module.dbFile}${suffix}`)
+        .filter((target) => fs.existsSync(target));
+
+      expect(sidecars.length).toBeGreaterThan(0);
+
+      for (const sidecar of sidecars) {
+        expect(permissions(sidecar)).toBe(0o600);
+      }
+    });
+
+    test('narrows a pre-existing world-readable file without touching its directory', () => {
+      const dbFile = path.join(workDir, 'pre-existing', 'app.db');
+      const dbDir = path.dirname(dbFile);
+
+      fs.mkdirSync(dbDir, { recursive: true });
+      fs.writeFileSync(dbFile, '');
+      fs.chmodSync(dbDir, 0o755);
+      fs.chmodSync(dbFile, 0o644);
+
+      const module = loadDatabaseModule(dbFile);
+
+      module.getDb();
+
+      expect(permissions(dbFile)).toBe(0o600);
+      // Only a directory this call created is given a mode: an existing one keeps
+      // the mode its owner set, which is what keeps os.tmpdir() out of reach.
+      expect(permissions(dbDir)).toBe(0o755);
     });
   });
 

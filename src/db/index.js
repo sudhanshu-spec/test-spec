@@ -32,15 +32,17 @@ let connection = null;
  * Return the open database connection, opening it on the first call.
  *
  * The first call creates the parent directory of config.dbFile if it is absent,
- * opens the file, enables foreign-key enforcement and WAL journaling, applies
- * schema.sql and seeds the menu reference data when the tables are still empty.
- * The handle is memoised only after all of that succeeds, so every later call
- * returns the same object. A failed first open closes the partially initialised
- * handle and rethrows, which leaves the memo empty so the next call retries.
+ * opens the file with owner-only permissions, enables foreign-key enforcement and
+ * WAL journaling, applies schema.sql and seeds the menu reference data when the
+ * tables are still empty. The handle is memoised only after all of that succeeds,
+ * so every later call returns the same object. A failed first open closes the
+ * partially initialised handle and rethrows, which leaves the memo empty so the
+ * next call retries.
  *
  * @returns {Object} The open, schema-applied, seeded database connection.
- * @throws {Error} If the directory cannot be created, the file cannot be opened,
- *   or a pragma, schema statement or seed insert fails.
+ * @throws {Error} If the directory cannot be created, the file cannot be created
+ *   or restricted to its owner, the file cannot be opened, or a pragma, schema
+ *   statement or seed insert fails.
  */
 function getDb() {
   if (connection) {
@@ -52,7 +54,22 @@ function getDb() {
   // its module registry adopt a reloaded configuration.
   const dbFile = path.resolve(config.dbFile);
 
-  fs.mkdirSync(path.dirname(dbFile), { recursive: true });
+  // `mode` applies only to directories this call actually creates, which is what
+  // keeps a pre-existing one — a deployment's data directory, or the operating
+  // system's temporary directory that the integration suites point DB_FILE into —
+  // at the permissions its owner gave it. Chmodding an existing directory here
+  // would change the mode of a shared parent such as /tmp.
+  fs.mkdirSync(path.dirname(dbFile), { recursive: true, mode: 0o700 });
+
+  // The file holds password hashes, salts and every customer's data, so it is
+  // created owner-read/write rather than at the driver's default, and an existing
+  // file is forced back to that mode as well. SQLite creates the -wal and -shm
+  // sidecars with the database file's permissions, so they inherit the same mode.
+  // Both calls sit ahead of the driver and outside the try below on purpose: a
+  // permissions failure must abort the open and surface to the caller instead of
+  // handing back a connection whose files another local account can read.
+  fs.closeSync(fs.openSync(dbFile, 'a', 0o600));
+  fs.chmodSync(dbFile, 0o600);
 
   const opened = new Database(dbFile);
 

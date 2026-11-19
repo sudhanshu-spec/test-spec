@@ -8,8 +8,9 @@
  * never a raised domain error — when a line names an unknown or unavailable item, the
  * per-user scoping of both reads, the
  * menu-item-name ordering of a stored order's lines, the newest-first ordering of a
- * user's history with created_at ties broken by id descending, and the defaults
- * applied to an order stored without an id, status, notes or createdAt. The database
+ * user's history with created_at ties broken by id descending, a history larger than
+ * SQLite's 32766-variable ceiling returned whole, and the defaults applied to an order
+ * stored without an id, status, notes or createdAt. The database
  * file lives in a directory the suite creates under the operating system's temporary
  * directory, outside the checkout.
  *
@@ -507,6 +508,49 @@ describe('order repository module (src/repositories/order.repository.js)', () =>
 
     test('returns an empty array for a user with no orders', () => {
       expect(repository.listByUser(createUser())).toEqual([]);
+    });
+
+    test('returns a history past SQLite\u2019s 32766-variable ceiling with every line', () => {
+      const userId = createUser();
+      const [item] = availableItems(1);
+      // 32767 is one more than SQLITE_MAX_VARIABLE_NUMBER (32766), so an unbatched
+      // IN list of this user's own order ids would exceed the bound and fail.
+      const total = 32767;
+      const orderId = (index) => `ffffffff-0000-4000-8000-${String(index).padStart(12, '0')}`;
+
+      // Written straight on the open handle, the way createUser() writes its row:
+      // 32767 createWithLines calls would take far longer than this one insert loop.
+      getDb().transaction(() => {
+        const insertOrder = getDb().prepare(
+          'INSERT INTO orders (id, user_id, status, total_cents, notes, created_at) VALUES (?, ?, ?, ?, ?, ?)'
+        );
+        const insertLine = getDb().prepare(
+          'INSERT INTO order_line_items (id, order_id, menu_item_id, quantity, unit_price_cents, '
+            + 'line_total_cents) VALUES (?, ?, ?, ?, ?, ?)'
+        );
+
+        for (let index = 0; index < total; index += 1) {
+          insertOrder.run(orderId(index), userId, 'confirmed', item.price_cents, null,
+            new Date(Date.UTC(2050, 0, 1) + index).toISOString());
+          insertLine.run(
+            `eeeeeeee-0000-4000-8000-${String(index).padStart(12, '0')}`, orderId(index),
+            item.id, 1, item.price_cents, item.price_cents
+          );
+        }
+      })();
+
+      expect(countOrdersFor(userId)).toBe(total);
+
+      const orders = repository.listByUser(userId);
+      const misreported = orders.filter((order) => order.lines.some(
+        (line) => line.name !== item.name || line.quantity !== 1
+          || line.unit_price_cents !== item.price_cents
+      ));
+
+      // No order of the history is dropped and none comes back with a partial line list.
+      expect(orders).toHaveLength(total);
+      expect(orders.reduce((count, order) => count + order.lines.length, 0)).toBe(total);
+      expect(misreported).toEqual([]);
     });
   });
 });

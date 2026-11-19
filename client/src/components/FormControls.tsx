@@ -7,11 +7,14 @@
  * One responsibility: render a labelled input with the API's own message for
  * it, and the form-level messages a submit produces, in the one shape every
  * screen uses. No state, no async work, no network — it takes the error
- * envelope's types only, so the text a user reads for a failure is always the
- * server's, never a client-side substitute for it.
+ * envelope's types plus the fixed fallback sentence a view supplies, so the
+ * text a user reads for a failure is the API's own `issue` or `message`
+ * wherever the API supplied one, and the view's fixed sentence only for a
+ * throw that never reached it.
  *
- * Consumers: `LoginView`, `RegisterView`, `ReservationFormView` and the Place
- * Order (checkout) step of `CartView`.
+ * Consumers: `LoginView`, `RegisterView`, `ReservationFormView`, the item
+ * detail's quantity control in `MenuItemView`, and the Place Order (checkout)
+ * step of `CartView`.
  *
  * @module client/src/components/FormControls
  */

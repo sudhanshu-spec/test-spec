@@ -529,9 +529,9 @@ function pressedFilterLabels(): readonly string[] {
 }
 
 /**
- * Picks the add control a screen actually acts on. The item detail renders two
- * buttons carrying this label — its own action and the inert card affordance
- * beside it — so a case has to name which one it clicks.
+ * Picks the add control a case should click. Callers pass every button carrying the
+ * label, so the helper still selects the single enabled control should a screen
+ * ever render a second, inert one.
  *
  * @param controls - Every button carrying the add-to-cart label.
  * @returns The one enabled control.
@@ -1266,8 +1266,7 @@ describe('menu item detail add to cart', () => {
     });
     await awaitAuthenticated(harness.probe);
 
-    // The article the item's own heading labels is the detail, not the compact
-    // card summary the same screen renders beside it.
+    // The article the item's own heading labels is the whole detail this screen renders.
     const detail = await screen.findByRole('article', { name: BURGER.name });
     const detailText = detail.textContent ?? '';
     expect(detailText).toContain(BURGER.name);
@@ -1280,8 +1279,8 @@ describe('menu item detail add to cart', () => {
 
     const addControls = within(detail).getAllByRole<HTMLButtonElement>('button', { name: ADD_TO_CART_LABEL });
     const addControl = enabledAddControl(addControls);
-    // The card's own affordance stays inert beside the detail's one real action.
-    expect(addControls.filter((control) => control !== addControl).every((control) => control.disabled)).toBe(true);
+    // The detail renders one add action, and this case clicks it.
+    expect(addControls).toHaveLength(1);
 
     await user.click(addControl);
 

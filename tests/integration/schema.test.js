@@ -42,13 +42,25 @@ const EXPECTED_TABLES = [
   'users'
 ];
 
-/** The four declared index access paths, with the table and columns each covers. */
+/** The three declared index access paths, with the table and columns each covers. */
 const EXPECTED_INDEXES = [
-  { name: 'idx_auth_tokens_token_hash', table: 'auth_tokens', columns: ['token_hash'] },
   { name: 'idx_menu_items_category', table: 'menu_items', columns: ['category_id'] },
-  { name: 'idx_orders_user_date', table: 'orders', columns: ['user_id', 'created_at'] },
-  { name: 'idx_reservations_user_date', table: 'reservations', columns: ['user_id', 'reservation_date'] }
+  { name: 'idx_order_line_items_order', table: 'order_line_items', columns: ['order_id'] },
+  { name: 'idx_orders_user_date', table: 'orders', columns: ['user_id', 'created_at'] }
 ];
+
+/**
+ * The two access paths that need no declared index because a UNIQUE constraint
+ * already builds one, keyed by the table that carries the constraint and valued
+ * by the columns its index covers. SQLite names these indexes itself
+ * (sqlite_autoindex_<table>_<n>) and that ordinal shifts as constraints are
+ * added, so they are found through the table's index list, never by name.
+ * @type {Readonly<Array<[string, string[]]>>}
+ */
+const CONSTRAINT_BACKED_INDEXES = Object.freeze([
+  ['auth_tokens', ['token_hash']],
+  ['reservations', ['user_id', 'reservation_date', 'reservation_time']]
+]);
 
 /** The four order statuses the orders CHECK constraint admits. */
 const ORDER_STATUSES = ['confirmed', 'preparing', 'completed', 'cancelled'];
@@ -275,7 +287,7 @@ describe('SQLite schema and seed', () => {
   });
 
   describe('indexes', () => {
-    test('declares exactly the four documented indexes', () => {
+    test('declares exactly the three documented indexes', () => {
       expect(indexNames()).toEqual(EXPECTED_INDEXES.map((index) => index.name).sort());
     });
 
@@ -290,6 +302,26 @@ describe('SQLite schema and seed', () => {
       expect(entry).toEqual({ tbl_name: expected.table });
       expect(columns).toEqual(expected.columns);
     });
+
+    test.each(CONSTRAINT_BACKED_INDEXES)(
+      'serves %s through the unique index its constraint builds, not a declared index',
+      (table, columns) => {
+        const constraintIndexes = db()
+          .pragma(`index_list(${table})`)
+          .filter((index) => index.unique === 1 && index.origin !== 'pk');
+
+        // The constraint's own index is the only access path left for this
+        // table now that schema.sql declares none over these columns, so its
+        // presence and its column list are what keep the lookup seekable.
+        expect(constraintIndexes).toHaveLength(1);
+
+        const constraintColumns = db()
+          .pragma(`index_info(${constraintIndexes[0].name})`)
+          .map((column) => column.name);
+
+        expect(constraintColumns).toEqual(columns);
+      }
+    );
   });
 
   describe('connection pragmas', () => {

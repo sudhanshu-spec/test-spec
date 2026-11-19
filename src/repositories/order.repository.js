@@ -1,12 +1,10 @@
 /**
- * @fileoverview Order Repository — the `orders` + `order_line_items` accessor, and the module
- * where atomicity, server-side pricing and the availability backstop live: createWithLines
- * writes an order and its lines in one immediate transaction, pricing every line from
- * menu_items inside it, so a caller-supplied price has no path in and a line that fails
- * leaves no order row. A line it cannot price comes back as a refusal value that
- * order.service.js raises as the documented 404/409 error — the domain vocabulary stays in
- * the service layer, and both reads bind the owner's user_id so another user's order is
- * indistinguishable from a missing one.
+ * @fileoverview Order Repository — the `orders` + `order_line_items` accessor, where atomicity,
+ * server-side pricing and the availability backstop live: createWithLines writes an order and
+ * its lines in one immediate transaction, pricing every line from menu_items inside it, so a
+ * caller price has no path in and a line that fails leaves no order row. A line it cannot price
+ * comes back as a refusal value order.service.js raises as the documented 404/409, and both
+ * reads bind the owner's user_id so another user's order is indistinguishable from a missing one.
  *
  * Exports: createWithLines, listByUser, findByIdForUser — SQL and row shapes; request
  * validation, the response projection and the domain errors belong to order.service.js.
@@ -18,10 +16,7 @@ const { randomUUID } = require('node:crypto');
 const { getDb } = require('../db');
 const menuItemRepository = require('./menu-item.repository');
 
-/**
- * Rolls the order transaction back when a line cannot be priced; createWithLines
- * returns its `refusal` to the caller, so this layer raises no domain error.
- */
+/** Rolls the transaction back, then returns its refusal to createWithLines: no domain error here. */
 class LineRefusal extends Error {
   constructor(reason, menuItemId, itemName) {
     super(`Cannot price this order: ${reason}.`);
@@ -35,42 +30,46 @@ const ORDER_COLUMNS = ['id', 'user_id', 'status', 'total_cents', 'notes', 'creat
 /** Status stored when the caller supplies none. @type {string} */
 const DEFAULT_STATUS = 'confirmed';
 
+/** SQLite binds at most 32766 variables per statement, so order ids are read in slices. */
+const ORDER_ID_BATCH_SIZE = 500;
+
 /**
- * Read the lines of the given orders in one batched, totally ordered statement.
+ * Read the lines of the given orders, in slices so the placeholder count stays bounded.
  * @param {Array<string>} orderIds - Ids of the orders whose lines are wanted.
  * @returns {Map<string, Array<Object>>} Line arrays by order id; an order with no lines is absent.
  */
 function readLinesByOrder(orderIds) {
-  if (orderIds.length === 0) {
-    return new Map();
-  }
-
-  // Only placeholder characters are generated; the ids are bound as parameters.
-  const rows = getDb()
-    .prepare(
-      'SELECT li.id, li.order_id, li.menu_item_id, mi.name, li.quantity, li.unit_price_cents, ' +
-        'li.line_total_cents FROM order_line_items li JOIN menu_items mi ON mi.id = li.menu_item_id ' +
-        `WHERE li.order_id IN (${orderIds.map(() => '?').join(', ')}) ORDER BY mi.name ASC, li.id ASC`
-    )
-    .all(...orderIds);
   const linesByOrder = new Map();
+  const db = getDb();
 
-  for (const row of rows) {
-    const lines = linesByOrder.get(row.order_id) ?? [];
-    const line = {
-      id: row.id, menu_item_id: row.menu_item_id, name: row.name, quantity: row.quantity,
-      unit_price_cents: row.unit_price_cents, line_total_cents: row.line_total_cents
-    };
-    lines.push(line);
-    linesByOrder.set(row.order_id, lines);
+  // Only placeholder characters are generated; every id is bound as a parameter.
+  for (let start = 0; start < orderIds.length; start += ORDER_ID_BATCH_SIZE) {
+    const batch = orderIds.slice(start, start + ORDER_ID_BATCH_SIZE);
+    const rows = db
+      .prepare(
+        'SELECT li.id, li.order_id, li.menu_item_id, mi.name, li.quantity, li.unit_price_cents, ' +
+          'li.line_total_cents FROM order_line_items li JOIN menu_items mi ON mi.id = li.menu_item_id ' +
+          `WHERE li.order_id IN (${batch.map(() => '?').join(', ')}) ORDER BY mi.name ASC, li.id ASC`
+      )
+      .all(...batch);
+
+    for (const row of rows) {
+      const lines = linesByOrder.get(row.order_id) ?? [];
+      const line = {
+        id: row.id, menu_item_id: row.menu_item_id, name: row.name, quantity: row.quantity,
+        unit_price_cents: row.unit_price_cents, line_total_cents: row.line_total_cents
+      };
+      lines.push(line);
+      linesByOrder.set(row.order_id, lines);
+    }
   }
 
   return linesByOrder;
 }
 
 /**
- * Assemble raw orders rows into the API's order shape, two queries in total however many
- * orders are assembled, and an order with no lines renders `[]`.
+ * Assemble raw orders rows into the API's order shape, reading their lines in bounded slices,
+ * and rendering `[]` for an order with no lines.
  * @param {Array<Object>} orderRows - Raw rows selected from orders.
  * @returns {Array<Object>} The contract's order shape per row, in the given order.
  */

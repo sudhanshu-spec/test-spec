@@ -262,7 +262,7 @@ function LoginProbe(): JSX.Element {
  * public `/menu` the visitor starts on, and the `/login` a reported 401 has to reach, each with its
  * own marker text.
  *
- * @param options - Whether the routed screen seeds a cart line.
+ * @param seedCart - Whether the routed screen seeds a cart line.
  */
 function renderShell({ seedCart = false }: { seedCart?: boolean } = {}): void {
   render(

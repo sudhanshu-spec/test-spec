@@ -78,7 +78,8 @@ function insert(token) {
  * revoked and expired rows come back too, because the caller has to tell an
  * unknown or revoked digest apart from one that was valid until its expires_at,
  * and it can only do that if revoked_at and expires_at arrive intact. The single
- * equality predicate is served by idx_auth_tokens_token_hash.
+ * equality predicate is served by the unique index SQLite creates for
+ * auth_tokens.token_hash.
  *
  * @param {string} tokenHash - 64-character hex SHA-256 digest of a presented token.
  * @returns {{id: string, user_id: string, token_hash: string, expires_at: string,

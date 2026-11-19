@@ -183,7 +183,7 @@ const LAST_SEATING = '21:30';
 /** How many days ahead the form's date control reaches, as the API's horizon states it. */
 const RESERVATION_HORIZON_DAYS = 90;
 
-/** Valid values for both sign-in form's courtesy checks. */
+/** Valid values for the sign-in form's two courtesy checks. */
 const VALID_EMAIL = 'ada@example.com';
 const VALID_PASSWORD = 'correct-horse-battery';
 
@@ -1502,10 +1502,9 @@ describe('ReservationFormView', () => {
     onlyCall(calls, RESERVATIONS_URL, 'POST');
   });
 
-  // Two submits dispatched in one task used to post twice: the rendered
-  // `disabled` attribute only arrives with the next render, so the duplicate was
-  // stopped by the database's unique constraint and its 409 went unshown. The
-  // guard the form now sets before its first await drops the second one.
+  // A ref set before the first await is what stops a second submit dispatched in
+  // the same task: the rendered `disabled` attribute only arrives with the next
+  // render, so two clicks in one task would both pass a state check and post.
   it('posts one booking when two submits are dispatched in the same task', async () => {
     const user = userEvent.setup();
     const calls = stubFetch(() => successReply(201, { reservation: CREATED_RESERVATION }));

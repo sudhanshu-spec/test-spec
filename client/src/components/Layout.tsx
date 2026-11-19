@@ -58,7 +58,7 @@ import { useSession } from '../state/session';
  * `active` class `NavLink` appends to a plain string `className`. `NavLink` keeps setting
  * `aria-current="page"` on the active link either way, which is the hook assistive technology reads.
  *
- * @param state - Whether this link points at the page currently rendered.
+ * @param isActive - Whether this link points at the page currently rendered.
  * @returns The base link class, plus the active modifier when it applies.
  */
 function navLinkClass({ isActive }: { isActive: boolean }): string {
@@ -103,8 +103,9 @@ export function Layout(): JSX.Element {
    * what makes the hand-over survive a screen that keeps committing: it stays true across the
    * later commits that replace the element the route change focused, and ends at the first press
    * anywhere or the first focus that lands somewhere else. It is deliberately not a one-shot armed
-   * only when a route change found no heading — the case that broke the first version of this
-   * hand-over, where a found heading was replaced a moment later and nothing was left to answer it.
+   * only when a route change found no heading: a heading found now can be replaced by a later
+   * commit, and this flag is what lets the observer below answer that replacement while the
+   * position is still the shell's.
    */
   const ownsFocus = useRef(false);
   /**

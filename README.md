@@ -11,7 +11,7 @@ Before running this application, ensure you have the following installed:
 | Requirement | Minimum Version | Recommended Version |
 |-------------|-----------------|---------------------|
 | Node.js | 20.19.x | 20.19.x (LTS) |
-| npm | 8.x | 10.8.x |
+| npm | 10.x | 10.8.x |
 
 The client's Vite 8 build requires Node.js `^20.19.0 || >=22.12.0` and Vitest 4 requires `^20.0.0 || ^22.0.0 || >=24.0.0`, both declared in `client/package-lock.json`, so Node.js 20.19.x is the minimum this project supports. The delivered verification ran on Node.js v22.23.5 with npm 11.21.0 — a runtime both engine ranges accept.
 
@@ -335,7 +335,7 @@ hao-backprop-test/
 │   ├── repositories/            # SQL: users, tokens, categories, items, orders, reservations
 │   └── db/
 │       ├── index.js             # Lazy memoised connection, pragmas, schema, closeDb()
-│       ├── schema.sql           # Seven tables and four indexes, applied idempotently
+│       ├── schema.sql           # Seven tables and three indexes, applied idempotently
 │       └── seed.js              # Menu reference data; also the `npm run seed` entry point
 ├── data/
 │   └── app.db                   # SQLite database, created on first use and gitignored
@@ -401,9 +401,11 @@ npm start
 
 **Production deployment:**
 ```bash
-HOST=0.0.0.0 PORT=80 NODE_ENV=production npm start
-# Binds to http://0.0.0.0:80/
+HOST=127.0.0.1 PORT=8080 NODE_ENV=production npm start
+# Binds to http://127.0.0.1:8080/
 ```
+
+The application speaks plain HTTP and sets no security headers of its own, so a production deployment puts it behind a TLS-terminating reverse proxy on the same host: the proxy answers `:443`, adds `Strict-Transport-Security`, `Content-Security-Policy` and `X-Content-Type-Options`, and forwards to the unprivileged loopback port above. That keeps the process off a privileged port and needs neither root nor certificate handling from the application.
 
 **Custom port:**
 ```bash
@@ -625,7 +627,8 @@ PORT=3001 npm start
 **Permission denied on port 80:**
 ```bash
 # Error: listen EACCES: permission denied
-# Solution: Use a port above 1024 or run with elevated privileges
+# Solution: bind a port above 1024 — the process needs no elevated privileges; in
+# production the TLS-terminating proxy owns :80 and :443 and forwards to this port
 PORT=8080 npm start
 ```
 
