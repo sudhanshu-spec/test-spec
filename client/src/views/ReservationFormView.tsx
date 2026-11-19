@@ -18,10 +18,11 @@
  * - A booking is never priced, cancelled or edited: no money is formatted and no
  *   cancel, delete or update control exists, because the API has no such route.
  *
- * The seating slots are a fixed convenience matching the documented default
- * service window (open 17:00, close 22:00, last seating one slot earlier). They
- * are not a configuration read: whatever the server's window, it decides, and the
- * time a user picks is sent as nothing but the chosen `HH:MM` string.
+ * The seating time is entered as `HH:MM` through the shared time control, not
+ * picked from a list this form owns, and is sent as nothing but that string. The
+ * form therefore checks presence and shape only: the service window, the past,
+ * the horizon, the party cap and uniqueness are the API's checkpoints, and each
+ * verdict arrives in `details` rendered against the field it names.
  *
  * @module client/src/views/ReservationFormView
  */
@@ -34,33 +35,40 @@ import { ApiError } from '../api/client';
 import type { ApiFieldDetail } from '../api/client';
 import { createReservation } from '../api/reservations';
 import { RESERVATION_ISSUES } from '../api/types';
-import { DateField, FieldError, FormMessage, NumberField, TextField } from '../components/FormControls';
+import { DateField, FormMessage, NumberField, TextField, TimeField } from '../components/FormControls';
 
-/** Length of one seating slot in minutes; the API accepts times on the same step. */
+/** Length of one seating slot in minutes; the server places seating on the same step. */
 const SLOT_MINUTES = 30;
-/** Minutes from midnight at which the documented window opens (17:00). */
+/** Minutes from midnight at which the documented default window opens (17:00). */
 const SERVICE_OPEN_MINUTES = 17 * 60;
-/** Minutes from midnight at which the documented window closes (22:00). */
+/** Minutes from midnight at which the documented default window closes (22:00). */
 const SERVICE_CLOSE_MINUTES = 22 * 60;
-/** Last seating: one slot before closing, which is what the API enforces (21:30). */
+/** Last seating in the documented default window: one slot before closing (21:30). */
 const LAST_SEATING_MINUTES = SERVICE_CLOSE_MINUTES - SLOT_MINUTES;
 
-/** Smallest party the booking form offers. */
+/** Smallest party the form's hint names; the server owns the cap it enforces. */
 const MIN_PARTY_SIZE = 1;
-/** Largest party the booking form offers, matching the documented maximum. */
+/** Largest party the form's hint names, which is the documented default cap. */
 const MAX_PARTY_SIZE = 12;
 /** Party size the form starts at, so the common case needs no edit. */
 const DEFAULT_PARTY_SIZE = '2';
 
 /** Shape of a date as the API's `reservation_date` field states it. */
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+/**
+ * Shape of a time as the API's `reservation_time` field states it: `HH:MM` on a
+ * 24-hour clock, which is the pattern the server's own shape checkpoint applies.
+ * Only the shape is the client's business; the window the value must fall in
+ * belongs to the server.
+ */
+const TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
 const DATE_REQUIRED_MESSAGE = 'Choose the date of your booking.';
 const DATE_INVALID_MESSAGE = 'Enter a real calendar date, for example 2031-05-14.';
 const TIME_REQUIRED_MESSAGE = 'Choose a seating time.';
-const TIME_INVALID_MESSAGE = 'Choose one of the seating times we offer.';
+const TIME_INVALID_MESSAGE = 'Enter a seating time as HH:MM, for example 19:30.';
 const PARTY_REQUIRED_MESSAGE = 'Enter the number of guests.';
-const PARTY_INVALID_MESSAGE = `Enter a whole number of guests between ${MIN_PARTY_SIZE} and ${MAX_PARTY_SIZE}.`;
+const PARTY_INVALID_MESSAGE = 'Enter a whole number of guests.';
 const UNEXPECTED_FAILURE_MESSAGE = 'Something went wrong while booking your table. Please try again.';
 const SUBMIT_LABEL = 'Reserve a table';
 const SUBMITTING_MESSAGE = 'Booking your table…';
@@ -72,16 +80,10 @@ function formatMinutes(minutes: number): string {
     return `${String(hours).padStart(2, '0')}:${String(remainder).padStart(2, '0')}`;
 }
 
-/** Wall-clock bounds of the offered window, formatted for the messages and hints. */
+/** Wall-clock bounds of the documented default window, formatted for the messages and hints. */
 const SERVICE_OPEN_TIME = formatMinutes(SERVICE_OPEN_MINUTES);
 const LAST_SEATING_TIME = formatMinutes(LAST_SEATING_MINUTES);
 const SERVICE_CLOSE_TIME = formatMinutes(SERVICE_CLOSE_MINUTES);
-
-/** Every seating time the form offers: 17:00 through 21:30 in 30-minute steps. */
-const SEATING_SLOTS: readonly string[] = Array.from(
-    { length: (LAST_SEATING_MINUTES - SERVICE_OPEN_MINUTES) / SLOT_MINUTES + 1 },
-    (_unused, index) => formatMinutes(SERVICE_OPEN_MINUTES + index * SLOT_MINUTES),
-);
 
 /**
  * Message for a booking whose date and time have already passed — the server's
@@ -128,11 +130,6 @@ function isCalendarDate(value: string): boolean {
     return !Number.isNaN(parsed.getTime()) && toDateInputValue(parsed) === value;
 }
 
-/** `@returns` Whether the value is a whole party size the form offers. */
-function isPartySize(value: number): boolean {
-    return Number.isInteger(value) && value >= MIN_PARTY_SIZE && value <= MAX_PARTY_SIZE;
-}
-
 /**
  * The text a checkpoint's failure shows against its field.
  *
@@ -148,64 +145,6 @@ function messageForIssue(detail: ApiFieldDetail, serverMessage: string): string 
         return OUTSIDE_SERVICE_HOURS_MESSAGE;
     }
     return serverMessage;
-}
-
-/** Props of the local {@link SelectField}: one field plus the options it offers. */
-interface SelectFieldProps {
-    id: string;
-    label: string;
-    options: readonly string[];
-    value: string;
-    hint?: string;
-    required?: boolean;
-    disabled?: boolean;
-    error?: string | null;
-    onChange(event: ChangeEvent<HTMLSelectElement>): void;
-}
-
-/**
- * Renders the seating-time select.
- *
- * `FormControls` exports the labelled inputs this form needs and no select, so
- * the one control it lacks is built here on the same markup: the shared `.field`
- * wrapper, a real `<label htmlFor>`, `.control` for the 44x44px touch target, an
- * optional hint, and the failure announced through `aria-describedby`.
- *
- * @param props - The field's label, options, value and failure.
- * @returns The labelled select field.
- */
-function SelectField({ id, label, options, value, hint, required, disabled, error, onChange }: SelectFieldProps): JSX.Element {
-    const hasError = Boolean(error);
-    const hintId = hint ? `${id}-hint` : undefined;
-    const errorId = hasError ? `${id}-error` : undefined;
-    const describedBy = [hintId, errorId].filter((entry): entry is string => entry !== undefined).join(' ');
-
-    return (
-        <div className="field">
-            <label className="field__label" htmlFor={id}>
-                {label}
-                {required ? <span className="visually-hidden"> (required)</span> : null}
-            </label>
-            <select
-                id={id}
-                name={id}
-                className="control control--select"
-                value={value}
-                required={required}
-                disabled={disabled}
-                aria-invalid={hasError}
-                aria-describedby={describedBy === '' ? undefined : describedBy}
-                onChange={onChange}
-            >
-                <option value="">Select a time</option>
-                {options.map((slot) => (
-                    <option key={slot} value={slot}>{slot}</option>
-                ))}
-            </select>
-            {hint ? <p className="field__hint" id={`${id}-hint`}>{hint}</p> : null}
-            <FieldError id={`${id}-error`} message={error ?? null} />
-        </div>
-    );
 }
 
 /**
@@ -291,9 +230,10 @@ export function ReservationFormView(): JSX.Element {
     }
 
     /**
-     * The courtesy checks: presence, the shape of the date, one of the offered
-     * slots and a whole party size in range. Deliberately silent on the past, the
-     * window, the horizon and uniqueness, which the API decides.
+     * The shape checks of the API's first checkpoint and nothing else: presence,
+     * a real calendar date, a seating time written as `HH:MM`, and a whole number
+     * of guests. Deliberately silent on the past, the window, the party cap, the
+     * horizon and uniqueness, which the API decides.
      *
      * @returns A message per offending field; empty when every value looks usable.
      */
@@ -309,14 +249,14 @@ export function ReservationFormView(): JSX.Element {
 
         if (reservationTime === '') {
             found.reservation_time = TIME_REQUIRED_MESSAGE;
-        } else if (!SEATING_SLOTS.includes(reservationTime)) {
+        } else if (!TIME_PATTERN.test(reservationTime)) {
             found.reservation_time = TIME_INVALID_MESSAGE;
         }
 
         const size = partySize.trim();
         if (size === '') {
             found.party_size = PARTY_REQUIRED_MESSAGE;
-        } else if (!isPartySize(Number(size))) {
+        } else if (!Number.isInteger(Number(size))) {
             found.party_size = PARTY_INVALID_MESSAGE;
         }
 
@@ -391,15 +331,14 @@ export function ReservationFormView(): JSX.Element {
                     }}
                 />
 
-                <SelectField
+                <TimeField
                     id="reservation-time"
                     label="Seating time"
                     required
                     hint={`Seatings run from ${SERVICE_OPEN_TIME} to ${LAST_SEATING_TIME}.`}
-                    options={SEATING_SLOTS}
                     value={reservationTime}
                     error={messages.reservation_time ?? null}
-                    onChange={(event: ChangeEvent<HTMLSelectElement>) => {
+                    onChange={(event: ChangeEvent<HTMLInputElement>) => {
                         setReservationTime(event.target.value);
                         clearFailure('reservation_time');
                     }}

@@ -29,7 +29,7 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import { ApiError } from '../api/client';
-import { formatCents } from '../api/format';
+import { formatCents, formatTimestamp } from '../api/format';
 import { getOrder, listOrders } from '../api/orders';
 import type { Order, OrderStatus } from '../api/types';
 
@@ -99,33 +99,6 @@ function toFailure(error: unknown): Failure {
     }
 
     return { code: 'INTERNAL_ERROR', message: 'The order could not be loaded.' };
-}
-
-/**
- * Renders the API's `created_at` as a local date and time for a human reader.
- *
- * The server writes an ISO-8601 UTC instant with a trailing `Z`, so `Date` parses
- * it unambiguously; showing it in the reader's own timezone is the only
- * conversion performed. A value that does not parse is shown exactly as the API
- * sent it instead of the words `Invalid Date`.
- *
- * @param value - The timestamp string the API returned.
- * @returns The formatted timestamp, or the original string when unparseable.
- */
-function formatTimestamp(value: string): string {
-    const parsed = new Date(value);
-
-    if (Number.isNaN(parsed.getTime())) {
-        return value;
-    }
-
-    return parsed.toLocaleString(undefined, {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-    });
 }
 
 /**

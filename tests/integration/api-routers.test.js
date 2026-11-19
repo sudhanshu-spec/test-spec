@@ -1,17 +1,19 @@
 /**
- * @fileoverview Integration tests for the three API routers that
- * src/app.js does not mount yet — src/routes/api/menu.routes.js,
- * src/routes/api/auth.routes.js and src/routes/api/reservations.routes.js —
+ * @fileoverview Integration tests for the four API domain routers —
+ * src/routes/api/menu.routes.js, src/routes/api/auth.routes.js,
+ * src/routes/api/reservations.routes.js and src/routes/api/orders.routes.js —
  * together with the order service behind the order endpoints,
  * src/services/order.service.js.
  *
  * The routers are exercised over a real Express pipeline assembled in this suite
  * in the order the application registers it: the JSON body parser, the tutorial
- * router at '/', the three API mounts under '/api', then the '/api'-scoped
+ * router at '/', the four API mounts under '/api', then the '/api'-scoped
  * not-found and error-handler middleware. Supertest drives the pipeline, so no
  * port is bound and nothing collides with another suite. The order service is
  * driven through createOrderService over injected doubles, and its clock is
- * injected too, so its rules are asserted without HTTP or a database.
+ * injected too, so its rules are asserted without HTTP or a database. The orders
+ * router keeps its router-level guard, so its line-rule vocabulary is asserted
+ * through the 400 responses a rejected request actually receives.
  *
  * The database is the suite's own file under the operating system's temporary
  * directory: DB_FILE is set before jest.resetModules() and before any module
@@ -90,6 +92,7 @@ function loadApplication(file) {
   const menuRoutes = require('../../src/routes/api/menu.routes');
   const authRoutes = require('../../src/routes/api/auth.routes');
   const reservationsRoutes = require('../../src/routes/api/reservations.routes');
+  const ordersRoutes = require('../../src/routes/api/orders.routes');
   const { notFound } = require('../../src/middleware/not-found');
   const { errorHandler } = require('../../src/middleware/error-handler');
   const { createOrderService: factory } = require('../../src/services/order.service');
@@ -105,6 +108,7 @@ function loadApplication(file) {
   application.use('/api', menuRoutes);
   application.use('/api/auth', authRoutes);
   application.use('/api/reservations', reservationsRoutes);
+  application.use('/api/orders', ordersRoutes);
   application.use('/api', notFound);
   application.use('/api', errorHandler);
 
@@ -180,25 +184,22 @@ function captureError(operation) {
 }
 
 /**
- * The item rows the order-service doubles answer findManyByIds with.
- * @type {{id: string, name: string, price_cents: number, is_available: number}}
+ * The first menu item an order request in this suite names, and the name the stored
+ * order's first line reports.
+ * @type {{id: string, name: string}}
  */
 const ITEM_A = {
   id: '11111111-1111-4111-8111-111111111111',
-  name: 'Classic Cheeseburger',
-  price_cents: 899,
-  is_available: 1
+  name: 'Classic Cheeseburger'
 };
 
 /**
- * A second orderable item row, priced differently from {@link ITEM_A}.
- * @type {{id: string, name: string, price_cents: number, is_available: number}}
+ * A second menu item a request names, distinct from {@link ITEM_A}.
+ * @type {{id: string, name: string}}
  */
 const ITEM_B = {
   id: '22222222-2222-4222-8222-222222222222',
-  name: 'Skin-On Fries',
-  price_cents: 349,
-  is_available: 1
+  name: 'Skin-On Fries'
 };
 
 /** Id of the order the order-service doubles report as stored. */
@@ -237,23 +238,20 @@ function storedOrder(overrides = {}) {
 }
 
 /**
- * Builds an order service over fresh doubles, so each test starts from a service
- * no earlier test's calls reached.
- * @param {Object} [options] - Fixture options.
- * @param {Array<Object>} [options.itemRows] - Rows findManyByIds answers with.
- * @returns {{service: Object, orders: Object, items: Object}} The service and the
- *   two doubles it was built over.
+ * Builds an order service over fresh order-store doubles, so each test starts from
+ * a service no earlier test's calls reached.
+ * @returns {{service: Object, orders: Object}} The service and the store it was
+ *   built over.
  */
-function createServiceFixture({ itemRows = [ITEM_A, ITEM_B] } = {}) {
+function createServiceFixture() {
   const orders = {
     createWithLines: jest.fn(() => storedOrder()),
     listByUser: jest.fn(() => []),
     findByIdForUser: jest.fn(() => null)
   };
-  const items = { findManyByIds: jest.fn(() => itemRows) };
-  const service = createOrderService({ orders, items, now: () => FIXED_NOW });
+  const service = createOrderService({ orders, now: () => FIXED_NOW });
 
-  return { service, orders, items };
+  return { service, orders };
 }
 
 describe('API routers over an in-process Express pipeline', () => {
@@ -745,6 +743,98 @@ describe('API routers over an in-process Express pipeline', () => {
     });
   });
 
+  describe('orders router mounted at /api/orders', () => {
+    /** The three issue strings the order contract documents for a malformed line set. */
+    const DOCUMENTED_ISSUES = [
+      'must_be_a_non_empty_array',
+      'invalid_uuid',
+      'must_be_an_integer_between_1_and_20'
+    ];
+
+    /** The field paths those issues are reported against: the value, then each line. */
+    const DOCUMENTED_FIELDS = [
+      'items',
+      'items[0].menu_item_id',
+      'items[0].quantity',
+      'items[1].menu_item_id',
+      'items[1].quantity'
+    ];
+
+    /**
+     * Malformed `items` values, each one a documented line rule, with the label the
+     * case reports: the whole value unusable first, then each field of a line.
+     * @type {Array<[string, Object]>}
+     */
+    const MALFORMED_ORDER_BODIES = [
+      ['no items key', {}],
+      ['an empty line set', { items: [] }],
+      ['a line set that is not an array', { items: 'one burger' }],
+      ['a line that is not an object', { items: [null] }],
+      ['a malformed id with no usable quantity', { items: [{ menu_item_id: 'abc', quantity: 0 }] }],
+      ['a quantity past the limit', { items: [{ menu_item_id: ITEM_A.id, quantity: 21 }] }],
+      ['a fractional quantity', { items: [{ menu_item_id: ITEM_A.id, quantity: 1.5 }] }],
+      [
+        'a valid line followed by two offending fields',
+        {
+          items: [
+            { menu_item_id: ITEM_A.id, quantity: 1 },
+            { menu_item_id: 'abc', quantity: 99 }
+          ]
+        }
+      ]
+    ];
+
+    /** A token from a real account, so the router's guard admits the requests. */
+    let token;
+
+    beforeAll(async () => {
+      token = (await registerAccount()).response.body.token;
+    });
+
+    /**
+     * Posts a create-order body as the registered caller.
+     * @param {Object} body - Request body to send.
+     * @returns {Promise<SupertestResponse>} The response.
+     */
+    const postOrderBody = (body) =>
+      request(app).post('/api/orders').set('Authorization', `Bearer ${token}`).send(body);
+
+    test.each(MALFORMED_ORDER_BODIES)(
+      'answers the single line-rule vocabulary for %s',
+      async (_label, body) => {
+        const { collectLineDetails } = require('../../src/services/order.service');
+        const response = await postOrderBody(body).expect(400);
+
+        expect(response.body.error.code).toBe('VALIDATION_ERROR');
+        // One rule set serves both layers, so the details the router raises are
+        // exactly the ones the service's own collector produces for that value.
+        expect(response.body.error.details).toEqual(collectLineDetails(body.items));
+        expect(response.body.error.details.length).toBeGreaterThan(0);
+        response.body.error.details.forEach((detail) => {
+          expect(DOCUMENTED_ISSUES).toContain(detail.issue);
+          expect(DOCUMENTED_FIELDS).toContain(detail.field);
+        });
+      }
+    );
+
+    test('reports every documented line issue and field path across those rejections', async () => {
+      const issues = new Set();
+      const fields = new Set();
+
+      for (const [, body] of MALFORMED_ORDER_BODIES) {
+        const response = await postOrderBody(body).expect(400);
+
+        response.body.error.details.forEach((detail) => {
+          issues.add(detail.issue);
+          fields.add(detail.field);
+        });
+      }
+
+      expect([...issues].sort()).toEqual([...DOCUMENTED_ISSUES].sort());
+      expect([...fields].sort()).toEqual([...DOCUMENTED_FIELDS].sort());
+    });
+  });
+
   describe('API-scoped terminal handlers', () => {
     test('GET on an unknown path under /api answers 404 ROUTE_NOT_FOUND', async () => {
       const response = await request(app).get('/api/unknown-path').expect(404);
@@ -769,8 +859,8 @@ describe('API routers over an in-process Express pipeline', () => {
   });
 
   describe('order service with injected doubles', () => {
-    test('prices the order from the item rows and returns the projection', () => {
-      const { service, orders, items } = createServiceFixture();
+    test('returns the projection of the order the store wrote', () => {
+      const { service, orders } = createServiceFixture();
       orders.createWithLines.mockReturnValue(storedOrder());
 
       const order = service.createOrder({
@@ -780,8 +870,6 @@ describe('API routers over an in-process Express pipeline', () => {
           { menu_item_id: ITEM_B.id, quantity: 1 }
         ]
       });
-
-      expect(items.findManyByIds).toHaveBeenCalledWith([ITEM_A.id, ITEM_B.id]);
 
       // Only the two accepted fields travel, so the client's price has no path in.
       expect(orders.createWithLines).toHaveBeenCalledWith({
@@ -816,8 +904,8 @@ describe('API routers over an in-process Express pipeline', () => {
       });
     });
 
-    test('looks the distinct item ids up once when a line repeats an item', () => {
-      const { service, orders, items } = createServiceFixture();
+    test('forwards every accepted line of a repeated item in one store call', () => {
+      const { service, orders } = createServiceFixture();
 
       service.createOrder({
         userId: USER_ID,
@@ -827,7 +915,9 @@ describe('API routers over an in-process Express pipeline', () => {
         ]
       });
 
-      expect(items.findManyByIds).toHaveBeenCalledWith([ITEM_A.id]);
+      // The store's single in-transaction read prices both lines, so the service
+      // enters it once and adds no lookup of its own.
+      expect(orders.createWithLines).toHaveBeenCalledTimes(1);
       expect(orders.createWithLines.mock.calls[0][0].lines).toEqual([
         { menuItemId: ITEM_A.id, quantity: 1 },
         { menuItemId: ITEM_A.id, quantity: 2 }
@@ -847,8 +937,7 @@ describe('API routers over an in-process Express pipeline', () => {
 
     test('reads the system clock when no clock is injected', () => {
       const orders = { createWithLines: jest.fn(() => storedOrder()) };
-      const items = { findManyByIds: jest.fn(() => [ITEM_A]) };
-      const service = createOrderService({ orders, items });
+      const service = createOrderService({ orders });
 
       service.createOrder({ userId: USER_ID, items: [{ menu_item_id: ITEM_A.id, quantity: 1 }] });
 
@@ -857,9 +946,14 @@ describe('API routers over an in-process Express pipeline', () => {
       expect(Math.abs(Date.now() - Date.parse(createdAt))).toBeLessThan(60000);
     });
 
-    test('answers 409 MENU_ITEM_UNAVAILABLE for an item the menu switched off', () => {
-      const { service, orders } = createServiceFixture({
-        itemRows: [{ ...ITEM_B, is_available: 0 }]
+    test('propagates the 409 MENU_ITEM_UNAVAILABLE the store raises for an item it cannot price', () => {
+      const { service, orders } = createServiceFixture();
+      const failure = new AppError(
+        'MENU_ITEM_UNAVAILABLE',
+        `The menu item "${ITEM_B.name}" is not currently available.`
+      );
+      orders.createWithLines.mockImplementation(() => {
+        throw failure;
       });
 
       const error = captureError(() => service.createOrder({
@@ -867,42 +961,34 @@ describe('API routers over an in-process Express pipeline', () => {
         items: [{ menu_item_id: ITEM_B.id, quantity: 1 }]
       }));
 
+      // The refusal comes from the transaction's own read; the service forwards it
+      // rather than deciding again, so code and status reach the client intact.
+      expect(error).toBe(failure);
       expect(error).toBeInstanceOf(AppError);
       expect(error.code).toBe('MENU_ITEM_UNAVAILABLE');
       expect(error.status).toBe(409);
       expect(error.message).toContain(ITEM_B.name);
-      expect(orders.createWithLines).not.toHaveBeenCalled();
+      expect(error.details).toBeUndefined();
     });
 
-    test('answers 404 MENU_ITEM_NOT_FOUND for an id no item carries', () => {
-      const { service, orders } = createServiceFixture({ itemRows: [ITEM_A] });
+    test('propagates the 404 MENU_ITEM_NOT_FOUND the store raises for an id no item carries', () => {
+      const { service, orders } = createServiceFixture();
+      const failure = new AppError('MENU_ITEM_NOT_FOUND', `No menu item matches the id "${ITEM_B.id}".`);
+      orders.createWithLines.mockImplementation(() => {
+        throw failure;
+      });
 
       const error = captureError(() => service.createOrder({
         userId: USER_ID,
         items: [{ menu_item_id: ITEM_B.id, quantity: 1 }]
       }));
 
+      expect(error).toBe(failure);
       expect(error).toBeInstanceOf(AppError);
       expect(error.code).toBe('MENU_ITEM_NOT_FOUND');
       expect(error.status).toBe(404);
       expect(error.message).toContain(ITEM_B.id);
-      expect(orders.createWithLines).not.toHaveBeenCalled();
-    });
-
-    test('reports the unknown item, not the unavailable one, when a request names both', () => {
-      const { service } = createServiceFixture({
-        itemRows: [{ ...ITEM_A, is_available: 0 }]
-      });
-
-      const error = captureError(() => service.createOrder({
-        userId: USER_ID,
-        items: [
-          { menu_item_id: ITEM_A.id, quantity: 1 },
-          { menu_item_id: ITEM_B.id, quantity: 1 }
-        ]
-      }));
-
-      expect(error.code).toBe('MENU_ITEM_NOT_FOUND');
+      expect(error.details).toBeUndefined();
     });
 
     test.each([
@@ -924,7 +1010,7 @@ describe('API routers over an in-process Express pipeline', () => {
         { field: 'items[0].quantity', issue: 'must_be_an_integer_between_1_and_20' }
       ]]
     ])('answers 400 VALIDATION_ERROR for %s', (label, requestedLines, details) => {
-      const { service, orders, items } = createServiceFixture();
+      const { service, orders } = createServiceFixture();
 
       const error = captureError(() => service.createOrder({ userId: USER_ID, items: requestedLines }));
 
@@ -932,7 +1018,6 @@ describe('API routers over an in-process Express pipeline', () => {
       expect(error.code).toBe('VALIDATION_ERROR');
       expect(error.status).toBe(400);
       expect(error.details).toEqual(details);
-      expect(items.findManyByIds).not.toHaveBeenCalled();
       expect(orders.createWithLines).not.toHaveBeenCalled();
     });
 

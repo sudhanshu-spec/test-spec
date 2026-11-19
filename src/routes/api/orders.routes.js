@@ -18,10 +18,11 @@
  * A placed order carries only `menu_item_id` and `quantity` per line plus an
  * optional `notes`. Each line is projected onto those two fields here, so a
  * client-supplied amount has no path to the service and every monetary figure is
- * derived from the stored menu item inside the order transaction. The line-level
- * field paths and issue strings raised here are the ones
- * src/services/order.service.js uses for its own line failures, so a client sees
- * one shape whichever layer caught the fault.
+ * derived from the stored menu item inside the order transaction. The line rules
+ * are not restated here: the field paths, the issue strings, the 1-20 quantity
+ * range and the UUID shape all come from src/services/order.service.js, their
+ * single owner, so a client sees one vocabulary whichever layer caught the fault.
+ * That same UUID shape is what guards the order id GET '/:id' accepts.
  *
  * A rejection is forwarded by Express 5 to the `/api`-scoped error handler, the
  * only writer of the envelope; no handler here catches one.
@@ -30,6 +31,8 @@
  * - POST '/' returns 201 {order} as JSON
  * - GET '/' returns 200 {orders} as JSON, the caller's own orders newest first
  * - GET '/:id' returns 200 {order} as JSON, or 400 VALIDATION_ERROR when the id is not a UUID
+ * - the `lines` of the order POST '/' and GET '/:id' return are ordered by menu
+ *   item name, ties broken by line id, so a repeated read repeats their order
  *
  * @module src/routes/api/orders.routes
  */
@@ -37,58 +40,13 @@
 const express = require('express');
 
 const { AppError } = require('../../errors');
-const { orderService } = require('../../services/order.service');
+const { collectLineDetails, orderService, UUID_PATTERN } = require('../../services/order.service');
 const { authenticate } = require('../../middleware/authenticate');
-
-/**
- * Shape of a menu item id an order line must name, and of the id GET '/:id'
- * accepts. Case-insensitive because a UUID is hex; the value then reaches the
- * service exactly as the client wrote it, since the ids issued are lowercase.
- * @type {RegExp}
- */
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-/** Smallest quantity one order line may carry. @type {number} */
-const MIN_QUANTITY = 1;
-
-/** Largest quantity one order line may carry. @type {number} */
-const MAX_QUANTITY = 20;
 
 const router = express.Router();
 
 /** Guard first: no path can be added to this router without the Bearer token. */
 router.use(authenticate);
-
-/**
- * Collect every line-level failure of an `items` value in one pass, so a form can
- * show them all: the whole value first, then each line's id and quantity in
- * request order. A line that is not an object contributes both details, because
- * neither field it should carry is usable.
- *
- * @param {*} requestedItems - Raw `items` value from the request body.
- * @returns {Array<{field: string, issue: string}>} One detail per offending field.
- */
-function collectItemDetails(requestedItems) {
-  if (!Array.isArray(requestedItems) || requestedItems.length === 0) {
-    return [{ field: 'items', issue: 'must_be_a_non_empty_array' }];
-  }
-
-  const details = [];
-
-  requestedItems.forEach((line, index) => {
-    const { menu_item_id: menuItemId, quantity } = line ?? {};
-
-    if (typeof menuItemId !== 'string' || !UUID_PATTERN.test(menuItemId)) {
-      details.push({ field: `items[${index}].menu_item_id`, issue: 'invalid_uuid' });
-    }
-
-    if (!Number.isInteger(quantity) || quantity < MIN_QUANTITY || quantity > MAX_QUANTITY) {
-      details.push({ field: `items[${index}].quantity`, issue: 'must_be_an_integer_between_1_and_20' });
-    }
-  });
-
-  return details;
-}
 
 /**
  * Validate a create-order body and project it onto the accepted request shape.
@@ -104,7 +62,7 @@ function collectItemDetails(requestedItems) {
  * @throws {AppError} VALIDATION_ERROR (400) naming every offending field.
  */
 function validateOrderRequest(body) {
-  const details = collectItemDetails(body.items);
+  const details = collectLineDetails(body.items);
 
   if (details.length > 0) {
     throw new AppError('VALIDATION_ERROR', 'The order request is not valid.', details);

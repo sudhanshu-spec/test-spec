@@ -3,11 +3,11 @@
  *
  * The client's single source of identity: the opaque token, the account it belongs to, the status
  * between them, and the one seam into `client/src/api/client.ts` — the token getter that stamps
- * every request's Bearer header and the handler that ends the session when the API answers 401.
- * Only the token is persisted, in `localStorage` under the key declared below, opaque and never
- * decoded; the account is the API's secret-free projection, held in memory, so no password or hash
- * is stored or logged here. Routing, data fetching, cart state and view rendering are absent by
- * design: this provider mounts above the router, so `ProtectedRoute` acts on `status`.
+ * every request's Bearer header and the handler that ends a 401'd session and counts it. Only the
+ * token is persisted, in `localStorage` under the key declared below, opaque and never decoded; the
+ * account is the API's secret-free projection, held in memory, so no password or hash is stored or
+ * logged here. Routing, data fetching, cart state and view rendering are absent by design: this
+ * provider mounts above the router, so `ProtectedRoute` acts on `status`, the shell on the count.
  *
  * @module client/src/state/session
  */
@@ -72,21 +72,23 @@ export interface SessionValue {
   status: SessionStatus;
   login(auth: AuthResponse): void;
   logout(): Promise<void>;
+  /** 401s the transport has reported since mount: the signal a router-level consumer navigates on. */
+  unauthorizedCount: number;
 }
 
 /** Null outside a provider, which makes {@link useSession} fail loudly rather than silently. */
 const SessionContext = createContext<SessionValue | null>(null);
 
 /**
- * Holds the session for the whole client and wires it to the API transport. A stored token is
- * verified once on mount through `GET /api/auth/session`, so a reload restores the session; every
- * later transition comes from `login`, `logout` or a 401.
+ * Holds the session for the whole client and wires it to the API transport: a stored token is
+ * verified once on mount through `GET /api/auth/session`; `login`, `logout` and a 401 follow.
  */
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(readStoredToken);
   const [user, setUser] = useState<User | null>(null);
   // Resolved on the first render only: cleared storage starts anonymous, a stored token verifies.
   const [status, setStatus] = useState<SessionStatus>(token ? 'loading' : 'anonymous');
+  const [unauthorizedCount, setUnauthorizedCount] = useState(0);
 
   const tokenRef = useRef<string | null>(token);
   const restoredRef = useRef(false);
@@ -102,13 +104,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const getToken = useCallback((): string | null => tokenRef.current, []);
-  const onUnauthorized = useCallback(() => clearSession(), [clearSession]);
+  const onUnauthorized = useCallback(() => {
+    clearSession();
+    setUnauthorizedCount((count) => count + 1);
+  }, [clearSession]);
 
   // The sole registrant of the transport hooks; both callbacks are stable, so they register once
-  // and come off on unmount. `onUnauthorized` touches no router API on purpose: this provider
-  // mounts above the router, where none is available — the cleared status sends the visitor back
-  // to the login screen. This effect must stay ahead of the restore below: effects run in
-  // declaration order, and the restore's request carries no Bearer header until the getter exists.
+  // and come off on unmount. This provider mounts above the router and owns no router API: it
+  // records the unauthorized signal, and the shell below the router performs the documented
+  // `replace` navigation to /login. This effect must stay ahead of the restore below — effects run
+  // in declaration order, and the restore carries no Bearer header until the getter exists.
   useEffect(() => {
     configureApiClient({ getToken, onUnauthorized });
     return () => configureApiClient(null);
@@ -152,9 +157,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         // One total failure path, whatever was rejected: the documented token codes
         // (`TOKEN_REQUIRED`, `TOKEN_INVALID`, `TOKEN_EXPIRED`), status 0 for an unreachable
         // server, or anything unexpected. Clearing unconditionally is deliberate — a 401 has
-        // normally cleared the session through `onUnauthorized` already and repeating that is
-        // harmless, whereas gating on the code would leave 'loading' standing when it has not. An
-        // unverified token is not trusted, and 'loading' must never be the state left behind.
+        // normally cleared the session, and gating would trust an unverified token, leaving 'loading'.
         clearSession();
       });
 
@@ -177,17 +180,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [clearSession]);
 
   const value = useMemo<SessionValue>(
-    () => ({ token, user, status, login, logout }),
-    [token, user, status, login, logout],
+    () => ({ token, user, status, unauthorizedCount, login, logout }),
+    [token, user, status, unauthorizedCount, login, logout],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }
 
 /**
- * Reads the session of the nearest {@link SessionProvider}.
- *
- * @returns The current token, account and status, plus the login and logout transitions.
+ * @returns The session of the nearest {@link SessionProvider}, the unauthorized count included.
  * @throws {Error} Outside a provider, where an always-anonymous screen would hide a real bug.
  */
 export function useSession(): SessionValue {

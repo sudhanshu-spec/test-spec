@@ -39,7 +39,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ApiError } from '../api/client';
 import type { ApiFieldDetail } from '../api/client';
 import { register } from '../api/auth';
-import { FormMessage, PasswordField, TextField } from '../components/FormControls';
+import { EmailField, FormMessage, PasswordField, TextField } from '../components/FormControls';
 import { useSession } from '../state/session';
 
 /** Longest accepted name, in characters. Matches the registration endpoint. */
@@ -298,14 +298,10 @@ export function RegisterView(): JSX.Element {
                     }}
                 />
 
-                {/* `TextField` fixes its input type and the shared control omits the
-                    `type` prop, so the address field states its own contract through
-                    `inputMode` instead: a soft keyboard offers the address layout. */}
-                <TextField
+                <EmailField
                     id="register-email"
                     label="Email"
                     required
-                    inputMode="email"
                     autoComplete="email"
                     value={email}
                     error={messages.email ?? null}

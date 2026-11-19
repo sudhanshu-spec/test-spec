@@ -8,11 +8,16 @@
  *
  * Both contexts it consumes are required above it in the tree, together with a router context for
  * `NavLink`, `Outlet` and `useNavigate` (supplied by `client/src/main.tsx`):
- * - `useSession` (`client/src/state/session.tsx`) supplies `status`, the signed-in `user` and the
- *   `logout` transition; that provider owns restore, login, logout and the 401 path.
+ * - `useSession` (`client/src/state/session.tsx`) supplies `status`, the signed-in `user`, the
+ *   `logout` transition and `unauthorizedCount`; that provider owns restore, login, logout and the
+ *   401 path, and records a 401 as a signal instead of routing, because it mounts above the router.
  * - `useCart` (`client/src/state/cart.tsx`) supplies `itemCount`, the in-memory badge count. The
  *   cart is never persisted, so nothing here reads or writes browser storage.
  * Outside those providers both hooks throw, which is the intended contract rather than a fallback.
+ *
+ * The router context is also where a 401 becomes a page change: this shell wraps every routed
+ * screen, so it turns each new `unauthorizedCount` into the `replace` navigation to `/login` that
+ * the session contract owes the visitor, on a public screen exactly as on a guarded one.
  *
  * Every visual rule lives in the layout-shell classes of `client/src/styles/global.css`: the
  * 44x44px control floor and the single 768px breakpoint — stacked navigation below it, a header row
@@ -22,7 +27,7 @@
  * @module client/src/components/Layout
  */
 
-import type { JSX } from 'react';
+import { useEffect, useRef, type JSX } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 
 import { useCart } from '../state/cart';
@@ -54,7 +59,7 @@ function navLinkClass({ isActive }: { isActive: boolean }): string {
  * @returns The header, the routed page body and the footer.
  */
 export function Layout(): JSX.Element {
-  const { status, user, logout } = useSession();
+  const { status, user, logout, unauthorizedCount } = useSession();
   const { itemCount } = useCart();
   const navigate = useNavigate();
 
@@ -84,6 +89,27 @@ export function Layout(): JSX.Element {
       navigate('/menu', { replace: true });
     }
   };
+
+  // Seeded with the count of the first render, so mounting never navigates on an older 401.
+  const seenUnauthorized = useRef(unauthorizedCount);
+
+  /**
+   * Performs the navigation a 401 owes the visitor: `/login`, in `replace` mode.
+   *
+   * The provider that reports a 401 mounts above the router and owns no router API, so it records
+   * the unauthorized signal and this shell acts on it — the layout route around every screen, where
+   * `useNavigate` is available, on a public screen exactly as behind the guard. The ref is seeded at
+   * mount so a first render navigates nothing, and it holds the signal already acted on so a later
+   * re-render cannot repeat that navigation; each new 401 is a new signal and navigates again.
+   */
+  useEffect(() => {
+    if (seenUnauthorized.current === unauthorizedCount) {
+      return;
+    }
+
+    seenUnauthorized.current = unauthorizedCount;
+    navigate('/login', { replace: true });
+  }, [navigate, unauthorizedCount]);
 
   return (
     <div className="app">

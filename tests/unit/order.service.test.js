@@ -1,15 +1,15 @@
 /**
  * @fileoverview Unit tests for the order service (src/services/order.service.js)
  *
- * The service decides what a valid order request is, which failure an unknown or
- * unavailable line raises, and which stored fields travel in the response.
- * Pricing and atomicity belong to the repository it forwards to, so this suite
- * asserts what reaches the repository and what comes back rather than
- * recomputing money, and asserts that a caller-supplied price is dropped before
- * forwarding (R-3).
+ * The service decides what a valid order request is and which stored fields travel
+ * in the response. Pricing, atomicity and the existence/availability decision
+ * belong to the repository it forwards to, which surfaces them as the documented
+ * AppError; this suite asserts what reaches the repository, what comes back, that
+ * such an AppError is propagated unchanged, and that a caller-supplied price is
+ * dropped before forwarding (R-3).
  *
  * Nothing here opens a database, binds a port, issues a request or touches a
- * file: the repositories, the clock and the database module are stubs, and every
+ * file: the order store, the clock and the database module are stubs, and every
  * call goes through `call` so a synchronous throw is observed exactly as a
  * rejected promise would be.
  *
@@ -29,7 +29,6 @@ const OTHER_USER_ID = '6f1d2c3b-0000-4000-8000-000000000002';
 
 /** Menu items an order line names. */
 const ITEM_ID = '3c9a7b10-0000-4000-8000-000000000011';
-const OTHER_ITEM_ID = '3c9a7b10-0000-4000-8000-000000000012';
 
 /** Orders the stubs hand back. */
 const ORDER_ID = 'a1b2c3d4-0000-4000-8000-000000000021';
@@ -66,12 +65,6 @@ const LINE_KEYS = ['id', 'line_total_cents', 'menu_item_id', 'name', 'quantity',
  */
 
 /**
- * Menu item repository stub the service reads existence and availability through.
- * @typedef {Object} ItemReaderStubs
- * @property {jest.Mock} findManyByIds - Stub of the price and availability read.
- */
-
-/**
  * Loads the order service with the database module replaced, so requiring it
  * never pulls in the native SQLite driver and no case can open a connection.
  * @returns {Object} Fresh module: createOrderService, orderService, toPublicOrder.
@@ -89,19 +82,12 @@ function loadOrderServiceModule() {
 }
 
 /**
- * Builds a menu_items row as findManyByIds returns it.
- * @param {Object<string, *>} [overrides] - Column values to replace.
- * @returns {Object} The row.
+ * Loads the AppError class the freshly loaded service module raises, so a case can
+ * hand the store a failure of the very class the service propagates.
+ * @returns {Function} The AppError class.
  */
-function menuItemRow(overrides = {}) {
-  return {
-    id: ITEM_ID,
-    category_id: 'c0ffee00-0000-4000-8000-000000000041',
-    name: 'Classic Cheeseburger',
-    price_cents: UNIT_PRICE_CENTS,
-    is_available: 1,
-    ...overrides
-  };
+function loadAppError() {
+  return require('../../src/errors').AppError;
 }
 
 /**
@@ -143,13 +129,12 @@ function storedOrder(overrides = {}) {
 }
 
 /**
- * Builds the service over fresh repository stubs: an order that stores, an empty
- * history, a lookup that finds nothing, and every named item available.
- * @param {Object} [overrides] - Per-repository method overrides.
+ * Builds the service over fresh order-store stubs: an order that stores, an empty
+ * history and a lookup that finds nothing.
+ * @param {Object} [overrides] - Per-method overrides.
  * @param {Object} [overrides.orders] - Order store method overrides.
- * @param {Object} [overrides.items] - Item reader method overrides.
  * @param {function(): Date} [overrides.now] - Clock to inject.
- * @returns {{service: Object, orders: OrderStoreStubs, items: ItemReaderStubs}} The service and its stubs.
+ * @returns {{service: Object, orders: OrderStoreStubs}} The service and its stub.
  */
 function buildService(overrides = {}) {
   const orders = {
@@ -158,14 +143,10 @@ function buildService(overrides = {}) {
     findByIdForUser: jest.fn(() => null),
     ...overrides.orders
   };
-  const items = {
-    findManyByIds: jest.fn((ids) => ids.map((id) => menuItemRow({ id }))),
-    ...overrides.items
-  };
   const now = overrides.now ?? (() => FIXED_NOW);
   const { createOrderService } = loadOrderServiceModule();
 
-  return { service: createOrderService({ orders, items, now }), orders, items };
+  return { service: createOrderService({ orders, now }), orders };
 }
 
 /**
@@ -366,24 +347,17 @@ describe('Order Service - order.service.js', () => {
     });
   });
 
-  describe('createOrder - Item Existence and Availability (R-6)', () => {
-    test('should raise MENU_ITEM_NOT_FOUND with 404 when a line names an unknown item', async () => {
-      const { service, orders } = buildService({ items: { findManyByIds: jest.fn(() => []) } });
-
-      const error = await rejectionOf(() => service.createOrder({
-        userId: USER_ID,
-        items: [{ menu_item_id: ITEM_ID, quantity: 1 }]
-      }));
-
-      expectFailure(error, 'MENU_ITEM_NOT_FOUND', 404);
-      expect(error.details).toBeUndefined();
-      expect(orders.createWithLines).not.toHaveBeenCalled();
-    });
-
-    test('should raise MENU_ITEM_UNAVAILABLE with 409 when a line names an unavailable item', async () => {
-      const { service, orders } = buildService({
-        items: {
-          findManyByIds: jest.fn((ids) => ids.map((id) => menuItemRow({ id, is_available: 0 })))
+  describe('createOrder - Store Failure Propagation (R-6)', () => {
+    test('should propagate MENU_ITEM_NOT_FOUND with 404 when the store refuses an unknown item', async () => {
+      const failure = new (loadAppError())(
+        'MENU_ITEM_NOT_FOUND',
+        `No menu item matches the id "${ITEM_ID}".`
+      );
+      const { service } = buildService({
+        orders: {
+          createWithLines: jest.fn(() => {
+            throw failure;
+          })
         }
       });
 
@@ -392,33 +366,38 @@ describe('Order Service - order.service.js', () => {
         items: [{ menu_item_id: ITEM_ID, quantity: 1 }]
       }));
 
+      // The transaction's own menu_items read is the only decision: the service
+      // forwards the failure it raises rather than looking the items up itself.
+      expect(error).toBe(failure);
+      expectFailure(error, 'MENU_ITEM_NOT_FOUND', 404);
+      expect(error.details).toBeUndefined();
+    });
+
+    test('should propagate MENU_ITEM_UNAVAILABLE with 409 when the store refuses an unavailable item', async () => {
+      const failure = new (loadAppError())(
+        'MENU_ITEM_UNAVAILABLE',
+        `The menu item "${storedOrderLine().name}" is not currently available.`
+      );
+      const { service } = buildService({
+        orders: {
+          createWithLines: jest.fn(() => {
+            throw failure;
+          })
+        }
+      });
+
+      const error = await rejectionOf(() => service.createOrder({
+        userId: USER_ID,
+        items: [{ menu_item_id: ITEM_ID, quantity: 1 }]
+      }));
+
+      expect(error).toBe(failure);
       expectFailure(error, 'MENU_ITEM_UNAVAILABLE', 409);
       expect(error.details).toBeUndefined();
-      expect(orders.createWithLines).not.toHaveBeenCalled();
     });
 
-    test('should answer an unknown item before an unavailable one when a request names both', async () => {
-      const { service } = buildService({
-        items: {
-          findManyByIds: jest.fn((ids) => ids
-            .filter((id) => id !== OTHER_ITEM_ID)
-            .map((id) => menuItemRow({ id, is_available: 0 })))
-        }
-      });
-
-      const error = await rejectionOf(() => service.createOrder({
-        userId: USER_ID,
-        items: [
-          { menu_item_id: ITEM_ID, quantity: 1 },
-          { menu_item_id: OTHER_ITEM_ID, quantity: 1 }
-        ]
-      }));
-
-      expectFailure(error, 'MENU_ITEM_NOT_FOUND', 404);
-    });
-
-    test('should look the items up once for repeated lines, by distinct id', async () => {
-      const { service, items } = buildService();
+    test('should forward every accepted line of a repeated item in one store call', async () => {
+      const { service, orders } = buildService();
 
       await call(() => service.createOrder({
         userId: USER_ID,
@@ -428,8 +407,13 @@ describe('Order Service - order.service.js', () => {
         ]
       }));
 
-      expect(items.findManyByIds).toHaveBeenCalledTimes(1);
-      expect(items.findManyByIds).toHaveBeenCalledWith([ITEM_ID]);
+      // No lookup of its own, so the store is entered exactly once and prices both
+      // lines from the single read inside its transaction.
+      expect(orders.createWithLines).toHaveBeenCalledTimes(1);
+      expect(orders.createWithLines.mock.calls[0][0].lines).toEqual([
+        { menuItemId: ITEM_ID, quantity: 1 },
+        { menuItemId: ITEM_ID, quantity: 3 }
+      ]);
     });
   });
 

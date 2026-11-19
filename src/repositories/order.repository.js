@@ -1,20 +1,21 @@
 /**
- * @fileoverview Order Repository — the `orders` + `order_line_items` accessor and
- * the module where atomicity and server-side pricing are enforced: createWithLines
- * writes an order and its lines in one immediate transaction, pricing every line
- * from menu_items inside that transaction, so a caller-supplied price has no path
- * in and a line that fails leaves no order row. listByUser and findByIdForUser
- * bind the owner's user_id, making another user's order indistinguishable from a
- * missing one.
+ * @fileoverview Order Repository — the `orders` + `order_line_items` accessor, and
+ * the module where atomicity, server-side pricing and the availability backstop
+ * live: createWithLines writes an order and its lines in one immediate
+ * transaction, pricing every line from menu_items inside it, so a caller-supplied
+ * price has no path in, a line that fails leaves no order row, and an item the
+ * menu no longer offers is refused with the documented 404/409 AppError.
+ * listByUser and findByIdForUser bind the owner's user_id, making another user's
+ * order indistinguishable from a missing one.
  *
- * Exports: createWithLines, listByUser, findByIdForUser — SQL and row shapes only;
- * validation, availability policy and error-code mapping belong to
- * src/services/order.service.js, this module's only consumer.
+ * Exports: createWithLines, listByUser, findByIdForUser — SQL and row shapes;
+ * request validation and the response projection belong to order.service.js.
  *
  * @module src/repositories/order.repository
  */
 
 const { randomUUID } = require('node:crypto');
+const { AppError } = require('../errors');
 const { getDb } = require('../db');
 const menuItemRepository = require('./menu-item.repository');
 
@@ -26,8 +27,8 @@ const DEFAULT_STATUS = 'confirmed';
 
 /**
  * Read the lines of several orders in one batched statement, keyed by order id:
- * one `IN` lookup per page, line names joined from menu_items, ordered by `li.id`
- * for a reproducible list, and the stored integers passed through untouched.
+ * one `IN` lookup per page, line names joined from menu_items, ordered by item
+ * name then line id — total, so it repeats exactly — stored integers untouched.
  *
  * @param {Array<string>} orderIds - Ids of the orders whose lines are wanted.
  * @returns {Map<string, Array<Object>>} Line arrays by order id; an order with no
@@ -43,7 +44,7 @@ function readLinesByOrder(orderIds) {
     .prepare(
       'SELECT li.id, li.order_id, li.menu_item_id, mi.name, li.quantity, li.unit_price_cents, ' +
         'li.line_total_cents FROM order_line_items li JOIN menu_items mi ON mi.id = li.menu_item_id ' +
-        `WHERE li.order_id IN (${orderIds.map(() => '?').join(', ')}) ORDER BY li.id ASC`
+        `WHERE li.order_id IN (${orderIds.map(() => '?').join(', ')}) ORDER BY mi.name ASC, li.id ASC`
     )
     .all(...orderIds);
   const linesByOrder = new Map();
@@ -85,9 +86,10 @@ function assembleOrders(orderRows) {
 /**
  * Store one order with its line items, atomically: one immediate transaction, so
  * any throw rolls back every statement and a line that cannot be priced leaves no
- * `orders` row. A line naming an unknown or unavailable item aborts with a plain
- * Error carrying `menuItemId` — a backstop against a race or a missed check, not a
- * policy decision, so no domain code is raised here.
+ * `orders` row. The transaction's single menu_items read is authoritative: it
+ * prices every line from the stored price_cents (R-3), refusing an id no item
+ * carries with MENU_ITEM_NOT_FOUND (404) before an unavailable item with
+ * MENU_ITEM_UNAVAILABLE (409) — so a race with the menu cannot change the code.
  *
  * @param {Object} order - The order to store.
  * @param {string} [order.id] - Order identifier; a fresh UUID when omitted.
@@ -97,8 +99,7 @@ function assembleOrders(orderRows) {
  * @param {string} [order.createdAt] - ISO-8601 creation time; now when omitted.
  * @param {Array<{menuItemId: string, quantity: number}>} order.lines - Ordered items.
  * @returns {Object|null} The stored order, shaped as a later read returns it.
- * @throws {Error} For an unknown or unavailable item (carrying `menuItemId`), an
- *   unopenable database or a failing statement; the transaction has rolled back.
+ * @throws {AppError} MENU_ITEM_NOT_FOUND (404), MENU_ITEM_UNAVAILABLE (409), or a statement failure.
  */
 function createWithLines(order = {}) {
   const { id = randomUUID(), userId, status = DEFAULT_STATUS, notes = null } = order;
@@ -107,16 +108,22 @@ function createWithLines(order = {}) {
   const db = getDb();
 
   const write = db.transaction((payload) => {
+    // One read prices the whole order: findManyByIds collapses duplicate ids and
+    // runs on this transaction's connection.
     const itemRows = menuItemRepository.findManyByIds(payload.lines.map((line) => line.menuItemId));
     const itemsById = new Map(itemRows.map((row) => [row.id, row]));
+    // Existence decides first, so a cart naming both kinds answers 404.
+    const unknownId = payload.lines.map((line) => line.menuItemId).find((menuItemId) => !itemsById.has(menuItemId));
+
+    if (unknownId !== undefined) {
+      throw new AppError('MENU_ITEM_NOT_FOUND', `No menu item matches the id "${unknownId}".`);
+    }
 
     const pricedLines = payload.lines.map((line) => {
       const item = itemsById.get(line.menuItemId);
 
-      if (!item || item.is_available !== 1) {
-        const error = new Error(`Menu item ${line.menuItemId} is unknown or unavailable.`);
-        error.menuItemId = line.menuItemId;
-        throw error;
+      if (item.is_available !== 1) {
+        throw new AppError('MENU_ITEM_UNAVAILABLE', `The menu item "${item.name}" is not currently available.`);
       }
 
       return {
@@ -124,25 +131,24 @@ function createWithLines(order = {}) {
         unitPriceCents: item.price_cents, lineTotalCents: item.price_cents * line.quantity
       };
     });
-
     const totalCents = pricedLines.reduce((sum, line) => sum + line.lineTotalCents, 0);
 
     db.prepare(
       'INSERT INTO orders (id, user_id, status, total_cents, notes, created_at) VALUES (?, ?, ?, ?, ?, ?)'
-    ).run(payload.id, payload.userId, payload.status, 0, payload.notes, payload.createdAt);
-    const insertLine = db.prepare(
-      'INSERT INTO order_line_items (id, order_id, menu_item_id, quantity, unit_price_cents, ' +
-        'line_total_cents) VALUES (?, ?, ?, ?, ?, ?)'
-    );
+    ).run(payload.id, payload.userId, payload.status, totalCents, payload.notes, payload.createdAt);
 
-    for (const { id: lineId, menuItemId, quantity, unitPriceCents, lineTotalCents } of pricedLines) {
-      insertLine.run(lineId, payload.id, menuItemId, quantity, unitPriceCents, lineTotalCents);
+    if (pricedLines.length > 0) {
+      // One multi-row insert; only placeholders are generated, so every value binds.
+      db.prepare(
+        'INSERT INTO order_line_items (id, order_id, menu_item_id, quantity, unit_price_cents, ' +
+          `line_total_cents) VALUES ${pricedLines.map(() => '(?, ?, ?, ?, ?, ?)').join(', ')}`
+      ).run(...pricedLines.flatMap((line) => [
+        line.id, payload.id, line.menuItemId, line.quantity, line.unitPriceCents, line.lineTotalCents
+      ]));
     }
 
-    db.prepare('UPDATE orders SET total_cents = ? WHERE id = ?').run(totalCents, payload.id);
-
-    // Read back through the path a later request uses, still inside the
-    // transaction, so the response cannot describe a partial order.
+    // Read back the way a later request would, still inside the transaction, so no
+    // response can describe a partial order.
     return findByIdForUser(payload.id, payload.userId);
   });
 
@@ -150,8 +156,8 @@ function createWithLines(order = {}) {
 }
 
 /**
- * List one user's orders, newest first — ownership bound as a WHERE parameter, so
- * another user's order is not selectable at all rather than filtered afterwards.
+ * List one user's orders newest first, created_at ties broken by id descending so the
+ * order is total; ownership is bound as a WHERE parameter, never filtered afterwards.
  *
  * @param {string} userId - Owner whose orders are listed.
  * @returns {Array<Object>} The user's orders with their lines, newest first.
@@ -159,7 +165,7 @@ function createWithLines(order = {}) {
  */
 function listByUser(userId) {
   const rows = getDb()
-    .prepare(`SELECT ${ORDER_COLUMNS} FROM orders WHERE user_id = ? ORDER BY created_at DESC`)
+    .prepare(`SELECT ${ORDER_COLUMNS} FROM orders WHERE user_id = ? ORDER BY created_at DESC, id DESC`)
     .all(userId);
 
   return assembleOrders(rows);

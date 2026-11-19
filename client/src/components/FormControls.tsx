@@ -122,7 +122,7 @@ interface FieldProps extends FormControlProps {
 
 /**
  * Renders the label, the input and the messages beneath it — the single wrapper
- * all five exported controls delegate to.
+ * all six exported field controls delegate to.
  *
  * @param props - The shared form props plus the input type this field fixes.
  * @returns The field element.
@@ -133,7 +133,7 @@ function Field({ id, label, hint, error, detail, type, required, value, onChange
     const errorId = hasError ? `${id}-error` : undefined;
 
     return (
-        <div className="field">
+        <div className={hasError ? 'field field--invalid' : 'field'}>
             <label className="field__label" htmlFor={id}>
                 {label}
                 {required ? <span className="visually-hidden"> (required)</span> : null}

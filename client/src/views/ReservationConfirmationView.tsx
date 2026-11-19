@@ -33,6 +33,7 @@ import type { JSX, ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import { ApiError } from '../api/client';
+import { formatTimestamp } from '../api/format';
 import { listReservations } from '../api/reservations';
 import type { Reservation } from '../api/types';
 
@@ -140,6 +141,10 @@ interface ReservationHistoryProps {
  * server's date-then-time order rather than re-sorting it. Each entry links to
  * its own confirmation, which is how single-booking mode is reachable from here.
  *
+ * The "Book a table" action that opens the booking form is rendered above the
+ * list in this state as it is in the empty one, so a returning customer reaches
+ * the form without having to retype its URL.
+ *
  * @param props - The bookings to list, possibly none.
  * @returns The history section, or the empty state when there are no bookings.
  */
@@ -162,6 +167,11 @@ function ReservationHistory({ reservations }: ReservationHistoryProps): JSX.Elem
     return (
         <ReservationSection title="Your reservations">
             <div className="stack">
+                <div className="row">
+                    <Link className="button" to="/reservations/new">
+                        Book a table
+                    </Link>
+                </div>
                 {reservations.map((reservation) => (
                     <article className="card stack" key={reservation.id}>
                         <DetailRow label="Date">
@@ -292,7 +302,7 @@ export function ReservationConfirmationView(): JSX.Element {
                 </DetailRow>
                 {reservation.notes ? <DetailRow label="Notes">{reservation.notes}</DetailRow> : null}
                 <DetailRow label="Booked on">
-                    <time dateTime={reservation.created_at}>{reservation.created_at}</time>
+                    <time dateTime={reservation.created_at}>{formatTimestamp(reservation.created_at)}</time>
                 </DetailRow>
                 <div className="row">
                     <Link className="button" to="/reservations">

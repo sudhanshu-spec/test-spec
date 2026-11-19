@@ -361,7 +361,7 @@ function CartLineRow({
             </div>
 
             <div className="cart-line__quantity">
-                <div className="field">
+                <div className={hasError ? 'field field--invalid' : 'field'}>
                     <label className="field__label" htmlFor={quantityId}>
                         Quantity<span className="visually-hidden"> of {line.name}</span>
                     </label>

@@ -2,19 +2,25 @@
  * Order Service Module
  *
  * The rules behind the three order endpoints, isolated from HTTP: what an order
- * request must be, which failure an unknown or unavailable line raises, and the
- * exact shape an order leaves in.
+ * request must be, and the exact shape an order leaves in.
  *
- * Pricing and atomicity belong to order.repository.createWithLines, which re-reads
- * menu_items inside db.transaction(fn).immediate() and derives every unit price,
- * line total and order total from the stored price_cents (R-3); this file accepts
- * only menu_item_id and quantity per line, reads no price and does no arithmetic,
- * so a caller-supplied price cannot reach a total.
+ * Pricing, atomicity and the existence/availability decision belong to
+ * order.repository.createWithLines, which reads menu_items once inside
+ * db.transaction(fn).immediate() and derives every unit price, line total and
+ * order total from the stored price_cents (R-3); this file accepts only
+ * menu_item_id and quantity per line, reads no price and does no arithmetic, so a
+ * caller-supplied price cannot reach a total. An item the transaction cannot
+ * price surfaces as the documented MENU_ITEM_NOT_FOUND / MENU_ITEM_UNAVAILABLE
+ * AppError, which this service propagates unchanged rather than deciding again.
  *
  * Failures are AppErrors built from code names the errors table holds, with
  * `details` attached only to VALIDATION_ERROR, and no status, header or body is
  * written here (R-6). Another user's order is ORDER_NOT_FOUND, never 403, because
  * the repository's reads bind user_id (R-5).
+ *
+ * collectLineDetails and UUID_PATTERN are exported because the order router
+ * validates a create-order body with this one rule set rather than a copy of it,
+ * so the line vocabulary cannot drift between the two layers.
  *
  * @module src/services/order.service
  */
@@ -22,13 +28,17 @@
 const crypto = require('node:crypto');
 const { AppError } = require('../errors');
 const orderRepository = require('../repositories/order.repository');
-const menuItemRepository = require('../repositories/menu-item.repository');
 
 /** Smallest quantity an order line may carry. @type {number} */
 const MIN_QUANTITY = 1;
 /** Largest quantity an order line may carry. @type {number} */
 const MAX_QUANTITY = 20;
-/** Shape of the menu item id an order line must name. @type {RegExp} */
+/**
+ * Shape of a menu item id an order line names, and of an order id a read accepts.
+ * Case-insensitive because a UUID is hex; a value then travels exactly as the
+ * caller wrote it, since every id issued is lowercase.
+ * @type {RegExp}
+ */
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
@@ -60,31 +70,6 @@ function collectLineDetails(requestedLines) {
 }
 
 /**
- * Decide which line failure a request earns: existence first, then availability,
- * so a request naming both an unknown and an unavailable item is NOT_FOUND. These
- * rows choose the error only; the prices that reach a total are read again by the
- * transaction that writes them.
- * @param {Array<string>} ids - Distinct menu item ids the order names.
- * @param {Object} items - Item reader exposing findManyByIds(ids).
- * @returns {void}
- * @throws {AppError} MENU_ITEM_NOT_FOUND (404) or MENU_ITEM_UNAVAILABLE (409).
- */
-function assertItemsOrderable(ids, items) {
-  const rowsById = new Map(items.findManyByIds(ids).map((row) => [row.id, row]));
-  const unknownId = ids.find((id) => !rowsById.has(id));
-
-  if (unknownId !== undefined) {
-    throw new AppError('MENU_ITEM_NOT_FOUND', `No menu item matches the id "${unknownId}".`);
-  }
-
-  const unavailable = ids.map((id) => rowsById.get(id)).find((row) => !row.is_available);
-
-  if (unavailable !== undefined) {
-    throw new AppError('MENU_ITEM_UNAVAILABLE', `The menu item "${unavailable.name}" is not currently available.`);
-  }
-}
-
-/**
  * Project a stored order into the contract's shape, key by key, so no other column
  * reaches a response. Money passes through as the integer cents the repository
  * stored; it is never recomputed or formatted here.
@@ -103,23 +88,23 @@ function toPublicOrder(row) {
 }
 
 /**
- * Build an order service over the repositories it reads and writes through. Both
- * collaborators and the clock are injected, so a unit suite can stub the
- * repositories and fix the time without a database or a request.
+ * Build an order service over the order store it reads and writes through. The
+ * store and the clock are injected, so a unit suite can stub the store and fix the
+ * time without a database or a request.
  * @param {Object} dependencies - The service's collaborators.
  * @param {Object} dependencies.orders - Order store: createWithLines, listByUser, findByIdForUser.
- * @param {Object} dependencies.items - Item reader: findManyByIds.
  * @param {function(): Date} [dependencies.now] - Clock, the only source of time.
  * @returns {{createOrder: Function, listOrders: Function, getOrder: Function}} The service.
  */
-function createOrderService({ orders, items, now = () => new Date() }) {
+function createOrderService({ orders, now = () => new Date() }) {
   /**
-   * Place one order for the authenticated caller: validate every line, confirm the
-   * items exist and are available, then let the repository write and price the
-   * order in one transaction.
+   * Place one order for the authenticated caller: validate every line, then let the
+   * repository price and write the order in one transaction, propagating the
+   * documented AppError it raises for an item it cannot price.
    * @param {Object} input - `{userId, items: [{menu_item_id, quantity}], notes}`.
    * @returns {Object} The stored order, projected by {@link toPublicOrder}.
-   * @throws {AppError} VALIDATION_ERROR, MENU_ITEM_NOT_FOUND, MENU_ITEM_UNAVAILABLE.
+   * @throws {AppError} VALIDATION_ERROR here, or the store's MENU_ITEM_NOT_FOUND /
+   *   MENU_ITEM_UNAVAILABLE propagated unchanged.
    */
   function createOrder({ userId, items: requestedLines, notes } = {}) {
     const details = collectLineDetails(requestedLines);
@@ -130,13 +115,12 @@ function createOrderService({ orders, items, now = () => new Date() }) {
 
     // Only the accepted fields of each line travel, under the names
     // order.repository.createWithLines reads, so a caller-supplied price has no
-    // path further in.
+    // path further in. The transaction's own menu_items read decides existence and
+    // availability, so this service looks nothing up twice.
     const acceptedLines = requestedLines.map(({ menu_item_id: menuItemId, quantity }) => ({
       menuItemId,
       quantity
     }));
-
-    assertItemsOrderable([...new Set(acceptedLines.map((line) => line.menuItemId))], items);
 
     const created = orders.createWithLines({
       id: crypto.randomUUID(),
@@ -180,14 +164,13 @@ function createOrderService({ orders, items, now = () => new Date() }) {
 }
 
 /**
- * The order service the API router uses, wired to both repository modules. Neither
- * opens a connection here: the database opens on the first query.
+ * The order service the API router uses, wired to the order store. It opens no
+ * connection here: the database opens on the first query.
  * @type {{createOrder: Function, listOrders: Function, getOrder: Function}}
  */
 const orderService = createOrderService({
   orders: orderRepository,
-  items: menuItemRepository,
   now: () => new Date()
 });
 
-module.exports = { createOrderService, orderService, toPublicOrder };
+module.exports = { createOrderService, orderService, toPublicOrder, collectLineDetails, UUID_PATTERN };

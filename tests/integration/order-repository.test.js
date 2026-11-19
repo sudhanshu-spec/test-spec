@@ -5,11 +5,13 @@
  * database: the order and its lines written in one transaction with every unit
  * price taken from menu_items, the server-computed line and order totals, a
  * caller-supplied price ignored, the transaction rolled back when a line names an
- * unknown or unavailable item, the per-user scoping of both reads, the newest-
- * first ordering of a user's history, and the defaults applied to an order stored
- * without an id, status, notes or createdAt. The database file lives in a
- * directory the suite creates under the operating system's temporary directory,
- * outside the checkout.
+ * unknown or unavailable item with the documented MENU_ITEM_NOT_FOUND (404) or
+ * MENU_ITEM_UNAVAILABLE (409) AppError, the per-user scoping of both reads, the
+ * menu-item-name ordering of a stored order's lines, the newest-first ordering of a
+ * user's history with created_at ties broken by id descending, and the defaults
+ * applied to an order stored without an id, status, notes or createdAt. The database
+ * file lives in a directory the suite creates under the operating system's temporary
+ * directory, outside the checkout.
  *
  * @module tests/integration/order-repository
  */
@@ -163,6 +165,17 @@ const captureError = (operation) => {
     return error;
   }
 };
+
+/**
+ * The AppError class the loaded repository instance raises.
+ *
+ * Read from the live module registry rather than captured at file scope: the loader
+ * calls jest.resetModules(), so a class bound before that call is a different one
+ * from the class the repository module under test throws.
+ *
+ * @returns {Function} The AppError class the currently loaded modules use.
+ */
+const loadedAppError = () => require('../../src/errors').AppError;
 
 describe('order repository module (src/repositories/order.repository.js)', () => {
   beforeAll(() => {
@@ -338,8 +351,10 @@ describe('order repository module (src/repositories/order.repository.js)', () =>
         })
       );
 
-      expect(error).toBeInstanceOf(Error);
-      expect(error.menuItemId).toBe(unknownId);
+      expect(error).toBeInstanceOf(loadedAppError());
+      expect(error.code).toBe('MENU_ITEM_NOT_FOUND');
+      expect(error.status).toBe(404);
+      expect(error.message).toContain(unknownId);
       expect(countOrdersFor(userId)).toBe(ordersBefore);
       expect(storedOrder('b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e')).toBeUndefined();
       expect(countLines('b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e')).toBe(0);
@@ -362,10 +377,67 @@ describe('order repository module (src/repositories/order.repository.js)', () =>
         })
       );
 
-      expect(error).toBeInstanceOf(Error);
-      expect(error.menuItemId).toBe(unavailable.id);
+      expect(error).toBeInstanceOf(loadedAppError());
+      expect(error.code).toBe('MENU_ITEM_UNAVAILABLE');
+      expect(error.status).toBe(409);
+      expect(error.message).toContain(unavailable.name);
       expect(countOrdersFor(userId)).toBe(ordersBefore);
       expect(storedOrder('c3d4e5f6-a7b8-4c9d-0e1f-2a3b4c5d6e7f')).toBeUndefined();
+    });
+
+    test('rolls back the whole order and answers NOT_FOUND when both kinds are named', () => {
+      const userId = createUser();
+      const unavailable = unavailableItem();
+      const unknownId = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
+      const ordersBefore = countOrdersFor(userId);
+
+      // The unavailable item is named first, so only an existence pass over every
+      // id before any availability decision yields the documented 404.
+      const error = captureError(() =>
+        repository.createWithLines({
+          id: 'd4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f80',
+          userId,
+          lines: [
+            { menuItemId: unavailable.id, quantity: 1 },
+            { menuItemId: unknownId, quantity: 1 }
+          ]
+        })
+      );
+
+      expect(error).toBeInstanceOf(loadedAppError());
+      expect(error.code).toBe('MENU_ITEM_NOT_FOUND');
+      expect(error.status).toBe(404);
+      expect(error.message).toContain(unknownId);
+      expect(countOrdersFor(userId)).toBe(ordersBefore);
+      expect(storedOrder('d4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f80')).toBeUndefined();
+      expect(countLines('d4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f80')).toBe(0);
+    });
+  });
+
+  describe('line order of a stored order', () => {
+    test('returns the lines sorted by menu item name, the same way on every placement', () => {
+      const userId = createUser();
+      // availableItems() reads the seeded catalogue in name order, so the cart
+      // below names the very same items in the opposite order.
+      const byName = availableItems(3);
+      const expectedNames = byName.map((item) => item.name);
+      const cart = byName
+        .slice()
+        .reverse()
+        .map((item, index) => ({ menuItemId: item.id, quantity: index + 1 }));
+
+      expect(expectedNames).toHaveLength(3);
+
+      const placements = [0, 1, 2].map(() => repository.createWithLines({ userId, lines: cart }));
+      const nameSequences = placements.map((order) => order.lines.map((line) => line.name));
+
+      // Cart order does not decide line order, and the same cart never varies.
+      nameSequences.forEach((names) => expect(names).toEqual(expectedNames));
+
+      // The single-order read behind GET /api/orders/:id reports the same order.
+      expect(
+        repository.findByIdForUser(placements[0].id, userId).lines.map((line) => line.name)
+      ).toEqual(expectedNames);
     });
   });
 
@@ -425,6 +497,31 @@ describe('order repository module (src/repositories/order.repository.js)', () =>
       expect(ownerOrders[0].lines).toHaveLength(1);
       expect(otherOrders.map((order) => order.id)).toEqual([foreign.id]);
       expect(ownerOrders.map((order) => order.id)).not.toContain(foreign.id);
+    });
+
+    test('breaks a created_at tie by id descending', () => {
+      const userId = createUser();
+      const [item] = availableItems(1);
+      const lowerId = '11111111-1111-4111-8111-111111111111';
+      const higherId = '99999999-9999-4999-8999-999999999999';
+      const createdAt = '2099-02-02T08:00:00.000Z';
+
+      // The higher id is written first, so insertion order and id order disagree:
+      // only the tie-break makes which of the two is reported first predictable.
+      repository.createWithLines({
+        id: higherId,
+        userId,
+        createdAt,
+        lines: [{ menuItemId: item.id, quantity: 1 }]
+      });
+      repository.createWithLines({
+        id: lowerId,
+        userId,
+        createdAt,
+        lines: [{ menuItemId: item.id, quantity: 1 }]
+      });
+
+      expect(repository.listByUser(userId).map((order) => order.id)).toEqual([higherId, lowerId]);
     });
 
     test('returns an empty array for a user with no orders', () => {

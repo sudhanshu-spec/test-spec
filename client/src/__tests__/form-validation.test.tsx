@@ -70,8 +70,14 @@ const REGISTER_EMAIL_DUPLICATE_MESSAGE =
 
 const RESERVATION_DATE_REQUIRED_MESSAGE = 'Choose the date of your booking.';
 const RESERVATION_TIME_REQUIRED_MESSAGE = 'Choose a seating time.';
+const RESERVATION_TIME_INVALID_MESSAGE = 'Enter a seating time as HH:MM, for example 19:30.';
 const RESERVATION_PARTY_REQUIRED_MESSAGE = 'Enter the number of guests.';
-const RESERVATION_PARTY_INVALID_MESSAGE = 'Enter a whole number of guests between 1 and 12.';
+const RESERVATION_PARTY_INVALID_MESSAGE = 'Enter a whole number of guests.';
+/**
+ * The sentence the API sends beside `party_size` when its fourth checkpoint — a
+ * range this client does not own — refuses the value.
+ */
+const RESERVATION_PARTY_OUT_OF_RANGE_MESSAGE = 'The party size must be between 1 and 12.';
 /** The form's reading of `RESERVATION_ISSUES.DATETIME_IN_PAST`. */
 const RESERVATION_PAST_MESSAGE =
     'That date and time has already passed. Choose a later date or a later seating time.';
@@ -158,7 +164,7 @@ const CREATED_RESERVATION: Reservation = {
 
 /** A date well inside any horizon, so only the checkpoint under test can reject it. */
 const FUTURE_DATE = '2031-05-14';
-/** One of the seating times the form offers (17:00 through 21:30). */
+/** A seating time inside the documented default window (17:00 through 21:30). */
 const OFFERED_SLOT = '19:00';
 
 /** Valid values for both sign-in form's courtesy checks. */
@@ -449,7 +455,7 @@ function renderReservationForm(): void {
 /** The four controls of the reservation form, each found through its label. */
 interface ReservationControls {
     readonly date: HTMLInputElement;
-    readonly time: HTMLSelectElement;
+    readonly time: HTMLInputElement;
     readonly party: HTMLInputElement;
     readonly notes: HTMLInputElement;
 }
@@ -458,7 +464,7 @@ interface ReservationControls {
 function reservationControls(): ReservationControls {
     return {
         date: screen.getByLabelText<HTMLInputElement>(/^Date/),
-        time: screen.getByLabelText<HTMLSelectElement>(/^Seating time/),
+        time: screen.getByLabelText<HTMLInputElement>(/^Seating time/),
         party: screen.getByLabelText<HTMLInputElement>(/^Party size/),
         notes: screen.getByLabelText<HTMLInputElement>(/^Notes/),
     };
@@ -473,10 +479,11 @@ interface ReservationValues {
 }
 
 /**
- * Fills the booking form without submitting it. The date and party size are set
- * with a change event because jsdom formats neither control, so typing into
- * them depends on a locale the application never reads; a real change event
- * carries the same value string the form posts.
+ * Fills the booking form without submitting it. The date, the seating time and
+ * the party size are each set with a change event: jsdom drives no date or time
+ * picker and formats neither control, so typing into them depends on a locale
+ * the application never reads, while a real change event carries the same
+ * `YYYY-MM-DD`, `HH:MM` and count strings the form posts.
  *
  * @param user - The user-event session driving the form.
  * @param controls - The controls to fill.
@@ -492,7 +499,7 @@ async function fillReservation(
     }
 
     if (values.time !== undefined) {
-        await user.selectOptions(controls.time, values.time);
+        fireEvent.change(controls.time, { target: { value: values.time } });
     }
 
     if (values.party !== undefined) {
@@ -589,6 +596,25 @@ describe('LoginView', () => {
         expect(fieldOf(password).contains(errorNode(password))).toBe(true);
         expect(within(fieldOf(email)).queryByText(LOGIN_PASSWORD_REQUIRED_MESSAGE)).toBeNull();
         expect(within(fieldOf(password)).queryByText(LOGIN_EMAIL_REQUIRED_MESSAGE)).toBeNull();
+    });
+
+    it('marks the wrapper of an invalid field so the shared invalid-state rule applies', async () => {
+        const user = userEvent.setup();
+        stubFetch(() => successReply(200, {}));
+
+        renderLogin();
+
+        const email = screen.getByLabelText<HTMLInputElement>(/^Email/);
+
+        // A field with nothing wrong carries the plain wrapper class.
+        expect(fieldOf(email).className).toBe('field');
+
+        await user.click(screen.getByRole('button', { name: LOGIN_SUBMIT_LABEL }));
+
+        // global.css styles an invalid control through `.field--invalid .control`,
+        // so the wrapper is what has to carry the state the message describes.
+        expect(fieldOf(email).className).toBe('field field--invalid');
+        expect(email.getAttribute('aria-invalid')).toBe('true');
     });
 
     it('reports an address that cannot be one beside the email control only', async () => {
@@ -702,6 +728,14 @@ describe('RegisterView', () => {
             password: screen.getByLabelText<HTMLInputElement>(/^Password/),
         };
     }
+
+    it('builds the address field as the shared email control', () => {
+        renderRegister();
+
+        // Both auth screens build the one address control the shared module owns,
+        // so the browser gives each a soft keyboard with the address layout.
+        expect(screen.getByLabelText<HTMLInputElement>(/^Email/).getAttribute('type')).toBe('email');
+    });
 
     it('reports a missing name, address and password beside their own controls', async () => {
         const user = userEvent.setup();
@@ -889,6 +923,37 @@ describe('CartView checkout', () => {
         expect(summary.textContent).toBe(VALIDATION_MESSAGE);
     });
 
+    it('marks the quantity field of the line a detail names, leaving an unmentioned field unmarked', async () => {
+        const user = userEvent.setup();
+        const VALIDATION_MESSAGE = 'The order could not be validated.';
+        const QUANTITY_ISSUE = 'must_be_an_integer_between_1_and_20';
+
+        const { quantity, placeOrder } = await renderCheckout(
+            errorReply(400, 'VALIDATION_ERROR', VALIDATION_MESSAGE, [
+                { field: 'items[0].quantity', issue: QUANTITY_ISSUE },
+            ]),
+        );
+
+        const notes = screen.getByLabelText<HTMLInputElement>(/^Notes/);
+
+        await user.click(placeOrder);
+
+        const detail = await screen.findByText(QUANTITY_ISSUE);
+
+        // The entry names the seeded line's quantity, so it is rendered inside that
+        // control's own field rather than at form level.
+        expect(errorText(quantity)).toBe(QUANTITY_ISSUE);
+        expect(fieldOf(quantity).contains(detail)).toBe(true);
+        expect(quantity.getAttribute('aria-invalid')).toBe('true');
+        // `.field--invalid .control` is the stylesheet rule that gives an invalid
+        // control its visible state, so the wrapper carries the modifier while this
+        // field is invalid, and only while it is.
+        expect(fieldOf(quantity).className).toBe('field field--invalid');
+        expect(fieldOf(notes).className).toBe('field');
+        expect(notes.getAttribute('aria-invalid')).toBe('false');
+        expect(within(fieldOf(notes)).queryByText(QUANTITY_ISSUE)).toBeNull();
+    });
+
     it('posts only the item id and quantity of every line, so the server prices the order', async () => {
         const user = userEvent.setup();
         const { calls, placeOrder } = await renderCheckout(successReply(201, { order: CREATED_ORDER }));
@@ -923,6 +988,17 @@ describe('CartView checkout', () => {
 // ---------------------------------------------------------------------------
 
 describe('ReservationFormView', () => {
+    it('renders the seating time through the shared time control', () => {
+        renderReservationForm();
+
+        const time = screen.getByLabelText<HTMLInputElement>(/^Seating time/);
+
+        // The shared time control, stepped to the 30-minute seating grid: it offers
+        // the documented seatings without pinning the form to a list it owns.
+        expect(time.getAttribute('type')).toBe('time');
+        expect(time.getAttribute('step')).toBe('1800');
+    });
+
     it('reports a missing date, seating time and party size beside their own controls', async () => {
         const user = userEvent.setup();
         const calls = stubFetch(() => successReply(201, {}));
@@ -1013,11 +1089,15 @@ describe('ReservationFormView', () => {
         expect(screen.queryAllByRole('alert')).toHaveLength(0);
     });
 
-    it.each(['0', '13', '2.5'])(
-        'rejects a party size of %s before any request is made',
+    // The party range is the API's fourth checkpoint, not this form's: the value
+    // leaves the form and the server's own sentence lands on the field it names.
+    it.each(['0', '13'])(
+        'posts a party size of %s and renders the server range verdict beside the party field',
         async (partySize) => {
             const user = userEvent.setup();
-            const calls = stubFetch(() => successReply(201, {}));
+            const calls = stubFetch(() => errorReply(400, 'VALIDATION_ERROR', RESERVATION_PARTY_OUT_OF_RANGE_MESSAGE, [
+                { field: 'party_size', issue: 'out_of_range' },
+            ]));
 
             renderReservationForm();
             const controls = reservationControls();
@@ -1025,12 +1105,96 @@ describe('ReservationFormView', () => {
             await fillReservation(user, controls, { date: FUTURE_DATE, time: OFFERED_SLOT, party: partySize });
             await user.click(screen.getByRole('button', { name: RESERVE_SUBMIT_LABEL }));
 
-            expect(calls).toHaveLength(0);
-            expect(errorText(controls.party)).toBe(RESERVATION_PARTY_INVALID_MESSAGE);
+            expect(await screen.findByText(RESERVATION_PARTY_OUT_OF_RANGE_MESSAGE)).not.toBeNull();
+
+            await waitFor(() => {
+                expect(calls).toHaveLength(1);
+            });
+
+            const call = onlyCall(calls, RESERVATIONS_URL, 'POST');
+
+            // Rule R-5: the caller is the Bearer token, so no owner is posted. The
+            // party size travels as the number that was typed, unclamped.
+            expect(call.body).toEqual({
+                reservation_date: FUTURE_DATE,
+                reservation_time: OFFERED_SLOT,
+                party_size: Number(partySize),
+            });
+            expect(call.body).not.toHaveProperty('user_id');
+            expect(errorText(controls.party)).toBe(RESERVATION_PARTY_OUT_OF_RANGE_MESSAGE);
             expect(queryErrorNode(controls.date)).toBeNull();
             expect(queryErrorNode(controls.time)).toBeNull();
+            expect(screen.queryAllByRole('alert')).toHaveLength(0);
         },
     );
+
+    it('rejects a party size of 2.5 before any request, because the API takes a whole number', async () => {
+        const user = userEvent.setup();
+        const calls = stubFetch(() => successReply(201, {}));
+
+        renderReservationForm();
+        const controls = reservationControls();
+
+        await fillReservation(user, controls, { date: FUTURE_DATE, time: OFFERED_SLOT, party: '2.5' });
+        await user.click(screen.getByRole('button', { name: RESERVE_SUBMIT_LABEL }));
+
+        expect(calls).toHaveLength(0);
+        expect(errorText(controls.party)).toBe(RESERVATION_PARTY_INVALID_MESSAGE);
+        expect(queryErrorNode(controls.date)).toBeNull();
+        expect(queryErrorNode(controls.time)).toBeNull();
+    });
+
+    it('rejects a seating time with seconds before any request, because the API takes HH:MM', async () => {
+        const user = userEvent.setup();
+        const calls = stubFetch(() => successReply(201, {}));
+
+        renderReservationForm();
+        const controls = reservationControls();
+
+        // A time input keeps a value with seconds and drops one that is not a time
+        // at all, so this is the shape a browser can hand the form and the API's
+        // HH:MM contract cannot take.
+        await fillReservation(user, controls, { date: FUTURE_DATE, time: '19:30:15', party: '2' });
+        await user.click(screen.getByRole('button', { name: RESERVE_SUBMIT_LABEL }));
+
+        expect(calls).toHaveLength(0);
+        expect(errorText(controls.time)).toBe(RESERVATION_TIME_INVALID_MESSAGE);
+        expect(queryErrorNode(controls.date)).toBeNull();
+        expect(queryErrorNode(controls.party)).toBeNull();
+    });
+
+    // The regression proof for the server-authoritative window: 23:00 is outside
+    // the documented default, yet the form sends it and renders the API's verdict.
+    it('sends a seating time outside the documented window and renders the server verdict beside it', async () => {
+        const user = userEvent.setup();
+        const calls = stubFetch(() => errorReply(400, 'VALIDATION_ERROR', 'The booking could not be validated.', [
+            { field: 'reservation_time', issue: RESERVATION_ISSUES.OUTSIDE_SERVICE_HOURS },
+        ]));
+
+        renderReservationForm();
+        const controls = reservationControls();
+
+        await fillReservation(user, controls, { date: FUTURE_DATE, time: '23:00', party: '2' });
+        await user.click(screen.getByRole('button', { name: RESERVE_SUBMIT_LABEL }));
+
+        expect(await screen.findByText(RESERVATION_OUTSIDE_HOURS_MESSAGE)).not.toBeNull();
+
+        await waitFor(() => {
+            expect(calls).toHaveLength(1);
+        });
+
+        const call = onlyCall(calls, RESERVATIONS_URL, 'POST');
+
+        expect(call.body).toEqual({
+            reservation_date: FUTURE_DATE,
+            reservation_time: '23:00',
+            party_size: 2,
+        });
+        expect(errorText(controls.time)).toBe(RESERVATION_OUTSIDE_HOURS_MESSAGE);
+        expect(queryErrorNode(controls.date)).toBeNull();
+        expect(queryErrorNode(controls.party)).toBeNull();
+        expect(screen.queryAllByRole('alert')).toHaveLength(0);
+    });
 
     it('posts only the booking the form collected, with the note when one was typed', async () => {
         const user = userEvent.setup();

@@ -8,7 +8,8 @@
  * 1. Presentation by session status. The shell is rendered as a router layout route inside the real
  *    `SessionProvider` and `CartProvider` with `fetch` stubbed, so the navigation each status
  *    produces is asserted as rendered: the signed-out set, the signed-in set with its cart badge and
- *    logout control, and no account action at all while a stored token is still being verified.
+ *    logout control, no account action at all while a stored token is still being verified, and the
+ *    `replace` navigation to `/login` that a 401 reported on a public screen performs.
  * 2. The responsive contract, proved mechanically from the text of the two stylesheets: the 44px
  *    control floor, the single 768px breakpoint, the one-column catalog grid and its two-column
  *    rule inside that breakpoint, and the suppressed horizontal overflow at the 360px minimum
@@ -90,6 +91,12 @@ const MENU_ITEM: MenuItem = {
 
 /** Text the routed probe renders, which makes `<Outlet />`'s placement inside `main` observable. */
 const PROBE_TEXT = 'Menu screen';
+
+/**
+ * Text the login probe renders, distinct from {@link PROBE_TEXT} so the route the shell reached is
+ * unambiguous.
+ */
+const LOGIN_PROBE_TEXT = 'Login screen';
 
 // ---------------------------------------------------------------------------
 // Network double: the shell path's only request is `GET /api/auth/session`
@@ -239,9 +246,21 @@ function MenuProbe({ seedCart = false }: { seedCart?: boolean }): JSX.Element {
 }
 
 /**
+ * The login screen's stand-in: one marker paragraph, no form, so a case observes the route the
+ * shell navigated to and nothing else.
+ *
+ * @returns The routed content the shell's `<main>` holds once it has navigated to `/login`.
+ */
+function LoginProbe(): JSX.Element {
+  return <p>{LOGIN_PROBE_TEXT}</p>;
+}
+
+/**
  * Renders the shell the way `client/src/main.tsx` does: the session provider above the cart
  * provider, both above a router, with `Layout` as the layout route so `<Outlet />` has content to
- * render and `useNavigate` has a history to act on.
+ * render and `useNavigate` has a history to act on. Two screens hang off that layout route: the
+ * public `/menu` the visitor starts on, and the `/login` a reported 401 has to reach, each with its
+ * own marker text.
  *
  * @param options - Whether the routed screen seeds a cart line.
  */
@@ -253,6 +272,7 @@ function renderShell({ seedCart = false }: { seedCart?: boolean } = {}): void {
           <Routes>
             <Route element={<Layout />}>
               <Route path="/menu" element={<MenuProbe seedCart={seedCart} />} />
+              <Route path="/login" element={<LoginProbe />} />
             </Route>
           </Routes>
         </MemoryRouter>
@@ -542,6 +562,26 @@ describe('loading session', () => {
     expect(sessionIndicator()).toBeNull();
     // The neutral shell is only right because a verification really is outstanding.
     expect(requestsTo('/api/auth/session')).toHaveLength(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// A 401 reported on a public screen: the navigation the session contract documents
+// ---------------------------------------------------------------------------
+
+describe('unauthorized session', () => {
+  it('navigates a public screen to the login route when the transport reports a 401', async () => {
+    window.localStorage.setItem(TOKEN_STORAGE_KEY, STORED_TOKEN);
+    // The documented envelope with one of its thirteen codes (rule R-6): the stored token is dead.
+    installFetch({ kind: 'rejected', code: 'TOKEN_INVALID' });
+
+    renderShell();
+
+    // The shell navigated because the transport said so, not because a guard happened to render.
+    expect(await screen.findByText(LOGIN_PROBE_TEXT)).not.toBeNull();
+    expect(screen.queryByText(PROBE_TEXT)).toBeNull();
+    // Clearing the stored token is the other half of the same contract, and it still happens.
+    expect(window.localStorage.getItem(TOKEN_STORAGE_KEY)).toBeNull();
   });
 });
 
