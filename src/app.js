@@ -2,9 +2,9 @@
  * Express Application Configuration Module
  * 
  * This module initializes and exports the configured Express app instance.
- * It separates application configuration from HTTP server initialization
- * (which remains in server.js), enabling unit testing without starting
- * the actual server.
+ * It registers the whole request pipeline and never binds a socket: HTTP server
+ * initialization and shutdown stay in server.js, so requiring this module from a
+ * test, a tool or the server itself opens no port.
  * 
  * Design pattern: Factory pattern - creates configured Express app
  * 
@@ -34,21 +34,28 @@ const app = express();
  * The browser client is served from its own origin, so exactly one origin is
  * allowed; only the methods the API contract uses are advertised, and only the
  * two headers the API accepts.
+ * A preflight OPTIONS request is answered here with 204 before routing, for
+ * every path, so it never reaches a router or the API not-found handler.
  */
 app.use(cors({ origin: config.corsOrigin, methods: ['GET', 'POST'], allowedHeaders: ['Content-Type', 'Authorization'] }));
 
 /**
  * Parse JSON request bodies
  * A malformed body is rejected by the parser and handed to the API error
- * handler, which answers it as VALIDATION_ERROR.
+ * handler, which answers it as VALIDATION_ERROR. The only mounted error handler
+ * is scoped to '/api', so a malformed body sent to any other path falls through
+ * to Express's own default handler.
  */
 app.use(express.json());
 
 /**
  * Mount main routes at root path
- * This preserves the original route paths:
- * - GET '/' -> mainRoutes handles this
- * - GET '/evening' -> mainRoutes handles this
+ * Registered first among the routers, so the three tutorial routes are resolved
+ * before the API router sees the request and keep their exact bodies and
+ * content types:
+ * - GET '/' -> text/html, 'Hello, World!\n'
+ * - GET '/evening' -> text/html, 'Good evening'
+ * - GET '/good-evening' -> text/plain, 'Good evening'
  */
 app.use('/', mainRoutes);
 
