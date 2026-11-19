@@ -293,7 +293,7 @@ export function OrderConfirmationView(): JSX.Element {
 
   if (state.kind === 'loading') {
     return (
-      <div className="card" role="status">
+      <div className="state-panel" role="status">
         {id === undefined ? 'Loading your orders…' : 'Loading your order…'}
       </div>
     );
@@ -301,16 +301,18 @@ export function OrderConfirmationView(): JSX.Element {
 
   if (state.kind === 'not-found') {
     return (
-      <div className="not-found">
+      <div className="stack">
         <h1 className="page-title">Order not found</h1>
-        <p>We could not find that order in your account.</p>
-        <div className="row">
-          <Link className="button" to="/orders">
-            View your orders
-          </Link>
-          <Link className="button button--secondary" to="/menu">
-            Browse the menu
-          </Link>
+        <div className="state-panel">
+          <p>We could not find that order in your account.</p>
+          <div className="row">
+            <Link className="button" to="/orders">
+              View your orders
+            </Link>
+            <Link className="button button--secondary" to="/menu">
+              Browse the menu
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -322,9 +324,6 @@ export function OrderConfirmationView(): JSX.Element {
         <h1 className="page-title">Your order</h1>
         <div className="error-summary" role="alert" data-code={state.code}>
           <p>{state.message}</p>
-          <p>
-            <span className="badge">{state.code}</span>
-          </p>
         </div>
         <div className="row">
           <button type="button" className="button" onClick={retry}>
@@ -344,15 +343,18 @@ export function OrderConfirmationView(): JSX.Element {
 
   if (state.orders.length === 0) {
     return (
-      <div className="empty-state stack">
-        <h1 className="page-title">No orders yet</h1>
-        <p>Once you place an order, its confirmation appears here.</p>
-        <p>
-          <Link className="button" to="/menu">
-            Browse the menu
-          </Link>
-        </p>
-      </div>
+      <section className="stack">
+        <h1 className="page-title">Your orders</h1>
+        <div className="state-panel">
+          <p>No orders yet</p>
+          <p>Once you place an order, its confirmation appears here.</p>
+          <div className="row">
+            <Link className="button" to="/menu">
+              Browse the menu
+            </Link>
+          </div>
+        </div>
+      </section>
     );
   }
 

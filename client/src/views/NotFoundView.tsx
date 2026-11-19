@@ -35,40 +35,49 @@ import { useSession } from '../state/session';
  * Screen 10: the message shown for a path this client does not recognise, with a
  * calm way back into the application rather than a technical report.
  *
- * @returns The not-found block for the current session status.
+ * @returns The not-found page for the current session status.
  */
 export function NotFoundView(): JSX.Element {
   const { status } = useSession();
 
   return (
-    <div className="not-found">
+    <div className="stack">
       <h1 className="page-title">Page not found</h1>
-      <p>We could not find the page you were looking for. It may have moved, or the link may be incomplete.</p>
 
-      <div className="row">
-        <Link className="button" to="/menu">
-          Browse the menu
-        </Link>
-        {status === 'authenticated' ? (
-          <>
-            <Link className="button button--secondary" to="/orders">
-              Your orders
-            </Link>
-            <Link className="button button--secondary" to="/reservations">
-              Your reservations
-            </Link>
-          </>
-        ) : null}
-        {status === 'anonymous' ? (
-          <>
-            <Link className="button button--secondary" to="/login">
-              Log in
-            </Link>
-            <Link className="button button--secondary" to="/register">
-              Create an account
-            </Link>
-          </>
-        ) : null}
+      <div className="state-panel">
+        <p>We could not find the page you were looking for. It may have moved, or the link may be incomplete.</p>
+
+        <div className="row">
+          <Link className="button" to="/menu">
+            Browse the menu
+          </Link>
+          {status === 'authenticated' ? (
+            <>
+              <Link className="button button--secondary" to="/orders">
+                Your orders
+              </Link>
+              <Link className="button button--secondary" to="/reservations">
+                Your reservations
+              </Link>
+            </>
+          ) : null}
+          {status === 'anonymous' ? (
+            <>
+              {/*
+               * Named for the page it opens rather than "Log in": the shell's
+               * navigation already carries a link with that name, and two
+               * controls sharing one accessible name are indistinguishable in a
+               * screen reader's list of links.
+               */}
+              <Link className="button button--secondary" to="/login">
+                Log in to your account
+              </Link>
+              <Link className="button button--secondary" to="/register">
+                Create an account
+              </Link>
+            </>
+          ) : null}
+        </div>
       </div>
     </div>
   );

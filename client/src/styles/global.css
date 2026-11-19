@@ -144,15 +144,21 @@ button, input, select, textarea { font: inherit; color: inherit; }
   gap: var(--space-4) var(--space-3); }
 .detail-row { display: contents; }
 
-.empty-state { padding: var(--space-5); border: 1px dashed var(--color-border);
-  border-radius: var(--radius-lg); background: var(--color-surface-muted);
-  color: var(--color-text-muted); text-align: center; }
+/* The one panel every empty, loading and not-found state renders in, so the same
+   kind of state reads the same way on every screen: a quiet dashed surface whose
+   copy and action row both start at its left edge. The screen's single
+   .page-title h1 sits outside it, at the content edge, as every page title does. */
+.state-panel { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3);
+  width: 100%; max-width: 100%; padding: var(--space-5); border: 1px dashed var(--color-border);
+  border-radius: var(--radius-lg); background: var(--color-surface-muted); color: var(--color-text-muted);
+  text-align: start; }
 
-.error-summary { padding: var(--space-3); border: 1px solid var(--color-danger);
+/* The one failed-request panel: the server's own message and the field details it
+   sent, at the full width of the column it sits in. The code travels in data-code,
+   as the form's summary carries it, and never as a second thing to read. */
+.error-summary { width: 100%; max-width: 100%; padding: var(--space-3); border: 1px solid var(--color-danger);
   border-radius: var(--radius-md); background: var(--color-danger-surface); color: var(--color-danger); }
-
-.not-found { display: flex; flex-direction: column; align-items: center; gap: var(--space-4);
-  padding-block: var(--space-6); text-align: center; }
+.error-summary > * + * { margin-block-start: var(--space-2); }
 
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden;
   clip-path: inset(50%); white-space: nowrap; border: 0; }

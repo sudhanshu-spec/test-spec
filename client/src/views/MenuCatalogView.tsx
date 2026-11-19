@@ -24,7 +24,7 @@
  * - `ApiError` is the only failure type (rule R-6). `CATEGORY_NOT_FOUND` means
  *   the filter named no category, so it is reported beside the still-usable
  *   strip with the way back to every item; every other code renders as the
- *   failure panel carrying its code, its field details and a retry.
+ *   failure panel carrying its field details and a retry.
  * - An empty array is a normal answer, so an empty category reads as a state
  *   with a next step rather than as an error.
  *
@@ -147,9 +147,10 @@ interface RequestFailureProps {
 }
 
 /**
- * Renders one failed request: the API's code and message in the shared
- * `.error-summary`, the field details when the API sent any, and the retry
- * control that re-runs that request alone.
+ * Renders one failed request: the API's message in the shared `.error-summary`
+ * with its code carried in `data-code`, the field details when the API sent any,
+ * and the retry control that re-runs that request alone. The code is never
+ * repeated as text, so every failure panel on the client reads the same way.
  *
  * @param props - The failure, the sentence naming it and the retry action.
  * @returns The failure panel for one request.
@@ -169,9 +170,6 @@ function RequestFailure({ summary, failure, retryScope, onRetry }: RequestFailur
             ))}
           </ul>
         ) : null}
-        <p>
-          <span className="badge">{failure.code}</span>
-        </p>
       </div>
       <div className="row">
         <button type="button" className="button" onClick={onRetry}>
@@ -295,21 +293,12 @@ export function MenuCatalogView(): JSX.Element {
   }
 
   /**
-   * @returns The "All items" control followed by one control per category, or
-   *   the failure panel when the categories themselves could not be read.
+   * @returns The "All items" control followed by one control per category. The
+   *   categories' own failure is not rendered here: a panel placed inside the
+   *   strip would be squeezed to the strip's width, so it is rendered in the
+   *   catalog column instead, at the width of every other panel on the screen.
    */
   function renderFilterOptions(): JSX.Element {
-    if (categoryState.kind === 'failed') {
-      return (
-        <RequestFailure
-          summary={CATEGORY_REQUEST_SUMMARY}
-          failure={categoryState.failure}
-          retryScope={CATEGORY_RETRY_SCOPE}
-          onRetry={retryCategories}
-        />
-      );
-    }
-
     return (
       <>
         <button
@@ -353,27 +342,27 @@ export function MenuCatalogView(): JSX.Element {
   function renderEmptyState(): JSX.Element {
     if (selectedSlug !== undefined) {
       return (
-        <div className="empty-state stack">
-          <h2 className="section-title">{EMPTY_CATEGORY_TITLE}</h2>
+        <div className="state-panel">
+          <p>{EMPTY_CATEGORY_TITLE}</p>
           <p>{EMPTY_CATEGORY_BODY}</p>
-          <p>
+          <div className="row">
             <Link className="button" to="/menu">
               {CLEAR_FILTER_LABEL}
             </Link>
-          </p>
+          </div>
         </div>
       );
     }
 
     return (
-      <div className="empty-state stack">
-        <h2 className="section-title">{EMPTY_CATALOG_TITLE}</h2>
+      <div className="state-panel">
+        <p>{EMPTY_CATALOG_TITLE}</p>
         <p>{EMPTY_CATALOG_BODY}</p>
-        <p>
+        <div className="row">
           <button type="button" className="button" onClick={retryItems}>
             {EMPTY_CATALOG_RETRY_LABEL}
           </button>
-        </p>
+        </div>
       </div>
     );
   }
@@ -382,7 +371,7 @@ export function MenuCatalogView(): JSX.Element {
   function renderItems(): JSX.Element {
     if (itemState.kind === 'loading') {
       return (
-        <p className="card" role="status">
+        <p className="state-panel" role="status">
           {LOADING_ITEMS_MESSAGE}
         </p>
       );
@@ -397,9 +386,6 @@ export function MenuCatalogView(): JSX.Element {
           <div className="stack">
             <div className="error-summary" role="alert" data-code={itemState.failure.code}>
               <p>{itemState.failure.message}</p>
-              <p>
-                <span className="badge">{itemState.failure.code}</span>
-              </p>
             </div>
             <div className="row">
               <Link className="button" to="/menu">
@@ -442,14 +428,23 @@ export function MenuCatalogView(): JSX.Element {
         {PAGE_TITLE}
       </h1>
 
-      <div
-        className="category-filter"
-        role="group"
-        aria-label={FILTER_LABEL}
-        aria-busy={categoryState.kind === 'loading'}
-      >
-        {renderFilterOptions()}
-      </div>
+      {categoryState.kind === 'failed' ? (
+        <RequestFailure
+          summary={CATEGORY_REQUEST_SUMMARY}
+          failure={categoryState.failure}
+          retryScope={CATEGORY_RETRY_SCOPE}
+          onRetry={retryCategories}
+        />
+      ) : (
+        <div
+          className="category-filter"
+          role="group"
+          aria-label={FILTER_LABEL}
+          aria-busy={categoryState.kind === 'loading'}
+        >
+          {renderFilterOptions()}
+        </div>
+      )}
 
       {renderItems()}
     </section>

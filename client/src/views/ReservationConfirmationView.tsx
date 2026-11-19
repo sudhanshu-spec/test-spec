@@ -159,13 +159,13 @@ function ReservationHistory({ reservations }: ReservationHistoryProps): JSX.Elem
   if (reservations.length === 0) {
     return (
       <ReservationSection title="Your reservations">
-        <div className="empty-state stack">
+        <div className="state-panel">
           <p>You have not booked a table yet.</p>
-          <p>
+          <div className="row">
             <Link className="button" to="/reservations/new">
               Book a table
             </Link>
-          </p>
+          </div>
         </div>
       </ReservationSection>
     );
@@ -258,7 +258,7 @@ export function ReservationConfirmationView(): JSX.Element {
   if (state.status === 'loading') {
     return (
       <ReservationSection title={title}>
-        <p className="empty-state" role="status">
+        <p className="state-panel" role="status">
           {confirming ? 'Loading your booking…' : 'Loading your reservations…'}
         </p>
       </ReservationSection>
@@ -268,9 +268,8 @@ export function ReservationConfirmationView(): JSX.Element {
   if (state.status === 'failed') {
     return (
       <ReservationSection title={title}>
-        <div className="error-summary stack" role="alert" data-code={state.error.code}>
+        <div className="error-summary" role="alert" data-code={state.error.code}>
           <p>{state.error.message || LOAD_FAILURE_MESSAGE}</p>
-          <p>Error code: {state.error.code}</p>
         </div>
         <div className="row">
           <button type="button" className="button" onClick={retry}>
@@ -291,13 +290,18 @@ export function ReservationConfirmationView(): JSX.Element {
   const reservation = state.reservations.find((entry) => entry.id === id);
 
   if (reservation === undefined) {
+    // The heading names the state, as the item and order screens' headings do, so
+    // all four not-found states read the same way instead of this one keeping the
+    // page's own title.
     return (
-      <ReservationSection title={title}>
-        <div className="not-found">
+      <ReservationSection title="Booking not found">
+        <div className="state-panel">
           <p>We could not find that booking among your reservations.</p>
-          <Link className="button" to="/reservations">
-            See all your bookings
-          </Link>
+          <div className="row">
+            <Link className="button" to="/reservations">
+              See all your bookings
+            </Link>
+          </div>
         </div>
       </ReservationSection>
     );

@@ -345,7 +345,7 @@ export function MenuItemView(): JSX.Element {
 
   if (state.kind === 'loading') {
     return (
-      <div className="card" role="status">
+      <div className="state-panel" role="status">
         Loading this menu item…
       </div>
     );
@@ -353,13 +353,15 @@ export function MenuItemView(): JSX.Element {
 
   if (state.kind === 'not-found') {
     return (
-      <div className="not-found">
+      <div className="stack">
         <h1 className="page-title">Item not found</h1>
-        <p>We could not find that item on the menu. It may have been taken off the menu, or the link may be incomplete.</p>
-        <div className="row">
-          <Link className="button" to="/menu">
-            Back to the menu
-          </Link>
+        <div className="state-panel">
+          <p>We could not find that item on the menu. It may have been taken off the menu, or the link may be incomplete.</p>
+          <div className="row">
+            <Link className="button" to="/menu">
+              Back to the menu
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -371,9 +373,6 @@ export function MenuItemView(): JSX.Element {
         <h1 className="page-title">Menu item</h1>
         <div className="error-summary" role="alert" data-code={state.code}>
           <p>{state.message}</p>
-          <p>
-            <span className="badge">{state.code}</span>
-          </p>
         </div>
         <div className="row">
           <button type="button" className="button" onClick={retry}>

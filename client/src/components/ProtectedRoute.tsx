@@ -37,7 +37,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps): JSX.Element {
   if (status === 'loading') {
     // `role="status"` announces the wait and gives a test a role to query; no navigation here.
     return (
-      <p className="empty-state" role="status">
+      <p className="state-panel" role="status">
         Restoring your session…
       </p>
     );

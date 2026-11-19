@@ -643,14 +643,16 @@ export function CartView(): JSX.Element {
 
   if (items.length === 0) {
     return (
-      <section className="cart" aria-labelledby="cart-title">
+      <section className="stack" aria-labelledby="cart-title">
         <h1 className="page-title" id="cart-title">{CART_TITLE}</h1>
-        <div className="cart-empty empty-state">
-          <h2 className="section-title">{EMPTY_TITLE}</h2>
+        <div className="state-panel">
+          <p>{EMPTY_TITLE}</p>
           <p>{EMPTY_MESSAGE}</p>
-          <Link className="button" to="/menu">
-            {BROWSE_LABEL}
-          </Link>
+          <div className="row">
+            <Link className="button" to="/menu">
+              {BROWSE_LABEL}
+            </Link>
+          </div>
         </div>
       </section>
     );
