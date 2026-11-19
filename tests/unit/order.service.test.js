@@ -347,17 +347,15 @@ describe('Order Service - order.service.js', () => {
     });
   });
 
-  describe('createOrder - Store Failure Propagation (R-6)', () => {
-    test('should propagate MENU_ITEM_NOT_FOUND with 404 when the store refuses an unknown item', async () => {
-      const failure = new (loadAppError())(
-        'MENU_ITEM_NOT_FOUND',
-        `No menu item matches the id "${ITEM_ID}".`
-      );
+  describe('createOrder - Refusal Mapping (R-6)', () => {
+    test('should raise MENU_ITEM_NOT_FOUND with 404 when the store refuses an unknown item', async () => {
       const { service } = buildService({
         orders: {
-          createWithLines: jest.fn(() => {
-            throw failure;
-          })
+          createWithLines: jest.fn(() => ({
+            ok: false,
+            reason: 'MENU_ITEM_NOT_FOUND',
+            menuItemId: ITEM_ID
+          }))
         }
       });
 
@@ -366,18 +364,39 @@ describe('Order Service - order.service.js', () => {
         items: [{ menu_item_id: ITEM_ID, quantity: 1 }]
       }));
 
-      // The transaction's own menu_items read is the only decision: the service
-      // forwards the failure it raises rather than looking the items up itself.
-      expect(error).toBe(failure);
+      // The refusal is a value the store returns: the documented error for it is built
+      // here, so the repository raises nothing from the error vocabulary.
+      expect(error).toBeInstanceOf(loadAppError());
       expectFailure(error, 'MENU_ITEM_NOT_FOUND', 404);
+      expect(error.message).toContain(ITEM_ID);
       expect(error.details).toBeUndefined();
     });
 
-    test('should propagate MENU_ITEM_UNAVAILABLE with 409 when the store refuses an unavailable item', async () => {
-      const failure = new (loadAppError())(
-        'MENU_ITEM_UNAVAILABLE',
-        `The menu item "${storedOrderLine().name}" is not currently available.`
-      );
+    test('should raise MENU_ITEM_UNAVAILABLE with 409 when the store refuses an unavailable item', async () => {
+      const { service } = buildService({
+        orders: {
+          createWithLines: jest.fn(() => ({
+            ok: false,
+            reason: 'MENU_ITEM_UNAVAILABLE',
+            menuItemId: ITEM_ID,
+            itemName: storedOrderLine().name
+          }))
+        }
+      });
+
+      const error = await rejectionOf(() => service.createOrder({
+        userId: USER_ID,
+        items: [{ menu_item_id: ITEM_ID, quantity: 1 }]
+      }));
+
+      expect(error).toBeInstanceOf(loadAppError());
+      expectFailure(error, 'MENU_ITEM_UNAVAILABLE', 409);
+      expect(error.message).toContain(storedOrderLine().name);
+      expect(error.details).toBeUndefined();
+    });
+
+    test('should let a store failure that is not a refusal propagate untouched', async () => {
+      const failure = new Error('SQLITE_CONSTRAINT_NOTNULL: orders.user_id');
       const { service } = buildService({
         orders: {
           createWithLines: jest.fn(() => {
@@ -392,8 +411,6 @@ describe('Order Service - order.service.js', () => {
       }));
 
       expect(error).toBe(failure);
-      expectFailure(error, 'MENU_ITEM_UNAVAILABLE', 409);
-      expect(error.details).toBeUndefined();
     });
 
     test('should forward every accepted line of a repeated item in one store call', async () => {

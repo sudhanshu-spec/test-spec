@@ -9,9 +9,10 @@
  * db.transaction(fn).immediate() and derives every unit price, line total and
  * order total from the stored price_cents (R-3); this file accepts only
  * menu_item_id and quantity per line, reads no price and does no arithmetic, so a
- * caller-supplied price cannot reach a total. An item the transaction cannot
- * price surfaces as the documented MENU_ITEM_NOT_FOUND / MENU_ITEM_UNAVAILABLE
- * AppError, which this service propagates unchanged rather than deciding again.
+ * caller-supplied price cannot reach a total. An item that read cannot price comes
+ * back as a refusal, which this file raises as the documented MENU_ITEM_NOT_FOUND /
+ * MENU_ITEM_UNAVAILABLE AppError — the domain vocabulary is made here, never in a
+ * repository, so src/errors.js keeps the consumer set the design gives it.
  *
  * Failures are AppErrors built from code names the errors table holds, with
  * `details` attached only to VALIDATION_ERROR, and no status, header or body is
@@ -88,6 +89,21 @@ function toPublicOrder(row) {
 }
 
 /**
+ * Raise the documented AppError for a line the order store could not price, so the
+ * domain vocabulary is constructed in this layer and never in a repository.
+ * @param {{reason: string, menuItemId: string, itemName: (string|undefined)}} refusal -
+ *   What order.repository.createWithLines refused and why.
+ * @returns {AppError} MENU_ITEM_NOT_FOUND (404) or MENU_ITEM_UNAVAILABLE (409).
+ */
+function toRefusalError({ reason, menuItemId, itemName }) {
+  if (reason === 'MENU_ITEM_UNAVAILABLE') {
+    return new AppError('MENU_ITEM_UNAVAILABLE', `The menu item "${itemName}" is not currently available.`);
+  }
+
+  return new AppError('MENU_ITEM_NOT_FOUND', `No menu item matches the id "${menuItemId}".`);
+}
+
+/**
  * Build an order service over the order store it reads and writes through. The
  * store and the clock are injected, so a unit suite can stub the store and fix the
  * time without a database or a request.
@@ -99,12 +115,12 @@ function toPublicOrder(row) {
 function createOrderService({ orders, now = () => new Date() }) {
   /**
    * Place one order for the authenticated caller: validate every line, then let the
-   * repository price and write the order in one transaction, propagating the
-   * documented AppError it raises for an item it cannot price.
+   * repository price and write the order in one transaction, raising the documented
+   * AppError for an item that read could not price.
    * @param {Object} input - `{userId, items: [{menu_item_id, quantity}], notes}`.
    * @returns {Object} The stored order, projected by {@link toPublicOrder}.
-   * @throws {AppError} VALIDATION_ERROR here, or the store's MENU_ITEM_NOT_FOUND /
-   *   MENU_ITEM_UNAVAILABLE propagated unchanged.
+   * @throws {AppError} VALIDATION_ERROR here, or MENU_ITEM_NOT_FOUND / MENU_ITEM_UNAVAILABLE
+   *   for the line the store refused.
    */
   function createOrder({ userId, items: requestedLines, notes } = {}) {
     const details = collectLineDetails(requestedLines);
@@ -130,6 +146,12 @@ function createOrderService({ orders, now = () => new Date() }) {
       createdAt: now().toISOString(),
       lines: acceptedLines
     });
+
+    // A refusal means the transaction's own read could not price a line and wrote
+    // nothing; the documented error for it is raised here, not in the repository.
+    if (created.ok === false) {
+      throw toRefusalError(created);
+    }
 
     return toPublicOrder(created);
   }

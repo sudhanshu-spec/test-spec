@@ -4,9 +4,9 @@
  * { createWithLines, listByUser, findByIdForUser } against a real SQLite
  * database: the order and its lines written in one transaction with every unit
  * price taken from menu_items, the server-computed line and order totals, a
- * caller-supplied price ignored, the transaction rolled back when a line names an
- * unknown or unavailable item with the documented MENU_ITEM_NOT_FOUND (404) or
- * MENU_ITEM_UNAVAILABLE (409) AppError, the per-user scoping of both reads, the
+ * caller-supplied price ignored, the transaction rolled back with a refusal result —
+ * never a raised domain error — when a line names an unknown or unavailable item, the
+ * per-user scoping of both reads, the
  * menu-item-name ordering of a stored order's lines, the newest-first ordering of a
  * user's history with created_at ties broken by id descending, and the defaults
  * applied to an order stored without an id, status, notes or createdAt. The database
@@ -166,17 +166,6 @@ const captureError = (operation) => {
   }
 };
 
-/**
- * The AppError class the loaded repository instance raises.
- *
- * Read from the live module registry rather than captured at file scope: the loader
- * calls jest.resetModules(), so a class bound before that call is a different one
- * from the class the repository module under test throws.
- *
- * @returns {Function} The AppError class the currently loaded modules use.
- */
-const loadedAppError = () => require('../../src/errors').AppError;
-
 describe('order repository module (src/repositories/order.repository.js)', () => {
   beforeAll(() => {
     workDir = fs.mkdtempSync(path.join(os.tmpdir(), 'blitzy-order-repository-'));
@@ -334,58 +323,55 @@ describe('order repository module (src/repositories/order.repository.js)', () =>
       expect(getDb().prepare('SELECT COUNT(*) AS total FROM orders').get().total).toBe(ordersBefore);
     });
 
-    test('rolls back the whole order when a line names an unknown item', () => {
+    test('leaves no order behind and refuses with NOT_FOUND for a line naming an unknown item', () => {
       const userId = createUser();
       const [item] = availableItems(1);
       const unknownId = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
       const ordersBefore = countOrdersFor(userId);
 
-      const error = captureError(() =>
-        repository.createWithLines({
-          id: 'b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e',
-          userId,
-          lines: [
-            { menuItemId: item.id, quantity: 1 },
-            { menuItemId: unknownId, quantity: 1 }
-          ]
-        })
-      );
+      // The repository raises no domain error: it answers with the refusal the
+      // service maps to the documented 404, and the rollback leaves no row.
+      const refusal = repository.createWithLines({
+        id: 'b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e',
+        userId,
+        lines: [
+          { menuItemId: item.id, quantity: 1 },
+          { menuItemId: unknownId, quantity: 1 }
+        ]
+      });
 
-      expect(error).toBeInstanceOf(loadedAppError());
-      expect(error.code).toBe('MENU_ITEM_NOT_FOUND');
-      expect(error.status).toBe(404);
-      expect(error.message).toContain(unknownId);
+      expect(refusal).toMatchObject({ ok: false, reason: 'MENU_ITEM_NOT_FOUND', menuItemId: unknownId });
       expect(countOrdersFor(userId)).toBe(ordersBefore);
       expect(storedOrder('b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e')).toBeUndefined();
       expect(countLines('b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e')).toBe(0);
     });
 
-    test('rolls back the whole order when a line names an unavailable item', () => {
+    test('leaves no order behind and refuses with UNAVAILABLE for a line naming an unavailable item', () => {
       const userId = createUser();
       const [item] = availableItems(1);
       const unavailable = unavailableItem();
       const ordersBefore = countOrdersFor(userId);
 
-      const error = captureError(() =>
-        repository.createWithLines({
-          id: 'c3d4e5f6-a7b8-4c9d-0e1f-2a3b4c5d6e7f',
-          userId,
-          lines: [
-            { menuItemId: item.id, quantity: 1 },
-            { menuItemId: unavailable.id, quantity: 1 }
-          ]
-        })
-      );
+      const refusal = repository.createWithLines({
+        id: 'c3d4e5f6-a7b8-4c9d-0e1f-2a3b4c5d6e7f',
+        userId,
+        lines: [
+          { menuItemId: item.id, quantity: 1 },
+          { menuItemId: unavailable.id, quantity: 1 }
+        ]
+      });
 
-      expect(error).toBeInstanceOf(loadedAppError());
-      expect(error.code).toBe('MENU_ITEM_UNAVAILABLE');
-      expect(error.status).toBe(409);
-      expect(error.message).toContain(unavailable.name);
+      expect(refusal).toMatchObject({
+        ok: false,
+        reason: 'MENU_ITEM_UNAVAILABLE',
+        menuItemId: unavailable.id,
+        itemName: unavailable.name
+      });
       expect(countOrdersFor(userId)).toBe(ordersBefore);
       expect(storedOrder('c3d4e5f6-a7b8-4c9d-0e1f-2a3b4c5d6e7f')).toBeUndefined();
     });
 
-    test('rolls back the whole order and answers NOT_FOUND when both kinds are named', () => {
+    test('refuses with NOT_FOUND, and writes nothing, when both kinds are named', () => {
       const userId = createUser();
       const unavailable = unavailableItem();
       const unknownId = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
@@ -393,21 +379,16 @@ describe('order repository module (src/repositories/order.repository.js)', () =>
 
       // The unavailable item is named first, so only an existence pass over every
       // id before any availability decision yields the documented 404.
-      const error = captureError(() =>
-        repository.createWithLines({
-          id: 'd4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f80',
-          userId,
-          lines: [
-            { menuItemId: unavailable.id, quantity: 1 },
-            { menuItemId: unknownId, quantity: 1 }
-          ]
-        })
-      );
+      const refusal = repository.createWithLines({
+        id: 'd4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f80',
+        userId,
+        lines: [
+          { menuItemId: unavailable.id, quantity: 1 },
+          { menuItemId: unknownId, quantity: 1 }
+        ]
+      });
 
-      expect(error).toBeInstanceOf(loadedAppError());
-      expect(error.code).toBe('MENU_ITEM_NOT_FOUND');
-      expect(error.status).toBe(404);
-      expect(error.message).toContain(unknownId);
+      expect(refusal).toMatchObject({ ok: false, reason: 'MENU_ITEM_NOT_FOUND', menuItemId: unknownId });
       expect(countOrdersFor(userId)).toBe(ordersBefore);
       expect(storedOrder('d4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f80')).toBeUndefined();
       expect(countLines('d4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f80')).toBe(0);

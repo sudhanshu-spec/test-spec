@@ -1,23 +1,33 @@
 /**
- * @fileoverview Order Repository — the `orders` + `order_line_items` accessor, and
- * the module where atomicity, server-side pricing and the availability backstop
- * live: createWithLines writes an order and its lines in one immediate
- * transaction, pricing every line from menu_items inside it, so a caller-supplied
- * price has no path in, a line that fails leaves no order row, and an item the
- * menu no longer offers is refused with the documented 404/409 AppError.
- * listByUser and findByIdForUser bind the owner's user_id, making another user's
- * order indistinguishable from a missing one.
+ * @fileoverview Order Repository — the `orders` + `order_line_items` accessor, and the module
+ * where atomicity, server-side pricing and the availability backstop live: createWithLines
+ * writes an order and its lines in one immediate transaction, pricing every line from
+ * menu_items inside it, so a caller-supplied price has no path in and a line that fails
+ * leaves no order row. A line it cannot price comes back as a refusal value that
+ * order.service.js raises as the documented 404/409 error — the domain vocabulary stays in
+ * the service layer, and both reads bind the owner's user_id so another user's order is
+ * indistinguishable from a missing one.
  *
- * Exports: createWithLines, listByUser, findByIdForUser — SQL and row shapes;
- * request validation and the response projection belong to order.service.js.
+ * Exports: createWithLines, listByUser, findByIdForUser — SQL and row shapes; request
+ * validation, the response projection and the domain errors belong to order.service.js.
  *
  * @module src/repositories/order.repository
  */
 
 const { randomUUID } = require('node:crypto');
-const { AppError } = require('../errors');
 const { getDb } = require('../db');
 const menuItemRepository = require('./menu-item.repository');
+
+/**
+ * Rolls the order transaction back when a line cannot be priced; createWithLines
+ * returns its `refusal` to the caller, so this layer raises no domain error.
+ */
+class LineRefusal extends Error {
+  constructor(reason, menuItemId, itemName) {
+    super(`Cannot price this order: ${reason}.`);
+    this.refusal = { ok: false, reason, menuItemId, itemName };
+  }
+}
 
 /** Orders columns both reads select, so their raw row shape matches. @type {string} */
 const ORDER_COLUMNS = ['id', 'user_id', 'status', 'total_cents', 'notes', 'created_at'].join(', ');
@@ -26,13 +36,9 @@ const ORDER_COLUMNS = ['id', 'user_id', 'status', 'total_cents', 'notes', 'creat
 const DEFAULT_STATUS = 'confirmed';
 
 /**
- * Read the lines of several orders in one batched statement, keyed by order id:
- * one `IN` lookup per page, line names joined from menu_items, ordered by item
- * name then line id — total, so it repeats exactly — stored integers untouched.
- *
+ * Read the lines of the given orders in one batched, totally ordered statement.
  * @param {Array<string>} orderIds - Ids of the orders whose lines are wanted.
- * @returns {Map<string, Array<Object>>} Line arrays by order id; an order with no
- *   lines is absent from the map.
+ * @returns {Map<string, Array<Object>>} Line arrays by order id; an order with no lines is absent.
  */
 function readLinesByOrder(orderIds) {
   if (orderIds.length === 0) {
@@ -55,7 +61,6 @@ function readLinesByOrder(orderIds) {
       id: row.id, menu_item_id: row.menu_item_id, name: row.name, quantity: row.quantity,
       unit_price_cents: row.unit_price_cents, line_total_cents: row.line_total_cents
     };
-
     lines.push(line);
     linesByOrder.set(row.order_id, lines);
   }
@@ -64,9 +69,8 @@ function readLinesByOrder(orderIds) {
 }
 
 /**
- * Assemble raw orders rows into the API's order shape — two queries in total
- * however many orders are assembled, and an order with no lines renders `[]`.
- *
+ * Assemble raw orders rows into the API's order shape, two queries in total however many
+ * orders are assembled, and an order with no lines renders `[]`.
  * @param {Array<Object>} orderRows - Raw rows selected from orders.
  * @returns {Array<Object>} The contract's order shape per row, in the given order.
  */
@@ -74,23 +78,17 @@ function assembleOrders(orderRows) {
   const linesByOrder = readLinesByOrder(orderRows.map((row) => row.id));
 
   return orderRows.map((row) => ({
-    id: row.id,
-    status: row.status,
-    total_cents: row.total_cents,
-    notes: row.notes,
-    created_at: row.created_at,
-    lines: linesByOrder.get(row.id) ?? []
+    id: row.id, status: row.status, total_cents: row.total_cents, notes: row.notes,
+    created_at: row.created_at, lines: linesByOrder.get(row.id) ?? []
   }));
 }
 
 /**
- * Store one order with its line items, atomically: one immediate transaction, so
- * any throw rolls back every statement and a line that cannot be priced leaves no
- * `orders` row. The transaction's single menu_items read is authoritative: it
- * prices every line from the stored price_cents (R-3), refusing an id no item
- * carries with MENU_ITEM_NOT_FOUND (404) before an unavailable item with
- * MENU_ITEM_UNAVAILABLE (409) — so a race with the menu cannot change the code.
- *
+ * Store one order with its line items atomically in one immediate transaction: any throw
+ * rolls back every statement, and a line that cannot be priced leaves no `orders` row. The
+ * transaction's single menu_items read is authoritative — it prices every line from the
+ * stored price_cents (R-3), refusing an id no item carries before an unavailable item, so a
+ * race with the menu cannot change which refusal is reported.
  * @param {Object} order - The order to store.
  * @param {string} [order.id] - Order identifier; a fresh UUID when omitted.
  * @param {string} order.userId - Owner, taken from the authenticated caller.
@@ -98,8 +96,10 @@ function assembleOrders(orderRows) {
  * @param {string|null} [order.notes] - Free-text note; null when omitted.
  * @param {string} [order.createdAt] - ISO-8601 creation time; now when omitted.
  * @param {Array<{menuItemId: string, quantity: number}>} order.lines - Ordered items.
- * @returns {Object|null} The stored order, shaped as a later read returns it.
- * @throws {AppError} MENU_ITEM_NOT_FOUND (404), MENU_ITEM_UNAVAILABLE (409), or a statement failure.
+ * @returns {Object} The stored order on success, otherwise the refusal it detected —
+ *   `{ok: false, reason, menuItemId, itemName}` — that the service raises as the 404/409;
+ *   a stored order carries no `ok`, so `ok === false` identifies the refusal.
+ * @throws {Error} If the database cannot be opened or a statement fails.
  */
 function createWithLines(order = {}) {
   const { id = randomUUID(), userId, status = DEFAULT_STATUS, notes = null } = order;
@@ -108,22 +108,21 @@ function createWithLines(order = {}) {
   const db = getDb();
 
   const write = db.transaction((payload) => {
-    // One read prices the whole order: findManyByIds collapses duplicate ids and
-    // runs on this transaction's connection.
+    // One read prices the whole order on this transaction's own connection.
     const itemRows = menuItemRepository.findManyByIds(payload.lines.map((line) => line.menuItemId));
     const itemsById = new Map(itemRows.map((row) => [row.id, row]));
     // Existence decides first, so a cart naming both kinds answers 404.
     const unknownId = payload.lines.map((line) => line.menuItemId).find((menuItemId) => !itemsById.has(menuItemId));
 
     if (unknownId !== undefined) {
-      throw new AppError('MENU_ITEM_NOT_FOUND', `No menu item matches the id "${unknownId}".`);
+      throw new LineRefusal('MENU_ITEM_NOT_FOUND', unknownId);
     }
 
     const pricedLines = payload.lines.map((line) => {
       const item = itemsById.get(line.menuItemId);
 
       if (item.is_available !== 1) {
-        throw new AppError('MENU_ITEM_UNAVAILABLE', `The menu item "${item.name}" is not currently available.`);
+        throw new LineRefusal('MENU_ITEM_UNAVAILABLE', item.id, item.name);
       }
 
       return {
@@ -142,23 +141,27 @@ function createWithLines(order = {}) {
       db.prepare(
         'INSERT INTO order_line_items (id, order_id, menu_item_id, quantity, unit_price_cents, ' +
           `line_total_cents) VALUES ${pricedLines.map(() => '(?, ?, ?, ?, ?, ?)').join(', ')}`
-      ).run(...pricedLines.flatMap((line) => [
-        line.id, payload.id, line.menuItemId, line.quantity, line.unitPriceCents, line.lineTotalCents
-      ]));
+      ).run(...pricedLines.flatMap((line) => [line.id, payload.id, line.menuItemId,
+        line.quantity, line.unitPriceCents, line.lineTotalCents]));
     }
 
-    // Read back the way a later request would, still inside the transaction, so no
-    // response can describe a partial order.
+    // Read back as a later request would, inside the transaction: no partial order escapes.
     return findByIdForUser(payload.id, payload.userId);
   });
 
-  return write.immediate({ id, userId, status, notes, createdAt, lines });
+  try {
+    return write.immediate({ id, userId, status, notes, createdAt, lines });
+  } catch (error) {
+    // The rollback has undone every write; only the refusal travels on, as a value.
+    if (error instanceof LineRefusal) {
+      return error.refusal;
+    }
+    throw error;
+  }
 }
 
 /**
- * List one user's orders newest first, created_at ties broken by id descending so the
- * order is total; ownership is bound as a WHERE parameter, never filtered afterwards.
- *
+ * List one user's orders newest first, ties broken by id descending so the ordering is total.
  * @param {string} userId - Owner whose orders are listed.
  * @returns {Array<Object>} The user's orders with their lines, newest first.
  * @throws {Error} If the database cannot be opened or the statement fails.
@@ -172,14 +175,12 @@ function listByUser(userId) {
 }
 
 /**
- * Find one order by id, only if it belongs to the given user: the composite
- * predicate makes a foreign order indistinguishable from a missing one, so the
- * caller answers 404 rather than 403 without asserting ownership afterwards.
- *
+ * Find one order by id only if it belongs to the given user: the composite predicate
+ * makes a foreign order indistinguishable from a missing one, so the caller answers
+ * 404 rather than 403 without asserting ownership afterwards.
  * @param {string} id - Order id to read.
  * @param {string} userId - Owner the lookup is scoped to.
- * @returns {Object|null} The order with its lines, or null when that user holds no
- *   such order.
+ * @returns {Object|null} The order with its lines, or null when that user holds no such order.
  * @throws {Error} If the database cannot be opened or the statement fails.
  */
 function findByIdForUser(id, userId) {

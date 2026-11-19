@@ -946,24 +946,22 @@ describe('API routers over an in-process Express pipeline', () => {
       expect(Math.abs(Date.now() - Date.parse(createdAt))).toBeLessThan(60000);
     });
 
-    test('propagates the 409 MENU_ITEM_UNAVAILABLE the store raises for an item it cannot price', () => {
+    test('raises the 409 MENU_ITEM_UNAVAILABLE for an item the store refuses to price', () => {
       const { service, orders } = createServiceFixture();
-      const failure = new AppError(
-        'MENU_ITEM_UNAVAILABLE',
-        `The menu item "${ITEM_B.name}" is not currently available.`
-      );
-      orders.createWithLines.mockImplementation(() => {
-        throw failure;
-      });
+      orders.createWithLines.mockImplementation(() => ({
+        ok: false,
+        reason: 'MENU_ITEM_UNAVAILABLE',
+        menuItemId: ITEM_B.id,
+        itemName: ITEM_B.name
+      }));
 
       const error = captureError(() => service.createOrder({
         userId: USER_ID,
         items: [{ menu_item_id: ITEM_B.id, quantity: 1 }]
       }));
 
-      // The refusal comes from the transaction's own read; the service forwards it
-      // rather than deciding again, so code and status reach the client intact.
-      expect(error).toBe(failure);
+      // The refusal comes from the transaction's own read as a value; the service raises
+      // the documented error for it, so code and status reach the client intact.
       expect(error).toBeInstanceOf(AppError);
       expect(error.code).toBe('MENU_ITEM_UNAVAILABLE');
       expect(error.status).toBe(409);
@@ -971,19 +969,19 @@ describe('API routers over an in-process Express pipeline', () => {
       expect(error.details).toBeUndefined();
     });
 
-    test('propagates the 404 MENU_ITEM_NOT_FOUND the store raises for an id no item carries', () => {
+    test('raises the 404 MENU_ITEM_NOT_FOUND for an id no item carries', () => {
       const { service, orders } = createServiceFixture();
-      const failure = new AppError('MENU_ITEM_NOT_FOUND', `No menu item matches the id "${ITEM_B.id}".`);
-      orders.createWithLines.mockImplementation(() => {
-        throw failure;
-      });
+      orders.createWithLines.mockImplementation(() => ({
+        ok: false,
+        reason: 'MENU_ITEM_NOT_FOUND',
+        menuItemId: ITEM_B.id
+      }));
 
       const error = captureError(() => service.createOrder({
         userId: USER_ID,
         items: [{ menu_item_id: ITEM_B.id, quantity: 1 }]
       }));
 
-      expect(error).toBe(failure);
       expect(error).toBeInstanceOf(AppError);
       expect(error.code).toBe('MENU_ITEM_NOT_FOUND');
       expect(error.status).toBe(404);
