@@ -1,0 +1,198 @@
+/**
+ * Global Stylesheet — tokens, reset/base layer, layout shell, shared controls
+ *
+ * The single home of the SPA's design tokens and base styles, imported once by
+ * client/src/main.tsx; catalog.css and every component consume the tokens below
+ * rather than declaring their own colour, spacing, radius or font size.
+ *
+ * Two invariants a later reader must not break: custom properties are declared in
+ * :root only, and there is exactly one breakpoint (768px) — one column below it,
+ * never scrolling sideways, with every interactive control at least 44x44px.
+ *
+ * @stylesheet client/src/styles/global.css
+ */
+
+:root {
+  /* ---- Colour: surfaces and text ---- */
+  --color-surface: #ffffff; /* page background */
+  --color-surface-raised: #ffffff; /* cards, inputs, header bar */
+  --color-surface-muted: #f7f3ee; /* quiet panels and hover fills */
+  --color-text: #1f1a17; /* primary text */
+  --color-text-muted: #6b615a; /* secondary text, hints, footer */
+  --color-border: #d9cfc5; /* hairlines and control borders */
+  /* ---- Colour: brand ---- */
+  --color-brand: #b1411b; /* primary action fill */
+  --color-brand-strong: #8a3113; /* links and hover state */
+  --color-brand-contrast: #ffffff; /* text on a brand fill */
+  /* ---- Colour: feedback ---- */
+  --color-danger: #a32219; /* field errors, unavailable state */
+  --color-danger-surface: #fdecea; /* error panels, unavailable badge */
+  --color-success: #1c6b3a; /* confirmations, available state */
+  --color-success-surface: #e7f5ec; /* available badge */
+  /* ---- Spacing scale ---- */
+  --space-1: 4px; /* inline icon gap */
+  --space-2: 8px; /* tight gaps, badge padding */
+  --space-3: 12px; /* control padding, row gap */
+  --space-4: 16px; /* default vertical rhythm */
+  --space-5: 24px; /* panel padding */
+  --space-6: 32px; /* wide gutter above the breakpoint */
+  --space-7: 48px; /* page-level blocks */
+  /* ---- Radius ---- */
+  --radius-sm: 4px; /* small chips */
+  --radius-md: 8px; /* controls and buttons */
+  --radius-lg: 12px; /* cards and panels */
+  --radius-pill: 999px; /* fully rounded badges */
+  /* ---- Typography ---- */
+  --font-family-base: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; /* system stack: no webfont ships with the client */
+  --font-size-sm: 0.875rem; /* hints, badges, field errors */
+  --font-size-base: 1rem; /* body copy and controls */
+  --font-size-lg: 1.125rem; /* h3, brand, section titles */
+  --font-size-xl: 1.375rem; /* h2 */
+  --font-size-2xl: 1.75rem; /* h1 and page titles */
+  --line-height-tight: 1.25; /* headings */
+  --line-height-base: 1.55; /* body copy */
+  --font-weight-regular: 400; /* body copy */
+  --font-weight-bold: 700; /* headings, labels, prices */
+  /* ---- Layout ---- */
+  --layout-max-width: 68rem; /* content column ceiling */
+  --layout-gutter: 16px; /* page padding below the breakpoint */
+  --shadow-card: 0 1px 2px rgba(31, 26, 23, 0.08), 0 6px 16px rgba(31, 26, 23, 0.06); /* card lift */
+  /* ---- Controls ---- */
+  --control-min-size: 44px; /* touch-target floor for every interactive control */
+}
+
+/* ---- Reset and base layer: no sideways scroll below the breakpoint ---- */
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; max-width: 100%; }
+
+body {
+  font-family: var(--font-family-base); font-size: var(--font-size-base);
+  line-height: var(--line-height-base); color: var(--color-text);
+  background: var(--color-surface); overflow-x: hidden;
+}
+
+img { display: block; max-width: 100%; height: auto; }
+:focus-visible { outline: 2px solid var(--color-brand-strong); outline-offset: 2px; }
+
+h1, h2, h3 { margin: 0; line-height: var(--line-height-tight); font-weight: var(--font-weight-bold); }
+h1 { font-size: var(--font-size-2xl); }
+h2 { font-size: var(--font-size-xl); }
+h3 { font-size: var(--font-size-lg); }
+
+p, ul, ol { margin: 0; }
+ul, ol { padding-inline-start: var(--space-5); }
+a { color: var(--color-brand-strong); }
+a:hover { color: var(--color-brand); }
+button, input, select, textarea { font: inherit; color: inherit; }
+
+/* ---- Layout shell (screen 9) ---- */
+
+.app { display: flex; flex-direction: column; min-height: 100vh; max-width: 100%; }
+
+.app-header { display: flex; flex-direction: column; gap: var(--space-3);
+  padding: var(--space-3) var(--layout-gutter); background: var(--color-surface-raised);
+  border-block-end: 1px solid var(--color-border); }
+
+.app-header__brand { display: inline-flex; align-items: center; min-height: var(--control-min-size);
+  font-size: var(--font-size-lg); font-weight: var(--font-weight-bold); flex-shrink: 0; /* keeps the name on one line in the desktop header row */
+  color: var(--color-text); text-decoration: none; }
+.app-header__brand:hover { color: var(--color-brand-strong); }
+
+.app-nav { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); min-width: 0; }
+
+.app-nav__link { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+  min-height: var(--control-min-size); min-width: var(--control-min-size);
+  padding-inline: var(--space-3); border-radius: var(--radius-md);
+  color: var(--color-text); text-decoration: none; }
+.app-nav__link:hover { background: var(--color-surface-muted); }
+.app-nav__link--active { background: var(--color-surface-muted); color: var(--color-brand-strong); font-weight: var(--font-weight-bold); }
+
+.app-main { flex: 1 1 auto; width: 100%; max-width: var(--layout-max-width);
+  margin: 0 auto; padding: var(--layout-gutter); overflow-wrap: anywhere; /* long names break here, never in the header nav */ }
+
+.session-indicator { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--space-2);
+  max-width: 100%; font-size: var(--font-size-sm); color: var(--color-text-muted); overflow-wrap: anywhere; }
+.session-indicator__name { color: var(--color-text); font-weight: var(--font-weight-bold); }
+
+.app-footer { padding: var(--space-4) var(--layout-gutter);
+  border-block-start: 1px solid var(--color-border); background: var(--color-surface-muted);
+  color: var(--color-text-muted); font-size: var(--font-size-sm); }
+
+/* ---- Page and section helpers ---- */
+
+.page-title { margin: 0 0 var(--space-4); font-size: var(--font-size-2xl); line-height: var(--line-height-tight); }
+.section-title { margin: 0 0 var(--space-3); font-size: var(--font-size-lg); line-height: var(--line-height-tight); }
+.stack > * + * { margin-block-start: var(--space-4); }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); min-width: 0; }
+
+.empty-state { padding: var(--space-5); border: 1px dashed var(--color-border);
+  border-radius: var(--radius-lg); background: var(--color-surface-muted);
+  color: var(--color-text-muted); text-align: center; }
+
+.error-summary { padding: var(--space-3); border: 1px solid var(--color-danger);
+  border-radius: var(--radius-md); background: var(--color-danger-surface); color: var(--color-danger); }
+
+.not-found { display: flex; flex-direction: column; align-items: center; gap: var(--space-4);
+  padding-block: var(--space-6); text-align: center; }
+
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip-path: inset(50%); white-space: nowrap; border: 0; }
+
+/* ---- Shared controls: every control keeps the 44x44px touch target ---- */
+
+.control { display: block; width: 100%; max-width: 100%;
+  min-height: var(--control-min-size); min-width: var(--control-min-size);
+  padding: var(--space-2) var(--space-3); font: inherit; color: var(--color-text);
+  background: var(--color-surface-raised); border: 1px solid var(--color-border);
+  border-radius: var(--radius-md); }
+.control--select { padding-inline-end: var(--space-2); cursor: pointer; }
+.control--textarea { min-height: calc(var(--control-min-size) * 2); resize: vertical; }
+.control:focus-visible { border-color: var(--color-brand); }
+
+.button { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
+  min-height: var(--control-min-size); min-width: var(--control-min-size);
+  padding: var(--space-2) var(--space-4); font: inherit; font-weight: var(--font-weight-bold);
+  text-align: center; text-decoration: none; color: var(--color-brand-contrast);
+  background: var(--color-brand); border: 1px solid var(--color-brand);
+  border-radius: var(--radius-md); cursor: pointer; }
+.button:hover { background: var(--color-brand-strong); border-color: var(--color-brand-strong); }
+.button--secondary { color: var(--color-brand-strong); background: var(--color-surface-raised); border-color: var(--color-border); }
+.button--secondary:hover { background: var(--color-surface-muted); border-color: var(--color-brand-strong); }
+.button--danger { color: var(--color-brand-contrast); background: var(--color-danger); border-color: var(--color-danger); }
+.button--danger:hover { border-color: var(--color-text); }
+.button--block { width: 100%; }
+.button[disabled] { color: var(--color-text-muted); background: var(--color-surface-muted); border-color: var(--color-border); cursor: not-allowed; }
+
+/* ---- Forms: the field carries the envelope's message as text, not colour alone ---- */
+
+.field { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; max-width: 100%; }
+.field__label { font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); color: var(--color-text); }
+.field__hint { font-size: var(--font-size-sm); color: var(--color-text-muted); }
+.field-error { font-size: var(--font-size-sm); color: var(--color-danger); }
+.field--invalid .control { border-color: var(--color-danger); }
+
+/* ---- Content: cards, availability badges, the formatted price string ---- */
+
+.card { max-width: 100%; padding: var(--space-4); background: var(--color-surface-raised);
+  border: 1px solid var(--color-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); }
+.card--interactive { display: flex; flex-direction: column; gap: var(--space-2); color: inherit; text-decoration: none; }
+.card--interactive:hover { border-color: var(--color-brand); }
+
+.badge { display: inline-flex; align-items: center; padding: var(--space-1) var(--space-2);
+  font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); border-radius: var(--radius-pill);
+  background: var(--color-surface-muted); color: var(--color-text-muted); }
+.badge--available { background: var(--color-success-surface); color: var(--color-success); }
+.badge--unavailable { background: var(--color-danger-surface); color: var(--color-danger); }
+
+/* Sizes the already-formatted money string; a currency symbol is never added here. */
+.price { font-variant-numeric: tabular-nums; font-weight: var(--font-weight-bold); white-space: nowrap; }
+
+/* ---- The single breakpoint: two columns from 768px up, one column below ---- */
+
+@media (min-width: 768px) {
+  .app-header { flex-direction: row; flex-wrap: wrap; justify-content: space-between; align-items: center; }
+  .app-nav { flex-wrap: nowrap; }
+  .app-main { padding: var(--space-6); }
+  .button--block { width: auto; }
+}
