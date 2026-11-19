@@ -16,6 +16,11 @@
  * renders the same not-found message, with no client-side ownership check and
  * nothing to distinguish the two cases.
  *
+ * The date, the seating time and the `created_at` instant all reach the screen
+ * through `client/src/api/format`, so the two stored wall-clock values and the
+ * timestamp are presented in one set of formats and nothing here formats one for
+ * itself.
+ *
  * Four states are rendered explicitly: loading, populated, empty (no bookings,
  * or a booking not in the list) and failure. Every failure is reported as the
  * transport's `ApiError` and by its `code` alone; the session provider owns the
@@ -33,7 +38,7 @@ import type { JSX, ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import { ApiError } from '../api/client';
-import { formatTimestamp } from '../api/format';
+import { formatCalendarDate, formatClockTime, formatStatusLabel, formatTimestamp } from '../api/format';
 import { listReservations } from '../api/reservations';
 import type { Reservation } from '../api/types';
 
@@ -87,16 +92,18 @@ interface DetailRowProps {
 }
 
 /**
- * Renders one label/value line of a booking. A paragraph with the shared `.row`
- * layout keeps the pair on one line where it fits and stacks the value under the
- * label where it does not, without a stylesheet addition.
+ * Renders one label/value line of a booking. The row contributes its label and
+ * value cells to the `.detail-list` grid its list declares, so every value in one
+ * list — the confirmation's and each history card's alike — begins at the same
+ * left edge, and a value too wide for the remaining space wraps instead of
+ * widening the card at the narrowest supported width.
  *
  * @param props - The label and the value to show.
  * @returns The row element.
  */
 function DetailRow({ label, children }: DetailRowProps): JSX.Element {
   return (
-    <p className="row">
+    <p className="detail-row">
       <span className="field__label">{label}</span>
       <span>{children}</span>
     </p>
@@ -174,21 +181,30 @@ function ReservationHistory({ reservations }: ReservationHistoryProps): JSX.Elem
         </div>
         {reservations.map((reservation) => (
           <article className="card stack" key={reservation.id}>
-            <DetailRow label="Date">
-              <time dateTime={reservation.reservation_date}>{reservation.reservation_date}</time>
-            </DetailRow>
-            <DetailRow label="Time">
-              <time dateTime={reservation.reservation_time}>{reservation.reservation_time}</time>
-            </DetailRow>
-            <DetailRow label="Party size">{reservation.party_size}</DetailRow>
-            <DetailRow label="Status">
-              <span className={statusBadgeClass(reservation.status)}>{reservation.status}</span>
-            </DetailRow>
-            {reservation.notes ? <DetailRow label="Notes">{reservation.notes}</DetailRow> : null}
+            <div className="detail-list">
+              <DetailRow label="Date">
+                <time dateTime={reservation.reservation_date}>
+                  {formatCalendarDate(reservation.reservation_date)}
+                </time>
+              </DetailRow>
+              <DetailRow label="Time">
+                <time dateTime={reservation.reservation_time}>
+                  {formatClockTime(reservation.reservation_time)}
+                </time>
+              </DetailRow>
+              <DetailRow label="Party size">{reservation.party_size}</DetailRow>
+              <DetailRow label="Status">
+                <span className={statusBadgeClass(reservation.status)}>
+
+                  {formatStatusLabel(reservation.status)}
+
+                </span>
+              </DetailRow>
+              {reservation.notes ? <DetailRow label="Notes">{reservation.notes}</DetailRow> : null}
+            </div>
             <div className="row">
               <Link className="button button--secondary" to={`/reservations/${reservation.id}`}>
-                View booking for{' '}
-                <time dateTime={reservation.reservation_date}>{reservation.reservation_date}</time>
+                {`View booking for ${formatCalendarDate(reservation.reservation_date)}`}
               </Link>
             </div>
           </article>
@@ -290,20 +306,30 @@ export function ReservationConfirmationView(): JSX.Element {
   return (
     <ReservationSection title={title}>
       <div className="card stack">
-        <DetailRow label="Date">
-          <time dateTime={reservation.reservation_date}>{reservation.reservation_date}</time>
-        </DetailRow>
-        <DetailRow label="Time">
-          <time dateTime={reservation.reservation_time}>{reservation.reservation_time}</time>
-        </DetailRow>
-        <DetailRow label="Party size">{reservation.party_size}</DetailRow>
-        <DetailRow label="Status">
-          <span className={statusBadgeClass(reservation.status)}>{reservation.status}</span>
-        </DetailRow>
-        {reservation.notes ? <DetailRow label="Notes">{reservation.notes}</DetailRow> : null}
-        <DetailRow label="Booked on">
-          <time dateTime={reservation.created_at}>{formatTimestamp(reservation.created_at)}</time>
-        </DetailRow>
+        <div className="detail-list">
+          <DetailRow label="Date">
+            <time dateTime={reservation.reservation_date}>
+              {formatCalendarDate(reservation.reservation_date)}
+            </time>
+          </DetailRow>
+          <DetailRow label="Time">
+            <time dateTime={reservation.reservation_time}>
+              {formatClockTime(reservation.reservation_time)}
+            </time>
+          </DetailRow>
+          <DetailRow label="Party size">{reservation.party_size}</DetailRow>
+          <DetailRow label="Status">
+            <span className={statusBadgeClass(reservation.status)}>
+
+              {formatStatusLabel(reservation.status)}
+
+            </span>
+          </DetailRow>
+          {reservation.notes ? <DetailRow label="Notes">{reservation.notes}</DetailRow> : null}
+          <DetailRow label="Booked on">
+            <time dateTime={reservation.created_at}>{formatTimestamp(reservation.created_at)}</time>
+          </DetailRow>
+        </div>
         <div className="row">
           <Link className="button" to="/reservations">
             See all your bookings

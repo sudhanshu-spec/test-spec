@@ -9,8 +9,10 @@
  * guard, performs no redirect and holds no route-table knowledge.
  *
  * Money is the server's alone. Every amount shown here is an `Order` field passed
- * through `formatCents` unchanged — nothing is summed, rounded or re-derived from
- * the lines, so the figure a customer reads is the figure the API stored.
+ * through `formatCents` unchanged — no amount is summed, rounded or re-derived
+ * from the lines, so the figure a customer reads is the figure the API stored.
+ * The item count is the one figure read from the lines and is their quantities,
+ * the same count the cart shows before the order is placed.
  *
  * The API scopes each read to the caller and answers an order held by another
  * account exactly as it answers an id that names no order, both with
@@ -29,20 +31,9 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import { ApiError } from '../api/client';
-import { formatCents, formatTimestamp } from '../api/format';
+import { formatCents, formatStatusLabel, formatTimestamp } from '../api/format';
 import { getOrder, listOrders } from '../api/orders';
 import type { Order, OrderStatus } from '../api/types';
-
-/**
- * Human labels for the four statuses `orders.status` may hold. The label is the
- * meaning; the badge colour beside it only reinforces it.
- */
-const STATUS_LABELS: Record<OrderStatus, string> = {
-  confirmed: 'Confirmed',
-  preparing: 'Preparing',
-  completed: 'Completed',
-  cancelled: 'Cancelled',
-};
 
 /**
  * The badge class each status takes, drawn from the two the stylesheet declares.
@@ -112,6 +103,23 @@ function countLabel(count: number, singular: string, pluralForm: string): string
 }
 
 /**
+ * Counts the units an order holds — the same figure the cart labels "items in
+ * your cart" before the order is placed. It is the sum of every line's
+ * quantity, not the number of lines: two burgers and one side read as
+ * `3 items` in the cart and as `3 items` here, and an order of twenty of one
+ * dish and one of another reads as `21 items`.
+ *
+ * Quantities are the only values summed. Every amount on this screen remains
+ * the server's own field passed through `formatCents` unchanged.
+ *
+ * @param order - The order exactly as the API returned it, with its lines.
+ * @returns The number of units the order's lines add up to.
+ */
+function unitCount(order: Order): number {
+  return order.lines.reduce((sum, line) => sum + line.quantity, 0);
+}
+
+/**
  * Renders one order as the confirmation of the purchase that produced it: its
  * status and placement time, its id, the note when one was left, every line with
  * the quantity and the server's unit and line amounts, and the server's total.
@@ -128,7 +136,7 @@ function OrderConfirmation({ order }: OrderConfirmationProps): JSX.Element {
 
       <section className="card stack" aria-label="Order details">
         <div className="row">
-          <span className={STATUS_BADGE_CLASSES[order.status]}>{STATUS_LABELS[order.status]}</span>
+          <span className={STATUS_BADGE_CLASSES[order.status]}>{formatStatusLabel(order.status)}</span>
           <span className="cart-line__unit-price">Placed {formatTimestamp(order.created_at)}</span>
         </div>
         <p className="cart-line__name">Order {order.id}</p>
@@ -142,7 +150,7 @@ function OrderConfirmation({ order }: OrderConfirmationProps): JSX.Element {
 
       <section className="cart-summary" aria-label="Items and total">
         <div className="cart-summary__lines">
-          <h2 className="section-title">{countLabel(order.lines.length, 'item', 'items')}</h2>
+          <h2 className="section-title">{countLabel(unitCount(order), 'item', 'items')}</h2>
           <ul className="cart-lines">
             {order.lines.map((line) => (
               <li className="cart-line" key={line.id}>
@@ -189,11 +197,11 @@ function OrderConfirmation({ order }: OrderConfirmationProps): JSX.Element {
  */
 function OrderHistoryEntry({ order }: OrderHistoryEntryProps): JSX.Element {
   return (
-    <li className="cart-line">
+    <li className="cart-line cart-line--history">
       <div className="cart-line__info">
         <span className="cart-line__name">Order {order.id}</span>
         <span className="cart-line__unit-price">Placed {formatTimestamp(order.created_at)}</span>
-        <span className="cart-line__unit-price">{countLabel(order.lines.length, 'item', 'items')}</span>
+        <span className="cart-line__unit-price">{countLabel(unitCount(order), 'item', 'items')}</span>
         {/*
          * The order id itself is a single line of text, so an anchor wrapped
          * around it cannot reach the 44x44px touch-target floor at wide
@@ -208,7 +216,7 @@ function OrderHistoryEntry({ order }: OrderHistoryEntryProps): JSX.Element {
         </div>
       </div>
       <div className="row">
-        <span className={STATUS_BADGE_CLASSES[order.status]}>{STATUS_LABELS[order.status]}</span>
+        <span className={STATUS_BADGE_CLASSES[order.status]}>{formatStatusLabel(order.status)}</span>
       </div>
       <span className="cart-line__total">{formatCents(order.total_cents)}</span>
     </li>

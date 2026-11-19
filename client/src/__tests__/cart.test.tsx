@@ -49,7 +49,7 @@
 import { useEffect, useState } from 'react';
 import type { JSX, ReactNode } from 'react';
 import { MemoryRouter, Route, Routes, useParams } from 'react-router-dom';
-import { act, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -548,6 +548,24 @@ function enabledAddControl(controls: readonly HTMLButtonElement[]): HTMLButtonEl
   return only;
 }
 
+/**
+ * Finds the inline message a control announces, which is the element its
+ * `aria-describedby` names rather than a message somewhere else on the screen.
+ *
+ * @param control - The input the message is attached to.
+ * @returns The last described element, which is where a field's message sits, or
+ *   null when the control is described by nothing.
+ */
+function describedElement(control: HTMLElement): HTMLElement | null {
+  const ids = control.getAttribute('aria-describedby');
+
+  if (ids === null) {
+    return null;
+  }
+
+  return document.getElementById(ids.split(' ').pop() ?? '');
+}
+
 beforeEach(() => {
   // The stored token is the only user data a fixture carries: the session
   // restores through it, and its restore request answers the account.
@@ -796,6 +814,60 @@ describe('quantity field', () => {
     expect((quantity as HTMLInputElement).value).toBe('5');
     expect(cartOf(harness.probe).items[0]?.quantity).toBe(5);
   });
+
+  it.each([
+    { typed: '21', shown: 20 },
+    { typed: '0', shown: 1 },
+  ])(
+    'reads a typed $typed back as $shown in the field, the cart and the order',
+    async ({ typed, shown }) => {
+      const user = userEvent.setup();
+      const harness = renderHarness({ entries: ['/cart'], content: CHECKOUT_CONTENT, routes: ORDER_ROUTES });
+      await awaitAuthenticated(harness.probe);
+
+      act(() => {
+        const cart = cartOf(harness.probe);
+        cart.add(BURGER, 12);
+        cart.add(FRIES, 1);
+      });
+
+      const quantity = screen.getByRole<HTMLInputElement>('spinbutton', { name: 'Quantity of Classic Burger' });
+      await user.clear(quantity);
+      await user.type(quantity, typed);
+
+      // One number everywhere: the field the shopper reads, the line the cart
+      // holds, the header count and the two displayed totals.
+      expect(quantity.value).toBe(String(shown));
+      const cart = cartOf(harness.probe);
+      expect(cart.items[0]?.quantity).toBe(shown);
+      expect(cart.itemCount).toBe(shown + 1);
+      expect(cart.totalCents).toBe(shown * BURGER.price_cents + FRIES.price_cents);
+      expect(screen.getByText(`${shown + 1} items in your cart`)).not.toBeNull();
+      expect(screen.getByText(formatCents(shown * BURGER.price_cents)).className).toBe('cart-line__total');
+      expect(screen.getByText(formatCents(shown * BURGER.price_cents + FRIES.price_cents))).not.toBeNull();
+
+      // The correction is announced rather than silent: the field is marked
+      // invalid and described by the message that explains the limit.
+      expect(quantity.getAttribute('aria-invalid')).toBe('true');
+      const notice = describedElement(quantity);
+      expect(notice?.className).toBe('field-error');
+      expect(notice?.textContent).toContain('Set to ' + String(shown));
+      expect(notice?.textContent).toContain('1 to 20');
+
+      // Leaving the field keeps the explanation with the number it describes.
+      await user.tab();
+      expect(quantity.value).toBe(String(shown));
+      expect(describedElement(quantity)?.textContent).toContain('Set to ' + String(shown));
+
+      // What is ordered is the number the field shows.
+      await user.click(screen.getByRole('button', { name: 'Place order' }));
+      await screen.findByTestId('confirmation-id');
+
+      const posted = harness.fetchStub.calls.find((call) => call.method === 'POST');
+      const body = JSON.parse(posted?.body ?? '{}') as { items?: readonly Record<string, unknown>[] };
+      expect((body.items ?? []).map((line) => line['quantity'])).toEqual([shown, 1]);
+    },
+  );
 });
 
 describe('remove', () => {
@@ -935,6 +1007,36 @@ describe('clear on order confirmation', () => {
       '/api/orders',
       `/api/orders/${ORDER_FIXTURE.id}`,
     ]);
+  });
+});
+
+describe('place order in flight', () => {
+  it('sends one order when Place order is dispatched twice in the same task', async () => {
+    const harness = renderHarness({ entries: ['/cart'], content: CHECKOUT_CONTENT, routes: ORDER_ROUTES });
+    await awaitAuthenticated(harness.probe);
+
+    act(() => {
+      cartOf(harness.probe).add(BURGER, 2);
+    });
+
+    const placeOrderControl = screen.getByRole('button', { name: 'Place order' });
+
+    // Both clicks land before React has re-rendered, so the rendered `disabled`
+    // state cannot be what stops the second submission: only a guard set
+    // synchronously inside the handler can.
+    await act(async () => {
+      fireEvent.click(placeOrderControl);
+      fireEvent.click(placeOrderControl);
+    });
+
+    await screen.findByTestId('confirmation-id');
+
+    const posted = harness.fetchStub.calls.filter((call) => call.method === 'POST');
+    expect(posted).toHaveLength(1);
+
+    // The one order sent carries the line the cart held.
+    const body = JSON.parse(posted[0]?.body ?? '{}') as { items?: readonly Record<string, unknown>[] };
+    expect((body.items ?? []).map((line) => line['quantity'])).toEqual([2]);
   });
 });
 
@@ -1199,5 +1301,47 @@ describe('menu item detail add to cart', () => {
     expect(requested.filter((url) => url !== SESSION_ROUTE.path)).toEqual([`/api/menu-items/${BURGER.id}`]);
     expect(harness.fetchStub.calls.some((call) => call.method === 'POST')).toBe(false);
     expect(requested.every((url) => !url.toLowerCase().includes('cart'))).toBe(true);
+  });
+
+  it('corrects a quantity above the limit in the field, explains it and adds the number it shows', async () => {
+    const user = userEvent.setup();
+    const harness = renderHarness({
+      entries: [`/menu/${BURGER.id}`],
+      content: ITEM_DETAIL_CONTENT,
+      routes: DETAIL_ROUTES,
+    });
+    await awaitAuthenticated(harness.probe);
+
+    const detail = await screen.findByRole('article', { name: BURGER.name });
+    const quantityControl = await screen.findByLabelText<HTMLInputElement>('Quantity');
+
+    await user.clear(quantityControl);
+    await user.type(quantityControl, '21');
+
+    // The field holds a number an order line accepts, and says why it changed.
+    expect(quantityControl.value).toBe('20');
+    expect(quantityControl.getAttribute('aria-invalid')).toBe('true');
+    const notice = describedElement(quantityControl);
+    expect(notice?.className).toBe('field-error');
+    expect(notice?.textContent).toContain('Set to 20');
+    expect(notice?.textContent).toContain('1 to 20');
+
+    const addControls = within(detail).getAllByRole<HTMLButtonElement>('button', { name: ADD_TO_CART_LABEL });
+    await user.click(enabledAddControl(addControls));
+
+    // The cart and the confirmation carry the number the field showed, so no
+    // screen reports a quantity the field does not hold.
+    const cart = cartOf(harness.probe);
+    expect(cart.items).toHaveLength(1);
+    expect(cart.items[0]?.quantity).toBe(20);
+    expect(cart.itemCount).toBe(20);
+
+    const confirmation = await screen.findByText(`20 × ${BURGER.name} added to your cart.`);
+    expect(confirmation.closest('[role="status"]')).not.toBeNull();
+
+    // The click that took the focus away neither retracted the notice nor changed
+    // the number it describes.
+    expect(quantityControl.value).toBe('20');
+    expect(describedElement(quantityControl)?.textContent).toContain('Set to 20');
   });
 });

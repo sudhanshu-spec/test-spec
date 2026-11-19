@@ -82,24 +82,57 @@ function toFailure(error: unknown): Failure {
   return { code: 'INTERNAL_ERROR', message: 'The item could not be loaded.' };
 }
 
-/**
- * Restricts a requested quantity to the whole numbers an order line accepts.
- *
- * Applied to the text the shopper typed, at the two moments it matters: when the
- * field is left, so what stays on screen is what will be added, and again when
- * the item goes into the cart.
- *
- * @param value - The text or number to read a quantity from, trusted no further than this.
- * @returns That quantity as a whole number within {@link MIN_QUANTITY}..{@link MAX_QUANTITY}.
- */
-function clampQuantity(value: string | number): number {
-  const parsed = typeof value === 'string' ? Number.parseInt(value, 10) : Math.trunc(value);
+/** The quantity the control reads as, and whether it had to be corrected. */
+interface QuantityReading {
+  /** The whole number to use, inside {@link MIN_QUANTITY}..{@link MAX_QUANTITY}. */
+  readonly quantity: number;
+  /** Whether the text read as something other than that number. */
+  readonly corrected: boolean;
+}
 
-  if (Number.isNaN(parsed)) {
-    return MIN_QUANTITY;
+/**
+ * Reads a requested quantity as the whole numbers an order line accepts.
+ *
+ * Only a whole number inside {@link MIN_QUANTITY}..{@link MAX_QUANTITY} is taken
+ * as typed; anything else is corrected to the nearest value the order endpoint
+ * accepts, so the field always shows the quantity that will be added. Text that
+ * reads as no number at all is corrected to the minimum rather than to a guess at
+ * what was meant.
+ *
+ * @param value - The text to read a quantity from, trusted no further than this.
+ * @returns That quantity as a whole number within the accepted range, and whether
+ * it differs from the typed reading.
+ */
+function readQuantity(value: string): QuantityReading {
+  const parsed = Number(value);
+
+  if (!Number.isFinite(parsed)) {
+    return { quantity: MIN_QUANTITY, corrected: true };
   }
 
-  return Math.min(Math.max(parsed, MIN_QUANTITY), MAX_QUANTITY);
+  const quantity = Math.min(Math.max(Math.trunc(parsed), MIN_QUANTITY), MAX_QUANTITY);
+
+  return { quantity, corrected: quantity !== parsed };
+}
+
+/**
+ * Explains a quantity the control corrected to the range one line may carry,
+ * whether the typed reading was above the maximum, below the minimum or not a
+ * whole number.
+ *
+ * @param quantity - The corrected quantity the field now shows.
+ * @returns The sentence to render under the input.
+ */
+function correctionNotice(quantity: number): string {
+  return (
+    'Set to ' +
+    String(quantity) +
+    ': the limit is ' +
+    String(MIN_QUANTITY) +
+    ' to ' +
+    String(MAX_QUANTITY) +
+    '.'
+  );
 }
 
 /**
@@ -110,15 +143,21 @@ function clampQuantity(value: string | number): number {
  * quantity of one and no confirmation. Adding does not navigate: the cart is a
  * header affordance, so the confirmation is announced in place and links there.
  *
+ * The quantity field corrects a reading an order line would not accept as it is
+ * typed and explains the correction, so the number the field shows is the number
+ * the confirmation and the cart carry.
+ *
  * @param props - The item to present.
  * @returns The item detail for one menu item.
  */
 function ItemDetail({ item }: ItemDetailProps): JSX.Element {
   const { add } = useCart();
   // The field holds the shopper's own text while it is being edited, so clearing
-  // it never snaps back to a value that the next keystroke would append to. The
-  // quantity that is actually added is `clampQuantity`'s reading of that text.
+  // it never snaps back to a value that the next keystroke would append to. A
+  // reading the order line would not accept is corrected into that text as it is
+  // typed, and the notice explains why, so what the field shows is what is added.
   const [quantityText, setQuantityText] = useState<string>(String(MIN_QUANTITY));
+  const [quantityNotice, setQuantityNotice] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<string>('');
   const confirmationRef = useRef<HTMLDivElement | null>(null);
 
@@ -137,14 +176,29 @@ function ItemDetail({ item }: ItemDetailProps): JSX.Element {
   }, [confirmation]);
 
   const handleQuantityChange = (event: ChangeEvent<HTMLInputElement>): void => {
-    setQuantityText(event.currentTarget.value);
+    const rawValue = event.currentTarget.value;
     // A confirmation describes the quantity that was added, so changing the
     // quantity retracts it rather than leaving a stale count on screen.
     setConfirmation('');
+
+    if (rawValue.trim() === '') {
+      // An emptied field is a value mid-edit rather than a quantity, so it stays
+      // empty instead of snapping to a number the next keystroke would extend.
+      setQuantityText(rawValue);
+      setQuantityNotice(null);
+      return;
+    }
+
+    const reading = readQuantity(rawValue);
+    setQuantityText(String(reading.quantity));
+    setQuantityNotice(reading.corrected ? correctionNotice(reading.quantity) : null);
   };
 
   const handleQuantityBlur = (): void => {
-    setQuantityText(String(clampQuantity(quantityText)));
+    setQuantityText(String(readQuantity(quantityText).quantity));
+    // The notice is kept here: it describes the number the field still holds, and
+    // dropping it as the field loses focus would move the add control between the
+    // press and the release of the click that took the focus away, losing that click.
   };
 
   const handleAdd = (): void => {
@@ -152,7 +206,7 @@ function ItemDetail({ item }: ItemDetailProps): JSX.Element {
       return;
     }
 
-    const quantity = clampQuantity(quantityText);
+    const quantity = readQuantity(quantityText).quantity;
     setQuantityText(String(quantity));
     add(item, quantity);
     setConfirmation(`${quantity} × ${item.name} added to your cart.`);
@@ -195,6 +249,7 @@ function ItemDetail({ item }: ItemDetailProps): JSX.Element {
             onChange={handleQuantityChange}
             onBlur={handleQuantityBlur}
             hint={`Between ${MIN_QUANTITY} and ${MAX_QUANTITY}.`}
+            error={quantityNotice}
           />
           <button type="button" className="button" disabled={!item.is_available} onClick={handleAdd}>
             Add to cart

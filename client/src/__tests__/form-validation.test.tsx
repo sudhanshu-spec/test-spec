@@ -32,8 +32,8 @@
 
 import { useEffect, useRef } from 'react';
 import type { JSX, ReactNode } from 'react';
-import { MemoryRouter } from 'react-router-dom';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { MemoryRouter, Route, Routes, useParams } from 'react-router-dom';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -69,8 +69,11 @@ const REGISTER_EMAIL_DUPLICATE_MESSAGE =
   'An account already uses this email address. Sign in instead of registering again.';
 
 const RESERVATION_DATE_REQUIRED_MESSAGE = 'Choose the date of your booking.';
+const RESERVATION_DATE_INVALID_MESSAGE = 'Enter a real calendar date, for example 2031-05-14.';
 const RESERVATION_TIME_REQUIRED_MESSAGE = 'Choose a seating time.';
-const RESERVATION_TIME_INVALID_MESSAGE = 'Enter a seating time as HH:MM, for example 19:30.';
+/** The form's sentence for a time that is not one of the seatings it offers. */
+const RESERVATION_TIME_INVALID_MESSAGE =
+  'We seat on the half hour, so choose one of the seatings we offer between 17:00 and 21:30.';
 const RESERVATION_PARTY_REQUIRED_MESSAGE = 'Enter the number of guests.';
 const RESERVATION_PARTY_INVALID_MESSAGE = 'Enter a whole number of guests.';
 /**
@@ -166,10 +169,25 @@ const CREATED_RESERVATION: Reservation = {
 const FUTURE_DATE = '2031-05-14';
 /** A seating time inside the documented default window (17:00 through 21:30). */
 const OFFERED_SLOT = '19:00';
+/** The last seating the documented default window offers. */
+const LAST_SEATING = '21:30';
+/** How many days ahead the form's date control reaches, as the API's horizon states it. */
+const RESERVATION_HORIZON_DAYS = 90;
 
 /** Valid values for both sign-in form's courtesy checks. */
 const VALID_EMAIL = 'ada@example.com';
 const VALID_PASSWORD = 'correct-horse-battery';
+
+/**
+ * @param date - Any Date.
+ * @returns It as the local `YYYY-MM-DD` string a date control carries.
+ */
+function localDateString(date: Date): string {
+  const year = String(date.getFullYear()).padStart(4, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 
 // ---------------------------------------------------------------------------
 // The stubbed transport
@@ -452,10 +470,21 @@ function renderReservationForm(): void {
   render(<Providers><ReservationFormView /></Providers>);
 }
 
+/**
+ * The destination the form navigates to once the booking exists: enough to prove
+ * the success transition happened, without mounting the confirmation screen.
+ *
+ * @returns A heading naming the reservation the form moved to.
+ */
+function ReservationConfirmationProbe(): JSX.Element {
+  const { id } = useParams<{ id: string }>();
+  return <h1>{`Reservation ${String(id)}`}</h1>;
+}
+
 /** The four controls of the reservation form, each found through its label. */
 interface ReservationControls {
   readonly date: HTMLInputElement;
-  readonly time: HTMLInputElement;
+  readonly time: HTMLSelectElement;
   readonly party: HTMLInputElement;
   readonly notes: HTMLInputElement;
 }
@@ -464,7 +493,7 @@ interface ReservationControls {
 function reservationControls(): ReservationControls {
   return {
     date: screen.getByLabelText<HTMLInputElement>(/^Date/),
-    time: screen.getByLabelText<HTMLInputElement>(/^Seating time/),
+    time: screen.getByLabelText<HTMLSelectElement>(/^Seating time/),
     party: screen.getByLabelText<HTMLInputElement>(/^Party size/),
     notes: screen.getByLabelText<HTMLInputElement>(/^Notes/),
   };
@@ -480,10 +509,12 @@ interface ReservationValues {
 
 /**
  * Fills the booking form without submitting it. The date, the seating time and
- * the party size are each set with a change event: jsdom drives no date or time
- * picker and formats neither control, so typing into them depends on a locale
- * the application never reads, while a real change event carries the same
- * `YYYY-MM-DD`, `HH:MM` and count strings the form posts.
+ * the party size are each set with a change event: jsdom drives no date picker
+ * and formats no date control, so typing into it depends on a locale the
+ * application never reads, while a real change event carries the same
+ * `YYYY-MM-DD`, offered `HH:MM` and count strings the form posts. The seating
+ * time is a `<select>`, which `fireEvent.change` drives exactly as a choice from
+ * its list does.
  *
  * @param user - The user-event session driving the form.
  * @param controls - The controls to fill.
@@ -988,15 +1019,40 @@ describe('CartView checkout', () => {
 // ---------------------------------------------------------------------------
 
 describe('ReservationFormView', () => {
-  it('renders the seating time through the shared time control', () => {
+  it('offers the seatings on the half hour as the only times that can be chosen', () => {
     renderReservationForm();
 
-    const time = screen.getByLabelText<HTMLInputElement>(/^Seating time/);
+    const time = screen.getByLabelText<HTMLSelectElement>(/^Seating time/);
 
-    // The shared time control, stepped to the 30-minute seating grid: it offers
-    // the documented seatings without pinning the form to a list it owns.
-    expect(time.getAttribute('type')).toBe('time');
-    expect(time.getAttribute('step')).toBe('1800');
+    // The control is a labelled select, not a free-form time input, and the list
+    // it offers is the documented window: a placeholder, then every seating from
+    // opening time to the last seating in order. No off-grid time and no time the
+    // window refuses can be entered at all, so neither reaches the API as a
+    // round trip that comes back rejected.
+    expect(time.tagName).toBe('SELECT');
+    expect(Array.from(time.options, (option) => option.value)).toEqual([
+      '',
+      '17:00',
+      '17:30',
+      '18:00',
+      '18:30',
+      '19:00',
+      '19:30',
+      '20:00',
+      '20:30',
+      '21:00',
+      '21:30',
+    ]);
+    expect(time.options[0]?.textContent).toBe('Choose a time');
+    expect(time.value).toBe('');
+    // The picker keeps the shared control classes, so the 44x44px floor and the
+    // select treatment of global.css apply exactly as they do to an input.
+    expect(time.className).toBe('control control--select');
+    expect(time.getAttribute('name')).toBe('reservation-time');
+    expect(time.hasAttribute('required')).toBe(true);
+    expect(time.getAttribute('aria-describedby')).toBe('reservation-time-hint');
+    expect(document.getElementById('reservation-time-hint')?.textContent)
+      .toBe('Seatings run from 17:00 to 21:30.');
   });
 
   it('reports a missing date, seating time and party size beside their own controls', async () => {
@@ -1144,28 +1200,82 @@ describe('ReservationFormView', () => {
     expect(queryErrorNode(controls.time)).toBeNull();
   });
 
-  it('rejects a seating time with seconds before any request, because the API takes HH:MM', async () => {
+  // The horizon is discoverable in the date control — a `min` of today and a
+  // `max` of today plus the documented ninety days — without blocking anything:
+  // the form keeps `noValidate`, so only the API's own checkpoints refuse a date,
+  // and the one calendar check the form makes is its own.
+  it('bounds the date control by the horizon and refuses an impossible calendar date before any request', async () => {
     const user = userEvent.setup();
     const calls = stubFetch(() => successReply(201, {}));
 
     renderReservationForm();
     const controls = reservationControls();
 
-    // A time input keeps a value with seconds and drops one that is not a time
-    // at all, so this is the shape a browser can hand the form and the API's
-    // HH:MM contract cannot take.
-    await fillReservation(user, controls, { date: FUTURE_DATE, time: '19:30:15', party: '2' });
+    const today = new Date();
+    const lastBookableDay = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate() + RESERVATION_HORIZON_DAYS,
+    );
+
+    expect(controls.date.getAttribute('min')).toBe(localDateString(today));
+    expect(controls.date.getAttribute('max')).toBe(localDateString(lastBookableDay));
+
+    // A date control sanitises an impossible calendar date to nothing on
+    // assignment, exactly as a browser's own picker does, so the value the API's
+    // parser refuses is written onto the control to carry it into the change.
+    Object.defineProperty(controls.date, 'value', {
+      configurable: true,
+      get: () => '2031-02-30',
+      set: () => undefined,
+    });
+    fireEvent.change(controls.date);
+
+    fireEvent.change(controls.time, { target: { value: OFFERED_SLOT } });
+    await user.click(screen.getByRole('button', { name: RESERVE_SUBMIT_LABEL }));
+
+    expect(calls).toHaveLength(0);
+    expect(errorText(controls.date)).toBe(RESERVATION_DATE_INVALID_MESSAGE);
+    expect(controls.date.getAttribute('aria-invalid')).toBe('true');
+    expect(queryErrorNode(controls.time)).toBeNull();
+    expect(queryErrorNode(controls.party)).toBeNull();
+  });
+
+  // The picker offers only seatings on the half hour, so a time off the grid can
+  // reach the form from nowhere inside it. It is still refused locally with the
+  // sentence that names the real cause, rather than sent for the API to answer
+  // with a window verdict that would be untrue of an in-window time.
+  it('refuses a time off the seating grid before any request, naming the half-hour seating', async () => {
+    const user = userEvent.setup();
+    const calls = stubFetch(() => successReply(201, {}));
+
+    renderReservationForm();
+    const controls = reservationControls();
+
+    await fillReservation(user, controls, { date: FUTURE_DATE, party: '2' });
+
+    // The control has no such option, so 19:15 — an in-window time off the grid —
+    // is written onto it to carry that value into the change event.
+    Object.defineProperty(controls.time, 'value', {
+      configurable: true,
+      get: () => '19:15',
+      set: () => undefined,
+    });
+    fireEvent.change(controls.time);
+
     await user.click(screen.getByRole('button', { name: RESERVE_SUBMIT_LABEL }));
 
     expect(calls).toHaveLength(0);
     expect(errorText(controls.time)).toBe(RESERVATION_TIME_INVALID_MESSAGE);
+    expect(controls.time.getAttribute('aria-invalid')).toBe('true');
     expect(queryErrorNode(controls.date)).toBeNull();
     expect(queryErrorNode(controls.party)).toBeNull();
   });
 
-  // The regression proof for the server-authoritative window: 23:00 is outside
-  // the documented default, yet the form sends it and renders the API's verdict.
-  it('sends a seating time outside the documented window and renders the server verdict beside it', async () => {
+  // The server stays authoritative for the window: the form sends the slot that
+  // was chosen, unchanged, and the verdict comes back to the field that owns it.
+  // 21:30 is on the half hour, so the window sentence is the true one there.
+  it('sends the last offered seating and renders the server window verdict beside it', async () => {
     const user = userEvent.setup();
     const calls = stubFetch(() => errorReply(400, 'VALIDATION_ERROR', 'The booking could not be validated.', [
       { field: 'reservation_time', issue: RESERVATION_ISSUES.OUTSIDE_SERVICE_HOURS },
@@ -1174,7 +1284,7 @@ describe('ReservationFormView', () => {
     renderReservationForm();
     const controls = reservationControls();
 
-    await fillReservation(user, controls, { date: FUTURE_DATE, time: '23:00', party: '2' });
+    await fillReservation(user, controls, { date: FUTURE_DATE, time: LAST_SEATING, party: '2' });
     await user.click(screen.getByRole('button', { name: RESERVE_SUBMIT_LABEL }));
 
     expect(await screen.findByText(RESERVATION_OUTSIDE_HOURS_MESSAGE)).not.toBeNull();
@@ -1187,7 +1297,7 @@ describe('ReservationFormView', () => {
 
     expect(call.body).toEqual({
       reservation_date: FUTURE_DATE,
-      reservation_time: '23:00',
+      reservation_time: LAST_SEATING,
       party_size: 2,
     });
     expect(errorText(controls.time)).toBe(RESERVATION_OUTSIDE_HOURS_MESSAGE);
@@ -1250,6 +1360,45 @@ describe('ReservationFormView', () => {
       party_size: 2,
     });
     expect(call.body).not.toHaveProperty('notes');
+  });
+
+  // Two submits dispatched in one task used to post twice: the rendered
+  // `disabled` attribute only arrives with the next render, so the duplicate was
+  // stopped by the database's unique constraint and its 409 went unshown. The
+  // guard the form now sets before its first await drops the second one.
+  it('posts one booking when two submits are dispatched in the same task', async () => {
+    const user = userEvent.setup();
+    const calls = stubFetch(() => successReply(201, { reservation: CREATED_RESERVATION }));
+
+    render(
+      <MemoryRouter initialEntries={['/reservations/new']}>
+        <SessionProvider>
+          <Routes>
+            <Route path="/reservations/new" element={<ReservationFormView />} />
+            <Route path="/reservations/:id" element={<ReservationConfirmationProbe />} />
+          </Routes>
+        </SessionProvider>
+      </MemoryRouter>,
+    );
+
+    const controls = reservationControls();
+
+    await fillReservation(user, controls, { date: FUTURE_DATE, time: OFFERED_SLOT, party: '2' });
+
+    const submit = screen.getByRole('button', { name: RESERVE_SUBMIT_LABEL });
+
+    // Both clicks in one task: React has not re-rendered between them, so nothing
+    // the rendered markup carries can be what stops the second one.
+    await act(async () => {
+      submit.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+      submit.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    });
+
+    // The one booking settles and the form moves to its confirmation.
+    expect(await screen.findByRole('heading', { name: `Reservation ${CREATED_RESERVATION.id}` }))
+      .not.toBeNull();
+    expect(calls.filter((call) => call.url === RESERVATIONS_URL && call.method === 'POST'))
+      .toHaveLength(1);
   });
 });
 

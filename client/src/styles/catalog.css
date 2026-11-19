@@ -187,8 +187,23 @@
 @media (min-width: 768px) {
   .catalog-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
-  /* Name, quantity and total sit beside each other; further children wrap below. */
-  .cart-line { grid-template-columns: minmax(0, 1fr) auto auto; gap: var(--space-3); }
+  /* Name, quantity and total sit beside each other; further children wrap below.
+     The middle track is sized by the quantity control and the last one is the
+     shared amount column, so every line of a list puts its quantity field and
+     its amount on the same x position instead of sizing a track per line. */
+  .cart-line { grid-template-columns: minmax(0, 1fr) auto minmax(var(--amount-column-width), max-content);
+    gap: var(--space-3); }
+
+  /* The amount is placed in the last track rather than following its siblings in
+     source order: a line with no middle cell — the order confirmation's, which
+     holds only an info cell and the amount — then still ends at the card's inner
+     right edge instead of stopping one empty track and its gap short of it. */
+  .cart-line__total { grid-column: -2 / -1; justify-self: end; }
+
+  /* The history row's info cell carries four lines, so centring the badge and the
+     amount against it drops them beside the second or third line. They start at
+     the row's top instead, beside the order they identify. */
+  .cart-line--history { align-items: start; }
 
   /* Lines beside the totals panel, which sticks while the list scrolls. */
   .cart-summary { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); align-items: start; }
