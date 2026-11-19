@@ -17,17 +17,21 @@ import type { InputHTMLAttributes, JSX } from 'react';
 
 import type { ApiError, ApiFieldDetail } from '../api/client';
 
+/** The input types a control in this module may declare. */
+export type FormControlType = 'text' | 'email' | 'password' | 'date' | 'time' | 'number';
+
 /**
- * Props shared by the five controls: every native input attribute except the
+ * Props shared by the six controls: every native input attribute except the
  * ones this module owns, plus the label and the two error sources. `id` and
  * `label` are required because a real `<label htmlFor>` is, and `className` is
  * omitted so the component itself puts `.control` on the input — which is what
- * keeps the 44x44px touch target.
+ * keeps the 44x44px touch target. An exported control pins its own `type`, so a
+ * caller may state a `type` only as the default the control overrides.
  */
 export interface FormControlProps
     extends Omit<
         InputHTMLAttributes<HTMLInputElement>,
-        'id' | 'className' | 'children' | 'type' | 'aria-invalid' | 'aria-describedby'
+        'id' | 'className' | 'children' | 'aria-invalid' | 'aria-describedby'
     > {
     /** The input's id, and the target of the label's `htmlFor`. */
     id: string;
@@ -111,9 +115,9 @@ function describedByIds(...ids: (string | undefined)[]): string | undefined {
     return present.length === 0 ? undefined : present.join(' ');
 }
 
-/** Props of the internal {@link Field}: the shared props plus its pinned type. */
+/** Props of the internal {@link Field}: the shared props plus the type it renders. */
 interface FieldProps extends FormControlProps {
-    type: 'text' | 'password' | 'date' | 'time' | 'number';
+    type: FormControlType;
 }
 
 /**
@@ -155,6 +159,16 @@ function Field({ id, label, hint, error, detail, type, required, value, onChange
 /** @returns A single-line text field. */
 export function TextField(props: FormControlProps): JSX.Element {
     return <Field {...props} type="text" />;
+}
+
+/**
+ * @returns A single-line address field. The `email` input type is what gives a
+ * soft keyboard the address layout and what a browser's own autofill keys on;
+ * the value's shape is still checked against the API's documented rule by the
+ * form that renders it, since the form submits with `noValidate`.
+ */
+export function EmailField(props: FormControlProps): JSX.Element {
+    return <Field {...props} type="email" />;
 }
 
 /** @returns A password field. */
