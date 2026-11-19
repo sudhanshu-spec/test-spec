@@ -34,7 +34,7 @@ import {
 import type { MenuItem } from '../api/types';
 import { useSession } from './session';
 
-/** Smallest quantity a line may hold; a lower requested quantity removes the line instead. */
+/** Smallest quantity a line may hold; a lower requested quantity is clamped up to it. */
 const MIN_QUANTITY = 1;
 
 /** Largest quantity a line may hold: the per-line maximum the server accepts. */
@@ -64,7 +64,7 @@ export interface CartValue {
     items: readonly CartLine[];
     /** Adds a quantity of an item, merging into its existing line when it is already in the cart. */
     add(item: MenuItem, quantity?: number): void;
-    /** Sets a line's quantity, clamped to the accepted range; 0 or less removes the line. */
+    /** Sets a line's quantity, clamped into the accepted range; only {@link remove} drops a line. */
     updateQuantity(menuItemId: string, quantity: number): void;
     /** Drops a line; an id the cart does not hold is a no-op. */
     remove(menuItemId: string): void;
@@ -133,18 +133,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const updateQuantity = useCallback((menuItemId: string, quantity: number): void => {
-        setItems((current) => {
-            // At or below zero the line goes rather than being clamped up to one more of the item,
-            // and a value that is not a number cannot be shown, so it goes the same way.
-            if (quantity <= 0 || Number.isNaN(quantity)) {
-                return current.filter((line) => line.menu_item_id !== menuItemId);
-            }
+        // Every request is clamped into the range the order endpoint accepts, so no caller can leave a
+        // line holding a quantity the server would reject. Dropping a line is `remove`'s job alone,
+        // which is why a request below the minimum lands on the minimum rather than removing the line.
+        const clamped = clampQuantity(quantity);
 
-            const clamped = clampQuantity(quantity);
-            return current.map((line) =>
+        setItems((current) =>
+            current.map((line) =>
                 line.menu_item_id === menuItemId ? { ...line, quantity: clamped } : line,
-            );
-        });
+            ),
+        );
     }, []);
 
     const remove = useCallback((menuItemId: string): void => {

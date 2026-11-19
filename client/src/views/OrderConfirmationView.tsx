@@ -158,9 +158,7 @@ function OrderConfirmation({ order }: OrderConfirmationProps): JSX.Element {
                     <span className={STATUS_BADGE_CLASSES[order.status]}>{STATUS_LABELS[order.status]}</span>
                     <span className="cart-line__unit-price">Placed {formatTimestamp(order.created_at)}</span>
                 </div>
-                <p className="cart-line__name">
-                    Order <span data-testid="order-id">{order.id}</span>
-                </p>
+                <p className="cart-line__name">Order {order.id}</p>
                 {hasNotes ? (
                     <p>
                         <span className="cart-line__unit-price">Notes: </span>

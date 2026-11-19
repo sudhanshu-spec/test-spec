@@ -404,13 +404,13 @@ describe('error envelope mapping', () => {
 
   it('never surfaces a code outside the thirteen', async () => {
     registerHooks(() => null);
-    fetchMock.mockResolvedValue(fakeResponse(429, errorEnvelope('RATE_LIMITED', 'Too many requests.')));
+    fetchMock.mockResolvedValue(fakeResponse(503, errorEnvelope('DATABASE_UNAVAILABLE', 'The service is unavailable.')));
 
     const error = await rejectionOf(apiFetch('/orders'));
 
     // The status and the server's message survive, but a fourteenth code does not (R-6).
-    expect(error.status).toBe(429);
-    expect(error.message).toBe('Too many requests.');
+    expect(error.status).toBe(503);
+    expect(error.message).toBe('The service is unavailable.');
     expect(error.code).toBe('INTERNAL_ERROR');
   });
 });

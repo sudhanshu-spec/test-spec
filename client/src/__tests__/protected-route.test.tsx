@@ -33,7 +33,7 @@
  * @module client/src/__tests__/protected-route.test
  */
 
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -439,8 +439,14 @@ describe('authenticated session', () => {
       const heading = await screen.findByRole('heading', { name: guarded.heading, level: 1 });
       expect(heading.tagName).toBe('H1');
       expect(screen.queryByRole('heading', { name: LOGIN_HEADING, level: 1 })).toBeNull();
-      // The restore, then exactly the reads that screen makes: nothing more is requested.
-      expect(api.paths()).toEqual(['/auth/session', ...guarded.requests]);
+      // The restore, then exactly the reads that screen makes: nothing more is requested. The
+      // heading a guarded screen publishes while its read is in flight (the reservation screen
+      // renders its `<h1>` beside its loading status) is on the page before the effect that issues
+      // the read has run, so the recorder is awaited rather than read once the heading resolves:
+      // the list asserted is the screen's completed one, never the restore's alone.
+      await waitFor(() => {
+        expect(api.paths()).toEqual(['/auth/session', ...guarded.requests]);
+      });
       // The cart is client state and has no endpoint (rule R-8), signed in or not.
       expect(api.paths().filter((path) => path.startsWith('/cart'))).toEqual([]);
     });

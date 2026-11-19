@@ -114,12 +114,16 @@ interface OrderFailureProps {
 interface CartLineRowProps {
     /** The line to render. */
     readonly line: CartLine;
+    /** The shopper's own text for this line's quantity while it is being edited, or undefined. */
+    readonly quantityText: string | undefined;
     /** The server's own detail for this line's quantity, when it named one. */
     readonly quantityDetail: ApiFieldDetail | null;
     /** Whether a placement is in flight, which disables every control of the row. */
     readonly disabled: boolean;
     /** Sets the line's quantity from the control's text. */
     onQuantityChange(menuItemId: string, rawValue: string): void;
+    /** Drops the line's in-progress text, so the control shows the committed quantity. */
+    onQuantityBlur(menuItemId: string): void;
     /** Drops the line. */
     onRemove(menuItemId: string): void;
 }
@@ -325,13 +329,26 @@ function OrderFailure({ failure, submitting }: OrderFailureProps): JSX.Element {
  *
  * The quantity control is a labelled number input carrying the shared `.control`
  * class, so it keeps the 44x44px touch target and the stylesheet's own width and
- * centring rule. A server detail for this line's quantity is announced through
- * `aria-describedby` and rendered under the input, never instead of the input.
+ * centring rule. It shows the shopper's own text while one is being edited and the
+ * committed quantity otherwise, so an emptied field stays empty instead of
+ * snapping back; losing focus drops that text and the field settles on the
+ * quantity the cart holds. A server detail for this line's quantity is announced
+ * through `aria-describedby` and rendered under the input, never instead of the
+ * input.
  *
- * @param props - The line, the detail that names it and the two mutations.
+ * @param props - The line, the text being edited, the detail that names it and the
+ * mutations.
  * @returns The list item for one cart line.
  */
-function CartLineRow({ line, quantityDetail, disabled, onQuantityChange, onRemove }: CartLineRowProps): JSX.Element {
+function CartLineRow({
+    line,
+    quantityText,
+    quantityDetail,
+    disabled,
+    onQuantityChange,
+    onQuantityBlur,
+    onRemove,
+}: CartLineRowProps): JSX.Element {
     const quantityId = 'cart-quantity-' + line.menu_item_id;
     const errorId = quantityId + '-error';
     const hasError = quantityDetail !== null;
@@ -357,12 +374,15 @@ function CartLineRow({ line, quantityDetail, disabled, onQuantityChange, onRemov
                         min={MIN_QUANTITY}
                         max={MAX_QUANTITY}
                         step={1}
-                        value={line.quantity}
+                        value={quantityText ?? String(line.quantity)}
                         disabled={disabled}
                         aria-invalid={hasError}
                         aria-describedby={hasError ? errorId : undefined}
                         onChange={(event: ChangeEvent<HTMLInputElement>) => {
                             onQuantityChange(line.menu_item_id, event.target.value);
+                        }}
+                        onBlur={() => {
+                            onQuantityBlur(line.menu_item_id);
                         }}
                     />
                     <FieldError id={errorId} detail={quantityDetail} />
@@ -410,6 +430,9 @@ export function CartView(): JSX.Element {
     const [notes, setNotes] = useState('');
     const [failure, setFailure] = useState<Failure | null>(null);
     const [submitting, setSubmitting] = useState(false);
+    // The shopper's own text for each line's quantity field while it is being edited, keyed by menu
+    // item id. Absent for a line nobody is editing, whose field shows the quantity the cart holds.
+    const [quantityTexts, setQuantityTexts] = useState<Record<string, string | undefined>>({});
 
     /** Drops the failure a cart or note edit has made stale. */
     function clearFailure(): void {
@@ -417,17 +440,33 @@ export function CartView(): JSX.Element {
     }
 
     /**
-     * Applies a typed quantity to its line.
+     * Forgets a line's in-progress text, so its field shows the committed quantity
+     * again. Used when the field loses focus and when the line goes: neither leaves
+     * text behind that a later render would show.
      *
-     * An emptied control is a value mid-edit rather than a request to remove the
-     * line, and a quantity below the accepted minimum is refused here so the one
-     * way to drop a line stays the Remove control; the cart provider clamps a
-     * value above the maximum.
+     * @param menuItemId - The line whose text is dropped.
+     */
+    function forgetQuantityText(menuItemId: string): void {
+        setQuantityTexts((current) => ({ ...current, [menuItemId]: undefined }));
+    }
+
+    /**
+     * Applies a typed quantity to its line, keeping the shopper's own text on screen
+     * while it is being edited.
+     *
+     * The text is held per line so clearing the field never snaps back to the
+     * committed number, which the next keystroke would otherwise append to. An
+     * emptied or unparseable field is a value mid-edit rather than a request, so
+     * nothing is committed; a quantity below the accepted minimum is refused here so
+     * the one way to drop a line stays the Remove control, and the cart provider
+     * clamps whatever is committed into the range the order endpoint accepts.
      *
      * @param menuItemId - The line's menu item id.
      * @param rawValue - The control's text, trusted no further than this.
      */
     function handleQuantityChange(menuItemId: string, rawValue: string): void {
+        setQuantityTexts((current) => ({ ...current, [menuItemId]: rawValue }));
+
         if (rawValue.trim() === '') {
             return;
         }
@@ -445,6 +484,7 @@ export function CartView(): JSX.Element {
     /** @param menuItemId - The line to drop. */
     function handleRemove(menuItemId: string): void {
         clearFailure();
+        forgetQuantityText(menuItemId);
         remove(menuItemId);
     }
 
@@ -509,9 +549,11 @@ export function CartView(): JSX.Element {
                                 <CartLineRow
                                     key={line.menu_item_id}
                                     line={line}
+                                    quantityText={quantityTexts[line.menu_item_id]}
                                     quantityDetail={detailAt(failure, index)}
                                     disabled={submitting}
                                     onQuantityChange={handleQuantityChange}
+                                    onQuantityBlur={forgetQuantityText}
                                     onRemove={handleRemove}
                                 />
                             ))}

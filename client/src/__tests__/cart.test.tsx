@@ -1,7 +1,8 @@
 /**
- * @fileoverview Client cart behaviour suite for `client/src/state/cart.tsx` and
- * the Place Order step of `client/src/views/CartView.tsx` — success criterion 7,
- * and the client-side proof of rules R-8 and R-3.
+ * @fileoverview Client cart behaviour suite for `client/src/state/cart.tsx`, the
+ * Place Order step of `client/src/views/CartView.tsx` and the two screens that
+ * feed the cart, `MenuCatalogView` (screen 3) and `MenuItemView` (screen 4) —
+ * success criterion 7, and the client-side proof of rules R-8 and R-3.
  *
  * Every case renders the real providers — `SessionProvider` outside
  * `CartProvider`, inside a `MemoryRouter` — and reads the cart through a probe
@@ -14,6 +15,8 @@
  * - `add`, `updateQuantity`, `remove` and `clear` behave as the module
  *   documents, including the merge of a repeat addition and the 1..20 clamp the
  *   order endpoint requires of every line;
+ * - the cart screen's quantity field can be emptied and retyped, with the typed
+ *   number committed and the line's display total following it;
  * - `itemCount` and `totalCents` are display figures over integer cents, never
  *   a price authority;
  * - a confirmed order empties the cart, sends only a menu item id and a quantity
@@ -22,7 +25,19 @@
  * - logging out empties the cart, which holds only while `CartProvider` sits
  *   inside `SessionProvider` (rule R-8);
  * - the cart writes nothing to `localStorage` or `sessionStorage`, never calls a
- *   cart endpoint, and is empty after a reload-shaped remount (rule R-8).
+ *   cart endpoint, and is empty after a reload-shaped remount (rule R-8);
+ * - the catalog filters by the `category` query parameter rather than by state of
+ *   its own: a deep link lists only that category's items, and choosing another
+ *   filter control re-reads the items through a new query while the category
+ *   strip is fetched once and the screen is never remounted (screen 3);
+ * - the item detail's own add action moves the real cart state by the quantity
+ *   the shopper chose, announces it in place, and asks the API for no cart
+ *   (screen 4, rule R-8).
+ *
+ * Those two screens are covered here rather than in suites of their own because
+ * the client's test inventory is closed at the six suites this delivery names,
+ * and because the evidence the detail screen owes is the cart state this suite
+ * already mounts.
  *
  * Fixtures carry the secret-free user projection only (`id`, `name`, `email`,
  * `created_at`), so no response here could carry a password or token hash
@@ -34,18 +49,20 @@
 import { useEffect, useState } from 'react';
 import type { JSX, ReactNode } from 'react';
 import { MemoryRouter, Route, Routes, useParams } from 'react-router-dom';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { formatCents } from '../api/format';
 import { getOrder } from '../api/orders';
-import type { MenuItem, Order, User } from '../api/types';
+import type { Category, MenuItem, Order, User } from '../api/types';
 import { CartProvider, useCart } from '../state/cart';
 import type { CartValue } from '../state/cart';
 import { SessionProvider, useSession } from '../state/session';
 import type { SessionValue } from '../state/session';
 import { CartView } from '../views/CartView';
+import { MenuCatalogView } from '../views/MenuCatalogView';
+import { MenuItemView } from '../views/MenuItemView';
 
 /** The one storage key the client owns; the session writes it and the cart never does. */
 const TOKEN_STORAGE_KEY = 'burger.auth.token';
@@ -64,6 +81,31 @@ const AUTH_USER: User = {
 /** Two menu items whose prices make the display arithmetic in this suite checkable by hand. */
 const BURGER = makeItem({ id: 'item-burger', name: 'Classic Burger', price_cents: 1299 });
 const FRIES = makeItem({ id: 'item-fries', name: 'Sea Salt Fries', price_cents: 450 });
+
+/** The two categories the catalog's filter strip is built from, in display order. */
+const BURGERS_CATEGORY: Category = {
+    id: 'category-burgers',
+    name: 'Burgers',
+    slug: 'burgers',
+    display_order: 1,
+};
+const DRINKS_CATEGORY: Category = {
+    id: 'category-drinks',
+    name: 'Drinks',
+    slug: 'drinks',
+    display_order: 2,
+};
+
+/**
+ * An item of the second category. A filter that is dropped, or a query that is
+ * not rewritten, shows up as this row appearing where it does not belong.
+ */
+const SHAKE = makeItem({
+    id: 'item-shake',
+    name: 'Vanilla Shake',
+    price_cents: 550,
+    category: { id: DRINKS_CATEGORY.id, name: DRINKS_CATEGORY.name, slug: DRINKS_CATEGORY.slug },
+});
 
 /**
  * Builds a menu item payload, so a case states only the fields it cares about.
@@ -407,6 +449,105 @@ async function placeOrder(): Promise<PlacedOrder> {
     return { harness, posted: harness.fetchStub.calls.find((call) => call.method === 'POST') };
 }
 
+/** The exact `listItems` URL for the burgers category: the stub matches query strings verbatim. */
+const BURGERS_ITEMS_URL = '/api/menu-items?category=burgers';
+
+/** The exact `listItems` URL for the drinks category. */
+const DRINKS_ITEMS_URL = '/api/menu-items?category=drinks';
+
+/** The URL the unfiltered call builds, which the 'All items' control asks for. */
+const ALL_ITEMS_URL = '/api/menu-items';
+
+/** Labels copied from the screens themselves: the filter strip's group, and the add affordance. */
+const FILTER_GROUP_LABEL = 'Filter the menu by category';
+const ALL_ITEMS_LABEL = 'All items';
+const ADD_TO_CART_LABEL = 'Add to cart';
+
+/**
+ * Builds one `/api/menu-items` answer at the exact URL the catalog's call builds.
+ *
+ * @param path - The URL with its query string, as `listItems` composes it.
+ * @param items - The items the API answers that selection with.
+ * @returns The stub route for that selection.
+ */
+function itemsRoute(path: string, items: readonly MenuItem[]): StubRoute {
+    return { path, method: 'GET', respond: () => fakeResponse({ status: 200, body: { items } }) };
+}
+
+/** The category strip, answered once on mount and again only after a retry. */
+const CATEGORIES_ROUTE: StubRoute = {
+    path: '/api/categories',
+    method: 'GET',
+    respond: () => fakeResponse({ status: 200, body: { categories: [BURGERS_CATEGORY, DRINKS_CATEGORY] } }),
+};
+
+/** The deep-link case's answers: the strip and the one category the query names. */
+const BURGERS_ONLY_ROUTES: readonly StubRoute[] = [CATEGORIES_ROUTE, itemsRoute(BURGERS_ITEMS_URL, [BURGER])];
+
+/** Every answer a filter change may reach for: both categories and the whole catalog. */
+const CATALOG_ROUTES: readonly StubRoute[] = [
+    CATEGORIES_ROUTE,
+    itemsRoute(BURGERS_ITEMS_URL, [BURGER]),
+    itemsRoute(DRINKS_ITEMS_URL, [SHAKE]),
+    itemsRoute(ALL_ITEMS_URL, [BURGER, SHAKE]),
+];
+
+/** The catalog screen on the route the client's own route table gives it. */
+const CATALOG_CONTENT = (
+    <Routes>
+        <Route path="/menu" element={<MenuCatalogView />} />
+    </Routes>
+);
+
+/** The item detail screen on the `/menu/:id` route the client's route table gives it. */
+const ITEM_DETAIL_CONTENT = (
+    <Routes>
+        <Route path="/menu/:id" element={<MenuItemView />} />
+    </Routes>
+);
+
+/** The one item the detail screen reads, at the path `getItem` builds for it. */
+const DETAIL_ROUTES: readonly StubRoute[] = [
+    {
+        path: `/api/menu-items/${BURGER.id}`,
+        method: 'GET',
+        respond: () => fakeResponse({ status: 200, body: { item: BURGER } }),
+    },
+];
+
+/**
+ * @returns The labels of the filter strip's pressed controls, in render order —
+ *   that is, the selection the catalog is showing.
+ */
+function pressedFilterLabels(): readonly string[] {
+    const strip = screen.getByRole('group', { name: FILTER_GROUP_LABEL });
+
+    return within(strip)
+        .getAllByRole('button')
+        .filter((control) => control.getAttribute('aria-pressed') === 'true')
+        .map((control) => control.textContent ?? '');
+}
+
+/**
+ * Picks the add control a screen actually acts on. The item detail renders two
+ * buttons carrying this label — its own action and the inert card affordance
+ * beside it — so a case has to name which one it clicks.
+ *
+ * @param controls - Every button carrying the add-to-cart label.
+ * @returns The one enabled control.
+ * @throws {Error} When the enabled controls are not exactly one.
+ */
+function enabledAddControl(controls: readonly HTMLButtonElement[]): HTMLButtonElement {
+    const enabled = controls.filter((control) => !control.disabled);
+    const only = enabled.length === 1 ? enabled[0] : undefined;
+
+    if (only === undefined) {
+        throw new Error(`Expected exactly one enabled add-to-cart control, found ${enabled.length}.`);
+    }
+
+    return only;
+}
+
 beforeEach(() => {
     // The stored token is the only user data a fixture carries: the session
     // restores through it, and its restore request answers the account.
@@ -536,7 +677,7 @@ describe('updateQuantity', () => {
         expect(cartOf(harness.probe).items[0]?.quantity).toBe(1);
     });
 
-    it('removes the line at quantity 0', async () => {
+    it('clamps a quantity of 0 up to the floor of one', async () => {
         const harness = renderHarness();
         await awaitAuthenticated(harness.probe);
 
@@ -550,12 +691,17 @@ describe('updateQuantity', () => {
             cartOf(harness.probe).updateQuantity(BURGER.id, 0);
         });
 
+        // Zero is outside the range the order endpoint accepts, so it is clamped up
+        // to the floor rather than read as a request to drop the line: `remove` is
+        // the only mutation that does that.
         const cart = cartOf(harness.probe);
-        expect(cart.items.map((line) => line.menu_item_id)).toEqual([FRIES.id]);
-        expect(cart.itemCount).toBe(1);
+        expect(cart.items.map((line) => line.menu_item_id)).toEqual([BURGER.id, FRIES.id]);
+        expect(cart.items.map((line) => line.quantity)).toEqual([1, 1]);
+        expect(cart.itemCount).toBe(2);
+        expect(cart.totalCents).toBe(BURGER.price_cents + FRIES.price_cents);
     });
 
-    it('removes the line at a negative quantity', async () => {
+    it('clamps a negative quantity up to the floor of one', async () => {
         const harness = renderHarness();
         await awaitAuthenticated(harness.probe);
 
@@ -569,7 +715,10 @@ describe('updateQuantity', () => {
             cartOf(harness.probe).updateQuantity(BURGER.id, -3);
         });
 
-        expect(cartOf(harness.probe).items.map((line) => line.menu_item_id)).toEqual([FRIES.id]);
+        const cart = cartOf(harness.probe);
+        expect(cart.items.map((line) => line.menu_item_id)).toEqual([BURGER.id, FRIES.id]);
+        expect(cart.items.map((line) => line.quantity)).toEqual([1, 1]);
+        expect(cart.itemCount).toBe(2);
     });
 
     it('leaves the other lines untouched', async () => {
@@ -606,6 +755,46 @@ describe('updateQuantity', () => {
         const cart = cartOf(harness.probe);
         expect(cart.items).toHaveLength(1);
         expect(cart.items[0]?.quantity).toBe(2);
+    });
+});
+
+describe('quantity field', () => {
+    it('keeps the field cleared and commits the retyped quantity instead of restoring the old one', async () => {
+        const user = userEvent.setup();
+        const harness = renderHarness({ entries: ['/cart'], content: CHECKOUT_CONTENT });
+        await awaitAuthenticated(harness.probe);
+
+        act(() => {
+            const cart = cartOf(harness.probe);
+            cart.add(BURGER, 12);
+            cart.add(FRIES, 1);
+        });
+
+        const quantity = screen.getByRole('spinbutton', { name: 'Quantity of Classic Burger' });
+        expect((quantity as HTMLInputElement).value).toBe('12');
+
+        // Emptying the field is a value mid-edit: the field stays empty rather than
+        // snapping back to the committed 12, which the next keystroke would append to.
+        await user.clear(quantity);
+        expect((quantity as HTMLInputElement).value).toBe('');
+        expect(cartOf(harness.probe).items[0]?.quantity).toBe(12);
+
+        await user.type(quantity, '5');
+
+        // Retyping reads as 5 rather than 125, the line's display total follows it, and
+        // the line is edited rather than dropped.
+        expect((quantity as HTMLInputElement).value).toBe('5');
+        const cart = cartOf(harness.probe);
+        expect(cart.items.map((line) => line.menu_item_id)).toEqual([BURGER.id, FRIES.id]);
+        expect(cart.items[0]?.quantity).toBe(5);
+        expect(cart.itemCount).toBe(6);
+        expect(screen.getByText(formatCents(5 * BURGER.price_cents)).className).toBe('cart-line__total');
+
+        // Losing focus drops the in-progress text, so the field settles on the
+        // quantity the cart holds.
+        await user.tab();
+        expect((quantity as HTMLInputElement).value).toBe('5');
+        expect(cartOf(harness.probe).items[0]?.quantity).toBe(5);
     });
 });
 
@@ -880,5 +1069,135 @@ describe('empty cart', () => {
         expect(browse.textContent).toBe('Browse the menu');
         expect(browse.getAttribute('href')).toBe('/menu');
         expect(screen.queryByRole('button', { name: 'Place order' })).toBeNull();
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Screen 3 — the catalog's selection is the `category` query parameter, so
+// filtering re-reads the items and never reloads or remounts the screen
+// ---------------------------------------------------------------------------
+
+describe('menu catalog filter', () => {
+    it('lists only the category the query names and reads it once through that query', async () => {
+        const harness = renderHarness({
+            entries: ['/menu?category=burgers'],
+            content: CATALOG_CONTENT,
+            routes: BURGERS_ONLY_ROUTES,
+        });
+        await awaitAuthenticated(harness.probe);
+
+        expect(await screen.findByRole('link', { name: BURGER.name })).not.toBeNull();
+        expect(await screen.findByRole('button', { name: BURGERS_CATEGORY.name })).not.toBeNull();
+        // The other category's item is absent, so the selection reached the request
+        // rather than being applied to whatever came back.
+        expect(screen.queryByRole('link', { name: SHAKE.name })).toBeNull();
+
+        const requested = harness.fetchStub.calls.map((call) => call.url);
+        expect(requested.filter((url) => url === BURGERS_ITEMS_URL)).toHaveLength(1);
+        // A catalog that dropped `category` would have asked for the whole menu.
+        expect(requested).not.toContain(ALL_ITEMS_URL);
+        expect(pressedFilterLabels()).toEqual([BURGERS_CATEGORY.name]);
+        // One strip for the screen: filtering never re-reads it.
+        expect(requested.filter((url) => url === CATEGORIES_ROUTE.path)).toHaveLength(1);
+    });
+
+    it.each([
+        {
+            control: DRINKS_CATEGORY.name,
+            itemsUrl: DRINKS_ITEMS_URL,
+            listed: [SHAKE.name],
+            unlisted: [BURGER.name],
+        },
+        {
+            control: ALL_ITEMS_LABEL,
+            itemsUrl: ALL_ITEMS_URL,
+            listed: [BURGER.name, SHAKE.name],
+            unlisted: [],
+        },
+    ])(
+        're-reads the items in place when the $control control is chosen',
+        async ({ control, itemsUrl, listed, unlisted }) => {
+            const user = userEvent.setup();
+            const harness = renderHarness({
+                entries: ['/menu?category=burgers'],
+                content: CATALOG_CONTENT,
+                routes: CATALOG_ROUTES,
+            });
+            await awaitAuthenticated(harness.probe);
+
+            expect(await screen.findByRole('link', { name: BURGER.name })).not.toBeNull();
+            expect(await screen.findByRole('button', { name: BURGERS_CATEGORY.name })).not.toBeNull();
+            expect(pressedFilterLabels()).toEqual([BURGERS_CATEGORY.name]);
+
+            await user.click(screen.getByRole('button', { name: control }));
+
+            for (const name of listed) {
+                expect(await screen.findByRole('link', { name })).not.toBeNull();
+            }
+            for (const name of unlisted) {
+                expect(screen.queryByRole('link', { name })).toBeNull();
+            }
+
+            const requested = harness.fetchStub.calls.map((call) => call.url);
+            // The newly chosen selection travels as the query parameter.
+            expect(requested.filter((url) => url === itemsUrl)).toHaveLength(1);
+            expect(pressedFilterLabels()).toEqual([control]);
+            // The strip was not read again and the screen was never remounted: one
+            // categories request for the whole case, whatever was selected.
+            expect(requested.filter((url) => url === CATEGORIES_ROUTE.path)).toHaveLength(1);
+        },
+    );
+});
+
+// ---------------------------------------------------------------------------
+// Screen 4 — the item detail's add action feeds the client cart, not the API
+// ---------------------------------------------------------------------------
+
+describe('menu item detail add to cart', () => {
+    it('adds the chosen quantity to the cart, confirms it in place and calls no cart endpoint', async () => {
+        const user = userEvent.setup();
+        const quantityAdded = 3;
+        const harness = renderHarness({
+            entries: [`/menu/${BURGER.id}`],
+            content: ITEM_DETAIL_CONTENT,
+            routes: DETAIL_ROUTES,
+        });
+        await awaitAuthenticated(harness.probe);
+
+        // The article the item's own heading labels is the detail, not the compact
+        // card summary the same screen renders beside it.
+        const detail = await screen.findByRole('article', { name: BURGER.name });
+        const detailText = detail.textContent ?? '';
+        expect(detailText).toContain(BURGER.name);
+        expect(detailText).toContain(BURGER.description);
+        expect(detailText).toContain(formatCents(BURGER.price_cents));
+
+        const quantityControl = await screen.findByLabelText<HTMLInputElement>('Quantity');
+        await user.clear(quantityControl);
+        await user.type(quantityControl, String(quantityAdded));
+
+        const addControls = within(detail).getAllByRole<HTMLButtonElement>('button', { name: ADD_TO_CART_LABEL });
+        const addControl = enabledAddControl(addControls);
+        // The card's own affordance stays inert beside the detail's one real action.
+        expect(addControls.filter((control) => control !== addControl).every((control) => control.disabled)).toBe(true);
+
+        await user.click(addControl);
+
+        const cart = cartOf(harness.probe);
+        expect(cart.items).toHaveLength(1);
+        expect(cart.items[0]?.menu_item_id).toBe(BURGER.id);
+        expect(cart.itemCount).toBe(quantityAdded);
+
+        // The confirmation is announced where the action was, in the live region
+        // the detail screen keeps mounted for it.
+        const confirmation = await screen.findByText(`${quantityAdded} × ${BURGER.name} added to your cart.`);
+        expect(confirmation.closest('[role="status"]')).not.toBeNull();
+
+        const requested = harness.fetchStub.calls.map((call) => call.url);
+        // The item read is the only request beyond the session restore: the cart is
+        // client state, so nothing asked the API to store it (rule R-8).
+        expect(requested.filter((url) => url !== SESSION_ROUTE.path)).toEqual([`/api/menu-items/${BURGER.id}`]);
+        expect(harness.fetchStub.calls.some((call) => call.method === 'POST')).toBe(false);
+        expect(requested.every((url) => !url.toLowerCase().includes('cart'))).toBe(true);
     });
 });
