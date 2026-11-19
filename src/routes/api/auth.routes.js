@@ -40,9 +40,6 @@ const PASSWORD_MAX_BYTES = 72;
 // service and the users.email unique index.
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-// The header shape the guard accepts, so logout can recover the credential it proved.
-const BEARER_PATTERN = /^Bearer[ \t]+(\S+)$/i;
-
 /**
  * Build the one failure a rejected request body is answered with.
  * @param {Array<{field: string, issue: string}>} details - One entry per failing rule.
@@ -130,7 +127,7 @@ function readLogin(body) {
 router.post('/register', async (req, res) => {
   const body = req.body ?? {};
   const { name, email, password } = readRegistration(body);
-  const { user, token } = authService.register({ name, email, password });
+  const { user, token } = await authService.register({ name, email, password });
 
   res.status(201).json({ user, token });
 });
@@ -145,7 +142,7 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
   const body = req.body ?? {};
   const { email, password } = readLogin(body);
-  const { user, token } = authService.login({ email, password });
+  const { user, token } = await authService.login({ email, password });
 
   res.json({ user, token });
 });
@@ -168,14 +165,10 @@ router.get('/session', authenticate, async (req, res) => {
  * @route POST /logout
  */
 router.post('/logout', authenticate, async (req, res) => {
-  // The guard proved the credential, so the raw value it validated is taken from
-  // the request when the guard exposed it there, else from the header it matched.
-  const authorization = req.headers?.authorization;
-  const header = typeof authorization === 'string' ? authorization.trim() : '';
-  const match = BEARER_PATTERN.exec(header);
-  const rawToken = req.token ?? (match ? match[1] : '');
-
-  authService.revokeToken(rawToken);
+  // The guard resolved and validated this request's session row and published it on
+  // the request, so revoking it is one statement: neither the header is parsed again
+  // nor the row is looked up a second time.
+  authService.revokeSession(req.sessionToken);
 
   res.status(204).end();
 });

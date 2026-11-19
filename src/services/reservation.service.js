@@ -4,10 +4,10 @@
  * The table-booking rules, isolated from HTTP: the six checkpoints a booking
  * passes in the order the API contract states — shape, not in the past, a
  * 30-minute slot inside the service window at or before the last seating, the
- * party size range, the horizon, uniqueness and persistence — and the response
- * projection. The first failing checkpoint decides the response, and times
- * compare in the server's local timezone on slots counted in minutes from
- * midnight.
+ * party size range, the horizon, uniqueness and persistence — and the projection
+ * of the stored row a booking answers with. The first failing checkpoint decides
+ * the response, and times compare in the server's local timezone on slots
+ * counted in minutes from midnight.
  *
  * @module src/services/reservation.service
  */
@@ -19,6 +19,8 @@ const { AppError, RESERVATION_ISSUES } = require('../errors');
 const SLOT_MINUTES = 30;
 /** Milliseconds in one day, used to count the horizon in calendar days. @type {number} */
 const MS_PER_DAY = 86400000;
+/** Largest party size stored: mirrors the reservations CHECK (party_size BETWEEN 1 AND 12). @type {number} */
+const MAX_STORED_PARTY_SIZE = 12;
 /** Shape of a reservation date: YYYY-MM-DD. @type {RegExp} */
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 /** Shape of a reservation time: HH:MM on a 24-hour clock. @type {RegExp} */
@@ -107,7 +109,7 @@ function createReservationService({ reservations, config, now = () => new Date()
    * Book one table for the authenticated caller, running the six checkpoints in
    * order and storing the booking when all of them pass.
    * @param {Object} input - `{userId, reservation_date, reservation_time, party_size, notes}`.
-   * @returns {Object} The stored reservation, in the public shape.
+   * @returns {Object} The row the repository stored, in the public shape.
    * @throws {AppError} VALIDATION_ERROR, or RESERVATION_CONFLICT for a slot the caller already holds.
    */
   function createReservation({ userId, reservation_date, reservation_time, party_size, notes }) {
@@ -142,8 +144,9 @@ function createReservationService({ reservations, config, now = () => new Date()
     if (!onSlot || !inWindow) {
       failValidation('reservation_time', RESERVATION_ISSUES.TIME_OUTSIDE_SERVICE_HOURS, MESSAGES.window);
     }
-    if (party_size < 1 || party_size > config.maxPartySize) {
-      failValidation('party_size', 'out_of_range', `The party size must be between 1 and ${config.maxPartySize}.`);
+    const partyLimit = Math.min(config.maxPartySize, MAX_STORED_PARTY_SIZE);
+    if (party_size < 1 || party_size > partyLimit) {
+      failValidation('party_size', 'out_of_range', `The party size must be between 1 and ${partyLimit}.`);
     }
     if (calendarDaysBetween(currentInstant, requestedStart) > config.reservationHorizonDays) {
       failValidation('reservation_date', 'outside_reservation_horizon', MESSAGES.horizon);
@@ -157,8 +160,9 @@ function createReservationService({ reservations, config, now = () => new Date()
       partySize: party_size, status: 'confirmed', createdAt: now().toISOString(),
       notes: notes === undefined || notes === null ? null : String(notes)
     };
+    let stored;
     try {
-      reservations.insert(row);
+      stored = reservations.insert(row);
     } catch (err) {
       if (!isDuplicateSlot(err)) {
         throw err;
@@ -166,10 +170,7 @@ function createReservationService({ reservations, config, now = () => new Date()
       throw new AppError('RESERVATION_CONFLICT', MESSAGES.duplicate);
     }
 
-    return toPublicReservation({
-      id: row.id, reservation_date, reservation_time, party_size,
-      status: row.status, notes: row.notes, created_at: row.createdAt
-    });
+    return toPublicReservation(stored);
   }
 
   /**

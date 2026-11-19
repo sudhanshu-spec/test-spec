@@ -237,6 +237,16 @@ describe('Authentication middleware - authenticate.js', () => {
       expect(res.send).not.toHaveBeenCalled();
     });
 
+    test('publishes the token row the credential resolved to beside the identity', () => {
+      const row = tokenRow();
+      const harness = buildGuard({ row });
+      const { req, next } = harness.invoke(bearerRequest(RAW_TOKEN));
+
+      expect(next).toHaveBeenCalledWith();
+      expect(req.sessionToken).toBe(row);
+      expect(Object.keys(req.user).sort()).toEqual(['created_at', 'email', 'id', 'name']);
+    });
+
     test('hands the repository the SHA-256 digest rather than the raw credential', () => {
       const harness = buildGuard();
       harness.invoke(bearerRequest(RAW_TOKEN));

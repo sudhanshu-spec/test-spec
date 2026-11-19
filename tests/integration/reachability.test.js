@@ -257,7 +257,7 @@ const SERVICE_CONTRACT = [
     specifier: '../../src/services/auth.service',
     factory: 'createAuthService',
     singleton: 'authService',
-    methods: ['register', 'login', 'revokeToken'],
+    methods: ['register', 'login', 'revokeSession'],
     exports: ['toPublicUser', 'hashToken']
   },
   {

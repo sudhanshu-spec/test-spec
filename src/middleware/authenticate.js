@@ -2,9 +2,9 @@
  * Bearer Token Authentication Middleware Module
  *
  * The sole place where a presented token becomes a `req.user`: it parses the
- * `Authorization: Bearer <token>` header, digests the credential with SHA-256,
- * looks that digest up through the token repository, checks revocation and then
- * expiry, resolves the owning user and hands the pipeline a secret-free
+ * `Authorization: Bearer <token>` header, digests the credential with the service's
+ * `hashToken`, looks that digest up through the token repository, checks revocation
+ * and then expiry, resolves the owning user and hands the pipeline a secret-free
  * projection of it. Installed inside the API routers only, never globally.
  *
  * It never writes a response: each failure goes to `next()` as an `AppError`
@@ -19,9 +19,8 @@
  * @module src/middleware/authenticate
  */
 
-const crypto = require('node:crypto');
-
 const { AppError } = require('../errors');
+const { hashToken, toPublicUser } = require('../services/auth.service');
 const tokenRepository = require('../repositories/token.repository');
 const userRepository = require('../repositories/user.repository');
 
@@ -78,37 +77,6 @@ function readBearerToken(req) {
 }
 
 /**
- * Digest the presented credential.
- *
- * Hashing happens before the lookup, so the raw value never leaves this module:
- * the repository is handed the hex digest alone, which is also the only form
- * `auth_tokens.token_hash` holds.
- *
- * @param {string} token - Raw credential presented in the header.
- * @returns {string} 64-character lowercase hex SHA-256 digest.
- */
-function hashToken(token) {
-  return crypto.createHash('sha256').update(token).digest('hex');
-}
-
-/**
- * Copy the caller-safe columns of a stored user row, which carries
- * `password_hash` and `password_salt` and so is never passed downstream.
- *
- * @param {Object} row - Stored user row.
- * @returns {{id: string, name: string, email: string, created_at: string}} The
- *   secret-free user.
- */
-function projectUser(row) {
-  return {
-    id: row.id,
-    name: row.name,
-    email: row.email,
-    created_at: row.created_at
-  };
-}
-
-/**
  * Build the Bearer-token guard over injected repositories and clock.
  *
  * The returned middleware runs these steps and stops at the first failure,
@@ -116,11 +84,13 @@ function projectUser(row) {
  *
  * 1. No Bearer credential in the header - TOKEN_REQUIRED.
  * 2. No row for the credential's digest, or the row is revoked, a revoked token
- *    being invalid rather than expired - TOKEN_INVALID.
+ *    being invalid rather than expired - TOKEN_INVALID. The digest is the service's
+ *    `hashToken`, so the raw value never reaches the repository.
  * 3. The row's `expires_at` is at or before the injected clock - TOKEN_EXPIRED.
  * 4. The row's owner no longer exists - TOKEN_INVALID.
- * 5. Otherwise `req.user` is the secret-free projection and `next()` is called
- *    with no argument.
+ * 5. Otherwise `req.user` is the service's secret-free projection, `req.sessionToken`
+ *    is the resolved row so a handler acting on the session needs no second read, and
+ *    `next()` is called with no argument.
  *
  * Identity comes from the token alone: no user id is read from the body, query,
  * path or any other header, and ownership stays with the repositories, which
@@ -142,7 +112,8 @@ function createAuthenticate({ tokens, users, now = systemClock }) {
   /**
    * Authenticate the request, or continue with the reason it failed.
    *
-   * @param {import('express').Request} req - Request; `req.user` is set on success.
+   * @param {import('express').Request} req - Request; `req.user` and
+   *   `req.sessionToken` are set on success.
    * @param {import('express').Response} res - Never written.
    * @param {import('express').NextFunction} next - Continuation, called exactly once.
    * @returns {void}
@@ -170,7 +141,11 @@ function createAuthenticate({ tokens, users, now = systemClock }) {
       return next(new AppError('TOKEN_INVALID', TOKEN_INVALID_MESSAGE));
     }
 
-    req.user = projectUser(user);
+    req.user = toPublicUser(user);
+    // The row this credential resolved to, published beside the identity: a handler
+    // acting on the session itself (logout) neither re-parses the header nor re-reads
+    // the row, so the credential grammar and the token lookup stay owned here.
+    req.sessionToken = record;
 
     return next();
   };

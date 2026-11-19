@@ -156,19 +156,40 @@ function storedRow(overrides = {}) {
 }
 
 /**
+ * The row reservation.repository answers insert() with, derived from the argument
+ * the service handed it: the repository reads back the row its statement wrote,
+ * so the stub returns the written values under the table's column names.
+ *
+ * @param {Object} row - The argument the service passed to insert().
+ * @returns {Object} The stored row, as the repository returns it.
+ */
+function insertedRow(row) {
+  return storedRow({
+    id: row.id,
+    user_id: row.userId,
+    reservation_date: row.reservationDate,
+    reservation_time: row.reservationTime,
+    party_size: row.partySize,
+    status: row.status,
+    notes: row.notes,
+    created_at: row.createdAt
+  });
+}
+
+/**
  * Build a stubbed reservation repository, so every collaborator call can be
  * asserted and nothing reaches a database.
  *
  * @param {Object} [options] - Stub outcomes.
  * @param {function} [options.findByUserAndSlot] - Row the slot lookup returns.
  * @param {function} [options.listByUser] - Rows the listing returns.
- * @param {function} [options.insert] - Outcome of the insert.
+ * @param {function} [options.insert] - Row the insert returns.
  * @returns {Object} The stubbed repository.
  */
 function stubRepository({
   findByUserAndSlot = () => null,
   listByUser = () => [],
-  insert = () => ({ changes: 1 })
+  insert = insertedRow
 } = {}) {
   return {
     findByUserAndSlot: jest.fn(findByUserAndSlot),
@@ -185,7 +206,7 @@ function stubRepository({
  * @param {function} [options.now] - Injected clock.
  * @param {function} [options.findByUserAndSlot] - Row the slot lookup returns.
  * @param {function} [options.listByUser] - Rows the listing returns.
- * @param {function} [options.insert] - Outcome of the insert.
+ * @param {function} [options.insert] - Row the insert returns.
  * @returns {{service: Object, reservations: Object}} The service and its stubs.
  */
 function buildService({ config = CONFIG, now = clockAt(12, 0), ...stubs } = {}) {
@@ -644,6 +665,28 @@ describe('Reservation service - reservation.service.js', () => {
       expect(error.details).toEqual([{ field: 'party_size', issue: 'out_of_range' }]);
       expect(error.message).toContain('6');
     });
+
+    test('caps a configured maximum above the stored column bound at that bound', () => {
+      // The configuration refuses a maximum above the schema ceiling when it is
+      // read, and this checkpoint bounds the party by that ceiling for whatever
+      // configuration it is handed: 20 behaves as 12, so the message agrees.
+      const config = { ...CONFIG, maxPartySize: 20 };
+
+      const accepted = buildService({ config });
+      expect(accepted.service.createReservation(validRequest({ party_size: 12 })).party_size).toBe(12);
+
+      const rejected = buildService({ config });
+      const error = captureError(() =>
+        rejected.service.createReservation(validRequest({ party_size: 13 }))
+      );
+
+      expect(error).toBeInstanceOf(AppError);
+      expect(error.code).toBe('VALIDATION_ERROR');
+      expect(error.status).toBe(400);
+      expect(error.details).toEqual([{ field: 'party_size', issue: 'out_of_range' }]);
+      expect(error.message).toBe('The party size must be between 1 and 12.');
+      expect(rejected.reservations.insert).not.toHaveBeenCalled();
+    });
   });
 
   describe('checkpoint 5 - the reservation horizon', () => {
@@ -882,6 +925,25 @@ describe('Reservation service - reservation.service.js', () => {
         notes: '  Window seat  ',
         created_at: NOW.toISOString()
       });
+      expect(Object.keys(created).sort()).toEqual(RESERVATION_KEYS);
+    });
+
+    test('answers with the row the repository read back rather than the request it wrote', () => {
+      // The insert answers with the stored row, so a value storage supplies — the
+      // note and the instant here — is what the response carries, not the request.
+      const readBack = storedRow({
+        id: 'res-read-back',
+        notes: 'Stored note the request never carried',
+        created_at: '2030-01-01T00:00:00.000Z'
+      });
+      const { service } = buildService({ insert: () => readBack });
+
+      const created = service.createReservation(validRequest({ notes: 'Window seat' }));
+
+      expect(created).toEqual(toPublicReservation(readBack));
+      expect(created.id).toBe('res-read-back');
+      expect(created.notes).toBe('Stored note the request never carried');
+      expect(created.created_at).toBe('2030-01-01T00:00:00.000Z');
       expect(Object.keys(created).sort()).toEqual(RESERVATION_KEYS);
     });
 

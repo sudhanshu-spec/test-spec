@@ -10,7 +10,8 @@
  * caller's own bookings earliest first. It then proves the six checkpoints of
  * the booking rule one row at a time, in the order the service applies them —
  * the request shape, a start that is not in the past, a 30-minute slot inside
- * the 17:00-22:00 window up to the 21:30 last seating, the 1-12 party range,
+ * the 17:00-22:00 window up to the 21:30 last seating, the 1-12 party range
+ * (including a configured maximum set above the bound the column stores),
  * the 90-day horizon and the duplicate slot. Two rows are boundary rows (21:30
  * accepted where 21:31 is refused; today+90 accepted where today+91 is
  * refused), and one row proves the past checkpoint decides before the window
@@ -24,8 +25,9 @@
  * that reads it is loaded, so the application under test, its configuration and
  * its connection belong to this suite alone. The file and its WAL and
  * shared-memory companions are removed, and the previous `DB_FILE` restored,
- * when the suite ends. No other environment variable is set: every threshold
- * asserted here is a documented default of `src/config/index.js`.
+ * when the suite ends. Every threshold asserted here is a documented default of
+ * `src/config/index.js`; the one block that configures a setting above its
+ * documented maximum restores the variable when that block ends.
  *
  * @module tests/integration/api-reservations
  */
@@ -595,6 +597,62 @@ describe('Reservation API', () => {
 
       expectError(response, 404, 'ROUTE_NOT_FOUND');
       expect(response.body.error.details).toBeUndefined();
+    });
+  });
+
+  describe('POST /api/reservations — a maximum party size above the stored column bound', () => {
+    /**
+     * The `MAX_PARTY_SIZE` this block configures: above the 1..12 bound that
+     * `reservations.party_size` carries, which is the setting value that used to
+     * let a party of 13 reach the insert and answer 500 instead of 400.
+     * @type {string}
+     */
+    const RAISED_MAX_PARTY_SIZE = '20';
+
+    test('is refused when the configuration is read, naming MAX_PARTY_SIZE', () => {
+      // The setting is bounded by the schema's own ceiling when it is read, so a
+      // party the column cannot hold is refused before the API can serve it. The
+      // registry is isolated so the application this suite already loaded keeps
+      // the configuration the other rows run under.
+      expect(() =>
+        jest.isolateModules(() => {
+          const previous = process.env.MAX_PARTY_SIZE;
+          process.env.MAX_PARTY_SIZE = RAISED_MAX_PARTY_SIZE;
+          try {
+            require('../../src/app');
+          } finally {
+            if (previous === undefined) {
+              delete process.env.MAX_PARTY_SIZE;
+            } else {
+              process.env.MAX_PARTY_SIZE = previous;
+            }
+          }
+        })
+      ).toThrow('Invalid MAX_PARTY_SIZE: 20. Expected an integer between 1 and 12.');
+    });
+
+    test('answers a party the stored column cannot hold with 400 VALIDATION_ERROR, never 500', async () => {
+      const { token } = await accountFor('party-ceiling');
+      const response = await createReservation(
+        token,
+        booking({ reservation_date: localIsoDate(14), reservation_time: '18:00', party_size: 13 })
+      );
+
+      expect(response.status).not.toBe(500);
+      expectValidationDetail(response, 'party_size', 'out_of_range');
+      expect(response.body.error.message).toContain('1 and 12');
+    });
+
+    test('accepts the largest party the stored column holds', async () => {
+      const { token } = await accountFor('party-ceiling');
+      const response = await createReservation(
+        token,
+        booking({ reservation_date: localIsoDate(14), reservation_time: '19:00', party_size: 12 })
+      );
+
+      expect(response.status).toBe(201);
+      expect(response.body).not.toHaveProperty('error');
+      expect(response.body.reservation.party_size).toBe(12);
     });
   });
 });

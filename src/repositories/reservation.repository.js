@@ -54,9 +54,11 @@ const DEFAULT_STATUS = 'confirmed';
  *
  * `reservationDate` and `reservationTime` are bound exactly as received: the
  * caller has already validated them as YYYY-MM-DD and HH:MM, so they are never
- * parsed, reformatted or timezone-converted here. A duplicate booking for the
- * same user, date and time is left to raise SQLITE_CONSTRAINT_UNIQUE so the
- * caller can recognise it.
+ * parsed, reformatted or timezone-converted here. The row the statement wrote is
+ * read back by that same statement through `RETURNING`, so the value a caller
+ * projects is the stored row: it cannot disagree with a column default or with
+ * the type the column applied. A duplicate booking for the same user, date and
+ * time is left to raise SQLITE_CONSTRAINT_UNIQUE so the caller can recognise it.
  *
  * @param {Object} reservation - The booking to store.
  * @param {string} [reservation.id] - Booking identifier; a fresh UUID when omitted.
@@ -67,7 +69,7 @@ const DEFAULT_STATUS = 'confirmed';
  * @param {string} [reservation.status] - Booking status; 'confirmed' when omitted.
  * @param {string|null} [reservation.notes] - Free-text note; null when omitted.
  * @param {string} [reservation.createdAt] - ISO-8601 creation time; now when omitted.
- * @returns {Object|null} The stored row, or null if the insert changed no row.
+ * @returns {Object} The row as stored, read back by the statement that wrote it.
  * @throws {Error} The SQLite error raised by the statement, unwrapped — notably
  *   SQLITE_CONSTRAINT_UNIQUE for a slot the same user already holds.
  */
@@ -83,28 +85,14 @@ function insert(reservation) {
     createdAt = new Date().toISOString()
   } = reservation;
 
-  const result = getDb()
+  return getDb()
     .prepare(
       `INSERT INTO reservations
         (id, user_id, reservation_date, reservation_time, party_size, status, notes, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        RETURNING ${COLUMNS}`
     )
-    .run(id, userId, reservationDate, reservationTime, partySize, status, notes, createdAt);
-
-  if (result.changes === 0) {
-    return null;
-  }
-
-  return {
-    id,
-    user_id: userId,
-    reservation_date: reservationDate,
-    reservation_time: reservationTime,
-    party_size: partySize,
-    status,
-    notes,
-    created_at: createdAt
-  };
+    .get(id, userId, reservationDate, reservationTime, partySize, status, notes, createdAt);
 }
 
 /**

@@ -2,20 +2,25 @@
  * Authentication Service Module
  *
  * The single owner of credential handling: scrypt password hashing and
- * verification, opaque token minting, revocation on logout, and the one user
- * projection every response passes through. It holds no HTTP, SQL or environment
- * access; everything it returns lacks password_hash, password_salt and token_hash
- * (R-4), and no method accepts a user id from a caller (R-5).
+ * verification, opaque token minting, revoking the session the guard resolved, and
+ * the one user projection every response passes through. It holds no HTTP, SQL or
+ * environment access; everything it returns lacks password_hash, password_salt and
+ * token_hash (R-4), and no method accepts a user id from a caller (R-5).
  *
  * @module src/services/auth.service
  */
 
 const crypto = require('node:crypto');
+const { promisify } = require('node:util');
 const { AppError } = require('../errors');
 const { getDb } = require('../db');
 const appConfig = require('../config');
 const userRepository = require('../repositories/user.repository');
 const tokenRepository = require('../repositories/token.repository');
+
+// The asynchronous KDF R-4 names: scrypt derives in libuv's thread pool so a login cannot
+// stall in-flight requests, and at its default cost a stored digest still verifies.
+const deriveKey = promisify(crypto.scrypt);
 
 // Salt, key, token and clock dimensions of the hashing and minting schemes.
 const SALT_BYTES = 16;
@@ -26,6 +31,13 @@ const MS_PER_HOUR = 60 * 60 * 1000;
 
 // The one message an authentication failure carries, shared by both failing paths.
 const INVALID_CREDENTIALS_MESSAGE = 'The email or password is incorrect.';
+
+// The account an unknown address is verified against, so it costs the same single
+// derivation as a wrong password and response time cannot enumerate addresses.
+const UNKNOWN_EMAIL_ACCOUNT = Object.freeze({
+  password_salt: 'fedcba9876543210'.repeat(2),
+  password_hash: 'fedcba9876543210'.repeat(8)
+});
 
 /**
  * Derive the SHA-256 hex digest a raw session token is stored under; the
@@ -58,10 +70,10 @@ function emailAlreadyRegistered(email) {
   return new AppError('EMAIL_ALREADY_REGISTERED', `An account with the email ${email} is already registered.`);
 }
 
-// Constant-time password comparison; the length guard comes first because
+// Constant-time password comparison, awaited: the length guard comes first because
 // timingSafeEqual throws on buffers of differing length.
-function verifyPassword(password, passwordSalt, passwordHash) {
-  const derived = crypto.scryptSync(password, Buffer.from(passwordSalt, 'hex'), KEY_LENGTH);
+async function verifyPassword(password, passwordSalt, passwordHash) {
+  const derived = await deriveKey(password, Buffer.from(passwordSalt, 'hex'), KEY_LENGTH);
   const expected = Buffer.from(passwordHash, 'hex');
   return derived.length === expected.length && crypto.timingSafeEqual(derived, expected);
 }
@@ -89,18 +101,19 @@ function isDuplicateEmailError(error) {
  * `runInTransaction` are defaulted so a unit suite pins the clock and needs no
  * database, while the singleton below supplies the real ones.
  * @param {Object} deps - { users, tokens, config, now, runInTransaction }.
- * @returns {{register: Function, login: Function, revokeToken: Function}} The service.
+ * @returns {{register: Function, login: Function, revokeSession: Function}} The service.
  */
 function createAuthService({
   users, tokens, config, now = () => new Date(), runInTransaction = (fn) => fn()
 }) {
   /**
-   * Create an account and its first session token in one transaction.
+   * Create an account and its first session token in one transaction, deriving the
+   * password digest before the runner is entered so no write lock spans the await.
    * @param {{name: string, email: string, password: string}} input - Registration input.
-   * @returns {{user: Object, token: string}} The public user and the raw token.
+   * @returns {Promise<{user: Object, token: string}>} The public user and the raw token.
    * @throws {AppError} 409 EMAIL_ALREADY_REGISTERED for a duplicate address.
    */
-  function register({ name, email, password } = {}) {
+  async function register({ name, email, password } = {}) {
     const normalisedEmail = normaliseEmail(email);
     if (users.findByEmail(normalisedEmail)) {
       throw emailAlreadyRegistered(normalisedEmail);
@@ -110,7 +123,7 @@ function createAuthService({
     const createdAt = issuedAt.toISOString();
     const userId = crypto.randomUUID();
     const passwordSalt = crypto.randomBytes(SALT_BYTES).toString('hex');
-    const passwordHash = crypto.scryptSync(password, Buffer.from(passwordSalt, 'hex'), KEY_LENGTH).toString('hex');
+    const passwordHash = (await deriveKey(password, Buffer.from(passwordSalt, 'hex'), KEY_LENGTH)).toString('hex');
     const issued = issueToken(userId, issuedAt, config.tokenTtlHours);
     try {
       // One runner call for both inserts, so a failure leaves neither row behind.
@@ -128,16 +141,20 @@ function createAuthService({
   }
 
   /**
-   * Verify credentials and mint a fresh token. An unknown email and a wrong
-   * password share one throw site, so neither is distinguishable in a response.
+   * Verify credentials and mint a fresh token. One derivation runs on every path —
+   * the stored row or the fixed account — and both failures share one throw site, so
+   * neither the payload nor the response time tells the two cases apart.
    * @param {{email: string, password: string}} input - Login input.
-   * @returns {{user: Object, token: string}} The public user and the raw token.
+   * @returns {Promise<{user: Object, token: string}>} The public user and the raw token.
    * @throws {AppError} 401 INVALID_CREDENTIALS for either failure.
    */
-  function login({ email, password } = {}) {
+  async function login({ email, password } = {}) {
     const row = users.findByEmail(normaliseEmail(email));
-    const verified = Boolean(row) && typeof password === 'string' && password.length > 0 &&
-      verifyPassword(password, row.password_salt, row.password_hash);
+    const presented = typeof password === 'string' ? password : '';
+    const account = row || UNKNOWN_EMAIL_ACCOUNT;
+    const derived = await verifyPassword(presented, account.password_salt, account.password_hash);
+    const verified = Boolean(row) && presented.length > 0 && derived;
+
     if (!verified) {
       throw new AppError('INVALID_CREDENTIALS', INVALID_CREDENTIALS_MESSAGE);
     }
@@ -148,34 +165,23 @@ function createAuthService({
   }
 
   /**
-   * Revoke the presented token, checking presence, then validity, then expiry, so
-   * a revoked token is never revocable twice and an expired one reports expiry.
-   * @param {string} rawToken - The opaque token the caller presented.
+   * Revoke the session row the guard resolved for this request. Whether the
+   * presented credential was absent, invalid or expired is decided in
+   * src/middleware/authenticate.js alone, so this is the one statement it costs.
+   * @param {Object} session - The token row the guard looked up and validated.
    * @returns {void}
-   * @throws {AppError} 401 TOKEN_REQUIRED, TOKEN_INVALID or TOKEN_EXPIRED.
    */
-  function revokeToken(rawToken) {
-    if (!rawToken) {
-      throw new AppError('TOKEN_REQUIRED', 'An access token is required.');
-    }
-    const row = tokens.findByHash(hashToken(rawToken));
-    if (!row || row.revoked_at) {
-      throw new AppError('TOKEN_INVALID', 'The access token is invalid or has been revoked.');
-    }
-    if (Date.parse(row.expires_at) <= now().getTime()) {
-      throw new AppError('TOKEN_EXPIRED', 'The access token has expired.');
-    }
-
-    tokens.revoke(row.id);
+  function revokeSession(session) {
+    tokens.revoke(session.id);
   }
 
-  return { register, login, revokeToken };
+  return { register, login, revokeSession };
 }
 
 /**
  * The ready-made service the auth router imports; building it opens no database
  * connection and writes nothing.
- * @type {{register: Function, login: Function, revokeToken: Function}}
+ * @type {{register: Function, login: Function, revokeSession: Function}}
  */
 const authService = createAuthService({
   users: userRepository,

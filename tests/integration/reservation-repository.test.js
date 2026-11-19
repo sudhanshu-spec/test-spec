@@ -5,11 +5,11 @@
  * row stored with every field supplied and the defaults applied when the
  * optional ones are omitted, the date and time bound exactly as received, the
  * driver's own unique-constraint error for a slot the same user already holds
- * and the acceptance of that slot for a different user, the null returned when
- * the insert changes no row, the date-then-time listing scoped to one user, and
- * the slot lookup with its null answers. The database file lives in a directory
- * the suite creates under the operating system's temporary directory, outside
- * the checkout.
+ * and the acceptance of that slot for a different user, the row the insert's
+ * statement reads back with RETURNING, the date-then-time listing scoped to one
+ * user, and the slot lookup with its null answers. The database file lives in a
+ * directory the suite creates under the operating system's temporary directory,
+ * outside the checkout.
  *
  * @module tests/integration/reservation-repository
  */
@@ -445,20 +445,32 @@ describe('reservation repository module (src/repositories/reservation.repository
   });
 });
 
-describe('insert() when the statement changes no row', () => {
-  // The real driver never reports zero changes for an INSERT that matched the
-  // schema, so this branch is reached by replacing the connection the module
-  // loads. The stub lives in its own describe and requires the repository in an
-  // isolated module registry, so it cannot reach the real-database tests above.
+describe('insert() over a stubbed connection', () => {
+  // The module's contract is that the row it answers with is the row its own
+  // statement read back, so this block replaces the connection and hands back a
+  // row of its own: values that differ from the arguments prove the module does
+  // not rebuild the row from what it was given. The stub lives in its own
+  // describe and requires the repository in an isolated module registry, so it
+  // cannot reach the real-database tests above.
   afterAll(() => {
     jest.dontMock(DATABASE_MODULE);
     jest.resetModules();
   });
 
-  test('returns null', () => {
+  test('reads the stored row back with INSERT ... RETURNING and answers it unchanged', () => {
     const userId = 'user-not-stored';
-    const run = jest.fn(() => ({ changes: 0 }));
-    const prepare = jest.fn(() => ({ run }));
+    const returned = {
+      id: '9d1e64a2-7b3c-4f80-9a15-2c6b8d40e7f1',
+      user_id: userId,
+      reservation_date: '2099-11-01',
+      reservation_time: '17:30',
+      party_size: 6,
+      status: 'confirmed',
+      notes: 'Stored note the caller never supplied',
+      created_at: '2031-03-04T05:06:07.008Z'
+    };
+    const get = jest.fn(() => returned);
+    const prepare = jest.fn(() => ({ get }));
 
     jest.doMock(DATABASE_MODULE, () => ({ getDb: () => ({ prepare }) }));
 
@@ -472,14 +484,17 @@ describe('insert() when the statement changes no row', () => {
       newReservation(userId, { reservationDate: '2099-11-01', reservationTime: '17:30', partySize: 2 })
     );
 
-    expect(row).toBeNull();
-
-    // The statement is the module's own insert, bound with the values the caller
-    // supplied and the defaults the module fills in for the rest.
+    // The statement is the module's own insert, reading the contract columns back.
     expect(prepare).toHaveBeenCalledTimes(1);
     expect(prepare.mock.calls[0][0]).toMatch(/INSERT INTO reservations/);
-    expect(run).toHaveBeenCalledTimes(1);
-    expect(run.mock.calls[0]).toEqual([
+    expect(prepare.mock.calls[0][0]).toMatch(
+      new RegExp(`RETURNING ${RESERVATION_COLUMNS.join(', ')}`)
+    );
+
+    // It is executed with the values the caller supplied and the defaults the
+    // module fills in for the rest, through .get() — the row is read back.
+    expect(get).toHaveBeenCalledTimes(1);
+    expect(get.mock.calls[0]).toEqual([
       expect.stringMatching(UUID_V4),
       userId,
       '2099-11-01',
@@ -489,5 +504,9 @@ describe('insert() when the statement changes no row', () => {
       null,
       expect.stringMatching(ISO_INSTANT)
     ]);
+
+    // The row the statement handed back is the answer itself: its party size, note
+    // and instant all differ from the values that were bound.
+    expect(row).toBe(returned);
   });
 });

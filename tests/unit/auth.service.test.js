@@ -4,8 +4,8 @@
  * literal configuration and a pinned clock, so no database, no HTTP request and
  * no port is involved. What is pinned here is the scrypt salt-and-hash pair a
  * registration stores, the digest-only token storage, the single indistinguishable
- * login failure, the revoke order of presence then validity then expiry, and the
- * four-field projection that keeps password_hash, password_salt and token_hash
+ * login failure, revoking the session row the guard resolved in one statement, and
+ * the four-field projection that keeps password_hash, password_salt and token_hash
  * out of every value the service returns (R-4).
  * @module tests/unit/auth.service
  */
@@ -200,20 +200,22 @@ function buildAuthService({
 }
 
 /**
- * Invoke a call that is expected to fail and return the error it raised.
+ * Await a call that is expected to reject and return the error it rejected with.
+ * Registration and login derive their key through the asynchronous KDF, so their
+ * failures arrive as rejections rather than throws.
  *
- * @param {Function} invoke - Call expected to throw.
- * @returns {Error} The error the call raised.
- * @throws {Error} When the call returns instead of throwing.
+ * @param {Function} invoke - Call expected to reject.
+ * @returns {Promise<Error>} The error the call rejected with.
+ * @throws {Error} When the call resolves instead of rejecting.
  */
-function captureError(invoke) {
+async function captureRejection(invoke) {
   try {
-    invoke();
+    await invoke();
   } catch (error) {
     return error;
   }
 
-  throw new Error('Expected the call to raise an AppError, but it returned a value');
+  throw new Error('Expected the call to reject with an AppError, but it resolved');
 }
 
 describe('Auth service - auth.service.js', () => {
@@ -225,7 +227,7 @@ describe('Auth service - auth.service.js', () => {
     expect(typeof createAuthService).toBe('function');
     expect(typeof toPublicUser).toBe('function');
     expect(typeof hashToken).toBe('function');
-    expect(Object.keys(authService).sort()).toEqual(['login', 'register', 'revokeToken']);
+    expect(Object.keys(authService).sort()).toEqual(['login', 'register', 'revokeSession']);
   });
 
   describe('hashToken', () => {
@@ -277,10 +279,10 @@ describe('Auth service - auth.service.js', () => {
   });
 
   describe('register', () => {
-    test('normalises the email before both the duplicate pre-check and the insert', () => {
+    test('normalises the email before both the duplicate pre-check and the insert', async () => {
       const { service, repositories } = buildAuthService();
 
-      const result = service.register({
+      const result = await service.register({
         name: 'Ada Lovelace',
         email: '  Ada.Lovelace@Example.COM ',
         password: PASSWORD
@@ -293,11 +295,11 @@ describe('Auth service - auth.service.js', () => {
       expect(result.user.email).toBe('ada.lovelace@example.com');
     });
 
-    test('stores a fresh 16-byte hex salt and the scrypt digest of its raw bytes', () => {
+    test('stores a fresh 16-byte hex salt and the scrypt digest of its raw bytes', async () => {
       const { service, repositories } = buildAuthService();
 
-      service.register({ name: 'Ada Lovelace', email: USER_EMAIL, password: PASSWORD });
-      service.register({ name: 'Grace Hopper', email: 'grace@example.com', password: PASSWORD });
+      await service.register({ name: 'Ada Lovelace', email: USER_EMAIL, password: PASSWORD });
+      await service.register({ name: 'Grace Hopper', email: 'grace@example.com', password: PASSWORD });
 
       const [first, second] = repositories.users.insert.mock.calls.map(([row]) => row);
 
@@ -311,10 +313,10 @@ describe('Auth service - auth.service.js', () => {
       expect(JSON.stringify(first)).not.toContain(PASSWORD);
     });
 
-    test('stores a pair that verifies through a later login', () => {
+    test('stores a pair that verifies through a later login', async () => {
       const { service, repositories } = buildAuthService();
 
-      service.register({ name: 'Ada Lovelace', email: USER_EMAIL, password: PASSWORD });
+      await service.register({ name: 'Ada Lovelace', email: USER_EMAIL, password: PASSWORD });
       const stored = repositories.users.insert.mock.calls[0][0];
 
       const { service: laterLogin } = buildAuthService({
@@ -328,7 +330,7 @@ describe('Auth service - auth.service.js', () => {
         }
       });
 
-      const session = laterLogin.login({ email: USER_EMAIL, password: PASSWORD });
+      const session = await laterLogin.login({ email: USER_EMAIL, password: PASSWORD });
 
       expect(session.user).toEqual({
         id: stored.id,
@@ -339,10 +341,10 @@ describe('Auth service - auth.service.js', () => {
       expect(session.token).toMatch(/^[0-9a-f]{64}$/);
     });
 
-    test('generates the user id as a UUID and stores the row under it', () => {
+    test('generates the user id as a UUID and stores the row under it', async () => {
       const { service, repositories } = buildAuthService();
 
-      const result = service.register({ name: 'Ada Lovelace', email: USER_EMAIL, password: PASSWORD });
+      const result = await service.register({ name: 'Ada Lovelace', email: USER_EMAIL, password: PASSWORD });
 
       const stored = repositories.users.insert.mock.calls[0][0];
 
@@ -353,12 +355,12 @@ describe('Auth service - auth.service.js', () => {
       expect(stored.updatedAt).toBe(NOW);
     });
 
-    test('mints its own user id instead of trusting one the caller supplies', () => {
+    test('mints its own user id instead of trusting one the caller supplies', async () => {
       // R-5: the service mints the identity, so a body carrying an id cannot
       // choose the row a registration is written under.
       const { service, repositories } = buildAuthService();
 
-      const result = service.register({
+      const result = await service.register({
         id: 'caller-supplied-id',
         name: 'Ada Lovelace',
         email: USER_EMAIL,
@@ -372,10 +374,10 @@ describe('Auth service - auth.service.js', () => {
       expect(result.user.id).toBe(stored.id);
     });
 
-    test('persists only the digest of the token it hands back, expiring in 24 hours', () => {
+    test('persists only the digest of the token it hands back, expiring in 24 hours', async () => {
       const { service, repositories } = buildAuthService();
 
-      const result = service.register({ name: 'Ada Lovelace', email: USER_EMAIL, password: PASSWORD });
+      const result = await service.register({ name: 'Ada Lovelace', email: USER_EMAIL, password: PASSWORD });
 
       const tokenRow = repositories.tokens.insert.mock.calls[0][0];
 
@@ -392,7 +394,7 @@ describe('Auth service - auth.service.js', () => {
       expect(Date.parse(tokenRow.expiresAt) - Date.parse(tokenRow.createdAt)).toBe(TTL_MS);
     });
 
-    test('performs both inserts inside one runInTransaction call', () => {
+    test('performs both inserts inside one runInTransaction call', async () => {
       const trace = [];
       const { service, repositories, runInTransaction } = buildAuthService({
         transaction: (fn) => {
@@ -404,7 +406,7 @@ describe('Auth service - auth.service.js', () => {
         tokenInsert: () => trace.push('tokens.insert')
       });
 
-      service.register({ name: 'Ada Lovelace', email: USER_EMAIL, password: PASSWORD });
+      await service.register({ name: 'Ada Lovelace', email: USER_EMAIL, password: PASSWORD });
 
       expect(runInTransaction).toHaveBeenCalledTimes(1);
       expect(typeof runInTransaction.mock.calls[0][0]).toBe('function');
@@ -413,10 +415,10 @@ describe('Auth service - auth.service.js', () => {
       expect(repositories.tokens.insert).toHaveBeenCalledTimes(1);
     });
 
-    test('refuses a duplicate email from the pre-check without writing either row', () => {
+    test('refuses a duplicate email from the pre-check without writing either row', async () => {
       const { service, repositories, runInTransaction } = buildAuthService({ user: storedUser() });
 
-      const error = captureError(() =>
+      const error = await captureRejection(() =>
         service.register({ name: 'Ada Lovelace', email: '  ADA@Example.com  ', password: PASSWORD }));
 
       expect(error).toBeInstanceOf(AppError);
@@ -438,14 +440,14 @@ describe('Auth service - auth.service.js', () => {
         'the constraint message alone',
         { code: 'SQLITE_CONSTRAINT_CHECK', message: 'UNIQUE constraint failed: users.email' }
       ]
-    ])('maps %s on the insert to the same 409 refusal', (_case, failure) => {
+    ])('maps %s on the insert to the same 409 refusal', async (_case, failure) => {
       const { service, repositories } = buildAuthService({
         userInsert: () => {
           throw failure;
         }
       });
 
-      const error = captureError(() =>
+      const error = await captureRejection(() =>
         service.register({ name: 'Ada Lovelace', email: USER_EMAIL, password: PASSWORD }));
 
       expect(error).toBeInstanceOf(AppError);
@@ -455,7 +457,7 @@ describe('Auth service - auth.service.js', () => {
       expect(repositories.users.insert).toHaveBeenCalledTimes(1);
     });
 
-    test('rethrows an unrelated insert failure untouched', () => {
+    test('rethrows an unrelated insert failure untouched', async () => {
       const failure = new Error('database is locked');
       const { service, repositories } = buildAuthService({
         tokenInsert: () => {
@@ -463,17 +465,17 @@ describe('Auth service - auth.service.js', () => {
         }
       });
 
-      const error = captureError(() =>
+      const error = await captureRejection(() =>
         service.register({ name: 'Ada Lovelace', email: USER_EMAIL, password: PASSWORD }));
 
       expect(error).toBe(failure);
       expect(repositories.users.insert).toHaveBeenCalledTimes(1);
     });
 
-    test('returns exactly the public user and the raw token', () => {
+    test('returns exactly the public user and the raw token', async () => {
       const { service } = buildAuthService();
 
-      const result = service.register({ name: 'Ada Lovelace', email: USER_EMAIL, password: PASSWORD });
+      const result = await service.register({ name: 'Ada Lovelace', email: USER_EMAIL, password: PASSWORD });
 
       expect(Object.keys(result).sort()).toEqual(['token', 'user']);
       expect(Object.keys(result.user).sort()).toEqual(USER_KEYS);
@@ -482,10 +484,10 @@ describe('Auth service - auth.service.js', () => {
   });
 
   describe('login', () => {
-    test('returns the projected user and a fresh token whose stored digest matches', () => {
+    test('returns the projected user and a fresh token whose stored digest matches', async () => {
       const { service, repositories, clock } = buildAuthService({ user: storedUser() });
 
-      const result = service.login({ email: ' Ada@Example.com ', password: PASSWORD });
+      const result = await service.login({ email: ' Ada@Example.com ', password: PASSWORD });
 
       expect(repositories.users.findByEmail).toHaveBeenCalledWith(USER_EMAIL);
       expect(clock).toHaveBeenCalled();
@@ -510,12 +512,12 @@ describe('Auth service - auth.service.js', () => {
       expect(tokenRow.expiresAt).toBe(EXPIRES_AT);
     });
 
-    test('records the session against the stored row id, not one the caller asserts', () => {
+    test('records the session against the stored row id, not one the caller asserts', async () => {
       // R-5: the identity a session belongs to comes from the row the email
       // resolved to, never from a field the request carries.
       const { service, repositories } = buildAuthService({ user: storedUser() });
 
-      service.login({ id: 'caller-supplied-id', email: USER_EMAIL, password: PASSWORD });
+      await service.login({ id: 'caller-supplied-id', email: USER_EMAIL, password: PASSWORD });
 
       const tokenRow = repositories.tokens.insert.mock.calls[0][0];
 
@@ -523,11 +525,11 @@ describe('Auth service - auth.service.js', () => {
       expect(tokenRow.userId).not.toBe('caller-supplied-id');
     });
 
-    test('mints a token that differs from the one a previous login returned', () => {
+    test('mints a token that differs from the one a previous login returned', async () => {
       const { service, repositories } = buildAuthService({ user: storedUser() });
 
-      const first = service.login({ email: USER_EMAIL, password: PASSWORD });
-      const second = service.login({ email: USER_EMAIL, password: PASSWORD });
+      const first = await service.login({ email: USER_EMAIL, password: PASSWORD });
+      const second = await service.login({ email: USER_EMAIL, password: PASSWORD });
 
       expect(first.token).not.toBe(second.token);
       expect(repositories.tokens.insert).toHaveBeenCalledTimes(2);
@@ -541,22 +543,23 @@ describe('Auth service - auth.service.js', () => {
       ['a null password', () => storedUser(), { email: USER_EMAIL, password: null }],
       ['no request body at all', () => storedUser(), undefined],
       ['a truncated stored hash', () => storedUser({ passwordHash: 'abcd' }), { email: USER_EMAIL, password: PASSWORD }]
-    ])('rejects %s with a 401 INVALID_CREDENTIALS', (_case, row, body) => {
+    ])('rejects %s with a 401 INVALID_CREDENTIALS', async (_case, row, body) => {
       const { service, repositories } = buildAuthService({ user: row() });
 
-      const error = captureError(() => service.login(body));
+      const error = await captureRejection(() => service.login(body));
 
       expect(error).toBeInstanceOf(AppError);
       expect(error.code).toBe('INVALID_CREDENTIALS');
       expect(error.status).toBe(401);
       expect(error.message.length).toBeGreaterThan(0);
       expect(repositories.tokens.insert).not.toHaveBeenCalled();
+      expect(repositories.tokens.findByHash).not.toHaveBeenCalled();
     });
 
-    test('answers an unknown email and a wrong password indistinguishably', () => {
-      const unknown = captureError(() =>
+    test('answers an unknown email and a wrong password indistinguishably', async () => {
+      const unknown = await captureRejection(() =>
         buildAuthService().service.login({ email: USER_EMAIL, password: PASSWORD }));
-      const wrong = captureError(() =>
+      const wrong = await captureRejection(() =>
         buildAuthService({ user: storedUser() }).service.login({ email: USER_EMAIL, password: 'wrong' }));
 
       expect(unknown.message).toBe(wrong.message);
@@ -566,92 +569,38 @@ describe('Auth service - auth.service.js', () => {
     });
   });
 
-  describe('revokeToken', () => {
+  describe('revokeSession', () => {
     test.each([
-      ['undefined', undefined],
-      ['null', null],
-      ['an empty string', '']
-    ])('answers TOKEN_REQUIRED for %s', (_case, rawToken) => {
-      const { service, repositories } = buildAuthService({ token: storedToken() });
+      ['the row the guard resolved', storedToken()],
+      ['a row carrying another id', storedToken({ id: 'token-2' })]
+    ])('revokes the id of %s, with one repository call and no lookup', (_case, session) => {
+      const { service, repositories } = buildAuthService();
 
-      const error = captureError(() => service.revokeToken(rawToken));
-
-      expect(error).toBeInstanceOf(AppError);
-      expect(error.code).toBe('TOKEN_REQUIRED');
-      expect(error.status).toBe(401);
-      expect(repositories.tokens.findByHash).not.toHaveBeenCalled();
-    });
-
-    test('answers TOKEN_INVALID for a digest no row carries, looked up by digest only', () => {
-      const { service, repositories } = buildAuthService({ token: null });
-
-      const error = captureError(() => service.revokeToken(RAW_TOKEN));
-
-      expect(error).toBeInstanceOf(AppError);
-      expect(error.code).toBe('TOKEN_INVALID');
-      expect(error.status).toBe(401);
-      expect(repositories.tokens.findByHash).toHaveBeenCalledTimes(1);
-      expect(repositories.tokens.findByHash).toHaveBeenCalledWith(hashToken(RAW_TOKEN));
-      expect(repositories.tokens.findByHash).not.toHaveBeenCalledWith(RAW_TOKEN);
-      expect(repositories.tokens.revoke).not.toHaveBeenCalled();
-    });
-
-    test('answers TOKEN_INVALID for a token that was already revoked', () => {
-      const { service, repositories } = buildAuthService({ token: storedToken({ revoked_at: NOW }) });
-
-      const error = captureError(() => service.revokeToken(RAW_TOKEN));
-
-      expect(error).toBeInstanceOf(AppError);
-      expect(error.code).toBe('TOKEN_INVALID');
-      expect(error.status).toBe(401);
-      expect(repositories.tokens.revoke).not.toHaveBeenCalled();
-    });
-
-    test.each([
-      ['exactly at the clock', NOW],
-      ['one millisecond before the clock', '2026-03-01T11:59:59.999Z']
-    ])('answers TOKEN_EXPIRED for a token expiring %s', (_case, expiresAt) => {
-      const { service, repositories } = buildAuthService({
-        token: storedToken({ expires_at: expiresAt })
-      });
-
-      const error = captureError(() => service.revokeToken(RAW_TOKEN));
-
-      expect(error).toBeInstanceOf(AppError);
-      expect(error.code).toBe('TOKEN_EXPIRED');
-      expect(error.status).toBe(401);
-      expect(repositories.tokens.revoke).not.toHaveBeenCalled();
-    });
-
-    test('revokes a live token by the id of the row its digest resolved to', () => {
-      const live = storedToken({ expires_at: EXPIRES_AT });
-      const { service, repositories } = buildAuthService({ token: live });
-
-      expect(() => service.revokeToken(RAW_TOKEN)).not.toThrow();
+      service.revokeSession(session);
 
       expect(repositories.tokens.revoke).toHaveBeenCalledTimes(1);
-      expect(repositories.tokens.revoke).toHaveBeenCalledWith(live.id);
+      expect(repositories.tokens.revoke).toHaveBeenCalledWith(session.id);
       expect(repositories.tokens.revoke.mock.calls[0]).toHaveLength(1);
+      expect(repositories.tokens.findByHash).not.toHaveBeenCalled();
+      expect(repositories.tokens.insert).not.toHaveBeenCalled();
     });
 
-    test('still accepts a token one millisecond before its expiry', () => {
-      const { service, repositories } = buildAuthService({
-        token: storedToken({ expires_at: '2026-03-01T12:00:00.001Z' })
-      });
+    test('reads no clock and answers no value, so logout costs the one UPDATE statement', () => {
+      const { service, clock } = buildAuthService();
 
-      expect(() => service.revokeToken(RAW_TOKEN)).not.toThrow();
-      expect(repositories.tokens.revoke).toHaveBeenCalledWith('token-1');
+      expect(service.revokeSession(storedToken())).toBeUndefined();
+      expect(clock).not.toHaveBeenCalled();
     });
   });
 
   describe('createAuthService', () => {
-    test('defaults the clock to now and the runner to a direct call', () => {
+    test('defaults the clock to now and the runner to a direct call', async () => {
       const users = { findByEmail: jest.fn(() => null), insert: jest.fn() };
       const tokens = { insert: jest.fn(), findByHash: jest.fn(), revoke: jest.fn() };
       const service = createAuthService({ users, tokens, config: CONFIG });
 
       const before = Date.now();
-      const result = service.register({ name: 'Ada Lovelace', email: USER_EMAIL, password: PASSWORD });
+      const result = await service.register({ name: 'Ada Lovelace', email: USER_EMAIL, password: PASSWORD });
       const after = Date.now();
 
       expect(users.insert).toHaveBeenCalledTimes(1);
@@ -668,13 +617,13 @@ describe('Auth service - auth.service.js', () => {
   });
 
   describe('the wired singleton', () => {
-    test('verifies a password through its collaborators and opens no database', () => {
+    test('verifies a password through its collaborators and opens no database', async () => {
       // The single call this suite makes on the singleton: it pins the clock the
       // singleton is wired with. Both repositories are the module mocks above and
       // getDb throws, so no database file can be created here.
       userRepository.findByEmail.mockReturnValue(storedUser());
 
-      const result = authService.login({ email: USER_EMAIL, password: PASSWORD });
+      const result = await authService.login({ email: USER_EMAIL, password: PASSWORD });
 
       expect(result.user).toEqual({
         id: USER_ID,

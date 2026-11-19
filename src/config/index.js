@@ -180,7 +180,9 @@ module.exports = {
   /**
    * Largest party size a single reservation may book. The ceiling is the
    * schema's own CHECK (party_size BETWEEN 1 AND 12): a larger configured value
-   * could only be rejected by the database, turning a 400 into a 500.
+   * could only be rejected by the database, turning a 400 into a 500, so it is
+   * refused when the configuration is read. Checkpoint 4 of the reservation
+   * service bounds the party size by this setting and by that same schema bound.
    * @type {number}
    * @default 12
    */

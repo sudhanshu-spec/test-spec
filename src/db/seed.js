@@ -34,50 +34,52 @@ const CATEGORIES = [
  * Menu items, each attached to a category by that category's slug. `priceCents`
  * is an integer number of cents and `isAvailable` is the 1 or 0 the column
  * stores; two items are seeded unavailable and every category still offers at
- * least one available item.
+ * least one available item. `imageUrl` is null on every item: the seed ships no
+ * image asset and nothing in this application serves static files, so the client
+ * renders its own placeholder for a missing URL.
  *
  * @type {ReadonlyArray<{categorySlug: string, name: string, priceCents: number,
  *   imageUrl: string|null, isAvailable: number, description: string}>}
  */
 const MENU_ITEMS = [
   { categorySlug: 'classics', name: 'Classic Cheeseburger', priceCents: 899, isAvailable: 1,
-    imageUrl: '/images/classic-cheeseburger.jpg',
+    imageUrl: null,
     description: 'Beef patty with aged cheddar, pickles, onion and house sauce in a brioche bun.' },
   { categorySlug: 'classics', name: 'Double Smash Burger', priceCents: 1199, isAvailable: 1,
-    imageUrl: '/images/double-smash-burger.jpg',
+    imageUrl: null,
     description: 'Two smashed beef patties with American cheese, caramelised onion and mustard.' },
   { categorySlug: 'classics', name: 'Bacon BBQ Burger', priceCents: 1099, isAvailable: 1,
-    imageUrl: '/images/bacon-bbq-burger.jpg',
+    imageUrl: null,
     description: 'Beef patty with smoked bacon, sharp cheddar, crispy onions and hickory BBQ sauce.' },
   { categorySlug: 'chicken', name: 'Crispy Chicken Burger', priceCents: 999, isAvailable: 1,
-    imageUrl: '/images/crispy-chicken-burger.jpg',
+    imageUrl: null,
     description: 'Buttermilk-fried chicken thigh with slaw and chipotle mayo in a sesame bun.' },
   { categorySlug: 'chicken', name: 'Grilled Chicken Wrap', priceCents: 849, isAvailable: 1,
-    imageUrl: '/images/grilled-chicken-wrap.jpg',
+    imageUrl: null,
     description: 'Grilled chicken breast, lettuce, tomato and garlic yoghurt in a warm tortilla.' },
   { categorySlug: 'vegetarian', name: 'Bean and Beet Burger', priceCents: 949, isAvailable: 1,
-    imageUrl: '/images/bean-beet-burger.jpg',
+    imageUrl: null,
     description: 'House-made black bean and beetroot patty with avocado and vegan mayo.' },
   { categorySlug: 'vegetarian', name: 'Halloumi Stack', priceCents: 899, isAvailable: 1,
-    imageUrl: '/images/halloumi-stack.jpg',
+    imageUrl: null,
     description: 'Grilled halloumi with roasted pepper, rocket and a honey-lemon dressing.' },
   { categorySlug: 'vegetarian', name: 'Mushroom Swiss Burger', priceCents: 879, isAvailable: 0,
-    imageUrl: '/images/mushroom-swiss-burger.jpg',
+    imageUrl: null,
     description: 'Portobello mushroom with melted swiss cheese, rocket and truffled mayonnaise.' },
   { categorySlug: 'sides', name: 'Skin-On Fries', priceCents: 349, isAvailable: 1,
-    imageUrl: '/images/skin-on-fries.jpg',
+    imageUrl: null,
     description: 'Hand-cut skin-on fries seasoned with sea salt.' },
   { categorySlug: 'sides', name: 'Onion Rings', priceCents: 449, isAvailable: 1,
-    imageUrl: '/images/onion-rings.jpg',
+    imageUrl: null,
     description: 'Six beer-battered onion rings served with a smoky dipping sauce.' },
   { categorySlug: 'drinks', name: 'Classic Cola', priceCents: 299, isAvailable: 1,
-    imageUrl: '/images/classic-cola.jpg',
+    imageUrl: null,
     description: 'Chilled cola served over ice in a 330 ml glass bottle.' },
   { categorySlug: 'drinks', name: 'Fresh Lemonade', priceCents: 349, isAvailable: 1,
-    imageUrl: '/images/fresh-lemonade.jpg',
+    imageUrl: null,
     description: 'Cloudy lemonade pressed in house and served over ice.' },
   { categorySlug: 'desserts', name: 'Salted Caramel Shake', priceCents: 599, isAvailable: 1,
-    imageUrl: '/images/salted-caramel-shake.jpg',
+    imageUrl: null,
     description: 'Thick vanilla shake swirled with salted caramel sauce.' },
   { categorySlug: 'desserts', name: 'Chocolate Brownie', priceCents: 549, isAvailable: 0,
     imageUrl: null,
@@ -100,8 +102,11 @@ let lastSeedResult = null;
  * The emptiness check and every insert run inside one transaction, so the seed
  * either lands entirely or not at all: a constraint failure rolls the whole set
  * back and propagates, and a database that already holds categories is left
- * untouched after one count. Silent by design, because the connection owner
- * calls it on the first open, test runs included.
+ * untouched after one count. The transaction opens in immediate mode, so the
+ * write lock is held from before that count: two processes opening the same
+ * fresh file cannot both read an empty table and then collide on a unique slug.
+ * Silent by design, because the connection owner calls it on the first open,
+ * test runs included.
  *
  * @param {Object} db - Open handle whose schema has already been applied. Both
  *   seeded tables must exist; a missing one is a caller defect and throws.
@@ -157,7 +162,7 @@ function seedIfEmpty(db) {
     };
   });
 
-  lastSeedResult = seed();
+  lastSeedResult = seed.immediate();
 
   return lastSeedResult;
 }
