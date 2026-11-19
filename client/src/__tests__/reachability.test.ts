@@ -430,7 +430,7 @@ describe('route manifest', () => {
     );
   });
 
-  it('renders the ten screen rows through exactly nine distinct view modules', () => {
+  it('renders the ten screen rows through every screen view module (eight of the nine views)', () => {
     const notFoundModule = findRow('*', 'not-found').module;
 
     if (notFoundModule === null) {
