@@ -8,6 +8,8 @@
 const express = require('express');
 const request = require('supertest');
 
+const { AppError } = require('../../src/errors');
+const { errorHandler } = require('../../src/middleware/error-handler');
 const { notFound } = require('../../src/middleware/not-found');
 
 /**
@@ -22,10 +24,11 @@ const NOT_FOUND_STATUS = 404;
 
 /**
  * Builds a throwaway application that mounts the middleware the way the
- * application factory does — `app.use('/api', notFound)` — with one real API
- * route registered ahead of it so a matched path is proven to pass through
- * untouched, and no route at the application root so the mount scoping is
- * observable.
+ * application factory does — `app.use('/api', notFound)` followed by
+ * `app.use('/api', errorHandler)`, the single writer of the envelope — with one
+ * real API route registered ahead of them so a matched path is proven to pass
+ * through untouched, and no route at the application root so the mount scoping
+ * is observable.
  *
  * @returns {import('express').Express} Configured Express application.
  */
@@ -34,6 +37,7 @@ function buildApp() {
 
   app.get('/api/categories', (req, res) => res.json({ categories: [] }));
   app.use('/api', notFound);
+  app.use('/api', errorHandler);
 
   return app;
 }
@@ -87,7 +91,9 @@ describe('API Not-Found Middleware - not-found.js', () => {
   });
 
   describe('called directly', () => {
-    test('sets status 404, writes the envelope and never invokes next', () => {
+    test('hands a ROUTE_NOT_FOUND AppError to next and writes nothing itself', async () => {
+      const mounted = await request(buildApp()).get('/api/anything');
+
       const req = { method: 'GET', originalUrl: '/api/anything', path: '/api/anything' };
       const json = jest.fn();
       const status = jest.fn().mockReturnValue({ json });
@@ -96,18 +102,20 @@ describe('API Not-Found Middleware - not-found.js', () => {
 
       notFound(req, res, next);
 
-      expect(status).toHaveBeenCalledTimes(1);
-      expect(status).toHaveBeenCalledWith(NOT_FOUND_STATUS);
-      expect(json).toHaveBeenCalledTimes(1);
+      expect(next).toHaveBeenCalledTimes(1);
+      expect(next.mock.calls[0]).toHaveLength(1);
 
-      const [body] = json.mock.calls[0];
+      const [failure] = next.mock.calls[0];
 
-      expect(Object.keys(body)).toEqual(['error']);
-      expect(Object.keys(body.error).sort()).toEqual(['code', 'message']);
-      expect(body.error.code).toBe(ROUTE_NOT_FOUND);
-      expect(typeof body.error.message).toBe('string');
-      expect(body.error.message.length).toBeGreaterThan(0);
-      expect(next).not.toHaveBeenCalled();
+      expect(failure).toBeInstanceOf(AppError);
+      expect(failure.code).toBe(ROUTE_NOT_FOUND);
+      expect(failure.status).toBe(NOT_FOUND_STATUS);
+      expect(typeof failure.message).toBe('string');
+      expect(failure.message.length).toBeGreaterThan(0);
+      expect(failure.message).toBe(mounted.body.error.message);
+
+      expect(status).not.toHaveBeenCalled();
+      expect(json).not.toHaveBeenCalled();
     });
   });
 });

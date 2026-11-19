@@ -116,21 +116,18 @@ describe('Error Vocabulary Module - errors.js', () => {
   });
 
   describe('RESERVATION_ISSUES', () => {
-    test('exposes the two contract issue strings under both their short and qualified member names', () => {
+    test('exposes exactly the two contract issue strings, one member name each', () => {
       expect(Object.keys(RESERVATION_ISSUES).sort()).toEqual([
         'DATETIME_IN_PAST',
-        'RESERVATION_DATETIME_IN_PAST',
-        'RESERVATION_TIME_OUTSIDE_SERVICE_HOURS',
         'TIME_OUTSIDE_SERVICE_HOURS'
       ]);
     });
 
     test.each([
-      ['DATETIME_IN_PAST', 'RESERVATION_DATETIME_IN_PAST', DATETIME_IN_PAST],
-      ['TIME_OUTSIDE_SERVICE_HOURS', 'RESERVATION_TIME_OUTSIDE_SERVICE_HOURS', TIME_OUTSIDE_SERVICE_HOURS]
-    ])('%s and %s both carry the verbatim contract string %s', (shortName, qualifiedName, issue) => {
-      expect(RESERVATION_ISSUES[shortName]).toBe(issue);
-      expect(RESERVATION_ISSUES[qualifiedName]).toBe(issue);
+      ['DATETIME_IN_PAST', DATETIME_IN_PAST],
+      ['TIME_OUTSIDE_SERVICE_HOURS', TIME_OUTSIDE_SERVICE_HOURS]
+    ])('%s carries the verbatim contract string %s', (memberName, issue) => {
+      expect(RESERVATION_ISSUES[memberName]).toBe(issue);
     });
 
     test('is frozen, so no module can invent a third issue string', () => {

@@ -76,8 +76,9 @@ const ERROR_CODES = Object.freeze({
 
 /**
  * The two reservation validation issue strings the API contract fixes verbatim,
- * each also exposed under the member name that spells out what it qualifies so
- * a caller using either convention cannot emit a misspelled issue.
+ * one member name per string: `DATETIME_IN_PAST` and
+ * `TIME_OUTSIDE_SERVICE_HOURS`. Each value is the contract string the API emits
+ * verbatim in `details[].issue`.
  *
  * @type {Readonly<Object<string, string>>}
  */
@@ -86,13 +87,7 @@ const RESERVATION_ISSUES = Object.freeze({
   DATETIME_IN_PAST: 'reservation_datetime_in_past',
 
   /** Checkpoint: the requested time is not a 30-minute slot inside the service window, or falls past the last seating. */
-  TIME_OUTSIDE_SERVICE_HOURS: 'reservation_time_outside_service_hours',
-
-  /** Qualified alias of {@link RESERVATION_ISSUES.DATETIME_IN_PAST}. */
-  RESERVATION_DATETIME_IN_PAST: 'reservation_datetime_in_past',
-
-  /** Qualified alias of {@link RESERVATION_ISSUES.TIME_OUTSIDE_SERVICE_HOURS}. */
-  RESERVATION_TIME_OUTSIDE_SERVICE_HOURS: 'reservation_time_outside_service_hours'
+  TIME_OUTSIDE_SERVICE_HOURS: 'reservation_time_outside_service_hours'
 });
 
 /**

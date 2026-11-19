@@ -3,7 +3,11 @@
  *
  * This module terminates a request whose path matched nothing under the API
  * mount point, answering it with the application's single JSON error envelope
- * instead of Express's default HTML 404 page.
+ * instead of Express's default HTML 404 page. It does so by handing a
+ * `ROUTE_NOT_FOUND` failure to `src/middleware/error-handler.js` — the single
+ * writer of that envelope, mounted immediately after this module — and writes
+ * no response itself, so an unmatched API path and every other failure leave
+ * through one shape and one owner.
  *
  * It is installed only as `app.use('/api', notFound)`, so a path outside the
  * API mount point keeps Express's own 404 and the tutorial routes at `/`,
@@ -11,9 +15,8 @@
  * failed by the time this middleware runs, so it reads neither the route table
  * nor the request.
  *
- * The envelope it writes is the one `src/middleware/error-handler.js` writes
- * for every other failure; the code and its HTTP status come from
- * `src/errors.js`, so the two can never disagree.
+ * The code and its HTTP status come from `src/errors.js`, so the failure and
+ * the status the error handler answers with can never disagree.
  *
  * @module src/middleware/not-found
  */
@@ -31,22 +34,21 @@ const { AppError } = require('../errors');
 const ROUTE_NOT_FOUND_MESSAGE = 'The requested API route does not exist.';
 
 /**
- * Answers an unmatched API path with the JSON error envelope.
+ * Reports an unmatched API path as a `ROUTE_NOT_FOUND` failure.
  *
- * Terminal by design: it never calls `next()`, being the last handler for a
- * path under the API mount point. A path outside that mount point never
- * reaches it.
+ * A path outside the API mount point never reaches it. Nothing is written
+ * here: the failure is passed to `next`, and the error-handler middleware
+ * mounted right after this one answers it with the 404 JSON envelope.
  *
  * @param {import('express').Request} req - Incoming request; not inspected.
- * @param {import('express').Response} res - Response the envelope is written to.
- * @param {import('express').NextFunction} next - Continuation; unused, present so
- *   Express registers this as ordinary (not error-handling) middleware.
+ * @param {import('express').Response} res - Never written.
+ * @param {import('express').NextFunction} next - Continuation, called exactly
+ *   once with the failure; present so Express registers this as ordinary (not
+ *   error-handling) middleware.
  * @returns {void}
  */
 function notFound(req, res, next) {
-  const error = new AppError('ROUTE_NOT_FOUND', ROUTE_NOT_FOUND_MESSAGE);
-
-  res.status(error.status).json({ error: { code: error.code, message: error.message } });
+  return next(new AppError('ROUTE_NOT_FOUND', ROUTE_NOT_FOUND_MESSAGE));
 }
 
 module.exports = { notFound };
