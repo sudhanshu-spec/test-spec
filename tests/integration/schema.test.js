@@ -53,6 +53,20 @@ const EXPECTED_INDEXES = [
 /** The four order statuses the orders CHECK constraint admits. */
 const ORDER_STATUSES = ['confirmed', 'preparing', 'completed', 'cancelled'];
 
+/**
+ * The three constraint families this suite exercises, keyed by the name the
+ * call sites pass. better-sqlite3 reports the violated family twice: in the
+ * `code` of the error it raises and as the fixed prefix of that error's message.
+ * Both are asserted, so a write refused for a different reason is not read as the
+ * intended violation.
+ * @type {Readonly<Object<string, {code: string, message: RegExp}>>}
+ */
+const CONSTRAINT_FAILURES = Object.freeze({
+  foreignKey: { code: 'SQLITE_CONSTRAINT_FOREIGNKEY', message: /^FOREIGN KEY constraint failed/ },
+  check: { code: 'SQLITE_CONSTRAINT_CHECK', message: /^CHECK constraint failed: / },
+  unique: { code: 'SQLITE_CONSTRAINT_UNIQUE', message: /^UNIQUE constraint failed: / }
+});
+
 /** Seed floors: at least five categories and at least twelve menu items. */
 const MINIMUM_CATEGORIES = 5;
 const MINIMUM_ITEMS = 12;
@@ -196,14 +210,35 @@ function seededMenuItemId() {
 }
 
 /**
- * Asserts that a write is refused by a table constraint. SQLite reports every
- * constraint violation as one SqliteError whose wording differs between
- * versions, so the assertion is that the write throws rather than what it says.
+ * Asserts that a write is refused by the named table-constraint family. The error
+ * the driver raises must carry that family's `code` and open its message with that
+ * family's prefix, so an FK violation, a CHECK rejection, a binding error with no
+ * driver code at all, or another constraint family's rejection each fail the
+ * assertion instead of passing it.
+ *
+ * The match is on the driver's own `code` and message text, never on the error's
+ * prototype: the driver registers its `SqliteError` constructor with the native
+ * addon once per process, so whichever Jest context loads it first decides the
+ * realm its prototype chain is built on, and an `instanceof` check would pass or
+ * fail with the order the suites happen to run in.
  * @param {Function} write - Statement bound to its arguments, not yet run
+ * @param {'foreignKey'|'check'|'unique'} family - Constraint family the write must violate
  * @returns {void}
  */
-function expectConstraintError(write) {
-  expect(write).toThrow();
+function expectConstraintError(write, family) {
+  const expected = CONSTRAINT_FAILURES[family];
+
+  expect(expected).toBeDefined();
+
+  let failure;
+
+  try {
+    write();
+  } catch (error) {
+    failure = error;
+  }
+
+  expect(failure).toMatchObject({ code: expected.code, message: expect.stringMatching(expected.message) });
 }
 
 describe('SQLite schema and seed', () => {
@@ -343,7 +378,7 @@ describe('SQLite schema and seed', () => {
           .prepare('INSERT INTO menu_items (id, category_id, name, description, price_cents) VALUES (?, ?, ?, ?, ?)')
           .run(itemId, 'no-such-category', 'Orphan Burger', 'No category.', 899);
 
-      expectConstraintError(insert);
+      expectConstraintError(insert, 'foreignKey');
       expect(db().prepare('SELECT COUNT(*) AS total FROM menu_items WHERE id = ?').get(itemId).total).toBe(0);
     });
 
@@ -354,7 +389,7 @@ describe('SQLite schema and seed', () => {
           .prepare('INSERT INTO orders (id, user_id, total_cents) VALUES (?, ?, ?)')
           .run(orderId, 'no-such-user', 1499);
 
-      expectConstraintError(insert);
+      expectConstraintError(insert, 'foreignKey');
       expect(db().prepare('SELECT COUNT(*) AS total FROM orders WHERE id = ?').get(orderId).total).toBe(0);
     });
   });
@@ -366,32 +401,32 @@ describe('SQLite schema and seed', () => {
           .prepare('INSERT INTO menu_items (id, category_id, name, description, price_cents) VALUES (?, ?, ?, ?, ?)')
           .run(randomUUID(), seededCategoryId(), 'Free Burger', 'Priced at nothing.', 0);
 
-      expectConstraintError(insert);
+      expectConstraintError(insert, 'check');
     });
 
     test('rejects an order line whose quantity is zero', () => {
       const orderId = insertOrder({ userId: insertUser(`line-${randomUUID()}@example.com`) });
 
-      expectConstraintError(() => insertLineItem({ orderId, menuItemId: seededMenuItemId(), quantity: 0 }));
+      expectConstraintError(() => insertLineItem({ orderId, menuItemId: seededMenuItemId(), quantity: 0 }), 'check');
     });
 
     test.each([0, 13])('rejects a reservation for a party of %i', (partySize) => {
       const userId = insertUser(`party-${partySize}-${randomUUID()}@example.com`);
 
-      expectConstraintError(() => insertReservation({ userId, date: '2099-06-01', time: '18:00', partySize }));
+      expectConstraintError(() => insertReservation({ userId, date: '2099-06-01', time: '18:00', partySize }), 'check');
     });
 
     test('rejects a negative order total', () => {
       const userId = insertUser(`total-${randomUUID()}@example.com`);
 
-      expectConstraintError(() => insertOrder({ userId, totalCents: -1 }));
+      expectConstraintError(() => insertOrder({ userId, totalCents: -1 }), 'check');
     });
 
     test('admits exactly the four documented order statuses', () => {
       const userId = insertUser(`status-${randomUUID()}@example.com`);
       const acceptedIds = ORDER_STATUSES.map((status) => insertOrder({ userId, status }));
 
-      expectConstraintError(() => insertOrder({ userId, status: 'shipped' }));
+      expectConstraintError(() => insertOrder({ userId, status: 'shipped' }), 'check');
 
       const placeholders = acceptedIds.map(() => '?').join(', ');
       const stored = db()
@@ -412,7 +447,7 @@ describe('SQLite schema and seed', () => {
       const email = `duplicate-${randomUUID()}@example.com`;
       insertUser(email);
 
-      expectConstraintError(() => insertUser(email));
+      expectConstraintError(() => insertUser(email), 'unique');
       expect(db().prepare('SELECT COUNT(*) AS total FROM users WHERE email = ?').get(email).total).toBe(1);
     });
 
@@ -423,7 +458,7 @@ describe('SQLite schema and seed', () => {
       const time = '19:30';
 
       insertReservation({ userId: firstUser, date, time, partySize: 2 });
-      expectConstraintError(() => insertReservation({ userId: firstUser, date, time, partySize: 4 }));
+      expectConstraintError(() => insertReservation({ userId: firstUser, date, time, partySize: 4 }), 'unique');
       insertReservation({ userId: secondUser, date, time, partySize: 2 });
 
       const booked = db()

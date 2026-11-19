@@ -2,7 +2,9 @@
  * @fileoverview Integration tests for the API error-handler middleware, which
  * is the single writer of the error envelope. Each branch of the handler is
  * asserted through a real Express pipeline, so the envelope is proven as it is
- * mounted under `/api` rather than only in isolation.
+ * mounted under `/api` rather than only in isolation; the already-started
+ * branch is also invoked directly, since the HTTP outcome alone cannot show
+ * whether the handler wrote a second response.
  * @module tests/integration/error-handler
  */
 
@@ -89,6 +91,25 @@ function createResponseDouble() {
       res.body = body;
       return res;
     }
+  };
+
+  return res;
+}
+
+/**
+ * Creates a response double whose headers are already sent, for calling the
+ * handler directly. Every write method is a Jest mock function, so an attempt
+ * to write a second response is recorded rather than thrown and can be asserted
+ * against.
+ * @returns {Object} Response double with `headersSent` true and recording writers
+ */
+function createStartedResponseDouble() {
+  const res = {
+    headersSent: true,
+    status: jest.fn(() => res),
+    json: jest.fn(),
+    send: jest.fn(),
+    end: jest.fn()
   };
 
   return res;
@@ -233,15 +254,12 @@ describe('API error handler middleware', () => {
 
   describe('a response that has already started', () => {
     test('delegates to next instead of writing a second response', async () => {
-      let settled = 'response';
-      let received = null;
-
-      try {
-        received = await request(app).get('/api/headers-sent');
-      } catch (error) {
-        settled = 'error';
-        received = error;
-      }
+      // Pinned outcome: Express's default handler closes the connection after
+      // the delegate, so the started response is never written to a second time
+      // and the client sees the socket reset instead of a status line or a body.
+      await expect(async () => {
+        await request(app).get('/api/headers-sent');
+      }).rejects.toMatchObject({ code: 'ECONNRESET' });
 
       const logged = console.error.mock.calls.map((args) => args.map(String).join(' ')).join('\n');
       expect(logged).not.toMatch(/ERR_HTTP_HEADERS_SENT/);
@@ -249,12 +267,22 @@ describe('API error handler middleware', () => {
         expect.stringContaining('API error while handling'),
         expect.anything()
       );
+    });
 
-      if (settled === 'response') {
-        expect(received.text).toBe('partial');
-      } else {
-        expect(typeof received.message).toBe('string');
-      }
+    test('hands the identical failure to next and touches no write method', () => {
+      const res = createStartedResponseDouble();
+      const next = jest.fn();
+      const failure = new Error('failure after the response started');
+
+      errorHandler(failure, { method: 'GET', originalUrl: '/api/headers-sent' }, res, next);
+
+      expect(next).toHaveBeenCalledTimes(1);
+      expect(next.mock.calls[0][0]).toBe(failure);
+      expect(res.status).not.toHaveBeenCalled();
+      expect(res.json).not.toHaveBeenCalled();
+      expect(res.send).not.toHaveBeenCalled();
+      expect(res.end).not.toHaveBeenCalled();
+      expect(console.error).not.toHaveBeenCalled();
     });
   });
 
