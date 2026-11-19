@@ -353,6 +353,25 @@ describe('Auth service - auth.service.js', () => {
       expect(stored.updatedAt).toBe(NOW);
     });
 
+    test('mints its own user id instead of trusting one the caller supplies', () => {
+      // R-5: the service mints the identity, so a body carrying an id cannot
+      // choose the row a registration is written under.
+      const { service, repositories } = buildAuthService();
+
+      const result = service.register({
+        id: 'caller-supplied-id',
+        name: 'Ada Lovelace',
+        email: USER_EMAIL,
+        password: PASSWORD
+      });
+
+      const stored = repositories.users.insert.mock.calls[0][0];
+
+      expect(stored.id).toMatch(UUID_PATTERN);
+      expect(stored.id).not.toBe('caller-supplied-id');
+      expect(result.user.id).toBe(stored.id);
+    });
+
     test('persists only the digest of the token it hands back, expiring in 24 hours', () => {
       const { service, repositories } = buildAuthService();
 
@@ -489,6 +508,19 @@ describe('Auth service - auth.service.js', () => {
       expect(tokenRow.userId).toBe(USER_ID);
       expect(tokenRow.createdAt).toBe(NOW);
       expect(tokenRow.expiresAt).toBe(EXPIRES_AT);
+    });
+
+    test('records the session against the stored row id, not one the caller asserts', () => {
+      // R-5: the identity a session belongs to comes from the row the email
+      // resolved to, never from a field the request carries.
+      const { service, repositories } = buildAuthService({ user: storedUser() });
+
+      service.login({ id: 'caller-supplied-id', email: USER_EMAIL, password: PASSWORD });
+
+      const tokenRow = repositories.tokens.insert.mock.calls[0][0];
+
+      expect(tokenRow.userId).toBe(USER_ID);
+      expect(tokenRow.userId).not.toBe('caller-supplied-id');
     });
 
     test('mints a token that differs from the one a previous login returned', () => {
