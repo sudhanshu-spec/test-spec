@@ -38,6 +38,11 @@
 .catalog-card__body { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
 .catalog-card__title { overflow-wrap: anywhere; line-height: var(--line-height-tight); }
 
+/* The item name is a link, so it is an interactive control and takes the same
+   --control-min-size floor as every other one. An inline-flex box keeps the hit
+   area at the label's width while giving it the full 44px height. */
+.catalog-card__title a { display: inline-flex; align-items: center; min-height: var(--control-min-size); }
+
 /* Clamped to three lines so a long description cannot stretch a whole card row. */
 .catalog-card__description { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical;
   -webkit-line-clamp: 3; overflow-wrap: anywhere; color: var(--color-text-muted); }
@@ -65,6 +70,12 @@
   border: 1px solid var(--color-border); border-radius: var(--radius-pill);
   background: var(--color-surface-raised); color: var(--color-text); font: inherit;
   white-space: nowrap; cursor: pointer; }
+
+/* Every filter option carries the shared .control class for its touch target and
+   its focus styling, and .control sets width: 100% for the full-width form
+   fields it was written for. An option sizes to its own label instead, so the
+   strip scrolls sideways rather than stacking one pill per screen width. */
+.category-filter__option.control { width: auto; }
 
 /* Hover stays unwrapped: this file carries exactly one media query, the 768px
    breakpoint, so no (hover: hover) or reduced-motion query is added here. */
