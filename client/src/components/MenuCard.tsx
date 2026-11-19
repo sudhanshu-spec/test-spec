@@ -139,8 +139,11 @@ export const MenuCard = memo(function MenuCard({
        * and the header's cart count has scrolled away by the time a later row is reached.
        * It is the item detail's own pattern: one status region naming the item and the
        * quantity the cart now holds, beside the way to the cart. The cart is client state,
-       * so nothing here waits on a request (rule R-8), and the region is rendered only
-       * when a count arrives, which keeps the catalog free of a second live region.
+       * so nothing here waits on a request (rule R-8). The region is part of the card from
+       * the first paint and only its contents are conditional, because a live region
+       * inserted together with its text is not announced by a screen reader, while text
+       * inserted into a region that was already there is — the shape the item detail keeps
+       * with its own region, mounted empty until it has something to say.
        *
        * It sits between the body and the footer, never after the footer: the footer has to
        * stay the card's last region, because it is the region the equal-height alignment
@@ -150,16 +153,18 @@ export const MenuCard = memo(function MenuCard({
        * lifts the confirming card's footer by its own height, out of line with the card
        * beside it.
        */}
-      {addedQuantity === undefined ? null : (
-        <div className="row" role="status">
-          <p className="badge badge--available">
-            {addedQuantity} × {item.name} added to your cart.
-          </p>
-          <Link className="button button--secondary" to="/cart">
-            View cart
-          </Link>
-        </div>
-      )}
+      <div className="row" role="status">
+        {addedQuantity === undefined ? null : (
+          <>
+            <p className="badge badge--available">
+              {addedQuantity} × {item.name} added to your cart.
+            </p>
+            <Link className="button button--secondary" to="/cart">
+              View cart
+            </Link>
+          </>
+        )}
+      </div>
 
       <div className="catalog-card__footer">
         <p className={item.is_available ? 'badge badge--available' : 'badge badge--unavailable'}>
@@ -172,7 +177,7 @@ export const MenuCard = memo(function MenuCard({
             disabled={!canAdd}
             onClick={() => onAdd?.(item)}
           >
-            Add to cart
+            Add to cart<span className="visually-hidden"> {item.name}</span>
           </button>
         </div>
       </div>
