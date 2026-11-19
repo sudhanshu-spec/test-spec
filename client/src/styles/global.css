@@ -23,6 +23,7 @@
   /* ---- Colour: brand ---- */
   --color-brand: #b1411b; /* primary action fill */
   --color-brand-strong: #8a3113; /* links and hover state */
+  --color-brand-pressed: #6d2610; /* pressed brand fill */
   --color-brand-contrast: #ffffff; /* text on a brand fill */
   /* ---- Colour: feedback ---- */
   --color-danger: #a32219; /* field errors, unavailable state */
@@ -36,9 +37,7 @@
   --space-4: 16px; /* default vertical rhythm */
   --space-5: 24px; /* panel padding */
   --space-6: 32px; /* wide gutter above the breakpoint */
-  --space-7: 48px; /* page-level blocks */
   /* ---- Radius ---- */
-  --radius-sm: 4px; /* small chips */
   --radius-md: 8px; /* controls and buttons */
   --radius-lg: 12px; /* cards and panels */
   --radius-pill: 999px; /* fully rounded badges */
@@ -51,11 +50,11 @@
   --font-size-2xl: 1.75rem; /* h1 and page titles */
   --line-height-tight: 1.25; /* headings */
   --line-height-base: 1.55; /* body copy */
-  --font-weight-regular: 400; /* body copy */
   --font-weight-bold: 700; /* headings, labels, prices */
   /* ---- Layout ---- */
   --layout-max-width: 68rem; /* content column ceiling */
   --layout-gutter: 16px; /* page padding below the breakpoint */
+  --quantity-field-width: 5rem; /* width of the cart's quantity input */
   --shadow-card: 0 1px 2px rgba(31, 26, 23, 0.08), 0 6px 16px rgba(31, 26, 23, 0.06); /* card lift */
   /* ---- Controls ---- */
   --control-min-size: 44px; /* touch-target floor for every interactive control */
@@ -69,7 +68,7 @@ html, body { margin: 0; max-width: 100%; }
 body {
   font-family: var(--font-family-base); font-size: var(--font-size-base);
   line-height: var(--line-height-base); color: var(--color-text);
-  background: var(--color-surface); overflow-x: hidden;
+  background: var(--color-surface);
 }
 
 img { display: block; max-width: 100%; height: auto; }
@@ -98,6 +97,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   font-size: var(--font-size-lg); font-weight: var(--font-weight-bold); flex-shrink: 0; /* keeps the name on one line in the desktop header row */
   color: var(--color-text); text-decoration: none; }
 .app-header__brand:hover { color: var(--color-brand-strong); }
+.app-header__brand:active { color: var(--color-brand); }
 
 .app-nav { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); min-width: 0; }
 
@@ -106,6 +106,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   padding-inline: var(--space-3); border-radius: var(--radius-md);
   color: var(--color-text); text-decoration: none; }
 .app-nav__link:hover { background: var(--color-surface-muted); }
+.app-nav__link:active { background: var(--color-surface-muted); color: var(--color-brand); }
 .app-nav__link--active { background: var(--color-surface-muted); color: var(--color-brand-strong); font-weight: var(--font-weight-bold); }
 
 .app-main { flex: 1 1 auto; width: 100%; max-width: var(--layout-max-width);
@@ -147,8 +148,13 @@ button, input, select, textarea { font: inherit; color: inherit; }
   background: var(--color-surface-raised); border: 1px solid var(--color-border);
   border-radius: var(--radius-md); }
 .control--select { padding-inline-end: var(--space-2); cursor: pointer; }
-.control--textarea { min-height: calc(var(--control-min-size) * 2); resize: vertical; }
 .control:focus-visible { border-color: var(--color-brand); }
+/* Pressed and disabled treatments for the text fields and selects: a pressed
+   field darkens its border, and a field disabled mid-submit reads as inert
+   exactly as .button[disabled] does — without this it looks enabled while
+   swallowing every keystroke. */
+.control:active { border-color: var(--color-brand-strong); }
+.control[disabled] { color: var(--color-text-muted); background: var(--color-surface-muted); border-color: var(--color-border); cursor: not-allowed; }
 
 .button { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
   min-height: var(--control-min-size); min-width: var(--control-min-size);
@@ -157,12 +163,17 @@ button, input, select, textarea { font: inherit; color: inherit; }
   background: var(--color-brand); border: 1px solid var(--color-brand);
   border-radius: var(--radius-md); cursor: pointer; }
 .button:hover { background: var(--color-brand-strong); border-color: var(--color-brand-strong); }
+.button:active { background: var(--color-brand-pressed); border-color: var(--color-brand-pressed); }
 .button--secondary { color: var(--color-brand-strong); background: var(--color-surface-raised); border-color: var(--color-border); }
 .button--secondary:hover { background: var(--color-surface-muted); border-color: var(--color-brand-strong); }
-.button--danger { color: var(--color-brand-contrast); background: var(--color-danger); border-color: var(--color-danger); }
-.button--danger:hover { border-color: var(--color-text); }
+.button--secondary:active { background: var(--color-surface-muted); border-color: var(--color-brand-strong); }
 .button--block { width: 100%; }
 .button[disabled] { color: var(--color-text-muted); background: var(--color-surface-muted); border-color: var(--color-border); cursor: not-allowed; }
+
+/* An inline prose link is an interactive control too, so it takes the same
+   --control-min-size floor as every other one; inline-flex keeps the hit area at
+   the label's width while giving it the full 44px height. */
+.inline-link { display: inline-flex; align-items: center; min-height: var(--control-min-size); }
 
 /* ---- Forms: the field carries the envelope's message as text, not colour alone ---- */
 
@@ -172,21 +183,16 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .field-error { font-size: var(--font-size-sm); color: var(--color-danger); }
 .field--invalid .control { border-color: var(--color-danger); }
 
-/* ---- Content: cards, availability badges, the formatted price string ---- */
+/* ---- Content: cards and availability badges ---- */
 
 .card { max-width: 100%; padding: var(--space-4); background: var(--color-surface-raised);
   border: 1px solid var(--color-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); }
-.card--interactive { display: flex; flex-direction: column; gap: var(--space-2); color: inherit; text-decoration: none; }
-.card--interactive:hover { border-color: var(--color-brand); }
 
 .badge { display: inline-flex; align-items: center; padding: var(--space-1) var(--space-2);
   font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); border-radius: var(--radius-pill);
   background: var(--color-surface-muted); color: var(--color-text-muted); }
 .badge--available { background: var(--color-success-surface); color: var(--color-success); }
 .badge--unavailable { background: var(--color-danger-surface); color: var(--color-danger); }
-
-/* Sizes the already-formatted money string; a currency symbol is never added here. */
-.price { font-variant-numeric: tabular-nums; font-weight: var(--font-weight-bold); white-space: nowrap; }
 
 /* ---- The single breakpoint: two columns from 768px up, one column below ---- */
 

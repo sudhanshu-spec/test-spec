@@ -75,9 +75,9 @@ const SUBMITTING_MESSAGE = 'Booking your table…';
 
 /** `@returns` A minute offset from midnight rendered on the 24-hour clock as `HH:MM`. */
 function formatMinutes(minutes: number): string {
-    const hours = Math.floor(minutes / 60);
-    const remainder = minutes % 60;
-    return `${String(hours).padStart(2, '0')}:${String(remainder).padStart(2, '0')}`;
+  const hours = Math.floor(minutes / 60);
+  const remainder = minutes % 60;
+  return `${String(hours).padStart(2, '0')}:${String(remainder).padStart(2, '0')}`;
 }
 
 /** Wall-clock bounds of the documented default window, formatted for the messages and hints. */
@@ -96,9 +96,9 @@ const PAST_MESSAGE = 'That date and time has already passed. Choose a later date
  * checkpoint, reported against `reservation_time`.
  */
 const OUTSIDE_SERVICE_HOURS_MESSAGE =
-    'This time is outside our service hours: the service window runs from ' +
-    `${SERVICE_OPEN_TIME} to ${LAST_SEATING_TIME}, with the last seating ` +
-    `${SLOT_MINUTES} minutes before we close at ${SERVICE_CLOSE_TIME}.`;
+  'This time is outside our service hours: the service window runs from ' +
+  `${SERVICE_OPEN_TIME} to ${LAST_SEATING_TIME}, with the last seating ` +
+  `${SLOT_MINUTES} minutes before we close at ${SERVICE_CLOSE_TIME}.`;
 
 /** One field of this form that the API validates. */
 type ValidatedField = 'reservation_date' | 'reservation_time' | 'party_size';
@@ -108,26 +108,26 @@ type FieldMessages = Partial<Record<ValidatedField, string>>;
 
 /** `@returns` Whether the API's field name is one this form renders an input for. */
 function isValidatedField(field: string): field is ValidatedField {
-    return field === 'reservation_date' || field === 'reservation_time' || field === 'party_size';
+  return field === 'reservation_date' || field === 'reservation_time' || field === 'party_size';
 }
 
 /** Format a Date as the local calendar date a date input and the API both expect. */
 function toDateInputValue(date: Date): string {
-    const year = String(date.getFullYear()).padStart(4, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+  const year = String(date.getFullYear()).padStart(4, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 /** `@returns` Whether the value is a real calendar date written as `YYYY-MM-DD`. */
 function isCalendarDate(value: string): boolean {
-    if (!DATE_PATTERN.test(value)) {
-        return false;
-    }
-    const parsed = new Date(`${value}T00:00:00`);
-    // Round-tripping rejects a rolled-over value such as 2031-02-30, which the
-    // API's own parser refuses too.
-    return !Number.isNaN(parsed.getTime()) && toDateInputValue(parsed) === value;
+  if (!DATE_PATTERN.test(value)) {
+    return false;
+  }
+  const parsed = new Date(`${value}T00:00:00`);
+  // Round-tripping rejects a rolled-over value such as 2031-02-30, which the
+  // API's own parser refuses too.
+  return !Number.isNaN(parsed.getTime()) && toDateInputValue(parsed) === value;
 }
 
 /**
@@ -138,13 +138,13 @@ function isCalendarDate(value: string): boolean {
  * sentence, so no client wording stands in for a rule the server reported.
  */
 function messageForIssue(detail: ApiFieldDetail, serverMessage: string): string {
-    if (detail.issue === RESERVATION_ISSUES.DATETIME_IN_PAST) {
-        return PAST_MESSAGE;
-    }
-    if (detail.issue === RESERVATION_ISSUES.OUTSIDE_SERVICE_HOURS) {
-        return OUTSIDE_SERVICE_HOURS_MESSAGE;
-    }
-    return serverMessage;
+  if (detail.issue === RESERVATION_ISSUES.DATETIME_IN_PAST) {
+    return PAST_MESSAGE;
+  }
+  if (detail.issue === RESERVATION_ISSUES.OUTSIDE_SERVICE_HOURS) {
+    return OUTSIDE_SERVICE_HOURS_MESSAGE;
+  }
+  return serverMessage;
 }
 
 /**
@@ -164,225 +164,225 @@ function messageForIssue(detail: ApiFieldDetail, serverMessage: string): string 
  * @returns The booking form.
  */
 export function ReservationFormView(): JSX.Element {
-    const navigate = useNavigate();
-    const [reservationDate, setReservationDate] = useState('');
-    const [reservationTime, setReservationTime] = useState('');
-    const [partySize, setPartySize] = useState(DEFAULT_PARTY_SIZE);
-    const [notes, setNotes] = useState('');
-    const [messages, setMessages] = useState<FieldMessages>({});
-    const [summary, setSummary] = useState<ApiError | null>(null);
-    const [unexpectedFailure, setUnexpectedFailure] = useState(false);
-    const [submitting, setSubmitting] = useState(false);
-    // Today comes from the browser clock at mount: it only hints the earliest
-    // date a user should pick. Whether a booking is in the past is the server's
-    // second checkpoint, so nothing here rejects the value.
-    const earliestDate = useMemo(() => toDateInputValue(new Date()), []);
+  const navigate = useNavigate();
+  const [reservationDate, setReservationDate] = useState('');
+  const [reservationTime, setReservationTime] = useState('');
+  const [partySize, setPartySize] = useState(DEFAULT_PARTY_SIZE);
+  const [notes, setNotes] = useState('');
+  const [messages, setMessages] = useState<FieldMessages>({});
+  const [summary, setSummary] = useState<ApiError | null>(null);
+  const [unexpectedFailure, setUnexpectedFailure] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  // Today comes from the browser clock at mount: it only hints the earliest
+  // date a user should pick. Whether a booking is in the past is the server's
+  // second checkpoint, so nothing here rejects the value.
+  const earliestDate = useMemo(() => toDateInputValue(new Date()), []);
 
-    /**
-     * Drops any failure a user edit has made stale: the message of the field
-     * being edited, and every form-level message.
-     *
-     * @param field - The field whose inline message is no longer accurate.
-     */
-    function clearFailure(field?: ValidatedField): void {
-        if (field !== undefined) {
-            setMessages((current) => {
-                if (current[field] === undefined) {
-                    return current;
-                }
-                const next = { ...current };
-                delete next[field];
-                return next;
-            });
+  /**
+   * Drops any failure a user edit has made stale: the message of the field
+   * being edited, and every form-level message.
+   *
+   * @param field - The field whose inline message is no longer accurate.
+   */
+  function clearFailure(field?: ValidatedField): void {
+    if (field !== undefined) {
+      setMessages((current) => {
+        if (current[field] === undefined) {
+          return current;
         }
-        setSummary(null);
-        setUnexpectedFailure(false);
+        const next = { ...current };
+        delete next[field];
+        return next;
+      });
+    }
+    setSummary(null);
+    setUnexpectedFailure(false);
+  }
+
+  /**
+   * Renders a failed booking: the fields the API named inline, everything else
+   * as the form-level message of the one error envelope.
+   *
+   * @param error - Whatever `createReservation` threw.
+   */
+  function reportFailure(error: unknown): void {
+    if (!(error instanceof ApiError)) {
+      setMessages({});
+      setSummary(null);
+      setUnexpectedFailure(true);
+      return;
     }
 
-    /**
-     * Renders a failed booking: the fields the API named inline, everything else
-     * as the form-level message of the one error envelope.
-     *
-     * @param error - Whatever `createReservation` threw.
-     */
-    function reportFailure(error: unknown): void {
-        if (!(error instanceof ApiError)) {
-            setMessages({});
-            setSummary(null);
-            setUnexpectedFailure(true);
-            return;
-        }
-
-        const inline: FieldMessages = {};
-        let formLevel = error.details.length === 0 || error.code !== 'VALIDATION_ERROR';
-        for (const detail of error.details) {
-            if (isValidatedField(detail.field)) {
-                inline[detail.field] = messageForIssue(detail, error.message);
-            } else {
-                // A field this form does not render would otherwise be dropped.
-                formLevel = true;
-            }
-        }
-
-        setMessages(inline);
-        setSummary(formLevel ? error : null);
-        setUnexpectedFailure(false);
+    const inline: FieldMessages = {};
+    let formLevel = error.details.length === 0 || error.code !== 'VALIDATION_ERROR';
+    for (const detail of error.details) {
+      if (isValidatedField(detail.field)) {
+        inline[detail.field] = messageForIssue(detail, error.message);
+      } else {
+        // A field this form does not render would otherwise be dropped.
+        formLevel = true;
+      }
     }
 
-    /**
-     * The shape checks of the API's first checkpoint and nothing else: presence,
-     * a real calendar date, a seating time written as `HH:MM`, and a whole number
-     * of guests. Deliberately silent on the past, the window, the party cap, the
-     * horizon and uniqueness, which the API decides.
-     *
-     * @returns A message per offending field; empty when every value looks usable.
-     */
-    function courtesyMessages(): FieldMessages {
-        const found: FieldMessages = {};
-        const date = reservationDate.trim();
+    setMessages(inline);
+    setSummary(formLevel ? error : null);
+    setUnexpectedFailure(false);
+  }
 
-        if (date === '') {
-            found.reservation_date = DATE_REQUIRED_MESSAGE;
-        } else if (!isCalendarDate(date)) {
-            found.reservation_date = DATE_INVALID_MESSAGE;
-        }
+  /**
+   * The shape checks of the API's first checkpoint and nothing else: presence,
+   * a real calendar date, a seating time written as `HH:MM`, and a whole number
+   * of guests. Deliberately silent on the past, the window, the party cap, the
+   * horizon and uniqueness, which the API decides.
+   *
+   * @returns A message per offending field; empty when every value looks usable.
+   */
+  function courtesyMessages(): FieldMessages {
+    const found: FieldMessages = {};
+    const date = reservationDate.trim();
 
-        if (reservationTime === '') {
-            found.reservation_time = TIME_REQUIRED_MESSAGE;
-        } else if (!TIME_PATTERN.test(reservationTime)) {
-            found.reservation_time = TIME_INVALID_MESSAGE;
-        }
-
-        const size = partySize.trim();
-        if (size === '') {
-            found.party_size = PARTY_REQUIRED_MESSAGE;
-        } else if (!Number.isInteger(Number(size))) {
-            found.party_size = PARTY_INVALID_MESSAGE;
-        }
-
-        return found;
+    if (date === '') {
+      found.reservation_date = DATE_REQUIRED_MESSAGE;
+    } else if (!isCalendarDate(date)) {
+      found.reservation_date = DATE_INVALID_MESSAGE;
     }
 
-    /**
-     * Books the table and moves to its confirmation, or renders why it was not
-     * booked.
-     *
-     * @param event - The form submission.
-     */
-    async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
-        event.preventDefault();
-
-        if (submitting) {
-            return;
-        }
-
-        const found = courtesyMessages();
-        setMessages(found);
-        setSummary(null);
-        setUnexpectedFailure(false);
-
-        if (Object.keys(found).length > 0) {
-            return;
-        }
-
-        const trimmedNotes = notes.trim();
-        setSubmitting(true);
-        try {
-            const reservation = await createReservation({
-                reservation_date: reservationDate.trim(),
-                reservation_time: reservationTime,
-                party_size: Number(partySize.trim()),
-                ...(trimmedNotes === '' ? {} : { notes: trimmedNotes }),
-            });
-            navigate(`/reservations/${reservation.id}`, { replace: true });
-        } catch (error) {
-            reportFailure(error);
-        } finally {
-            setSubmitting(false);
-        }
+    if (reservationTime === '') {
+      found.reservation_time = TIME_REQUIRED_MESSAGE;
+    } else if (!TIME_PATTERN.test(reservationTime)) {
+      found.reservation_time = TIME_INVALID_MESSAGE;
     }
 
-    return (
-        <section className="stack" aria-labelledby="reservation-form-title">
-            <h1 className="page-title" id="reservation-form-title">Reserve a table</h1>
-            <p className="field__hint">
-                {`We seat ${MIN_PARTY_SIZE} to ${MAX_PARTY_SIZE} guests, from ${SERVICE_OPEN_TIME} to ${LAST_SEATING_TIME}.`}
-            </p>
+    const size = partySize.trim();
+    if (size === '') {
+      found.party_size = PARTY_REQUIRED_MESSAGE;
+    } else if (!Number.isInteger(Number(size))) {
+      found.party_size = PARTY_INVALID_MESSAGE;
+    }
 
-            <form className="stack" onSubmit={handleSubmit} noValidate>
-                {unexpectedFailure ? (
-                    <p className="error-summary" role="alert" data-code="INTERNAL_ERROR">
-                        {UNEXPECTED_FAILURE_MESSAGE}
-                    </p>
-                ) : null}
-                {summary ? <FormMessage error={summary} /> : null}
+    return found;
+  }
 
-                <DateField
-                    id="reservation-date"
-                    label="Date"
-                    required
-                    min={earliestDate}
-                    autoComplete="off"
-                    value={reservationDate}
-                    error={messages.reservation_date ?? null}
-                    onChange={(event: ChangeEvent<HTMLInputElement>) => {
-                        setReservationDate(event.target.value);
-                        clearFailure('reservation_date');
-                    }}
-                />
+  /**
+   * Books the table and moves to its confirmation, or renders why it was not
+   * booked.
+   *
+   * @param event - The form submission.
+   */
+  async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault();
 
-                <TimeField
-                    id="reservation-time"
-                    label="Seating time"
-                    required
-                    hint={`Seatings run from ${SERVICE_OPEN_TIME} to ${LAST_SEATING_TIME}.`}
-                    value={reservationTime}
-                    error={messages.reservation_time ?? null}
-                    onChange={(event: ChangeEvent<HTMLInputElement>) => {
-                        setReservationTime(event.target.value);
-                        clearFailure('reservation_time');
-                    }}
-                />
+    if (submitting) {
+      return;
+    }
 
-                <NumberField
-                    id="party-size"
-                    label="Party size"
-                    required
-                    min={MIN_PARTY_SIZE}
-                    max={MAX_PARTY_SIZE}
-                    value={partySize}
-                    error={messages.party_size ?? null}
-                    onChange={(event: ChangeEvent<HTMLInputElement>) => {
-                        setPartySize(event.target.value);
-                        clearFailure('party_size');
-                    }}
-                />
+    const found = courtesyMessages();
+    setMessages(found);
+    setSummary(null);
+    setUnexpectedFailure(false);
 
-                <TextField
-                    id="reservation-notes"
-                    label="Notes (optional)"
-                    autoComplete="off"
-                    value={notes}
-                    onChange={(event: ChangeEvent<HTMLInputElement>) => {
-                        setNotes(event.target.value);
-                        clearFailure();
-                    }}
-                />
+    if (Object.keys(found).length > 0) {
+      return;
+    }
 
-                {submitting ? <p className="field__hint" role="status">{SUBMITTING_MESSAGE}</p> : null}
+    const trimmedNotes = notes.trim();
+    setSubmitting(true);
+    try {
+      const reservation = await createReservation({
+        reservation_date: reservationDate.trim(),
+        reservation_time: reservationTime,
+        party_size: Number(partySize.trim()),
+        ...(trimmedNotes === '' ? {} : { notes: trimmedNotes }),
+      });
+      navigate(`/reservations/${reservation.id}`, { replace: true });
+    } catch (error) {
+      reportFailure(error);
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
-                <div className="row">
-                    <button className="button" type="submit" disabled={submitting}>
-                        {SUBMIT_LABEL}
-                    </button>
-                </div>
-            </form>
+  return (
+    <section className="stack" aria-labelledby="reservation-form-title">
+      <h1 className="page-title" id="reservation-form-title">Reserve a table</h1>
+      <p className="field__hint">
+        {`We seat ${MIN_PARTY_SIZE} to ${MAX_PARTY_SIZE} guests, from ${SERVICE_OPEN_TIME} to ${LAST_SEATING_TIME}.`}
+      </p>
 
-            <p className="field__hint">
-                Already booked a table? <Link to="/reservations">View your reservations</Link>
-            </p>
-        </section>
-    );
+      <form className="stack" onSubmit={handleSubmit} noValidate>
+        {unexpectedFailure ? (
+          <p className="error-summary" role="alert" data-code="INTERNAL_ERROR">
+            {UNEXPECTED_FAILURE_MESSAGE}
+          </p>
+        ) : null}
+        {summary ? <FormMessage error={summary} /> : null}
+
+        <DateField
+          id="reservation-date"
+          label="Date"
+          required
+          min={earliestDate}
+          autoComplete="off"
+          value={reservationDate}
+          error={messages.reservation_date ?? null}
+          onChange={(event: ChangeEvent<HTMLInputElement>) => {
+            setReservationDate(event.target.value);
+            clearFailure('reservation_date');
+          }}
+        />
+
+        <TimeField
+          id="reservation-time"
+          label="Seating time"
+          required
+          hint={`Seatings run from ${SERVICE_OPEN_TIME} to ${LAST_SEATING_TIME}.`}
+          value={reservationTime}
+          error={messages.reservation_time ?? null}
+          onChange={(event: ChangeEvent<HTMLInputElement>) => {
+            setReservationTime(event.target.value);
+            clearFailure('reservation_time');
+          }}
+        />
+
+        <NumberField
+          id="party-size"
+          label="Party size"
+          required
+          min={MIN_PARTY_SIZE}
+          max={MAX_PARTY_SIZE}
+          value={partySize}
+          error={messages.party_size ?? null}
+          onChange={(event: ChangeEvent<HTMLInputElement>) => {
+            setPartySize(event.target.value);
+            clearFailure('party_size');
+          }}
+        />
+
+        <TextField
+          id="reservation-notes"
+          label="Notes (optional)"
+          autoComplete="off"
+          value={notes}
+          onChange={(event: ChangeEvent<HTMLInputElement>) => {
+            setNotes(event.target.value);
+            clearFailure();
+          }}
+        />
+
+        {submitting ? <p className="field__hint" role="status">{SUBMITTING_MESSAGE}</p> : null}
+
+        <div className="row">
+          <button className="button" type="submit" disabled={submitting}>
+            {SUBMIT_LABEL}
+          </button>
+        </div>
+      </form>
+
+      <p className="field__hint">
+        Already booked a table? <Link className="inline-link" to="/reservations">View your reservations</Link>
+      </p>
+    </section>
+  );
 }
 
 export default ReservationFormView;

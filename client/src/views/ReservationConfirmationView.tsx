@@ -45,16 +45,16 @@ const HEADING_ID = 'reservation-view-title';
 
 /** The view's four states, kept apart so each one is rendered from its own branch. */
 type LoadState =
-    | { status: 'loading' }
-    | { status: 'ready'; reservations: Reservation[] }
-    | { status: 'failed'; error: ApiError };
+  | { status: 'loading' }
+  | { status: 'ready'; reservations: Reservation[] }
+  | { status: 'failed'; error: ApiError };
 
 /**
  * @param error - Whatever a failed request threw.
  * @returns The failure as the client's one error type, so a view never carries a second shape.
  */
 function toApiError(error: unknown): ApiError {
-    return error instanceof ApiError ? error : new ApiError(LOAD_FAILURE_MESSAGE, 0, 'INTERNAL_ERROR');
+  return error instanceof ApiError ? error : new ApiError(LOAD_FAILURE_MESSAGE, 0, 'INTERNAL_ERROR');
 }
 
 /**
@@ -67,23 +67,23 @@ function toApiError(error: unknown): ApiError {
  * @returns The `className` for the status badge.
  */
 function statusBadgeClass(status: string): string {
-    if (status === 'confirmed') {
-        return 'badge badge--available';
-    }
+  if (status === 'confirmed') {
+    return 'badge badge--available';
+  }
 
-    if (status === 'cancelled') {
-        return 'badge badge--unavailable';
-    }
+  if (status === 'cancelled') {
+    return 'badge badge--unavailable';
+  }
 
-    return 'badge';
+  return 'badge';
 }
 
 /** Props of the internal {@link DetailRow}. */
 interface DetailRowProps {
-    /** Visible label for the value beside it. */
-    label: string;
-    /** The value itself, rendered as text so it wraps at the narrowest width. */
-    children: ReactNode;
+  /** Visible label for the value beside it. */
+  label: string;
+  /** The value itself, rendered as text so it wraps at the narrowest width. */
+  children: ReactNode;
 }
 
 /**
@@ -95,20 +95,20 @@ interface DetailRowProps {
  * @returns The row element.
  */
 function DetailRow({ label, children }: DetailRowProps): JSX.Element {
-    return (
-        <p className="row">
-            <span className="field__label">{label}</span>
-            <span>{children}</span>
-        </p>
-    );
+  return (
+    <p className="row">
+      <span className="field__label">{label}</span>
+      <span>{children}</span>
+    </p>
+  );
 }
 
 /** Props of the internal {@link ReservationSection}. */
 interface ReservationSectionProps {
-    /** Page heading text for the mode being rendered. */
-    title: string;
-    /** The state rendered below the heading. */
-    children: ReactNode;
+  /** Page heading text for the mode being rendered. */
+  title: string;
+  /** The state rendered below the heading. */
+  children: ReactNode;
 }
 
 /**
@@ -120,20 +120,20 @@ interface ReservationSectionProps {
  * @returns The section element for the current state.
  */
 function ReservationSection({ title, children }: ReservationSectionProps): JSX.Element {
-    return (
-        <section className="stack" aria-labelledby={HEADING_ID}>
-            <h1 className="page-title" id={HEADING_ID}>
-                {title}
-            </h1>
-            {children}
-        </section>
-    );
+  return (
+    <section className="stack" aria-labelledby={HEADING_ID}>
+      <h1 className="page-title" id={HEADING_ID}>
+        {title}
+      </h1>
+      {children}
+    </section>
+  );
 }
 
 /** Props of the internal {@link ReservationHistory}. */
 interface ReservationHistoryProps {
-    /** The caller's bookings, in the order the API returned them. */
-    reservations: Reservation[];
+  /** The caller's bookings, in the order the API returned them. */
+  reservations: Reservation[];
 }
 
 /**
@@ -149,53 +149,53 @@ interface ReservationHistoryProps {
  * @returns The history section, or the empty state when there are no bookings.
  */
 function ReservationHistory({ reservations }: ReservationHistoryProps): JSX.Element {
-    if (reservations.length === 0) {
-        return (
-            <ReservationSection title="Your reservations">
-                <div className="empty-state stack">
-                    <p>You have not booked a table yet.</p>
-                    <p>
-                        <Link className="button" to="/reservations/new">
-                            Book a table
-                        </Link>
-                    </p>
-                </div>
-            </ReservationSection>
-        );
-    }
-
+  if (reservations.length === 0) {
     return (
-        <ReservationSection title="Your reservations">
-            <div className="stack">
-                <div className="row">
-                    <Link className="button" to="/reservations/new">
-                        Book a table
-                    </Link>
-                </div>
-                {reservations.map((reservation) => (
-                    <article className="card stack" key={reservation.id}>
-                        <DetailRow label="Date">
-                            <time dateTime={reservation.reservation_date}>{reservation.reservation_date}</time>
-                        </DetailRow>
-                        <DetailRow label="Time">
-                            <time dateTime={reservation.reservation_time}>{reservation.reservation_time}</time>
-                        </DetailRow>
-                        <DetailRow label="Party size">{reservation.party_size}</DetailRow>
-                        <DetailRow label="Status">
-                            <span className={statusBadgeClass(reservation.status)}>{reservation.status}</span>
-                        </DetailRow>
-                        {reservation.notes ? <DetailRow label="Notes">{reservation.notes}</DetailRow> : null}
-                        <div className="row">
-                            <Link className="button button--secondary" to={`/reservations/${reservation.id}`}>
-                                View booking for{' '}
-                                <time dateTime={reservation.reservation_date}>{reservation.reservation_date}</time>
-                            </Link>
-                        </div>
-                    </article>
-                ))}
-            </div>
-        </ReservationSection>
+      <ReservationSection title="Your reservations">
+        <div className="empty-state stack">
+          <p>You have not booked a table yet.</p>
+          <p>
+            <Link className="button" to="/reservations/new">
+              Book a table
+            </Link>
+          </p>
+        </div>
+      </ReservationSection>
     );
+  }
+
+  return (
+    <ReservationSection title="Your reservations">
+      <div className="stack">
+        <div className="row">
+          <Link className="button" to="/reservations/new">
+            Book a table
+          </Link>
+        </div>
+        {reservations.map((reservation) => (
+          <article className="card stack" key={reservation.id}>
+            <DetailRow label="Date">
+              <time dateTime={reservation.reservation_date}>{reservation.reservation_date}</time>
+            </DetailRow>
+            <DetailRow label="Time">
+              <time dateTime={reservation.reservation_time}>{reservation.reservation_time}</time>
+            </DetailRow>
+            <DetailRow label="Party size">{reservation.party_size}</DetailRow>
+            <DetailRow label="Status">
+              <span className={statusBadgeClass(reservation.status)}>{reservation.status}</span>
+            </DetailRow>
+            {reservation.notes ? <DetailRow label="Notes">{reservation.notes}</DetailRow> : null}
+            <div className="row">
+              <Link className="button button--secondary" to={`/reservations/${reservation.id}`}>
+                View booking for{' '}
+                <time dateTime={reservation.reservation_date}>{reservation.reservation_date}</time>
+              </Link>
+            </div>
+          </article>
+        ))}
+      </div>
+    </ReservationSection>
+  );
 }
 
 /**
@@ -205,116 +205,116 @@ function ReservationHistory({ reservations }: ReservationHistoryProps): JSX.Elem
  * @returns The reservation section for the current route and request state.
  */
 export function ReservationConfirmationView(): JSX.Element {
-    const { id } = useParams<{ id: string }>();
-    const [state, setState] = useState<LoadState>({ status: 'loading' });
-    const [reloadCount, setReloadCount] = useState(0);
+  const { id } = useParams<{ id: string }>();
+  const [state, setState] = useState<LoadState>({ status: 'loading' });
+  const [reloadCount, setReloadCount] = useState(0);
 
-    useEffect(() => {
-        // One read per mode. The ignore flag keeps a late response from a route
-        // the user already left from overwriting the state of the next one.
-        let ignore = false;
-        setState({ status: 'loading' });
+  useEffect(() => {
+    // One read per mode. The ignore flag keeps a late response from a route
+    // the user already left from overwriting the state of the next one.
+    let ignore = false;
+    setState({ status: 'loading' });
 
-        listReservations()
-            .then((reservations) => {
-                if (!ignore) {
-                    setState({ status: 'ready', reservations });
-                }
-            })
-            .catch((error: unknown) => {
-                if (!ignore) {
-                    setState({ status: 'failed', error: toApiError(error) });
-                }
-            });
+    listReservations()
+      .then((reservations) => {
+        if (!ignore) {
+          setState({ status: 'ready', reservations });
+        }
+      })
+      .catch((error: unknown) => {
+        if (!ignore) {
+          setState({ status: 'failed', error: toApiError(error) });
+        }
+      });
 
-        return () => {
-            ignore = true;
-        };
-    }, [id, reloadCount]);
+    return () => {
+      ignore = true;
+    };
+  }, [id, reloadCount]);
 
-    const retry = useCallback(() => {
-        setReloadCount((count) => count + 1);
-    }, []);
+  const retry = useCallback(() => {
+    setReloadCount((count) => count + 1);
+  }, []);
 
-    const confirming = id !== undefined;
-    const title = confirming ? 'Your booking' : 'Your reservations';
+  const confirming = id !== undefined;
+  const title = confirming ? 'Your booking' : 'Your reservations';
 
-    if (state.status === 'loading') {
-        return (
-            <ReservationSection title={title}>
-                <p className="empty-state" role="status">
-                    {confirming ? 'Loading your booking…' : 'Loading your reservations…'}
-                </p>
-            </ReservationSection>
-        );
-    }
-
-    if (state.status === 'failed') {
-        return (
-            <ReservationSection title={title}>
-                <div className="error-summary stack" role="alert" data-code={state.error.code}>
-                    <p>{state.error.message || LOAD_FAILURE_MESSAGE}</p>
-                    <p>Error code: {state.error.code}</p>
-                </div>
-                <div className="row">
-                    <button type="button" className="button" onClick={retry}>
-                        Try again
-                    </button>
-                    <Link className="button button--secondary" to="/menu">
-                        Back to the menu
-                    </Link>
-                </div>
-            </ReservationSection>
-        );
-    }
-
-    if (id === undefined) {
-        return <ReservationHistory reservations={state.reservations} />;
-    }
-
-    const reservation = state.reservations.find((entry) => entry.id === id);
-
-    if (reservation === undefined) {
-        return (
-            <ReservationSection title={title}>
-                <div className="not-found">
-                    <p>We could not find that booking among your reservations.</p>
-                    <Link className="button" to="/reservations">
-                        See all your bookings
-                    </Link>
-                </div>
-            </ReservationSection>
-        );
-    }
-
+  if (state.status === 'loading') {
     return (
-        <ReservationSection title={title}>
-            <div className="card stack">
-                <DetailRow label="Date">
-                    <time dateTime={reservation.reservation_date}>{reservation.reservation_date}</time>
-                </DetailRow>
-                <DetailRow label="Time">
-                    <time dateTime={reservation.reservation_time}>{reservation.reservation_time}</time>
-                </DetailRow>
-                <DetailRow label="Party size">{reservation.party_size}</DetailRow>
-                <DetailRow label="Status">
-                    <span className={statusBadgeClass(reservation.status)}>{reservation.status}</span>
-                </DetailRow>
-                {reservation.notes ? <DetailRow label="Notes">{reservation.notes}</DetailRow> : null}
-                <DetailRow label="Booked on">
-                    <time dateTime={reservation.created_at}>{formatTimestamp(reservation.created_at)}</time>
-                </DetailRow>
-                <div className="row">
-                    <Link className="button" to="/reservations">
-                        See all your bookings
-                    </Link>
-                    <Link className="button button--secondary" to="/menu">
-                        Back to the menu
-                    </Link>
-                </div>
-            </div>
-        </ReservationSection>
+      <ReservationSection title={title}>
+        <p className="empty-state" role="status">
+          {confirming ? 'Loading your booking…' : 'Loading your reservations…'}
+        </p>
+      </ReservationSection>
     );
+  }
+
+  if (state.status === 'failed') {
+    return (
+      <ReservationSection title={title}>
+        <div className="error-summary stack" role="alert" data-code={state.error.code}>
+          <p>{state.error.message || LOAD_FAILURE_MESSAGE}</p>
+          <p>Error code: {state.error.code}</p>
+        </div>
+        <div className="row">
+          <button type="button" className="button" onClick={retry}>
+            Try again
+          </button>
+          <Link className="button button--secondary" to="/menu">
+            Back to the menu
+          </Link>
+        </div>
+      </ReservationSection>
+    );
+  }
+
+  if (id === undefined) {
+    return <ReservationHistory reservations={state.reservations} />;
+  }
+
+  const reservation = state.reservations.find((entry) => entry.id === id);
+
+  if (reservation === undefined) {
+    return (
+      <ReservationSection title={title}>
+        <div className="not-found">
+          <p>We could not find that booking among your reservations.</p>
+          <Link className="button" to="/reservations">
+            See all your bookings
+          </Link>
+        </div>
+      </ReservationSection>
+    );
+  }
+
+  return (
+    <ReservationSection title={title}>
+      <div className="card stack">
+        <DetailRow label="Date">
+          <time dateTime={reservation.reservation_date}>{reservation.reservation_date}</time>
+        </DetailRow>
+        <DetailRow label="Time">
+          <time dateTime={reservation.reservation_time}>{reservation.reservation_time}</time>
+        </DetailRow>
+        <DetailRow label="Party size">{reservation.party_size}</DetailRow>
+        <DetailRow label="Status">
+          <span className={statusBadgeClass(reservation.status)}>{reservation.status}</span>
+        </DetailRow>
+        {reservation.notes ? <DetailRow label="Notes">{reservation.notes}</DetailRow> : null}
+        <DetailRow label="Booked on">
+          <time dateTime={reservation.created_at}>{formatTimestamp(reservation.created_at)}</time>
+        </DetailRow>
+        <div className="row">
+          <Link className="button" to="/reservations">
+            See all your bookings
+          </Link>
+          <Link className="button button--secondary" to="/menu">
+            Back to the menu
+          </Link>
+        </div>
+      </div>
+    </ReservationSection>
+  );
 }
 
 export default ReservationConfirmationView;

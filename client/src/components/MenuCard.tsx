@@ -20,6 +20,7 @@
  */
 
 import type { JSX } from 'react';
+import { memo } from 'react';
 import { Link } from 'react-router-dom';
 
 import { formatCents } from '../api/format';
@@ -30,13 +31,29 @@ import type { MenuItem } from '../api/types';
  *
  * `onAdd` is optional on purpose: whether an unauthenticated visitor may add to
  * the cart is the view's decision, expressed by passing or omitting it. When it
- * is omitted the button is still rendered, in its disabled state.
+ * is omitted the button is still rendered, in its disabled state, unless
+ * `showAction` suppresses the action altogether.
  */
 export interface MenuCardProps {
-    /** The item to render, exactly in the shape the API returns. */
-    item: MenuItem;
-    /** Invoked with the item when the enabled add-to-cart button is activated. */
-    onAdd?: (item: MenuItem) => void;
+  /** The item to render, exactly in the shape the API returns. */
+  item: MenuItem;
+  /** Invoked with the item when the enabled add-to-cart button is activated. */
+  onAdd?: (item: MenuItem) => void;
+  /**
+   * Heading level the item name is rendered at: `3` (the default) inside the
+   * catalog grid, whose own group heading is an `h2`, and `2` where the card
+   * sits directly under a screen's `h1`, so no level is skipped.
+   */
+  headingLevel?: 2 | 3;
+  /**
+   * Whether the card renders its own add-to-cart action. Defaults to `true`.
+   *
+   * A view that owns the one real add action itself — the item detail, with its
+   * quantity control — passes `false` so the screen does not carry a second
+   * control with the same accessible name. The availability label stays in the
+   * footer either way.
+   */
+  showAction?: boolean;
 }
 
 /**
@@ -48,62 +65,73 @@ export interface MenuCardProps {
  * `Unavailable` and the add button is disabled, so the affordance never
  * disappears and availability is never conveyed by colour alone.
  *
- * @param props - The item to render and the optional add-to-cart callback.
+ * The component is memoised, so a list that re-renders for a reason of its own
+ * only re-renders the cards whose props actually changed.
+ *
+ * @param props - The item to render, the optional add-to-cart callback, the
+ * heading level of the name and whether the card renders its own action.
  * @returns The card element for one menu item.
  */
-export function MenuCard({ item, onAdd }: MenuCardProps): JSX.Element {
-    const canAdd = item.is_available && onAdd !== undefined;
+export const MenuCard = memo(function MenuCard({
+  item,
+  onAdd,
+  headingLevel = 3,
+  showAction = true,
+}: MenuCardProps): JSX.Element {
+  const canAdd = item.is_available && onAdd !== undefined;
+  const Heading = headingLevel === 2 ? 'h2' : 'h3';
 
-    return (
-        <article className="card catalog-card">
-            {/*
-             * `image_url` is `string | null`. An empty or null URL renders the
-             * decorative placeholder block instead of an `<img>` with an empty
-             * `src`, which browsers would resolve into a second request for the
-             * page itself.
-             */}
-            {item.image_url ? (
-                <div className="catalog-card__media">
-                    <img
-                        className="catalog-card__image"
-                        src={item.image_url}
-                        alt={item.name}
-                        loading="lazy"
-                        decoding="async"
-                    />
-                </div>
-            ) : (
-                <div
-                    className="catalog-card__media catalog-card__image catalog-card__image--placeholder"
-                    role="presentation"
-                    aria-hidden="true"
-                />
-            )}
+  return (
+    <article className="card catalog-card">
+      {/*
+       * `image_url` is `string | null`. An empty or null URL renders the
+       * decorative placeholder block instead of an `<img>` with an empty
+       * `src`, which browsers would resolve into a second request for the
+       * page itself.
+       */}
+      {item.image_url ? (
+        <div className="catalog-card__media">
+          <img
+            className="catalog-card__image"
+            src={item.image_url}
+            alt={item.name}
+            loading="lazy"
+            decoding="async"
+          />
+        </div>
+      ) : (
+        <div
+          className="catalog-card__media catalog-card__image catalog-card__image--placeholder"
+          aria-hidden="true"
+        />
+      )}
 
-            <div className="catalog-card__body">
-                <h3 className="catalog-card__title">
-                    <Link to={`/menu/${item.id}`}>{item.name}</Link>
-                </h3>
-                <p className="catalog-card__description">{item.description}</p>
-                <p className="catalog-card__meta">{item.category.name}</p>
-                <p className="catalog-card__price">{formatCents(item.price_cents)}</p>
-            </div>
+      <div className="catalog-card__body">
+        <Heading className="catalog-card__title">
+          <Link to={`/menu/${item.id}`}>{item.name}</Link>
+        </Heading>
+        <p className="catalog-card__description">{item.description}</p>
+        <p className="catalog-card__meta">{item.category.name}</p>
+        <p className="catalog-card__price">{formatCents(item.price_cents)}</p>
+      </div>
 
-            <div className="catalog-card__footer">
-                <p className={item.is_available ? 'badge badge--available' : 'badge badge--unavailable'}>
-                    {item.is_available ? 'Available' : 'Unavailable'}
-                </p>
-                <div className="catalog-card__actions">
-                    <button
-                        type="button"
-                        className="button"
-                        disabled={!canAdd}
-                        onClick={() => onAdd?.(item)}
-                    >
-                        Add to cart
-                    </button>
-                </div>
-            </div>
-        </article>
-    );
-}
+      <div className="catalog-card__footer">
+        <p className={item.is_available ? 'badge badge--available' : 'badge badge--unavailable'}>
+          {item.is_available ? 'Available' : 'Unavailable'}
+        </p>
+        {showAction ? (
+          <div className="catalog-card__actions">
+            <button
+              type="button"
+              className="button"
+              disabled={!canAdd}
+              onClick={() => onAdd?.(item)}
+            >
+              Add to cart
+            </button>
+          </div>
+        ) : null}
+      </div>
+    </article>
+  );
+});

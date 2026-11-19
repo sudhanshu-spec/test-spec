@@ -22,13 +22,13 @@
  */
 
 import {
-    createContext,
-    useCallback,
-    useContext,
-    useEffect,
-    useMemo,
-    useState,
-    type ReactNode,
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
 } from 'react';
 
 import type { MenuItem } from '../api/types';
@@ -46,34 +46,34 @@ const MAX_QUANTITY = 20;
  * server recomputes every line when the order is placed, so it is never the amount charged.
  */
 export interface CartLine {
-    /** Id of the menu item, the key that merges two additions of the same item into one line. */
-    menu_item_id: string;
-    /** Item name as the API reported it when the line was added. */
-    name: string;
-    /** Item price in integer cents, a display copy taken when the line was added. */
-    price_cents: number;
-    /** How many of the item the shopper wants; always within 1..20. */
-    quantity: number;
-    /** Item image, or null when the item has none. */
-    image_url: string | null;
+  /** Id of the menu item, the key that merges two additions of the same item into one line. */
+  menu_item_id: string;
+  /** Item name as the API reported it when the line was added. */
+  name: string;
+  /** Item price in integer cents, a display copy taken when the line was added. */
+  price_cents: number;
+  /** How many of the item the shopper wants; always within 1..20. */
+  quantity: number;
+  /** Item image, or null when the item has none. */
+  image_url: string | null;
 }
 
 /** What the provider exposes and {@link useCart} returns. */
 export interface CartValue {
-    /** The current lines, newest last; readonly so a view cannot push or mutate one. */
-    items: readonly CartLine[];
-    /** Adds a quantity of an item, merging into its existing line when it is already in the cart. */
-    add(item: MenuItem, quantity?: number): void;
-    /** Sets a line's quantity, clamped into the accepted range; only {@link remove} drops a line. */
-    updateQuantity(menuItemId: string, quantity: number): void;
-    /** Drops a line; an id the cart does not hold is a no-op. */
-    remove(menuItemId: string): void;
-    /** Empties the cart, which the views do when an order is confirmed. */
-    clear(): void;
-    /** Sum of every line's `price_cents * quantity`, in integer cents; 0 for an empty cart. */
-    totalCents: number;
-    /** Sum of every line's quantity, the number of items rather than of distinct lines. */
-    itemCount: number;
+  /** The current lines, newest last; readonly so a view cannot push or mutate one. */
+  items: readonly CartLine[];
+  /** Adds a quantity of an item, merging into its existing line when it is already in the cart. */
+  add(item: MenuItem, quantity?: number): void;
+  /** Sets a line's quantity, clamped into the accepted range; only {@link remove} drops a line. */
+  updateQuantity(menuItemId: string, quantity: number): void;
+  /** Drops a line; an id the cart does not hold is a no-op. */
+  remove(menuItemId: string): void;
+  /** Empties the cart, which the views do when an order is confirmed. */
+  clear(): void;
+  /** Sum of every line's `price_cents * quantity`, in integer cents; 0 for an empty cart. */
+  totalCents: number;
+  /** Sum of every line's quantity, the number of items rather than of distinct lines. */
+  itemCount: number;
 }
 
 /** Null outside a provider, which makes {@link useCart} fail loudly rather than silently. */
@@ -88,10 +88,10 @@ const CartContext = createContext<CartValue | null>(null);
  * @returns That quantity as a whole number within {@link MIN_QUANTITY}..{@link MAX_QUANTITY}.
  */
 function clampQuantity(quantity: number): number {
-    if (Number.isNaN(quantity)) {
-        return MIN_QUANTITY;
-    }
-    return Math.min(Math.max(Math.trunc(quantity), MIN_QUANTITY), MAX_QUANTITY);
+  if (Number.isNaN(quantity)) {
+    return MIN_QUANTITY;
+  }
+  return Math.min(Math.max(Math.trunc(quantity), MIN_QUANTITY), MAX_QUANTITY);
 }
 
 /**
@@ -102,81 +102,81 @@ function clampQuantity(quantity: number): number {
  * @returns The provider element wrapping that subtree.
  */
 export function CartProvider({ children }: { children: ReactNode }) {
-    const [items, setItems] = useState<readonly CartLine[]>([]);
-    const { status } = useSession();
+  const [items, setItems] = useState<readonly CartLine[]>([]);
+  const { status } = useSession();
 
-    const add = useCallback((item: MenuItem, quantity = 1): void => {
-        const step = clampQuantity(quantity);
+  const add = useCallback((item: MenuItem, quantity = 1): void => {
+    const step = clampQuantity(quantity);
 
-        setItems((current) => {
-            // Merging keeps the line where it is, so the cart never reorders itself under the
-            // shopper; a first addition appends.
-            if (current.some((line) => line.menu_item_id === item.id)) {
-                return current.map((line) =>
-                    line.menu_item_id === item.id
-                        ? { ...line, quantity: clampQuantity(line.quantity + step) }
-                        : line,
-                );
-            }
-
-            return [
-                ...current,
-                {
-                    menu_item_id: item.id,
-                    name: item.name,
-                    price_cents: item.price_cents,
-                    quantity: step,
-                    image_url: item.image_url ?? null,
-                },
-            ];
-        });
-    }, []);
-
-    const updateQuantity = useCallback((menuItemId: string, quantity: number): void => {
-        // Every request is clamped into the range the order endpoint accepts, so no caller can leave a
-        // line holding a quantity the server would reject. Dropping a line is `remove`'s job alone,
-        // which is why a request below the minimum lands on the minimum rather than removing the line.
-        const clamped = clampQuantity(quantity);
-
-        setItems((current) =>
-            current.map((line) =>
-                line.menu_item_id === menuItemId ? { ...line, quantity: clamped } : line,
-            ),
+    setItems((current) => {
+      // Merging keeps the line where it is, so the cart never reorders itself under the
+      // shopper; a first addition appends.
+      if (current.some((line) => line.menu_item_id === item.id)) {
+        return current.map((line) =>
+          line.menu_item_id === item.id
+            ? { ...line, quantity: clampQuantity(line.quantity + step) }
+            : line,
         );
-    }, []);
+      }
 
-    const remove = useCallback((menuItemId: string): void => {
-        setItems((current) => current.filter((line) => line.menu_item_id !== menuItemId));
-    }, []);
+      return [
+        ...current,
+        {
+          menu_item_id: item.id,
+          name: item.name,
+          price_cents: item.price_cents,
+          quantity: step,
+          image_url: item.image_url ?? null,
+        },
+      ];
+    });
+  }, []);
 
-    const clear = useCallback((): void => {
-        setItems([]);
-    }, []);
+  const updateQuantity = useCallback((menuItemId: string, quantity: number): void => {
+    // Every request is clamped into the range the order endpoint accepts, so no caller can leave a
+    // line holding a quantity the server would reject. Dropping a line is `remove`'s job alone,
+    // which is why a request below the minimum lands on the minimum rather than removing the line.
+    const clamped = clampQuantity(quantity);
 
-    // The one link to the session: a cart belongs to a session, so it ends with it. Logging out and
-    // the 401 path both land on 'anonymous', which covers the two clears this module owes; an order
-    // confirmation is the third and is `CartView` calling `clear()`. Bailing out on an empty cart
-    // keeps the first anonymous render from re-rendering for nothing.
-    useEffect(() => {
-        if (status === 'anonymous') {
-            setItems((current) => (current.length === 0 ? current : []));
-        }
-    }, [status]);
-
-    const totalCents = useMemo(
-        () => items.reduce((sum, line) => sum + line.price_cents * line.quantity, 0),
-        [items],
+    setItems((current) =>
+      current.map((line) =>
+        line.menu_item_id === menuItemId ? { ...line, quantity: clamped } : line,
+      ),
     );
+  }, []);
 
-    // The badge a shopper expects counts items, not distinct lines: two burgers read as 2.
-    const itemCount = useMemo(() => items.reduce((sum, line) => sum + line.quantity, 0), [items]);
+  const remove = useCallback((menuItemId: string): void => {
+    setItems((current) => current.filter((line) => line.menu_item_id !== menuItemId));
+  }, []);
 
-    const value = useMemo<CartValue>(
-        () => ({ items, add, updateQuantity, remove, clear, totalCents, itemCount }),
-        [items, add, updateQuantity, remove, clear, totalCents, itemCount],
-    );
+  const clear = useCallback((): void => {
+    setItems([]);
+  }, []);
 
-    return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
+  // The one link to the session: a cart belongs to a session, so it ends with it. Logging out and
+  // the 401 path both land on 'anonymous', which covers the two clears this module owes; an order
+  // confirmation is the third and is `CartView` calling `clear()`. Bailing out on an empty cart
+  // keeps the first anonymous render from re-rendering for nothing.
+  useEffect(() => {
+    if (status === 'anonymous') {
+      setItems((current) => (current.length === 0 ? current : []));
+    }
+  }, [status]);
+
+  const totalCents = useMemo(
+    () => items.reduce((sum, line) => sum + line.price_cents * line.quantity, 0),
+    [items],
+  );
+
+  // The badge a shopper expects counts items, not distinct lines: two burgers read as 2.
+  const itemCount = useMemo(() => items.reduce((sum, line) => sum + line.quantity, 0), [items]);
+
+  const value = useMemo<CartValue>(
+    () => ({ items, add, updateQuantity, remove, clear, totalCents, itemCount }),
+    [items, add, updateQuantity, remove, clear, totalCents, itemCount],
+  );
+
+  return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }
 
 /**
@@ -186,9 +186,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
  * @throws {Error} Outside a provider, where a silently empty cart would hide a real bug.
  */
 export function useCart(): CartValue {
-    const value = useContext(CartContext);
-    if (value === null) {
-        throw new Error('useCart must be used within a CartProvider');
-    }
-    return value;
+  const value = useContext(CartContext);
+  if (value === null) {
+    throw new Error('useCart must be used within a CartProvider');
+  }
+  return value;
 }

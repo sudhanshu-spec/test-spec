@@ -12,9 +12,9 @@
  *    `replace` navigation to `/login` that a 401 reported on a public screen performs.
  * 2. The responsive contract, proved mechanically from the text of the two stylesheets: the 44px
  *    control floor, the single 768px breakpoint, the one-column catalog grid and its two-column
- *    rule inside that breakpoint, and the suppressed horizontal overflow at the 360px minimum
- *    supported width. No browser driver is involved (rule R-7), so these assertions hold without a
- *    rendering engine.
+ *    rule inside that breakpoint, and the 360px minimum supported width kept free of horizontal
+ *    overflow by capped widths and minmax(0, ...) tracks rather than by clipping it. No browser
+ *    driver is involved (rule R-7), so these assertions hold without a rendering engine.
  *
  * Fixtures carry only the API's secret-free projection (rule R-4), the 401 seed uses the documented
  * envelope with one of its thirteen codes (rule R-6), and the cart badge is counted from client
@@ -597,13 +597,61 @@ describe('responsive contract', () => {
     expect(root?.body).toContain('--control-min-size: 44px');
   });
 
-  it('suppresses horizontal overflow at the 360px minimum supported width', () => {
+  it('prevents horizontal overflow at the 360px minimum supported width', () => {
     const page = ruleFor(globalCss, 'html, body');
     const body = ruleFor(globalCss, 'body');
+    const app = ruleFor(globalCss, '.app');
+    const main = ruleFor(globalCss, '.app-main');
 
+    // The document and the two shell containers cap their width, so the column can never grow past
+    // the viewport: the header nav, the 44px controls and every long name inside it wrap instead.
     expect(page?.body).toMatch(/max-width:\s*100%/);
+    expect(app).toBeDefined();
+    expect(app?.body).toMatch(/max-width:\s*100%/);
+    expect(main).toBeDefined();
+    expect(main?.body).toMatch(/max-width:\s*var\(--layout-max-width\)/);
+
+    // Nothing clips the page. With no body-wide mask a child that really is too wide shows as a
+    // broken layout at 360px, so the capped widths above are what keep the page from scrolling.
     expect(body).toBeDefined();
-    expect(body?.body).toMatch(/overflow-x:\s*hidden\s*;/);
+    expect(body?.body).not.toMatch(/overflow-x/);
+
+    // Below the breakpoint each grid is a single minmax(0, ...) track. A bare `1fr`, `auto` or a
+    // fixed length keeps an automatic minimum that refuses to shrink below its content, which is
+    // how one long item name pushes the page wider than the narrowest supported width.
+    for (const selector of ['.catalog-grid', '.cart-line', '.cart-summary']) {
+      const grid = ruleFor(catalogCss, selector);
+      const tracks = /grid-template-columns:\s*([^;]+)(?:;|$)/.exec(grid?.body ?? '');
+
+      expect(grid).toBeDefined();
+      expect(tracks).not.toBeNull();
+      expect((tracks?.[1] ?? '').trim()).toMatch(/^minmax\(0,\s*[^)]+\)$/);
+    }
+
+    // Above the breakpoint the same grids add columns that size to the quantity field and the line
+    // total, so `auto` is legitimate there. What no grid in either stylesheet may do is trust a
+    // bare fraction or a fixed length, the shapes whose minimum cannot shrink.
+    const trackLists = [...cssRules(globalCss), ...cssRules(catalogCss)].flatMap((rule) =>
+      [...rule.body.matchAll(/grid-template-columns:\s*([^;]+)(?:;|$)/g)].map(
+        (match) => match[1] ?? '',
+      ),
+    );
+
+    expect(trackLists.length).toBeGreaterThan(0);
+    for (const trackList of trackLists) {
+      const outsideMinmax = trackList.replace(/minmax\([^)]*\)/g, '');
+
+      expect(outsideMinmax).not.toMatch(/fr\b/);
+      expect(outsideMinmax).not.toMatch(/\d+(?:px|rem|%)/);
+    }
+
+    // .category-filter is the one element meant to scroll sideways and the only rule in either
+    // stylesheet that declares overflow-x at all; nothing else hides a wide child from the reader.
+    const sideways = [...cssRules(globalCss), ...cssRules(catalogCss)]
+      .filter((rule) => /(?:^|[\s;])overflow-x\s*:/.test(rule.body))
+      .map((rule) => rule.selector);
+
+    expect(sideways).toEqual(['.category-filter']);
   });
 
   it('uses one breakpoint value, 768px, across both stylesheets', () => {

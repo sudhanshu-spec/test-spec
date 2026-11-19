@@ -35,6 +35,16 @@
 .catalog-card__media { max-width: 100%; overflow: hidden; border-radius: var(--radius-md); }
 .catalog-card__media img { display: block; max-width: 100%; height: auto; }
 
+/* Both image branches carry this class, so the 4:3 box is reserved before the
+   picture decodes and a card whose image_url is null keeps the same height as
+   its neighbours. object-fit crops the picture instead of distorting it. */
+.catalog-card__image { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
+
+/* The decorative complement of the image, shown for an item with no image_url:
+   a quiet surface with the same hairline every other bordered surface uses. The
+   radius and the clipping come from .catalog-card__media above. */
+.catalog-card__image--placeholder { background: var(--color-surface-muted); border: 1px solid var(--color-border); }
+
 .catalog-card__body { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
 .catalog-card__title { overflow-wrap: anywhere; line-height: var(--line-height-tight); }
 
@@ -80,10 +90,19 @@
 /* Hover stays unwrapped: this file carries exactly one media query, the 768px
    breakpoint, so no (hover: hover) or reduced-motion query is added here. */
 .category-filter__option:hover { background: var(--color-surface-muted); }
+.category-filter__option:active { background: var(--color-surface-muted); border-color: var(--color-brand-strong); }
 
 /* The selected filter takes a brand fill and a bold weight: not hue alone. */
 .category-filter__option--active { border-color: var(--color-brand); background: var(--color-brand);
   color: var(--color-brand-contrast); font-weight: var(--font-weight-bold); }
+
+/* A selected pill keeps a brand fill while it is pointed at or held: the plain
+   :hover and :active rules above outrank --active on specificity, so without these
+   two rules the selection's white label would sit on the muted fill — a 1.1:1
+   contrast, i.e. unreadable. It darkens on hover and darkens again on press, the
+   same two steps .button takes. */
+.category-filter__option--active:hover { background: var(--color-brand-strong); border-color: var(--color-brand-strong); }
+.category-filter__option--active:active { background: var(--color-brand-pressed); border-color: var(--color-brand-pressed); }
 
 /* ---- Item detail: stacked, no fixed column widths ---- */
 
@@ -120,9 +139,10 @@
 .cart-line__quantity { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2);
   min-height: var(--control-min-size); min-width: var(--control-min-size); }
 
-/* The quantity input keeps the shared .control look; only its width and the
-   touch target are set here, so the 44x44px floor holds without restyling .control. */
-.cart-line__quantity .control { flex: 0 1 auto; width: 5rem; max-width: 100%; text-align: center;
+/* The quantity input keeps the shared .control look; only its width — the
+   --quantity-field-width token — and the touch target are set here, so the
+   44x44px floor holds without restyling .control. */
+.cart-line__quantity .control { flex: 0 1 auto; width: var(--quantity-field-width); max-width: 100%; text-align: center;
   min-height: var(--control-min-size); min-width: var(--control-min-size); }
 
 .cart-line__total { font-variant-numeric: tabular-nums; font-weight: var(--font-weight-bold);

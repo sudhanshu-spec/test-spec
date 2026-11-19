@@ -34,7 +34,7 @@
  * @module client/src/views/CartView
  */
 
-import { useState } from 'react';
+import { memo, useCallback, useState } from 'react';
 import type { ChangeEvent, FormEvent, JSX } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
@@ -70,16 +70,16 @@ const SUBMITTING_MESSAGE = 'Placing your order…';
 const RETRY_LABEL = 'Try again';
 const RETAINED_MESSAGE = 'Nothing was ordered and your cart is unchanged.';
 const UNAVAILABLE_INSTRUCTION =
-    'Remove that item from your cart, then add it again once it is back on the menu.';
+  'Remove that item from your cart, then add it again once it is back on the menu.';
 const UNEXPECTED_FAILURE_MESSAGE =
-    'Something went wrong while placing your order. Nothing was ordered and your cart is unchanged, so you can try again.';
+  'Something went wrong while placing your order. Nothing was ordered and your cart is unchanged, so you can try again.';
 
 /** One of the order endpoint's `details` entries, tied to the cart line it names. */
 interface LineDetail {
-    /** Position of the line in the request, which is the position it renders at. */
-    readonly index: number;
-    /** The server's own field and issue strings for that line. */
-    readonly detail: ApiFieldDetail;
+  /** Position of the line in the request, which is the position it renders at. */
+  readonly index: number;
+  /** The server's own field and issue strings for that line. */
+  readonly detail: ApiFieldDetail;
 }
 
 /**
@@ -88,49 +88,49 @@ interface LineDetail {
  * the fixed internal-error summary.
  */
 interface Failure {
-    /** The transport's error object, or null for a throw that never reached the API. */
-    readonly error: ApiError | null;
-    /** The API's code, or `INTERNAL_ERROR` when there is no envelope at all. */
-    readonly code: string;
-    /** The `details` entries naming a line quantity, rendered under that line. */
-    readonly lineDetails: readonly LineDetail[];
-    /** The `details` entry naming the note, when the API supplied one. */
-    readonly notesDetail: ApiFieldDetail | null;
-    /** Every other `details` entry, rendered so no field the API named is dropped. */
-    readonly otherDetails: readonly ApiFieldDetail[];
-    /** Names of the cart's items the API reported as unavailable, when it named any. */
-    readonly unavailableNames: readonly string[];
+  /** The transport's error object, or null for a throw that never reached the API. */
+  readonly error: ApiError | null;
+  /** The API's code, or `INTERNAL_ERROR` when there is no envelope at all. */
+  readonly code: string;
+  /** The `details` entries naming a line quantity, rendered under that line. */
+  readonly lineDetails: readonly LineDetail[];
+  /** The `details` entry naming the note, when the API supplied one. */
+  readonly notesDetail: ApiFieldDetail | null;
+  /** Every other `details` entry, rendered so no field the API named is dropped. */
+  readonly otherDetails: readonly ApiFieldDetail[];
+  /** Names of the cart's items the API reported as unavailable, when it named any. */
+  readonly unavailableNames: readonly string[];
 }
 
 /** Props of {@link OrderFailure}. */
 interface OrderFailureProps {
-    /** The placement that failed. */
-    readonly failure: Failure;
-    /** Whether a placement is in flight, which disables the retry control. */
-    readonly submitting: boolean;
+  /** The placement that failed. */
+  readonly failure: Failure;
+  /** Whether a placement is in flight, which disables the retry control. */
+  readonly submitting: boolean;
 }
 
 /** Props of {@link CartLineRow}. */
 interface CartLineRowProps {
-    /** The line to render. */
-    readonly line: CartLine;
-    /** The shopper's own text for this line's quantity while it is being edited, or undefined. */
-    readonly quantityText: string | undefined;
-    /** The server's own detail for this line's quantity, when it named one. */
-    readonly quantityDetail: ApiFieldDetail | null;
-    /** Whether a placement is in flight, which disables every control of the row. */
-    readonly disabled: boolean;
-    /** Sets the line's quantity from the control's text. */
-    onQuantityChange(menuItemId: string, rawValue: string): void;
-    /** Drops the line's in-progress text, so the control shows the committed quantity. */
-    onQuantityBlur(menuItemId: string): void;
-    /** Drops the line. */
-    onRemove(menuItemId: string): void;
+  /** The line to render. */
+  readonly line: CartLine;
+  /** The shopper's own text for this line's quantity while it is being edited, or undefined. */
+  readonly quantityText: string | undefined;
+  /** The server's own detail for this line's quantity, when it named one. */
+  readonly quantityDetail: ApiFieldDetail | null;
+  /** Whether a placement is in flight, which disables every control of the row. */
+  readonly disabled: boolean;
+  /** Sets the line's quantity from the control's text. */
+  onQuantityChange(menuItemId: string, rawValue: string): void;
+  /** Drops the line's in-progress text, so the control shows the committed quantity. */
+  onQuantityBlur(menuItemId: string): void;
+  /** Drops the line. */
+  onRemove(menuItemId: string): void;
 }
 
 /** @returns The count with its noun: `1 item`, `4 items`. */
 function countLabel(count: number, singular: string, pluralForm: string): string {
-    return count === 1 ? '1 ' + singular : String(count) + ' ' + pluralForm;
+  return count === 1 ? '1 ' + singular : String(count) + ' ' + pluralForm;
 }
 
 /**
@@ -146,20 +146,20 @@ function countLabel(count: number, singular: string, pluralForm: string): string
  * @returns The line index and field key, or null when the entry names no rendered line.
  */
 function parseLineField(field: string, lineCount: number): { index: number; key: string } | null {
-    const match = LINE_FIELD_PATTERN.exec(field);
+  const match = LINE_FIELD_PATTERN.exec(field);
 
-    if (match === null) {
-        return null;
-    }
+  if (match === null) {
+    return null;
+  }
 
-    const index = Number(match[1]);
-    const key = match[2];
+  const index = Number(match[1]);
+  const key = match[2];
 
-    if (!Number.isInteger(index) || index < 0 || index >= lineCount || key === undefined) {
-        return null;
-    }
+  if (!Number.isInteger(index) || index < 0 || index >= lineCount || key === undefined) {
+    return null;
+  }
 
-    return { index, key };
+  return { index, key };
 }
 
 /**
@@ -177,29 +177,29 @@ function parseLineField(field: string, lineCount: number): { index: number; key:
  * @returns The unavailable item names, each once, in cart order.
  */
 function unavailableNames(error: ApiError, lines: readonly CartLine[]): readonly string[] {
-    const names: string[] = [];
+  const names: string[] = [];
 
-    const add = (name: string | undefined): void => {
-        if (name !== undefined && name !== '' && !names.includes(name)) {
-            names.push(name);
-        }
-    };
-
-    for (const detail of error.details) {
-        const parsed = parseLineField(detail.field, lines.length);
-
-        if (parsed !== null) {
-            add(lines[parsed.index]?.name);
-        }
+  const add = (name: string | undefined): void => {
+    if (name !== undefined && name !== '' && !names.includes(name)) {
+      names.push(name);
     }
+  };
 
-    for (const line of lines) {
-        if (error.message.includes(line.name)) {
-            add(line.name);
-        }
+  for (const detail of error.details) {
+    const parsed = parseLineField(detail.field, lines.length);
+
+    if (parsed !== null) {
+      add(lines[parsed.index]?.name);
     }
+  }
 
-    return names;
+  for (const line of lines) {
+    if (error.message.includes(line.name)) {
+      add(line.name);
+    }
+  }
+
+  return names;
 }
 
 /**
@@ -210,60 +210,60 @@ function unavailableNames(error: ApiError, lines: readonly CartLine[]): readonly
  * @returns The failure, with each `details` entry routed to the control it names.
  */
 function toFailure(error: unknown, lines: readonly CartLine[]): Failure {
-    if (!(error instanceof ApiError)) {
-        return {
-            error: null,
-            code: 'INTERNAL_ERROR',
-            lineDetails: [],
-            notesDetail: null,
-            otherDetails: [],
-            unavailableNames: [],
-        };
-    }
-
-    const lineDetails: LineDetail[] = [];
-    const otherDetails: ApiFieldDetail[] = [];
-    let notesDetail: ApiFieldDetail | null = null;
-
-    for (const detail of error.details) {
-        if (detail.field === NOTES_FIELD && notesDetail === null) {
-            notesDetail = detail;
-            continue;
-        }
-
-        const parsed = parseLineField(detail.field, lines.length);
-
-        if (parsed !== null && parsed.key === QUANTITY_KEY) {
-            lineDetails.push({ index: parsed.index, detail });
-            continue;
-        }
-
-        otherDetails.push(detail);
-    }
-
+  if (!(error instanceof ApiError)) {
     return {
-        error,
-        code: error.code,
-        lineDetails,
-        notesDetail,
-        otherDetails,
-        unavailableNames: error.code === 'MENU_ITEM_UNAVAILABLE' ? unavailableNames(error, lines) : [],
+      error: null,
+      code: 'INTERNAL_ERROR',
+      lineDetails: [],
+      notesDetail: null,
+      otherDetails: [],
+      unavailableNames: [],
     };
+  }
+
+  const lineDetails: LineDetail[] = [];
+  const otherDetails: ApiFieldDetail[] = [];
+  let notesDetail: ApiFieldDetail | null = null;
+
+  for (const detail of error.details) {
+    if (detail.field === NOTES_FIELD && notesDetail === null) {
+      notesDetail = detail;
+      continue;
+    }
+
+    const parsed = parseLineField(detail.field, lines.length);
+
+    if (parsed !== null && parsed.key === QUANTITY_KEY) {
+      lineDetails.push({ index: parsed.index, detail });
+      continue;
+    }
+
+    otherDetails.push(detail);
+  }
+
+  return {
+    error,
+    code: error.code,
+    lineDetails,
+    notesDetail,
+    otherDetails,
+    unavailableNames: error.code === 'MENU_ITEM_UNAVAILABLE' ? unavailableNames(error, lines) : [],
+  };
 }
 
 /** @returns The server's detail for the line at that position, or null when it named none. */
 function detailAt(failure: Failure | null, index: number): ApiFieldDetail | null {
-    if (failure === null) {
-        return null;
-    }
-
-    for (const entry of failure.lineDetails) {
-        if (entry.index === index) {
-            return entry.detail;
-        }
-    }
-
+  if (failure === null) {
     return null;
+  }
+
+  for (const entry of failure.lineDetails) {
+    if (entry.index === index) {
+      return entry.detail;
+    }
+  }
+
+  return null;
 }
 
 /**
@@ -280,47 +280,47 @@ function detailAt(failure: Failure | null, index: number): ApiFieldDetail | null
  * @returns The failure panel, with the retry control that re-submits the form.
  */
 function OrderFailure({ failure, submitting }: OrderFailureProps): JSX.Element {
-    const unavailable = failure.error !== null && failure.code === 'MENU_ITEM_UNAVAILABLE';
+  const unavailable = failure.error !== null && failure.code === 'MENU_ITEM_UNAVAILABLE';
 
-    return (
-        <div className="stack">
-            {failure.error === null ? (
-                <p className="error-summary" role="alert" data-code="INTERNAL_ERROR">
-                    {UNEXPECTED_FAILURE_MESSAGE}
-                </p>
-            ) : null}
+  return (
+    <div className="stack">
+      {failure.error === null ? (
+        <p className="error-summary" role="alert" data-code="INTERNAL_ERROR">
+          {UNEXPECTED_FAILURE_MESSAGE}
+        </p>
+      ) : null}
 
-            {unavailable && failure.error !== null ? (
-                <div className="error-summary" role="alert" data-code={failure.code}>
-                    <p>{failure.error.message}</p>
-                    {failure.unavailableNames.length > 0 ? (
-                        <p>
-                            Not available right now: <strong>{failure.unavailableNames.join(', ')}</strong>.
-                        </p>
-                    ) : null}
-                    <p>{UNAVAILABLE_INSTRUCTION}</p>
-                </div>
-            ) : null}
-
-            {failure.error !== null && !unavailable ? <FormMessage error={failure.error} /> : null}
-
-            {failure.otherDetails.length > 0 ? (
-                <div className="field">
-                    {failure.otherDetails.map((detail, index) => (
-                        <FieldError key={detail.field + ':' + detail.issue + ':' + String(index)} detail={detail} />
-                    ))}
-                </div>
-            ) : null}
-
-            <p className="field__hint">{RETAINED_MESSAGE}</p>
-
-            <div className="row">
-                <button className="button button--secondary" type="submit" disabled={submitting}>
-                    {RETRY_LABEL}
-                </button>
-            </div>
+      {unavailable && failure.error !== null ? (
+        <div className="error-summary" role="alert" data-code={failure.code}>
+          <p>{failure.error.message}</p>
+          {failure.unavailableNames.length > 0 ? (
+            <p>
+              Not available right now: <strong>{failure.unavailableNames.join(', ')}</strong>.
+            </p>
+          ) : null}
+          <p>{UNAVAILABLE_INSTRUCTION}</p>
         </div>
-    );
+      ) : null}
+
+      {failure.error !== null && !unavailable ? <FormMessage error={failure.error} /> : null}
+
+      {failure.otherDetails.length > 0 ? (
+        <div className="field">
+          {failure.otherDetails.map((detail, index) => (
+            <FieldError key={detail.field + ':' + detail.issue + ':' + String(index)} detail={detail} />
+          ))}
+        </div>
+      ) : null}
+
+      <p className="field__hint">{RETAINED_MESSAGE}</p>
+
+      <div className="row">
+        <button className="button button--secondary" type="submit" disabled={submitting}>
+          {RETRY_LABEL}
+        </button>
+      </div>
+    </div>
+  );
 }
 
 /**
@@ -336,79 +336,82 @@ function OrderFailure({ failure, submitting }: OrderFailureProps): JSX.Element {
  * through `aria-describedby` and rendered under the input, never instead of the
  * input.
  *
+ * The row is memoised, so editing one line's quantity re-renders that line only;
+ * the view hands it stable callbacks for exactly that reason.
+ *
  * @param props - The line, the text being edited, the detail that names it and the
  * mutations.
  * @returns The list item for one cart line.
  */
-function CartLineRow({
-    line,
-    quantityText,
-    quantityDetail,
-    disabled,
-    onQuantityChange,
-    onQuantityBlur,
-    onRemove,
+const CartLineRow = memo(function CartLineRow({
+  line,
+  quantityText,
+  quantityDetail,
+  disabled,
+  onQuantityChange,
+  onQuantityBlur,
+  onRemove,
 }: CartLineRowProps): JSX.Element {
-    const quantityId = 'cart-quantity-' + line.menu_item_id;
-    const errorId = quantityId + '-error';
-    const hasError = quantityDetail !== null;
+  const quantityId = 'cart-quantity-' + line.menu_item_id;
+  const errorId = quantityId + '-error';
+  const hasError = quantityDetail !== null;
 
-    return (
-        <li className="cart-line">
-            <div className="cart-line__info">
-                <span className="cart-line__name">{line.name}</span>
-                <span className="cart-line__unit-price">{formatCents(line.price_cents)} each</span>
-            </div>
+  return (
+    <li className="cart-line">
+      <div className="cart-line__info">
+        <span className="cart-line__name">{line.name}</span>
+        <span className="cart-line__unit-price">{formatCents(line.price_cents)} each</span>
+      </div>
 
-            <div className="cart-line__quantity">
-                <div className={hasError ? 'field field--invalid' : 'field'}>
-                    <label className="field__label" htmlFor={quantityId}>
-                        Quantity<span className="visually-hidden"> of {line.name}</span>
-                    </label>
-                    <input
-                        id={quantityId}
-                        name={quantityId}
-                        className="control"
-                        type="number"
-                        inputMode="numeric"
-                        min={MIN_QUANTITY}
-                        max={MAX_QUANTITY}
-                        step={1}
-                        value={quantityText ?? String(line.quantity)}
-                        disabled={disabled}
-                        aria-invalid={hasError}
-                        aria-describedby={hasError ? errorId : undefined}
-                        onChange={(event: ChangeEvent<HTMLInputElement>) => {
-                            onQuantityChange(line.menu_item_id, event.target.value);
-                        }}
-                        onBlur={() => {
-                            onQuantityBlur(line.menu_item_id);
-                        }}
-                    />
-                    <FieldError id={errorId} detail={quantityDetail} />
-                </div>
-            </div>
+      <div className="cart-line__quantity">
+        <div className={hasError ? 'field field--invalid' : 'field'}>
+          <label className="field__label" htmlFor={quantityId}>
+            Quantity<span className="visually-hidden"> of {line.name}</span>
+          </label>
+          <input
+            id={quantityId}
+            name={quantityId}
+            className="control"
+            type="number"
+            inputMode="numeric"
+            min={MIN_QUANTITY}
+            max={MAX_QUANTITY}
+            step={1}
+            value={quantityText ?? String(line.quantity)}
+            disabled={disabled}
+            aria-invalid={hasError}
+            aria-describedby={hasError ? errorId : undefined}
+            onChange={(event: ChangeEvent<HTMLInputElement>) => {
+              onQuantityChange(line.menu_item_id, event.target.value);
+            }}
+            onBlur={() => {
+              onQuantityBlur(line.menu_item_id);
+            }}
+          />
+          <FieldError id={errorId} detail={quantityDetail} />
+        </div>
+      </div>
 
-            {/* The one piece of arithmetic in this folder: a display subtotal. The
-                order's own total comes from the server and replaces this figure on
-                the confirmation. */}
-            <span className="cart-line__total">{formatCents(line.price_cents * line.quantity)}</span>
+      {/* The one piece of arithmetic in this folder: a display subtotal. The
+        order's own total comes from the server and replaces this figure on
+        the confirmation. */}
+      <span className="cart-line__total">{formatCents(line.price_cents * line.quantity)}</span>
 
-            <div className="cart-line__actions">
-                <button
-                    className="button button--secondary"
-                    type="button"
-                    disabled={disabled}
-                    onClick={() => {
-                        onRemove(line.menu_item_id);
-                    }}
-                >
-                    Remove<span className="visually-hidden"> {line.name}</span>
-                </button>
-            </div>
-        </li>
-    );
-}
+      <div className="cart-line__actions">
+        <button
+          className="button button--secondary"
+          type="button"
+          disabled={disabled}
+          onClick={() => {
+            onRemove(line.menu_item_id);
+          }}
+        >
+          Remove<span className="visually-hidden"> {line.name}</span>
+        </button>
+      </div>
+    </li>
+  );
+});
 
 /**
  * Screen 5: the cart, and the checkout step it owns.
@@ -425,174 +428,188 @@ function CartLineRow({
  * @returns The empty cart, or the lines, totals panel and Place order action.
  */
 export function CartView(): JSX.Element {
-    const navigate = useNavigate();
-    const { items, updateQuantity, remove, clear, totalCents, itemCount } = useCart();
-    const [notes, setNotes] = useState('');
-    const [failure, setFailure] = useState<Failure | null>(null);
-    const [submitting, setSubmitting] = useState(false);
-    // The shopper's own text for each line's quantity field while it is being edited, keyed by menu
-    // item id. Absent for a line nobody is editing, whose field shows the quantity the cart holds.
-    const [quantityTexts, setQuantityTexts] = useState<Record<string, string | undefined>>({});
+  const navigate = useNavigate();
+  const { items, updateQuantity, remove, clear, totalCents, itemCount } = useCart();
+  const [notes, setNotes] = useState('');
+  const [failure, setFailure] = useState<Failure | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  // The shopper's own text for each line's quantity field while it is being edited, keyed by menu
+  // item id. Absent for a line nobody is editing, whose field shows the quantity the cart holds.
+  const [quantityTexts, setQuantityTexts] = useState<Record<string, string | undefined>>({});
 
-    /** Drops the failure a cart or note edit has made stale. */
-    function clearFailure(): void {
-        setFailure(null);
+  /** Drops the failure a cart or note edit has made stale. */
+  const clearFailure = useCallback((): void => {
+    setFailure(null);
+  }, []);
+
+  /**
+   * Forgets a line's in-progress text, so its field shows the committed quantity
+   * again. Used when the field loses focus and when the line goes: neither leaves
+   * text behind that a later render would show.
+   *
+   * @param menuItemId - The line whose text is dropped.
+   */
+  const forgetQuantityText = useCallback((menuItemId: string): void => {
+    setQuantityTexts((current) => ({ ...current, [menuItemId]: undefined }));
+  }, []);
+
+  /**
+   * Applies a typed quantity to its line, keeping the shopper's own text on screen
+   * while it is being edited.
+   *
+   * The text is held per line so clearing the field never snaps back to the
+   * committed number, which the next keystroke would otherwise append to. An
+   * emptied or unparseable field is a value mid-edit rather than a request, so
+   * nothing is committed; a quantity below the accepted minimum is refused here so
+   * the one way to drop a line stays the Remove control, and the cart provider
+   * clamps whatever is committed into the range the order endpoint accepts.
+   *
+   * The identity is stable, so a quantity edit re-renders only its own line
+   * rather than every memoised `CartLineRow`.
+   *
+   * @param menuItemId - The line's menu item id.
+   * @param rawValue - The control's text, trusted no further than this.
+   */
+  const handleQuantityChange = useCallback(
+    (menuItemId: string, rawValue: string): void => {
+      setQuantityTexts((current) => ({ ...current, [menuItemId]: rawValue }));
+
+      if (rawValue.trim() === '') {
+        return;
+      }
+
+      const next = Number(rawValue);
+
+      if (!Number.isFinite(next) || next < MIN_QUANTITY) {
+        return;
+      }
+
+      clearFailure();
+      updateQuantity(menuItemId, next);
+    },
+    [clearFailure, updateQuantity],
+  );
+
+  /**
+   * Drops a line. Stable for the same reason as the quantity handler, and it
+   * forgets the line's in-progress text so the field cannot outlive its line.
+   *
+   * @param menuItemId - The line to drop.
+   */
+  const handleRemove = useCallback(
+    (menuItemId: string): void => {
+      clearFailure();
+      forgetQuantityText(menuItemId);
+      remove(menuItemId);
+    },
+    [clearFailure, forgetQuantityText, remove],
+  );
+
+  /**
+   * Places the order and moves to its confirmation, or renders why it was not
+   * placed.
+   *
+   * @param event - The form submission.
+   */
+  async function handlePlaceOrder(event: FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault();
+
+    if (submitting || items.length === 0) {
+      return;
     }
 
-    /**
-     * Forgets a line's in-progress text, so its field shows the committed quantity
-     * again. Used when the field loses focus and when the line goes: neither leaves
-     * text behind that a later render would show.
-     *
-     * @param menuItemId - The line whose text is dropped.
-     */
-    function forgetQuantityText(menuItemId: string): void {
-        setQuantityTexts((current) => ({ ...current, [menuItemId]: undefined }));
+    const trimmedNotes = notes.trim();
+    setFailure(null);
+    setSubmitting(true);
+
+    try {
+      const order = await createOrder({
+        items: items.map((line) => ({ menu_item_id: line.menu_item_id, quantity: line.quantity })),
+        ...(trimmedNotes === '' ? {} : { notes: trimmedNotes }),
+      });
+      clear();
+      navigate('/orders/' + order.id, { replace: true });
+    } catch (error) {
+      setFailure(toFailure(error, items));
+    } finally {
+      setSubmitting(false);
     }
+  }
 
-    /**
-     * Applies a typed quantity to its line, keeping the shopper's own text on screen
-     * while it is being edited.
-     *
-     * The text is held per line so clearing the field never snaps back to the
-     * committed number, which the next keystroke would otherwise append to. An
-     * emptied or unparseable field is a value mid-edit rather than a request, so
-     * nothing is committed; a quantity below the accepted minimum is refused here so
-     * the one way to drop a line stays the Remove control, and the cart provider
-     * clamps whatever is committed into the range the order endpoint accepts.
-     *
-     * @param menuItemId - The line's menu item id.
-     * @param rawValue - The control's text, trusted no further than this.
-     */
-    function handleQuantityChange(menuItemId: string, rawValue: string): void {
-        setQuantityTexts((current) => ({ ...current, [menuItemId]: rawValue }));
-
-        if (rawValue.trim() === '') {
-            return;
-        }
-
-        const next = Number(rawValue);
-
-        if (!Number.isFinite(next) || next < MIN_QUANTITY) {
-            return;
-        }
-
-        clearFailure();
-        updateQuantity(menuItemId, next);
-    }
-
-    /** @param menuItemId - The line to drop. */
-    function handleRemove(menuItemId: string): void {
-        clearFailure();
-        forgetQuantityText(menuItemId);
-        remove(menuItemId);
-    }
-
-    /**
-     * Places the order and moves to its confirmation, or renders why it was not
-     * placed.
-     *
-     * @param event - The form submission.
-     */
-    async function handlePlaceOrder(event: FormEvent<HTMLFormElement>): Promise<void> {
-        event.preventDefault();
-
-        if (submitting || items.length === 0) {
-            return;
-        }
-
-        const trimmedNotes = notes.trim();
-        setFailure(null);
-        setSubmitting(true);
-
-        try {
-            const order = await createOrder({
-                items: items.map((line) => ({ menu_item_id: line.menu_item_id, quantity: line.quantity })),
-                ...(trimmedNotes === '' ? {} : { notes: trimmedNotes }),
-            });
-            clear();
-            navigate('/orders/' + order.id, { replace: true });
-        } catch (error) {
-            setFailure(toFailure(error, items));
-        } finally {
-            setSubmitting(false);
-        }
-    }
-
-    if (items.length === 0) {
-        return (
-            <section className="cart" aria-labelledby="cart-title">
-                <h1 className="page-title" id="cart-title">{CART_TITLE}</h1>
-                <div className="cart-empty empty-state">
-                    <h2 className="section-title">{EMPTY_TITLE}</h2>
-                    <p>{EMPTY_MESSAGE}</p>
-                    <Link className="button" to="/menu">
-                        {BROWSE_LABEL}
-                    </Link>
-                </div>
-            </section>
-        );
-    }
-
+  if (items.length === 0) {
     return (
-        <section className="cart" aria-labelledby="cart-title">
-            <h1 className="page-title" id="cart-title">{CART_TITLE}</h1>
-
-            <form className="stack" onSubmit={handlePlaceOrder} aria-busy={submitting} noValidate>
-                {failure === null ? null : <OrderFailure failure={failure} submitting={submitting} />}
-
-                <section className="cart-summary" aria-label="Cart lines and total">
-                    <div className="cart-summary__lines">
-                        <h2 className="section-title">{countLabel(itemCount, 'item', 'items')} in your cart</h2>
-                        <ul className="cart-lines">
-                            {items.map((line, index) => (
-                                <CartLineRow
-                                    key={line.menu_item_id}
-                                    line={line}
-                                    quantityText={quantityTexts[line.menu_item_id]}
-                                    quantityDetail={detailAt(failure, index)}
-                                    disabled={submitting}
-                                    onQuantityChange={handleQuantityChange}
-                                    onQuantityBlur={forgetQuantityText}
-                                    onRemove={handleRemove}
-                                />
-                            ))}
-                        </ul>
-                    </div>
-
-                    <div className="cart-summary__totals">
-                        <TextField
-                            id="order-notes"
-                            label={NOTES_LABEL}
-                            hint={NOTES_HINT}
-                            autoComplete="off"
-                            value={notes}
-                            disabled={submitting}
-                            detail={failure?.notesDetail ?? null}
-                            onChange={(event: ChangeEvent<HTMLInputElement>) => {
-                                setNotes(event.target.value);
-                                clearFailure();
-                            }}
-                        />
-
-                        <div className="cart-summary__total-row cart-summary__total-row--total">
-                            <span>Total</span>
-                            <span>{formatCents(totalCents)}</span>
-                        </div>
-
-                        <p className="field__hint">{PRICING_HINT}</p>
-
-                        <div className="cart-summary__actions">
-                            {submitting ? <p className="field__hint" role="status">{SUBMITTING_MESSAGE}</p> : null}
-                            <button className="button button--block" type="submit" disabled={submitting}>
-                                {PLACE_ORDER_LABEL}
-                            </button>
-                        </div>
-                    </div>
-                </section>
-            </form>
-        </section>
+      <section className="cart" aria-labelledby="cart-title">
+        <h1 className="page-title" id="cart-title">{CART_TITLE}</h1>
+        <div className="cart-empty empty-state">
+          <h2 className="section-title">{EMPTY_TITLE}</h2>
+          <p>{EMPTY_MESSAGE}</p>
+          <Link className="button" to="/menu">
+            {BROWSE_LABEL}
+          </Link>
+        </div>
+      </section>
     );
+  }
+
+  return (
+    <section className="cart" aria-labelledby="cart-title">
+      <h1 className="page-title" id="cart-title">{CART_TITLE}</h1>
+
+      <form className="stack" onSubmit={handlePlaceOrder} aria-busy={submitting} noValidate>
+        {failure === null ? null : <OrderFailure failure={failure} submitting={submitting} />}
+
+        <section className="cart-summary" aria-label="Cart lines and total">
+          <div className="cart-summary__lines">
+            <h2 className="section-title">{countLabel(itemCount, 'item', 'items')} in your cart</h2>
+            <ul className="cart-lines">
+              {items.map((line, index) => (
+                <CartLineRow
+                  key={line.menu_item_id}
+                  line={line}
+                  quantityText={quantityTexts[line.menu_item_id]}
+                  quantityDetail={detailAt(failure, index)}
+                  disabled={submitting}
+                  onQuantityChange={handleQuantityChange}
+                  onQuantityBlur={forgetQuantityText}
+                  onRemove={handleRemove}
+                />
+              ))}
+            </ul>
+          </div>
+
+          <div className="cart-summary__totals">
+            <TextField
+              id="order-notes"
+              label={NOTES_LABEL}
+              hint={NOTES_HINT}
+              autoComplete="off"
+              value={notes}
+              disabled={submitting}
+              detail={failure?.notesDetail ?? null}
+              onChange={(event: ChangeEvent<HTMLInputElement>) => {
+                setNotes(event.target.value);
+                clearFailure();
+              }}
+            />
+
+            <div className="cart-summary__total-row cart-summary__total-row--total">
+              <span>Total</span>
+              <span>{formatCents(totalCents)}</span>
+            </div>
+
+            <p className="field__hint">{PRICING_HINT}</p>
+
+            <div className="cart-summary__actions">
+              {submitting ? <p className="field__hint" role="status">{SUBMITTING_MESSAGE}</p> : null}
+              <button className="button button--block" type="submit" disabled={submitting}>
+                {PLACE_ORDER_LABEL}
+              </button>
+            </div>
+          </div>
+        </section>
+      </form>
+    </section>
+  );
 }
 
 export default CartView;

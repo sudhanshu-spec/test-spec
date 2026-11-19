@@ -5,8 +5,9 @@
  * The view reads exactly one item through `client/src/api/menu`'s `getItem` and
  * shows it in full: the name, the description unclamped, the category it belongs
  * to, a visible availability state and the price. The image and the compact card
- * summary come from `MenuCard`, rendered here without an `onAdd` callback so the
- * card's own button stays inert and this view owns the one real add action.
+ * summary come from `MenuCard`, rendered here with its own action suppressed
+ * (`showAction={false}`) and its name at heading level `2`, so this view owns the
+ * one real add action and the screen reads `h1` → `h2` with no skipped level.
  *
  * Money is the server's alone (rule R-3). The price shown is
  * `item.price_cents` passed through `formatCents`; nothing on this screen sums,
@@ -44,23 +45,23 @@ const MAX_QUANTITY = 20;
 
 /** The failure a request ended with, flattened to what the view renders. */
 interface Failure {
-    /** The API's code, or `INTERNAL_ERROR` for a throw that never reached it. */
-    readonly code: string;
-    /** Safe to render: the API's message, never a stack or a secret. */
-    readonly message: string;
+  /** The API's code, or `INTERNAL_ERROR` for a throw that never reached it. */
+  readonly code: string;
+  /** Safe to render: the API's message, never a stack or a secret. */
+  readonly message: string;
 }
 
 /** The states this view renders, as one discriminated union. */
 type ViewState =
-    | { readonly kind: 'loading' }
-    | { readonly kind: 'item'; readonly item: MenuItem }
-    | { readonly kind: 'not-found' }
-    | { readonly kind: 'error'; readonly code: string; readonly message: string };
+  | { readonly kind: 'loading' }
+  | { readonly kind: 'item'; readonly item: MenuItem }
+  | { readonly kind: 'not-found' }
+  | { readonly kind: 'error'; readonly code: string; readonly message: string };
 
 /** Props of the internal {@link ItemDetail}. */
 interface ItemDetailProps {
-    /** The item to present, exactly as the API returned it. */
-    readonly item: MenuItem;
+  /** The item to present, exactly as the API returned it. */
+  readonly item: MenuItem;
 }
 
 /**
@@ -74,11 +75,11 @@ interface ItemDetailProps {
  * @returns The failure's code and the message safe to render.
  */
 function toFailure(error: unknown): Failure {
-    if (error instanceof ApiError) {
-        return { code: error.code, message: error.message || error.code };
-    }
+  if (error instanceof ApiError) {
+    return { code: error.code, message: error.message || error.code };
+  }
 
-    return { code: 'INTERNAL_ERROR', message: 'The item could not be loaded.' };
+  return { code: 'INTERNAL_ERROR', message: 'The item could not be loaded.' };
 }
 
 /**
@@ -92,13 +93,13 @@ function toFailure(error: unknown): Failure {
  * @returns That quantity as a whole number within {@link MIN_QUANTITY}..{@link MAX_QUANTITY}.
  */
 function clampQuantity(value: string | number): number {
-    const parsed = typeof value === 'string' ? Number.parseInt(value, 10) : Math.trunc(value);
+  const parsed = typeof value === 'string' ? Number.parseInt(value, 10) : Math.trunc(value);
 
-    if (Number.isNaN(parsed)) {
-        return MIN_QUANTITY;
-    }
+  if (Number.isNaN(parsed)) {
+    return MIN_QUANTITY;
+  }
 
-    return Math.min(Math.max(parsed, MIN_QUANTITY), MAX_QUANTITY);
+  return Math.min(Math.max(parsed, MIN_QUANTITY), MAX_QUANTITY);
 }
 
 /**
@@ -113,111 +114,111 @@ function clampQuantity(value: string | number): number {
  * @returns The item detail for one menu item.
  */
 function ItemDetail({ item }: ItemDetailProps): JSX.Element {
-    const { add } = useCart();
-    // The field holds the shopper's own text while it is being edited, so clearing
-    // it never snaps back to a value that the next keystroke would append to. The
-    // quantity that is actually added is `clampQuantity`'s reading of that text.
-    const [quantityText, setQuantityText] = useState<string>(String(MIN_QUANTITY));
-    const [confirmation, setConfirmation] = useState<string>('');
-    const confirmationRef = useRef<HTMLDivElement | null>(null);
+  const { add } = useCart();
+  // The field holds the shopper's own text while it is being edited, so clearing
+  // it never snaps back to a value that the next keystroke would append to. The
+  // quantity that is actually added is `clampQuantity`'s reading of that text.
+  const [quantityText, setQuantityText] = useState<string>(String(MIN_QUANTITY));
+  const [confirmation, setConfirmation] = useState<string>('');
+  const confirmationRef = useRef<HTMLDivElement | null>(null);
 
-    useEffect(() => {
-        if (confirmation === '') {
-            return;
-        }
+  useEffect(() => {
+    if (confirmation === '') {
+      return;
+    }
 
-        // The add action can sit at the bottom of a narrow viewport, where a message
-        // rendered below it would never be seen. Bringing the live region into view is
-        // what makes the add visibly acknowledged, not only announced to a screen
-        // reader. It is centred rather than brought to the nearest edge, because the
-        // region is taller than one line once the cart link sits beside the message and
-        // a nearest-edge scroll can leave its last pixel outside the viewport.
-        confirmationRef.current?.scrollIntoView?.({ block: 'center' });
-    }, [confirmation]);
+    // The add action can sit at the bottom of a narrow viewport, where a message
+    // rendered below it would never be seen. Bringing the live region into view is
+    // what makes the add visibly acknowledged, not only announced to a screen
+    // reader. It is centred rather than brought to the nearest edge, because the
+    // region is taller than one line once the cart link sits beside the message and
+    // a nearest-edge scroll can leave its last pixel outside the viewport.
+    confirmationRef.current?.scrollIntoView?.({ block: 'center' });
+  }, [confirmation]);
 
-    const handleQuantityChange = (event: ChangeEvent<HTMLInputElement>): void => {
-        setQuantityText(event.currentTarget.value);
-        // A confirmation describes the quantity that was added, so changing the
-        // quantity retracts it rather than leaving a stale count on screen.
-        setConfirmation('');
-    };
+  const handleQuantityChange = (event: ChangeEvent<HTMLInputElement>): void => {
+    setQuantityText(event.currentTarget.value);
+    // A confirmation describes the quantity that was added, so changing the
+    // quantity retracts it rather than leaving a stale count on screen.
+    setConfirmation('');
+  };
 
-    const handleQuantityBlur = (): void => {
-        setQuantityText(String(clampQuantity(quantityText)));
-    };
+  const handleQuantityBlur = (): void => {
+    setQuantityText(String(clampQuantity(quantityText)));
+  };
 
-    const handleAdd = (): void => {
-        if (!item.is_available) {
-            return;
-        }
+  const handleAdd = (): void => {
+    if (!item.is_available) {
+      return;
+    }
 
-        const quantity = clampQuantity(quantityText);
-        setQuantityText(String(quantity));
-        add(item, quantity);
-        setConfirmation(`${quantity} × ${item.name} added to your cart.`);
-    };
+    const quantity = clampQuantity(quantityText);
+    setQuantityText(String(quantity));
+    add(item, quantity);
+    setConfirmation(`${quantity} × ${item.name} added to your cart.`);
+  };
 
-    return (
-        <div className="stack">
-            <div className="row">
-                <Link className="button button--secondary" to="/menu">
-                    Back to menu
-                </Link>
-            </div>
+  return (
+    <div className="stack">
+      <div className="row">
+        <Link className="button button--secondary" to="/menu">
+          Back to menu
+        </Link>
+      </div>
 
-            <article className="item-detail" aria-labelledby="menu-item-name">
-                <h1 className="page-title" id="menu-item-name">
-                    {item.name}
-                </h1>
+      <article className="item-detail" aria-labelledby="menu-item-name">
+        <h1 className="page-title" id="menu-item-name">
+          {item.name}
+        </h1>
 
-                <div className="item-detail__body">
-                    <div className="item-detail__meta">
-                        <span className="badge">{item.category.name}</span>
-                        <span className={item.is_available ? 'badge badge--available' : 'badge badge--unavailable'}>
-                            {item.is_available ? 'Available' : 'Unavailable'}
-                        </span>
-                    </div>
-                    <p className="item-detail__price">{formatCents(item.price_cents)}</p>
-                    <p>{item.description}</p>
-                </div>
-
-                <MenuCard item={item} />
-
-                <div className="item-detail__actions">
-                    <NumberField
-                        id="menu-item-quantity"
-                        label="Quantity"
-                        min={MIN_QUANTITY}
-                        max={MAX_QUANTITY}
-                        step={1}
-                        value={quantityText}
-                        onChange={handleQuantityChange}
-                        onBlur={handleQuantityBlur}
-                        hint={`Between ${MIN_QUANTITY} and ${MAX_QUANTITY}.`}
-                    />
-                    <button type="button" className="button" disabled={!item.is_available} onClick={handleAdd}>
-                        Add to cart
-                    </button>
-                </div>
-
-                {/*
-                 * The live region is present before it has anything to say, which is what
-                 * makes its text reliably announced; only the message inside it is
-                 * conditional. It scrolls itself into view when a message arrives.
-                 */}
-                <div className="row" role="status" ref={confirmationRef}>
-                    {confirmation === '' ? null : (
-                        <>
-                            <p className="badge badge--available">{confirmation}</p>
-                            <Link className="button button--secondary" to="/cart">
-                                View cart
-                            </Link>
-                        </>
-                    )}
-                </div>
-            </article>
+        <div className="item-detail__body">
+          <div className="item-detail__meta">
+            <span className="badge">{item.category.name}</span>
+            <span className={item.is_available ? 'badge badge--available' : 'badge badge--unavailable'}>
+              {item.is_available ? 'Available' : 'Unavailable'}
+            </span>
+          </div>
+          <p className="item-detail__price">{formatCents(item.price_cents)}</p>
+          <p>{item.description}</p>
         </div>
-    );
+
+        <MenuCard item={item} headingLevel={2} showAction={false} />
+
+        <div className="item-detail__actions">
+          <NumberField
+            id="menu-item-quantity"
+            label="Quantity"
+            min={MIN_QUANTITY}
+            max={MAX_QUANTITY}
+            step={1}
+            value={quantityText}
+            onChange={handleQuantityChange}
+            onBlur={handleQuantityBlur}
+            hint={`Between ${MIN_QUANTITY} and ${MAX_QUANTITY}.`}
+          />
+          <button type="button" className="button" disabled={!item.is_available} onClick={handleAdd}>
+            Add to cart
+          </button>
+        </div>
+
+        {/*
+         * The live region is present before it has anything to say, which is what
+         * makes its text reliably announced; only the message inside it is
+         * conditional. It scrolls itself into view when a message arrives.
+         */}
+        <div className="row" role="status" ref={confirmationRef}>
+          {confirmation === '' ? null : (
+            <>
+              <p className="badge badge--available">{confirmation}</p>
+              <Link className="button button--secondary" to="/cart">
+                View cart
+              </Link>
+            </>
+          )}
+        </div>
+      </article>
+    </div>
+  );
 }
 
 /**
@@ -233,105 +234,105 @@ function ItemDetail({ item }: ItemDetailProps): JSX.Element {
  * @returns The item detail, or one of the loading, not-found and failure states.
  */
 export function MenuItemView(): JSX.Element {
-    const { id } = useParams<{ id: string }>();
-    const [state, setState] = useState<ViewState>(() =>
-        id === undefined ? { kind: 'not-found' } : { kind: 'loading' },
-    );
-    const [attempt, setAttempt] = useState(0);
+  const { id } = useParams<{ id: string }>();
+  const [state, setState] = useState<ViewState>(() =>
+    id === undefined ? { kind: 'not-found' } : { kind: 'loading' },
+  );
+  const [attempt, setAttempt] = useState(0);
 
-    useEffect(() => {
-        if (id === undefined) {
-            // Keeping the existing object when it is already the not-found state
-            // stops the effect from re-rendering for nothing.
-            setState((current) => (current.kind === 'not-found' ? current : { kind: 'not-found' }));
-            return;
+  useEffect(() => {
+    if (id === undefined) {
+      // Keeping the existing object when it is already the not-found state
+      // stops the effect from re-rendering for nothing.
+      setState((current) => (current.kind === 'not-found' ? current : { kind: 'not-found' }));
+      return;
+    }
+
+    const itemId: string = id;
+    let ignore = false;
+    setState({ kind: 'loading' });
+
+    async function load(): Promise<void> {
+      try {
+        const item = await getItem(itemId);
+
+        if (!ignore) {
+          setState({ kind: 'item', item });
+        }
+      } catch (error) {
+        if (ignore) {
+          return;
         }
 
-        const itemId: string = id;
-        let ignore = false;
-        setState({ kind: 'loading' });
+        const failure = toFailure(error);
+        // An id that names no item and an id that is not a UUID both leave
+        // nothing to show, so both render the same not-found state.
+        const missing = failure.code === 'MENU_ITEM_NOT_FOUND' || failure.code === 'VALIDATION_ERROR';
 
-        async function load(): Promise<void> {
-            try {
-                const item = await getItem(itemId);
-
-                if (!ignore) {
-                    setState({ kind: 'item', item });
-                }
-            } catch (error) {
-                if (ignore) {
-                    return;
-                }
-
-                const failure = toFailure(error);
-                // An id that names no item and an id that is not a UUID both leave
-                // nothing to show, so both render the same not-found state.
-                const missing = failure.code === 'MENU_ITEM_NOT_FOUND' || failure.code === 'VALIDATION_ERROR';
-
-                if (missing) {
-                    setState({ kind: 'not-found' });
-                } else {
-                    setState({ kind: 'error', code: failure.code, message: failure.message });
-                }
-            }
+        if (missing) {
+          setState({ kind: 'not-found' });
+        } else {
+          setState({ kind: 'error', code: failure.code, message: failure.message });
         }
+      }
+    }
 
-        void load();
+    void load();
 
-        return () => {
-            ignore = true;
-        };
-    }, [id, attempt]);
-
-    const retry = (): void => {
-        setAttempt((previous) => previous + 1);
+    return () => {
+      ignore = true;
     };
+  }, [id, attempt]);
 
-    if (state.kind === 'loading') {
-        return (
-            <div className="card" role="status">
-                Loading this menu item…
-            </div>
-        );
-    }
+  const retry = (): void => {
+    setAttempt((previous) => previous + 1);
+  };
 
-    if (state.kind === 'not-found') {
-        return (
-            <div className="not-found">
-                <h1 className="page-title">Item not found</h1>
-                <p>We could not find that item on the menu. It may have been taken off the menu, or the link may be incomplete.</p>
-                <div className="row">
-                    <Link className="button" to="/menu">
-                        Back to the menu
-                    </Link>
-                </div>
-            </div>
-        );
-    }
+  if (state.kind === 'loading') {
+    return (
+      <div className="card" role="status">
+        Loading this menu item…
+      </div>
+    );
+  }
 
-    if (state.kind === 'error') {
-        return (
-            <div className="stack">
-                <h1 className="page-title">Menu item</h1>
-                <div className="error-summary" role="alert" data-code={state.code}>
-                    <p>{state.message}</p>
-                    <p>
-                        <span className="badge">{state.code}</span>
-                    </p>
-                </div>
-                <div className="row">
-                    <button type="button" className="button" onClick={retry}>
-                        Try again
-                    </button>
-                    <Link className="button button--secondary" to="/menu">
-                        Back to the menu
-                    </Link>
-                </div>
-            </div>
-        );
-    }
+  if (state.kind === 'not-found') {
+    return (
+      <div className="not-found">
+        <h1 className="page-title">Item not found</h1>
+        <p>We could not find that item on the menu. It may have been taken off the menu, or the link may be incomplete.</p>
+        <div className="row">
+          <Link className="button" to="/menu">
+            Back to the menu
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
-    return <ItemDetail key={state.item.id} item={state.item} />;
+  if (state.kind === 'error') {
+    return (
+      <div className="stack">
+        <h1 className="page-title">Menu item</h1>
+        <div className="error-summary" role="alert" data-code={state.code}>
+          <p>{state.message}</p>
+          <p>
+            <span className="badge">{state.code}</span>
+          </p>
+        </div>
+        <div className="row">
+          <button type="button" className="button" onClick={retry}>
+            Try again
+          </button>
+          <Link className="button button--secondary" to="/menu">
+            Back to the menu
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  return <ItemDetail key={state.item.id} item={state.item} />;
 }
 
 export default MenuItemView;

@@ -64,9 +64,9 @@ const REGISTER_EMAIL_REQUIRED_MESSAGE = 'Enter your email address.';
 const REGISTER_PASSWORD_REQUIRED_MESSAGE = 'Choose a password.';
 const REGISTER_PASSWORD_TOO_SHORT_MESSAGE = 'Use at least 8 characters.';
 const REGISTER_PASSWORD_TOO_LONG_MESSAGE =
-    'Use a shorter password: 72 bytes is the maximum, and accented letters and emoji count as several each.';
+  'Use a shorter password: 72 bytes is the maximum, and accented letters and emoji count as several each.';
 const REGISTER_EMAIL_DUPLICATE_MESSAGE =
-    'An account already uses this email address. Sign in instead of registering again.';
+  'An account already uses this email address. Sign in instead of registering again.';
 
 const RESERVATION_DATE_REQUIRED_MESSAGE = 'Choose the date of your booking.';
 const RESERVATION_TIME_REQUIRED_MESSAGE = 'Choose a seating time.';
@@ -80,11 +80,11 @@ const RESERVATION_PARTY_INVALID_MESSAGE = 'Enter a whole number of guests.';
 const RESERVATION_PARTY_OUT_OF_RANGE_MESSAGE = 'The party size must be between 1 and 12.';
 /** The form's reading of `RESERVATION_ISSUES.DATETIME_IN_PAST`. */
 const RESERVATION_PAST_MESSAGE =
-    'That date and time has already passed. Choose a later date or a later seating time.';
+  'That date and time has already passed. Choose a later date or a later seating time.';
 /** The form's reading of `RESERVATION_ISSUES.OUTSIDE_SERVICE_HOURS`. */
 const RESERVATION_OUTSIDE_HOURS_MESSAGE =
-    'This time is outside our service hours: the service window runs from 17:00 to 21:30, ' +
-    'with the last seating 30 minutes before we close at 22:00.';
+  'This time is outside our service hours: the service window runs from 17:00 to 21:30, ' +
+  'with the last seating 30 minutes before we close at 22:00.';
 
 /** Label text of the four submit controls, as each view renders it. */
 const LOGIN_SUBMIT_LABEL = 'Sign in';
@@ -108,25 +108,25 @@ const RESERVATIONS_URL = '/api/reservations';
 
 /** The secret-free account projection every authenticated payload carries (rule R-4). */
 const ACCOUNT: User = {
-    id: '6f1f9d0e-0000-4000-8000-000000000001',
-    name: 'Ada Lovelace',
-    email: 'ada@example.com',
-    created_at: '2031-01-01T09:00:00.000Z',
+  id: '6f1f9d0e-0000-4000-8000-000000000001',
+  name: 'Ada Lovelace',
+  email: 'ada@example.com',
+  created_at: '2031-01-01T09:00:00.000Z',
 };
 
 /** The catalog entry the checkout test puts in the cart. */
 const MENU_ITEM: MenuItem = {
-    id: '6f1f9d0e-0000-4000-8000-000000000002',
-    name: 'Chili Cheeseburger',
-    description: 'Beef patty, aged cheddar, chili and pickles in a seeded bun.',
-    price_cents: 1299,
-    image_url: null,
-    is_available: true,
-    category: {
-        id: '6f1f9d0e-0000-4000-8000-000000000003',
-        name: 'Burgers',
-        slug: 'burgers',
-    },
+  id: '6f1f9d0e-0000-4000-8000-000000000002',
+  name: 'Chili Cheeseburger',
+  description: 'Beef patty, aged cheddar, chili and pickles in a seeded bun.',
+  price_cents: 1299,
+  image_url: null,
+  is_available: true,
+  category: {
+    id: '6f1f9d0e-0000-4000-8000-000000000003',
+    name: 'Burgers',
+    slug: 'burgers',
+  },
 };
 
 /** How many of {@link MENU_ITEM} the checkout test seeds, and therefore orders. */
@@ -134,32 +134,32 @@ const SEEDED_QUANTITY = 2;
 
 /** What the order endpoint answers a successful placement with. */
 const CREATED_ORDER: Order = {
-    id: '6f1f9d0e-0000-4000-8000-000000000004',
-    status: 'confirmed',
-    total_cents: MENU_ITEM.price_cents * SEEDED_QUANTITY,
-    notes: null,
-    created_at: '2031-05-14T18:00:00.000Z',
-    lines: [
-        {
-            id: '6f1f9d0e-0000-4000-8000-000000000005',
-            menu_item_id: MENU_ITEM.id,
-            name: MENU_ITEM.name,
-            quantity: SEEDED_QUANTITY,
-            unit_price_cents: MENU_ITEM.price_cents,
-            line_total_cents: MENU_ITEM.price_cents * SEEDED_QUANTITY,
-        },
-    ],
+  id: '6f1f9d0e-0000-4000-8000-000000000004',
+  status: 'confirmed',
+  total_cents: MENU_ITEM.price_cents * SEEDED_QUANTITY,
+  notes: null,
+  created_at: '2031-05-14T18:00:00.000Z',
+  lines: [
+    {
+      id: '6f1f9d0e-0000-4000-8000-000000000005',
+      menu_item_id: MENU_ITEM.id,
+      name: MENU_ITEM.name,
+      quantity: SEEDED_QUANTITY,
+      unit_price_cents: MENU_ITEM.price_cents,
+      line_total_cents: MENU_ITEM.price_cents * SEEDED_QUANTITY,
+    },
+  ],
 };
 
 /** The booking the reservation endpoint answers a successful post with. */
 const CREATED_RESERVATION: Reservation = {
-    id: '6f1f9d0e-0000-4000-8000-000000000006',
-    reservation_date: '2031-05-14',
-    reservation_time: '19:00',
-    party_size: 4,
-    status: 'confirmed',
-    notes: 'Window seat preferred.',
-    created_at: '2031-05-01T10:00:00.000Z',
+  id: '6f1f9d0e-0000-4000-8000-000000000006',
+  reservation_date: '2031-05-14',
+  reservation_time: '19:00',
+  party_size: 4,
+  status: 'confirmed',
+  notes: 'Window seat preferred.',
+  created_at: '2031-05-01T10:00:00.000Z',
 };
 
 /** A date well inside any horizon, so only the checkpoint under test can reject it. */
@@ -177,15 +177,15 @@ const VALID_PASSWORD = 'correct-horse-battery';
 
 /** One response the stubbed `fetch` answers with. */
 interface StubReply {
-    readonly status: number;
-    readonly body?: unknown;
+  readonly status: number;
+  readonly body?: unknown;
 }
 
 /** One request the stubbed `fetch` observed, flattened to what is asserted on. */
 interface RecordedCall {
-    readonly url: string;
-    readonly method: string;
-    readonly body: Record<string, unknown> | null;
+  readonly url: string;
+  readonly method: string;
+  readonly body: Record<string, unknown> | null;
 }
 
 /**
@@ -194,7 +194,7 @@ interface RecordedCall {
  * @returns The reply.
  */
 function successReply(status: number, body: unknown): StubReply {
-    return { status, body };
+  return { status, body };
 }
 
 /**
@@ -209,20 +209,20 @@ function successReply(status: number, body: unknown): StubReply {
  * @returns The reply.
  */
 function errorReply(
-    status: number,
-    code: ApiErrorCode,
-    message: string,
-    details: readonly ApiFieldDetail[] = [],
+  status: number,
+  code: ApiErrorCode,
+  message: string,
+  details: readonly ApiFieldDetail[] = [],
 ): StubReply {
-    const envelope: ErrorEnvelope = {
-        error: {
-            code,
-            message,
-            ...(details.length === 0 ? {} : { details: details.map(({ field, issue }) => ({ field, issue })) }),
-        },
-    };
+  const envelope: ErrorEnvelope = {
+    error: {
+      code,
+      message,
+      ...(details.length === 0 ? {} : { details: details.map(({ field, issue }) => ({ field, issue })) }),
+    },
+  };
 
-    return { status, body: envelope };
+  return { status, body: envelope };
 }
 
 /**
@@ -235,23 +235,23 @@ function errorReply(
  * @returns The reply.
  */
 function unknownCodeReply(status: number, code: string, message: string): StubReply {
-    return { status, body: { error: { code, message } } };
+  return { status, body: { error: { code, message } } };
 }
 
 /** @returns The request body as a keyed record, or null when none was sent. */
 function parseBody(raw: BodyInit | null | undefined): Record<string, unknown> | null {
-    if (typeof raw !== 'string') {
-        return null;
-    }
+  if (typeof raw !== 'string') {
+    return null;
+  }
 
-    const parsed: unknown = JSON.parse(raw);
-    return typeof parsed === 'object' && parsed !== null ? (parsed as Record<string, unknown>) : null;
+  const parsed: unknown = JSON.parse(raw);
+  return typeof parsed === 'object' && parsed !== null ? (parsed as Record<string, unknown>) : null;
 }
 
 /** @returns The request as the assertions need it, URL and method included. */
 function toRecordedCall(input: RequestInfo | URL, init?: RequestInit): RecordedCall {
-    const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
-    return { url, method: init?.method ?? 'GET', body: parseBody(init?.body) };
+  const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+  return { url, method: init?.method ?? 'GET', body: parseBody(init?.body) };
 }
 
 /**
@@ -262,11 +262,11 @@ function toRecordedCall(input: RequestInfo | URL, init?: RequestInit): RecordedC
  * @returns The response object the transport consumes.
  */
 function toResponse(reply: StubReply): Response {
-    return {
-        ok: reply.status >= 200 && reply.status < 300,
-        status: reply.status,
-        json: () => Promise.resolve(reply.body),
-    } as unknown as Response;
+  return {
+    ok: reply.status >= 200 && reply.status < 300,
+    status: reply.status,
+    json: () => Promise.resolve(reply.body),
+  } as unknown as Response;
 }
 
 /**
@@ -278,21 +278,21 @@ function toResponse(reply: StubReply): Response {
  * @returns The requests observed, in order, populated as the test runs.
  */
 function stubFetch(handler: (call: RecordedCall) => StubReply): RecordedCall[] {
-    const calls: RecordedCall[] = [];
+  const calls: RecordedCall[] = [];
 
-    const mock = vi.fn((input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-        const call = toRecordedCall(input, init);
-        calls.push(call);
-        return Promise.resolve(toResponse(handler(call)));
-    });
+  const mock = vi.fn((input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    const call = toRecordedCall(input, init);
+    calls.push(call);
+    return Promise.resolve(toResponse(handler(call)));
+  });
 
-    vi.stubGlobal('fetch', mock);
-    return calls;
+  vi.stubGlobal('fetch', mock);
+  return calls;
 }
 
 /** @returns An unexpected request as a failure the page will visibly render. */
 function unexpectedRequestReply(call: RecordedCall): StubReply {
-    return errorReply(500, 'INTERNAL_ERROR', `Unexpected request: ${call.method} ${call.url}`);
+  return errorReply(500, 'INTERNAL_ERROR', `Unexpected request: ${call.method} ${call.url}`);
 }
 
 /**
@@ -302,15 +302,15 @@ function unexpectedRequestReply(call: RecordedCall): StubReply {
  * @returns That request, asserting exactly one was made.
  */
 function onlyCall(calls: readonly RecordedCall[], url: string, method: string): RecordedCall {
-    const matching = calls.filter((call) => call.url === url && call.method === method);
-    expect(matching).toHaveLength(1);
+  const matching = calls.filter((call) => call.url === url && call.method === method);
+  expect(matching).toHaveLength(1);
 
-    const [call] = matching;
-    if (call === undefined) {
-        throw new Error(`no ${method} ${url} was recorded`);
-    }
+  const [call] = matching;
+  if (call === undefined) {
+    throw new Error(`no ${method} ${url} was recorded`);
+  }
 
-    return call;
+  return call;
 }
 
 // ---------------------------------------------------------------------------
@@ -327,9 +327,9 @@ function onlyCall(calls: readonly RecordedCall[], url: string, method: string): 
  * @returns The field wrapper the control and its message share.
  */
 function fieldOf(control: HTMLElement): HTMLElement {
-    const field = control.closest('.field');
-    expect(field).not.toBeNull();
-    return field as HTMLElement;
+  const field = control.closest('.field');
+  expect(field).not.toBeNull();
+  return field as HTMLElement;
 }
 
 /**
@@ -338,24 +338,24 @@ function fieldOf(control: HTMLElement): HTMLElement {
  *   null when the control is described by nothing but its hint.
  */
 function queryErrorNode(control: HTMLElement): HTMLElement | null {
-    const describedBy = control.getAttribute('aria-describedby');
+  const describedBy = control.getAttribute('aria-describedby');
 
-    if (describedBy === null) {
-        return null;
-    }
-
-    for (const id of describedBy.split(' ')) {
-        if (!id.endsWith('-error')) {
-            continue;
-        }
-
-        const node = document.getElementById(id);
-        if (node !== null) {
-            return node;
-        }
-    }
-
+  if (describedBy === null) {
     return null;
+  }
+
+  for (const id of describedBy.split(' ')) {
+    if (!id.endsWith('-error')) {
+      continue;
+    }
+
+    const node = document.getElementById(id);
+    if (node !== null) {
+      return node;
+    }
+  }
+
+  return null;
 }
 
 /**
@@ -363,15 +363,15 @@ function queryErrorNode(control: HTMLElement): HTMLElement | null {
  * @returns That message node, asserting the control currently has one.
  */
 function errorNode(control: HTMLElement): HTMLElement {
-    const node = queryErrorNode(control);
+  const node = queryErrorNode(control);
 
-    expect(node).not.toBeNull();
-    return node as HTMLElement;
+  expect(node).not.toBeNull();
+  return node as HTMLElement;
 }
 
 /** @returns The text of the message the control is currently described by. */
 function errorText(control: HTMLElement): string {
-    return errorNode(control).textContent ?? '';
+  return errorNode(control).textContent ?? '';
 }
 
 // ---------------------------------------------------------------------------
@@ -380,10 +380,10 @@ function errorText(control: HTMLElement): string {
 
 /** Props of the local {@link Providers} wrapper. */
 interface ProvidersProps {
-    /** The screen under test, plus any local harness component it needs. */
-    readonly children: ReactNode;
-    /** Whether the screen reads the cart, which `CartView` does. */
-    readonly withCart?: boolean;
+  /** The screen under test, plus any local harness component it needs. */
+  readonly children: ReactNode;
+  /** Whether the screen reads the cart, which `CartView` does. */
+  readonly withCart?: boolean;
 }
 
 /**
@@ -396,21 +396,21 @@ interface ProvidersProps {
  * @returns The provider tree.
  */
 function Providers({ children, withCart = false }: ProvidersProps): JSX.Element {
-    return (
-        <MemoryRouter>
-            <SessionProvider>
-                {withCart ? <CartProvider>{children}</CartProvider> : children}
-            </SessionProvider>
-        </MemoryRouter>
-    );
+  return (
+    <MemoryRouter>
+      <SessionProvider>
+        {withCart ? <CartProvider>{children}</CartProvider> : children}
+      </SessionProvider>
+    </MemoryRouter>
+  );
 }
 
 /** Props of the local {@link CartSeeder}. */
 interface CartSeederProps {
-    /** The catalog entry to place in the cart. */
-    readonly item: MenuItem;
-    /** How many of it to place there. */
-    readonly quantity: number;
+  /** The catalog entry to place in the cart. */
+  readonly item: MenuItem;
+  /** How many of it to place there. */
+  readonly quantity: number;
 }
 
 /**
@@ -422,60 +422,60 @@ interface CartSeederProps {
  * @returns Nothing; the line appears in the cart it renders inside.
  */
 function CartSeeder({ item, quantity }: CartSeederProps): null {
-    const { add } = useCart();
-    const seeded = useRef(false);
+  const { add } = useCart();
+  const seeded = useRef(false);
 
-    useEffect(() => {
-        if (seeded.current) {
-            return;
-        }
+  useEffect(() => {
+    if (seeded.current) {
+      return;
+    }
 
-        seeded.current = true;
-        add(item, quantity);
-    }, [add, item, quantity]);
+    seeded.current = true;
+    add(item, quantity);
+  }, [add, item, quantity]);
 
-    return null;
+  return null;
 }
 
 /** @returns Nothing; renders the login screen inside the providers. */
 function renderLogin(): void {
-    render(<Providers><LoginView /></Providers>);
+  render(<Providers><LoginView /></Providers>);
 }
 
 /** @returns Nothing; renders the registration screen inside the providers. */
 function renderRegister(): void {
-    render(<Providers><RegisterView /></Providers>);
+  render(<Providers><RegisterView /></Providers>);
 }
 
 /** @returns Nothing; renders the reservation form inside the providers. */
 function renderReservationForm(): void {
-    render(<Providers><ReservationFormView /></Providers>);
+  render(<Providers><ReservationFormView /></Providers>);
 }
 
 /** The four controls of the reservation form, each found through its label. */
 interface ReservationControls {
-    readonly date: HTMLInputElement;
-    readonly time: HTMLInputElement;
-    readonly party: HTMLInputElement;
-    readonly notes: HTMLInputElement;
+  readonly date: HTMLInputElement;
+  readonly time: HTMLInputElement;
+  readonly party: HTMLInputElement;
+  readonly notes: HTMLInputElement;
 }
 
 /** @returns The reservation form's controls, after rendering it. */
 function reservationControls(): ReservationControls {
-    return {
-        date: screen.getByLabelText<HTMLInputElement>(/^Date/),
-        time: screen.getByLabelText<HTMLInputElement>(/^Seating time/),
-        party: screen.getByLabelText<HTMLInputElement>(/^Party size/),
-        notes: screen.getByLabelText<HTMLInputElement>(/^Notes/),
-    };
+  return {
+    date: screen.getByLabelText<HTMLInputElement>(/^Date/),
+    time: screen.getByLabelText<HTMLInputElement>(/^Seating time/),
+    party: screen.getByLabelText<HTMLInputElement>(/^Party size/),
+    notes: screen.getByLabelText<HTMLInputElement>(/^Notes/),
+  };
 }
 
 /** A booking as the form collects it. */
 interface ReservationValues {
-    readonly date?: string;
-    readonly time?: string;
-    readonly party?: string;
-    readonly notes?: string;
+  readonly date?: string;
+  readonly time?: string;
+  readonly party?: string;
+  readonly notes?: string;
 }
 
 /**
@@ -490,35 +490,35 @@ interface ReservationValues {
  * @param values - The values to fill them with; an absent one is left alone.
  */
 async function fillReservation(
-    user: ReturnType<typeof userEvent.setup>,
-    controls: ReservationControls,
-    values: ReservationValues,
+  user: ReturnType<typeof userEvent.setup>,
+  controls: ReservationControls,
+  values: ReservationValues,
 ): Promise<void> {
-    if (values.date !== undefined) {
-        fireEvent.change(controls.date, { target: { value: values.date } });
-    }
+  if (values.date !== undefined) {
+    fireEvent.change(controls.date, { target: { value: values.date } });
+  }
 
-    if (values.time !== undefined) {
-        fireEvent.change(controls.time, { target: { value: values.time } });
-    }
+  if (values.time !== undefined) {
+    fireEvent.change(controls.time, { target: { value: values.time } });
+  }
 
-    if (values.party !== undefined) {
-        fireEvent.change(controls.party, { target: { value: values.party } });
-    }
+  if (values.party !== undefined) {
+    fireEvent.change(controls.party, { target: { value: values.party } });
+  }
 
-    if (values.notes !== undefined) {
-        await user.type(controls.notes, values.notes);
-    }
+  if (values.notes !== undefined) {
+    await user.type(controls.notes, values.notes);
+  }
 }
 
 /** What the checkout test needs from a rendered, populated cart. */
 interface CheckoutControls {
-    /** Every request the page made, including the session restore. */
-    readonly calls: RecordedCall[];
-    /** The quantity control of the one seeded line. */
-    readonly quantity: HTMLInputElement;
-    /** The control that places the order. */
-    readonly placeOrder: HTMLElement;
+  /** Every request the page made, including the session restore. */
+  readonly calls: RecordedCall[];
+  /** The quantity control of the one seeded line. */
+  readonly quantity: HTMLInputElement;
+  /** The control that places the order. */
+  readonly placeOrder: HTMLElement;
 }
 
 /**
@@ -533,43 +533,43 @@ interface CheckoutControls {
  * @returns The requests made, the quantity control and the Place order control.
  */
 async function renderCheckout(ordersReply: StubReply): Promise<CheckoutControls> {
-    window.localStorage.setItem(STORED_TOKEN_KEY, 'opaque-session-token');
+  window.localStorage.setItem(STORED_TOKEN_KEY, 'opaque-session-token');
 
-    const calls = stubFetch((call) => {
-        if (call.url === SESSION_URL) {
-            return successReply(200, { user: ACCOUNT });
-        }
+  const calls = stubFetch((call) => {
+    if (call.url === SESSION_URL) {
+      return successReply(200, { user: ACCOUNT });
+    }
 
-        if (call.url === ORDERS_URL && call.method === 'POST') {
-            return ordersReply;
-        }
+    if (call.url === ORDERS_URL && call.method === 'POST') {
+      return ordersReply;
+    }
 
-        return unexpectedRequestReply(call);
-    });
+    return unexpectedRequestReply(call);
+  });
 
-    render(
-        <Providers withCart>
-            <CartSeeder item={MENU_ITEM} quantity={SEEDED_QUANTITY} />
-            <CartView />
-        </Providers>,
-    );
+  render(
+    <Providers withCart>
+      <CartSeeder item={MENU_ITEM} quantity={SEEDED_QUANTITY} />
+      <CartView />
+    </Providers>,
+  );
 
-    const placeOrder = await screen.findByRole('button', { name: PLACE_ORDER_LABEL });
-    const quantity = screen.getByLabelText<HTMLInputElement>(new RegExp(`^Quantity of ${MENU_ITEM.name}`));
+  const placeOrder = await screen.findByRole('button', { name: PLACE_ORDER_LABEL });
+  const quantity = screen.getByLabelText<HTMLInputElement>(new RegExp(`^Quantity of ${MENU_ITEM.name}`));
 
-    return { calls, quantity, placeOrder };
+  return { calls, quantity, placeOrder };
 }
 
 beforeEach(() => {
-    window.localStorage.clear();
-    window.sessionStorage.clear();
+  window.localStorage.clear();
+  window.sessionStorage.clear();
 });
 
 afterEach(() => {
-    vi.unstubAllGlobals();
-    vi.restoreAllMocks();
-    window.localStorage.clear();
-    window.sessionStorage.clear();
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+  window.localStorage.clear();
+  window.sessionStorage.clear();
 });
 
 // ---------------------------------------------------------------------------
@@ -577,142 +577,142 @@ afterEach(() => {
 // ---------------------------------------------------------------------------
 
 describe('LoginView', () => {
-    it('reports a missing email and a missing password beside their own controls', async () => {
-        const user = userEvent.setup();
-        const calls = stubFetch(() => successReply(200, {}));
+  it('reports a missing email and a missing password beside their own controls', async () => {
+    const user = userEvent.setup();
+    const calls = stubFetch(() => successReply(200, {}));
 
-        renderLogin();
+    renderLogin();
 
-        const email = screen.getByLabelText<HTMLInputElement>(/^Email/);
-        const password = screen.getByLabelText<HTMLInputElement>(/^Password/);
+    const email = screen.getByLabelText<HTMLInputElement>(/^Email/);
+    const password = screen.getByLabelText<HTMLInputElement>(/^Password/);
 
-        await user.click(screen.getByRole('button', { name: LOGIN_SUBMIT_LABEL }));
+    await user.click(screen.getByRole('button', { name: LOGIN_SUBMIT_LABEL }));
 
-        expect(calls).toHaveLength(0);
-        expect(email.getAttribute('aria-invalid')).toBe('true');
-        expect(errorText(email)).toBe(LOGIN_EMAIL_REQUIRED_MESSAGE);
-        expect(errorText(password)).toBe(LOGIN_PASSWORD_REQUIRED_MESSAGE);
-        expect(fieldOf(email).contains(errorNode(email))).toBe(true);
-        expect(fieldOf(password).contains(errorNode(password))).toBe(true);
-        expect(within(fieldOf(email)).queryByText(LOGIN_PASSWORD_REQUIRED_MESSAGE)).toBeNull();
-        expect(within(fieldOf(password)).queryByText(LOGIN_EMAIL_REQUIRED_MESSAGE)).toBeNull();
+    expect(calls).toHaveLength(0);
+    expect(email.getAttribute('aria-invalid')).toBe('true');
+    expect(errorText(email)).toBe(LOGIN_EMAIL_REQUIRED_MESSAGE);
+    expect(errorText(password)).toBe(LOGIN_PASSWORD_REQUIRED_MESSAGE);
+    expect(fieldOf(email).contains(errorNode(email))).toBe(true);
+    expect(fieldOf(password).contains(errorNode(password))).toBe(true);
+    expect(within(fieldOf(email)).queryByText(LOGIN_PASSWORD_REQUIRED_MESSAGE)).toBeNull();
+    expect(within(fieldOf(password)).queryByText(LOGIN_EMAIL_REQUIRED_MESSAGE)).toBeNull();
+  });
+
+  it('marks the wrapper of an invalid field so the shared invalid-state rule applies', async () => {
+    const user = userEvent.setup();
+    stubFetch(() => successReply(200, {}));
+
+    renderLogin();
+
+    const email = screen.getByLabelText<HTMLInputElement>(/^Email/);
+
+    // A field with nothing wrong carries the plain wrapper class.
+    expect(fieldOf(email).className).toBe('field');
+
+    await user.click(screen.getByRole('button', { name: LOGIN_SUBMIT_LABEL }));
+
+    // global.css styles an invalid control through `.field--invalid .control`,
+    // so the wrapper is what has to carry the state the message describes.
+    expect(fieldOf(email).className).toBe('field field--invalid');
+    expect(email.getAttribute('aria-invalid')).toBe('true');
+  });
+
+  it('reports an address that cannot be one beside the email control only', async () => {
+    const user = userEvent.setup();
+    const calls = stubFetch(() => successReply(200, {}));
+
+    renderLogin();
+
+    const email = screen.getByLabelText<HTMLInputElement>(/^Email/);
+    const password = screen.getByLabelText<HTMLInputElement>(/^Password/);
+
+    await user.type(email, 'ada-at-example');
+    await user.type(password, VALID_PASSWORD);
+    await user.click(screen.getByRole('button', { name: LOGIN_SUBMIT_LABEL }));
+
+    expect(calls).toHaveLength(0);
+    expect(errorText(email)).toBe(LOGIN_EMAIL_INVALID_MESSAGE);
+    expect(queryErrorNode(password)).toBeNull();
+    expect(password.getAttribute('aria-invalid')).toBe('false');
+  });
+
+  it('renders each validation detail beside the field it names and no form-level message', async () => {
+    const user = userEvent.setup();
+    const EMAIL_ISSUE = 'email_must_be_an_address';
+    const PASSWORD_ISSUE = 'password_must_be_at_most_72_bytes';
+    stubFetch(() => errorReply(400, 'VALIDATION_ERROR', 'Some of these values need attention.', [
+      { field: 'email', issue: EMAIL_ISSUE },
+      { field: 'password', issue: PASSWORD_ISSUE },
+    ]));
+
+    renderLogin();
+
+    const email = screen.getByLabelText<HTMLInputElement>(/^Email/);
+    const password = screen.getByLabelText<HTMLInputElement>(/^Password/);
+
+    await user.type(email, VALID_EMAIL);
+    await user.type(password, VALID_PASSWORD);
+    await user.click(screen.getByRole('button', { name: LOGIN_SUBMIT_LABEL }));
+
+    expect(await screen.findByText(EMAIL_ISSUE)).not.toBeNull();
+    expect(errorText(email)).toBe(EMAIL_ISSUE);
+    expect(errorText(password)).toBe(PASSWORD_ISSUE);
+    expect(within(fieldOf(email)).queryByText(PASSWORD_ISSUE)).toBeNull();
+    expect(within(fieldOf(password)).queryByText(EMAIL_ISSUE)).toBeNull();
+    // Every detail landed on its own field, so nothing is repeated at form level.
+    expect(screen.queryAllByRole('alert')).toHaveLength(0);
+  });
+
+  it('renders an indistinguishable sign-in failure as one form-level message and no field error', async () => {
+    const user = userEvent.setup();
+    const GENERIC_MESSAGE = 'Those details do not match an account.';
+    stubFetch(() => errorReply(401, 'INVALID_CREDENTIALS', GENERIC_MESSAGE));
+
+    renderLogin();
+
+    const email = screen.getByLabelText<HTMLInputElement>(/^Email/);
+    const password = screen.getByLabelText<HTMLInputElement>(/^Password/);
+
+    await user.type(email, VALID_EMAIL);
+    await user.type(password, VALID_PASSWORD);
+    await user.click(screen.getByRole('button', { name: LOGIN_SUBMIT_LABEL }));
+
+    const alert = await screen.findByRole('alert');
+
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
+    expect(alert.getAttribute('data-code')).toBe('INVALID_CREDENTIALS');
+    expect(alert.textContent).toBe(GENERIC_MESSAGE);
+    expect(queryErrorNode(email)).toBeNull();
+    expect(queryErrorNode(password)).toBeNull();
+    expect(email.getAttribute('aria-invalid')).toBe('false');
+    expect(password.getAttribute('aria-invalid')).toBe('false');
+    expect(within(fieldOf(email)).queryByText(GENERIC_MESSAGE)).toBeNull();
+    expect(within(fieldOf(password)).queryByText(GENERIC_MESSAGE)).toBeNull();
+  });
+
+  it('posts the typed credentials and renders no error when the session is opened', async () => {
+    const user = userEvent.setup();
+    const calls = stubFetch(() => successReply(200, { user: ACCOUNT, token: 'opaque-session-token' }));
+
+    renderLogin();
+
+    const email = screen.getByLabelText<HTMLInputElement>(/^Email/);
+    const password = screen.getByLabelText<HTMLInputElement>(/^Password/);
+
+    await user.type(email, VALID_EMAIL);
+    await user.type(password, VALID_PASSWORD);
+    await user.click(screen.getByRole('button', { name: LOGIN_SUBMIT_LABEL }));
+
+    await waitFor(() => {
+      expect(calls).toHaveLength(1);
     });
 
-    it('marks the wrapper of an invalid field so the shared invalid-state rule applies', async () => {
-        const user = userEvent.setup();
-        stubFetch(() => successReply(200, {}));
-
-        renderLogin();
-
-        const email = screen.getByLabelText<HTMLInputElement>(/^Email/);
-
-        // A field with nothing wrong carries the plain wrapper class.
-        expect(fieldOf(email).className).toBe('field');
-
-        await user.click(screen.getByRole('button', { name: LOGIN_SUBMIT_LABEL }));
-
-        // global.css styles an invalid control through `.field--invalid .control`,
-        // so the wrapper is what has to carry the state the message describes.
-        expect(fieldOf(email).className).toBe('field field--invalid');
-        expect(email.getAttribute('aria-invalid')).toBe('true');
-    });
-
-    it('reports an address that cannot be one beside the email control only', async () => {
-        const user = userEvent.setup();
-        const calls = stubFetch(() => successReply(200, {}));
-
-        renderLogin();
-
-        const email = screen.getByLabelText<HTMLInputElement>(/^Email/);
-        const password = screen.getByLabelText<HTMLInputElement>(/^Password/);
-
-        await user.type(email, 'ada-at-example');
-        await user.type(password, VALID_PASSWORD);
-        await user.click(screen.getByRole('button', { name: LOGIN_SUBMIT_LABEL }));
-
-        expect(calls).toHaveLength(0);
-        expect(errorText(email)).toBe(LOGIN_EMAIL_INVALID_MESSAGE);
-        expect(queryErrorNode(password)).toBeNull();
-        expect(password.getAttribute('aria-invalid')).toBe('false');
-    });
-
-    it('renders each validation detail beside the field it names and no form-level message', async () => {
-        const user = userEvent.setup();
-        const EMAIL_ISSUE = 'email_must_be_an_address';
-        const PASSWORD_ISSUE = 'password_must_be_at_most_72_bytes';
-        stubFetch(() => errorReply(400, 'VALIDATION_ERROR', 'Some of these values need attention.', [
-            { field: 'email', issue: EMAIL_ISSUE },
-            { field: 'password', issue: PASSWORD_ISSUE },
-        ]));
-
-        renderLogin();
-
-        const email = screen.getByLabelText<HTMLInputElement>(/^Email/);
-        const password = screen.getByLabelText<HTMLInputElement>(/^Password/);
-
-        await user.type(email, VALID_EMAIL);
-        await user.type(password, VALID_PASSWORD);
-        await user.click(screen.getByRole('button', { name: LOGIN_SUBMIT_LABEL }));
-
-        expect(await screen.findByText(EMAIL_ISSUE)).not.toBeNull();
-        expect(errorText(email)).toBe(EMAIL_ISSUE);
-        expect(errorText(password)).toBe(PASSWORD_ISSUE);
-        expect(within(fieldOf(email)).queryByText(PASSWORD_ISSUE)).toBeNull();
-        expect(within(fieldOf(password)).queryByText(EMAIL_ISSUE)).toBeNull();
-        // Every detail landed on its own field, so nothing is repeated at form level.
-        expect(screen.queryAllByRole('alert')).toHaveLength(0);
-    });
-
-    it('renders an indistinguishable sign-in failure as one form-level message and no field error', async () => {
-        const user = userEvent.setup();
-        const GENERIC_MESSAGE = 'Those details do not match an account.';
-        stubFetch(() => errorReply(401, 'INVALID_CREDENTIALS', GENERIC_MESSAGE));
-
-        renderLogin();
-
-        const email = screen.getByLabelText<HTMLInputElement>(/^Email/);
-        const password = screen.getByLabelText<HTMLInputElement>(/^Password/);
-
-        await user.type(email, VALID_EMAIL);
-        await user.type(password, VALID_PASSWORD);
-        await user.click(screen.getByRole('button', { name: LOGIN_SUBMIT_LABEL }));
-
-        const alert = await screen.findByRole('alert');
-
-        expect(screen.getAllByRole('alert')).toHaveLength(1);
-        expect(alert.getAttribute('data-code')).toBe('INVALID_CREDENTIALS');
-        expect(alert.textContent).toBe(GENERIC_MESSAGE);
-        expect(queryErrorNode(email)).toBeNull();
-        expect(queryErrorNode(password)).toBeNull();
-        expect(email.getAttribute('aria-invalid')).toBe('false');
-        expect(password.getAttribute('aria-invalid')).toBe('false');
-        expect(within(fieldOf(email)).queryByText(GENERIC_MESSAGE)).toBeNull();
-        expect(within(fieldOf(password)).queryByText(GENERIC_MESSAGE)).toBeNull();
-    });
-
-    it('posts the typed credentials and renders no error when the session is opened', async () => {
-        const user = userEvent.setup();
-        const calls = stubFetch(() => successReply(200, { user: ACCOUNT, token: 'opaque-session-token' }));
-
-        renderLogin();
-
-        const email = screen.getByLabelText<HTMLInputElement>(/^Email/);
-        const password = screen.getByLabelText<HTMLInputElement>(/^Password/);
-
-        await user.type(email, VALID_EMAIL);
-        await user.type(password, VALID_PASSWORD);
-        await user.click(screen.getByRole('button', { name: LOGIN_SUBMIT_LABEL }));
-
-        await waitFor(() => {
-            expect(calls).toHaveLength(1);
-        });
-
-        const call = onlyCall(calls, LOGIN_URL, 'POST');
-        expect(call.body).toEqual({ email: VALID_EMAIL, password: VALID_PASSWORD });
-        expect(screen.queryAllByRole('alert')).toHaveLength(0);
-        expect(queryErrorNode(email)).toBeNull();
-        expect(queryErrorNode(password)).toBeNull();
-    });
+    const call = onlyCall(calls, LOGIN_URL, 'POST');
+    expect(call.body).toEqual({ email: VALID_EMAIL, password: VALID_PASSWORD });
+    expect(screen.queryAllByRole('alert')).toHaveLength(0);
+    expect(queryErrorNode(email)).toBeNull();
+    expect(queryErrorNode(password)).toBeNull();
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -720,152 +720,152 @@ describe('LoginView', () => {
 // ---------------------------------------------------------------------------
 
 describe('RegisterView', () => {
-    /** @returns The three controls of the registration form, after rendering it. */
-    function controls(): { name: HTMLInputElement; email: HTMLInputElement; password: HTMLInputElement } {
-        return {
-            name: screen.getByLabelText<HTMLInputElement>(/^Name/),
-            email: screen.getByLabelText<HTMLInputElement>(/^Email/),
-            password: screen.getByLabelText<HTMLInputElement>(/^Password/),
-        };
-    }
+  /** @returns The three controls of the registration form, after rendering it. */
+  function controls(): { name: HTMLInputElement; email: HTMLInputElement; password: HTMLInputElement } {
+    return {
+      name: screen.getByLabelText<HTMLInputElement>(/^Name/),
+      email: screen.getByLabelText<HTMLInputElement>(/^Email/),
+      password: screen.getByLabelText<HTMLInputElement>(/^Password/),
+    };
+  }
 
-    it('builds the address field as the shared email control', () => {
-        renderRegister();
+  it('builds the address field as the shared email control', () => {
+    renderRegister();
 
-        // Both auth screens build the one address control the shared module owns,
-        // so the browser gives each a soft keyboard with the address layout.
-        expect(screen.getByLabelText<HTMLInputElement>(/^Email/).getAttribute('type')).toBe('email');
+    // Both auth screens build the one address control the shared module owns,
+    // so the browser gives each a soft keyboard with the address layout.
+    expect(screen.getByLabelText<HTMLInputElement>(/^Email/).getAttribute('type')).toBe('email');
+  });
+
+  it('reports a missing name, address and password beside their own controls', async () => {
+    const user = userEvent.setup();
+    const calls = stubFetch(() => successReply(201, {}));
+
+    renderRegister();
+    const { name, email, password } = controls();
+
+    await user.click(screen.getByRole('button', { name: REGISTER_SUBMIT_LABEL }));
+
+    expect(calls).toHaveLength(0);
+    expect(errorText(name)).toBe(REGISTER_NAME_REQUIRED_MESSAGE);
+    expect(errorText(email)).toBe(REGISTER_EMAIL_REQUIRED_MESSAGE);
+    expect(errorText(password)).toBe(REGISTER_PASSWORD_REQUIRED_MESSAGE);
+    expect(fieldOf(name).contains(errorNode(name))).toBe(true);
+    expect(within(fieldOf(password)).queryByText(REGISTER_NAME_REQUIRED_MESSAGE)).toBeNull();
+    expect(within(fieldOf(name)).queryByText(REGISTER_PASSWORD_REQUIRED_MESSAGE)).toBeNull();
+  });
+
+  it('reports a password below the eight-character floor beside the password control', async () => {
+    const user = userEvent.setup();
+    const calls = stubFetch(() => successReply(201, {}));
+
+    renderRegister();
+    const { name, email, password } = controls();
+
+    await user.type(name, ACCOUNT.name);
+    await user.type(email, VALID_EMAIL);
+    await user.type(password, 'short12');
+    await user.click(screen.getByRole('button', { name: REGISTER_SUBMIT_LABEL }));
+
+    expect(calls).toHaveLength(0);
+    expect(errorText(password)).toBe(REGISTER_PASSWORD_TOO_SHORT_MESSAGE);
+    expect(queryErrorNode(name)).toBeNull();
+    expect(queryErrorNode(email)).toBeNull();
+  });
+
+  it('reports a password above the 72-byte ceiling beside the password control', async () => {
+    const user = userEvent.setup();
+    const calls = stubFetch(() => successReply(201, {}));
+
+    renderRegister();
+    const { name, email, password } = controls();
+
+    await user.type(name, ACCOUNT.name);
+    await user.type(email, VALID_EMAIL);
+    fireEvent.change(password, { target: { value: 'a'.repeat(73) } });
+    await user.click(screen.getByRole('button', { name: REGISTER_SUBMIT_LABEL }));
+
+    expect(calls).toHaveLength(0);
+    expect(errorText(password)).toBe(REGISTER_PASSWORD_TOO_LONG_MESSAGE);
+    expect(queryErrorNode(email)).toBeNull();
+  });
+
+  it('renders a duplicate address on the email control and nowhere else', async () => {
+    const user = userEvent.setup();
+    const SERVER_MESSAGE = 'That email address is already registered.';
+    stubFetch(() => errorReply(409, 'EMAIL_ALREADY_REGISTERED', SERVER_MESSAGE));
+
+    renderRegister();
+    const { name, email, password } = controls();
+
+    await user.type(name, ACCOUNT.name);
+    await user.type(email, VALID_EMAIL);
+    await user.type(password, VALID_PASSWORD);
+    await user.click(screen.getByRole('button', { name: REGISTER_SUBMIT_LABEL }));
+
+    expect(await screen.findByText(REGISTER_EMAIL_DUPLICATE_MESSAGE)).not.toBeNull();
+    expect(errorText(email)).toBe(REGISTER_EMAIL_DUPLICATE_MESSAGE);
+    expect(email.getAttribute('aria-invalid')).toBe('true');
+    expect(queryErrorNode(name)).toBeNull();
+    expect(queryErrorNode(password)).toBeNull();
+    expect(within(fieldOf(email)).getByText(REGISTER_EMAIL_DUPLICATE_MESSAGE).textContent)
+      .toBe(REGISTER_EMAIL_DUPLICATE_MESSAGE);
+    // A duplicate address is a field failure, so it is not repeated as a summary.
+    expect(screen.queryAllByRole('alert')).toHaveLength(0);
+  });
+
+  it('renders all three validation details beside their own fields', async () => {
+    const user = userEvent.setup();
+    const NAME_ISSUE = 'name_must_not_be_empty';
+    const EMAIL_ISSUE = 'email_must_be_an_address';
+    const PASSWORD_ISSUE = 'password_must_be_at_least_8_characters';
+    stubFetch(() => errorReply(400, 'VALIDATION_ERROR', 'Check the highlighted fields.', [
+      { field: 'name', issue: NAME_ISSUE },
+      { field: 'email', issue: EMAIL_ISSUE },
+      { field: 'password', issue: PASSWORD_ISSUE },
+    ]));
+
+    renderRegister();
+    const { name, email, password } = controls();
+
+    await user.type(name, ACCOUNT.name);
+    await user.type(email, VALID_EMAIL);
+    await user.type(password, VALID_PASSWORD);
+    await user.click(screen.getByRole('button', { name: REGISTER_SUBMIT_LABEL }));
+
+    expect(await screen.findByText(NAME_ISSUE)).not.toBeNull();
+    expect(errorText(name)).toBe(NAME_ISSUE);
+    expect(errorText(email)).toBe(EMAIL_ISSUE);
+    expect(errorText(password)).toBe(PASSWORD_ISSUE);
+    expect(within(fieldOf(name)).queryByText(EMAIL_ISSUE)).toBeNull();
+    expect(within(fieldOf(email)).queryByText(NAME_ISSUE)).toBeNull();
+    expect(within(fieldOf(password)).queryByText(NAME_ISSUE)).toBeNull();
+    expect(screen.queryAllByRole('alert')).toHaveLength(0);
+  });
+
+  it('posts exactly the name, address and password the form collected', async () => {
+    const user = userEvent.setup();
+    const calls = stubFetch(() => successReply(201, { user: ACCOUNT, token: 'opaque-session-token' }));
+
+    renderRegister();
+    const { name, email, password } = controls();
+
+    await user.type(name, ACCOUNT.name);
+    await user.type(email, VALID_EMAIL);
+    await user.type(password, VALID_PASSWORD);
+    await user.click(screen.getByRole('button', { name: REGISTER_SUBMIT_LABEL }));
+
+    await waitFor(() => {
+      expect(calls).toHaveLength(1);
     });
 
-    it('reports a missing name, address and password beside their own controls', async () => {
-        const user = userEvent.setup();
-        const calls = stubFetch(() => successReply(201, {}));
+    const call = onlyCall(calls, REGISTER_URL, 'POST');
 
-        renderRegister();
-        const { name, email, password } = controls();
-
-        await user.click(screen.getByRole('button', { name: REGISTER_SUBMIT_LABEL }));
-
-        expect(calls).toHaveLength(0);
-        expect(errorText(name)).toBe(REGISTER_NAME_REQUIRED_MESSAGE);
-        expect(errorText(email)).toBe(REGISTER_EMAIL_REQUIRED_MESSAGE);
-        expect(errorText(password)).toBe(REGISTER_PASSWORD_REQUIRED_MESSAGE);
-        expect(fieldOf(name).contains(errorNode(name))).toBe(true);
-        expect(within(fieldOf(password)).queryByText(REGISTER_NAME_REQUIRED_MESSAGE)).toBeNull();
-        expect(within(fieldOf(name)).queryByText(REGISTER_PASSWORD_REQUIRED_MESSAGE)).toBeNull();
-    });
-
-    it('reports a password below the eight-character floor beside the password control', async () => {
-        const user = userEvent.setup();
-        const calls = stubFetch(() => successReply(201, {}));
-
-        renderRegister();
-        const { name, email, password } = controls();
-
-        await user.type(name, ACCOUNT.name);
-        await user.type(email, VALID_EMAIL);
-        await user.type(password, 'short12');
-        await user.click(screen.getByRole('button', { name: REGISTER_SUBMIT_LABEL }));
-
-        expect(calls).toHaveLength(0);
-        expect(errorText(password)).toBe(REGISTER_PASSWORD_TOO_SHORT_MESSAGE);
-        expect(queryErrorNode(name)).toBeNull();
-        expect(queryErrorNode(email)).toBeNull();
-    });
-
-    it('reports a password above the 72-byte ceiling beside the password control', async () => {
-        const user = userEvent.setup();
-        const calls = stubFetch(() => successReply(201, {}));
-
-        renderRegister();
-        const { name, email, password } = controls();
-
-        await user.type(name, ACCOUNT.name);
-        await user.type(email, VALID_EMAIL);
-        fireEvent.change(password, { target: { value: 'a'.repeat(73) } });
-        await user.click(screen.getByRole('button', { name: REGISTER_SUBMIT_LABEL }));
-
-        expect(calls).toHaveLength(0);
-        expect(errorText(password)).toBe(REGISTER_PASSWORD_TOO_LONG_MESSAGE);
-        expect(queryErrorNode(email)).toBeNull();
-    });
-
-    it('renders a duplicate address on the email control and nowhere else', async () => {
-        const user = userEvent.setup();
-        const SERVER_MESSAGE = 'That email address is already registered.';
-        stubFetch(() => errorReply(409, 'EMAIL_ALREADY_REGISTERED', SERVER_MESSAGE));
-
-        renderRegister();
-        const { name, email, password } = controls();
-
-        await user.type(name, ACCOUNT.name);
-        await user.type(email, VALID_EMAIL);
-        await user.type(password, VALID_PASSWORD);
-        await user.click(screen.getByRole('button', { name: REGISTER_SUBMIT_LABEL }));
-
-        expect(await screen.findByText(REGISTER_EMAIL_DUPLICATE_MESSAGE)).not.toBeNull();
-        expect(errorText(email)).toBe(REGISTER_EMAIL_DUPLICATE_MESSAGE);
-        expect(email.getAttribute('aria-invalid')).toBe('true');
-        expect(queryErrorNode(name)).toBeNull();
-        expect(queryErrorNode(password)).toBeNull();
-        expect(within(fieldOf(email)).getByText(REGISTER_EMAIL_DUPLICATE_MESSAGE).textContent)
-            .toBe(REGISTER_EMAIL_DUPLICATE_MESSAGE);
-        // A duplicate address is a field failure, so it is not repeated as a summary.
-        expect(screen.queryAllByRole('alert')).toHaveLength(0);
-    });
-
-    it('renders all three validation details beside their own fields', async () => {
-        const user = userEvent.setup();
-        const NAME_ISSUE = 'name_must_not_be_empty';
-        const EMAIL_ISSUE = 'email_must_be_an_address';
-        const PASSWORD_ISSUE = 'password_must_be_at_least_8_characters';
-        stubFetch(() => errorReply(400, 'VALIDATION_ERROR', 'Check the highlighted fields.', [
-            { field: 'name', issue: NAME_ISSUE },
-            { field: 'email', issue: EMAIL_ISSUE },
-            { field: 'password', issue: PASSWORD_ISSUE },
-        ]));
-
-        renderRegister();
-        const { name, email, password } = controls();
-
-        await user.type(name, ACCOUNT.name);
-        await user.type(email, VALID_EMAIL);
-        await user.type(password, VALID_PASSWORD);
-        await user.click(screen.getByRole('button', { name: REGISTER_SUBMIT_LABEL }));
-
-        expect(await screen.findByText(NAME_ISSUE)).not.toBeNull();
-        expect(errorText(name)).toBe(NAME_ISSUE);
-        expect(errorText(email)).toBe(EMAIL_ISSUE);
-        expect(errorText(password)).toBe(PASSWORD_ISSUE);
-        expect(within(fieldOf(name)).queryByText(EMAIL_ISSUE)).toBeNull();
-        expect(within(fieldOf(email)).queryByText(NAME_ISSUE)).toBeNull();
-        expect(within(fieldOf(password)).queryByText(NAME_ISSUE)).toBeNull();
-        expect(screen.queryAllByRole('alert')).toHaveLength(0);
-    });
-
-    it('posts exactly the name, address and password the form collected', async () => {
-        const user = userEvent.setup();
-        const calls = stubFetch(() => successReply(201, { user: ACCOUNT, token: 'opaque-session-token' }));
-
-        renderRegister();
-        const { name, email, password } = controls();
-
-        await user.type(name, ACCOUNT.name);
-        await user.type(email, VALID_EMAIL);
-        await user.type(password, VALID_PASSWORD);
-        await user.click(screen.getByRole('button', { name: REGISTER_SUBMIT_LABEL }));
-
-        await waitFor(() => {
-            expect(calls).toHaveLength(1);
-        });
-
-        const call = onlyCall(calls, REGISTER_URL, 'POST');
-
-        // The account is created for whoever holds the token, so no owner travels
-        // in the body (rule R-5), and no credential column is echoed back (rule R-4).
-        expect(call.body).toEqual({ name: ACCOUNT.name, email: VALID_EMAIL, password: VALID_PASSWORD });
-        expect(call.body).not.toHaveProperty('user_id');
-    });
+    // The account is created for whoever holds the token, so no owner travels
+    // in the body (rule R-5), and no credential column is echoed back (rule R-4).
+    expect(call.body).toEqual({ name: ACCOUNT.name, email: VALID_EMAIL, password: VALID_PASSWORD });
+    expect(call.body).not.toHaveProperty('user_id');
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -873,114 +873,114 @@ describe('RegisterView', () => {
 // ---------------------------------------------------------------------------
 
 describe('CartView checkout', () => {
-    it('reports an unavailable item at form level, naming it, with no field error', async () => {
-        const user = userEvent.setup();
-        const UNAVAILABLE_MESSAGE = `${MENU_ITEM.name} is not available right now.`;
+  it('reports an unavailable item at form level, naming it, with no field error', async () => {
+    const user = userEvent.setup();
+    const UNAVAILABLE_MESSAGE = `${MENU_ITEM.name} is not available right now.`;
 
-        const { calls, quantity, placeOrder } = await renderCheckout(
-            errorReply(409, 'MENU_ITEM_UNAVAILABLE', UNAVAILABLE_MESSAGE),
-        );
+    const { calls, quantity, placeOrder } = await renderCheckout(
+      errorReply(409, 'MENU_ITEM_UNAVAILABLE', UNAVAILABLE_MESSAGE),
+    );
 
-        await user.click(placeOrder);
+    await user.click(placeOrder);
 
-        const alert = await screen.findByRole('alert');
+    const alert = await screen.findByRole('alert');
 
-        onlyCall(calls, ORDERS_URL, 'POST');
-        expect(screen.getAllByRole('alert')).toHaveLength(1);
-        expect(alert.getAttribute('data-code')).toBe('MENU_ITEM_UNAVAILABLE');
-        expect(alert.textContent).toContain(UNAVAILABLE_MESSAGE);
-        expect(alert.textContent).toContain(`Not available right now: ${MENU_ITEM.name}`);
-        // Which item is unavailable is a fact about the cart, not about one control.
-        expect(quantity.getAttribute('aria-invalid')).toBe('false');
-        expect(queryErrorNode(quantity)).toBeNull();
-        expect(within(fieldOf(quantity)).queryByText(UNAVAILABLE_MESSAGE)).toBeNull();
+    onlyCall(calls, ORDERS_URL, 'POST');
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
+    expect(alert.getAttribute('data-code')).toBe('MENU_ITEM_UNAVAILABLE');
+    expect(alert.textContent).toContain(UNAVAILABLE_MESSAGE);
+    expect(alert.textContent).toContain(`Not available right now: ${MENU_ITEM.name}`);
+    // Which item is unavailable is a fact about the cart, not about one control.
+    expect(quantity.getAttribute('aria-invalid')).toBe('false');
+    expect(queryErrorNode(quantity)).toBeNull();
+    expect(within(fieldOf(quantity)).queryByText(UNAVAILABLE_MESSAGE)).toBeNull();
+  });
+
+  it('reports a validation detail naming the order itself at form level', async () => {
+    const user = userEvent.setup();
+    const ITEMS_ISSUE = 'items_must_contain_at_least_one_line';
+    const VALIDATION_MESSAGE = 'The order could not be validated.';
+
+    const { quantity, placeOrder } = await renderCheckout(
+      errorReply(400, 'VALIDATION_ERROR', VALIDATION_MESSAGE, [{ field: 'items', issue: ITEMS_ISSUE }]),
+    );
+
+    await user.click(placeOrder);
+
+    const detail = await screen.findByText(ITEMS_ISSUE);
+
+    // The view renders no control for `items`, so the entry is surfaced as
+    // itself rather than being dropped or pinned to a line it does not describe.
+    expect(detail.textContent).toBe(ITEMS_ISSUE);
+    expect(detail.getAttribute('data-field')).toBe('items');
+    expect(detail.getAttribute('data-issue')).toBe(ITEMS_ISSUE);
+    expect(detail.closest('label')).toBeNull();
+    expect(fieldOf(quantity).contains(detail)).toBe(false);
+    expect(quantity.getAttribute('aria-invalid')).toBe('false');
+
+    const summary = screen.getByRole('alert');
+    expect(summary.getAttribute('data-code')).toBe('VALIDATION_ERROR');
+    expect(summary.textContent).toBe(VALIDATION_MESSAGE);
+  });
+
+  it('marks the quantity field of the line a detail names, leaving an unmentioned field unmarked', async () => {
+    const user = userEvent.setup();
+    const VALIDATION_MESSAGE = 'The order could not be validated.';
+    const QUANTITY_ISSUE = 'must_be_an_integer_between_1_and_20';
+
+    const { quantity, placeOrder } = await renderCheckout(
+      errorReply(400, 'VALIDATION_ERROR', VALIDATION_MESSAGE, [
+        { field: 'items[0].quantity', issue: QUANTITY_ISSUE },
+      ]),
+    );
+
+    const notes = screen.getByLabelText<HTMLInputElement>(/^Notes/);
+
+    await user.click(placeOrder);
+
+    const detail = await screen.findByText(QUANTITY_ISSUE);
+
+    // The entry names the seeded line's quantity, so it is rendered inside that
+    // control's own field rather than at form level.
+    expect(errorText(quantity)).toBe(QUANTITY_ISSUE);
+    expect(fieldOf(quantity).contains(detail)).toBe(true);
+    expect(quantity.getAttribute('aria-invalid')).toBe('true');
+    // `.field--invalid .control` is the stylesheet rule that gives an invalid
+    // control its visible state, so the wrapper carries the modifier while this
+    // field is invalid, and only while it is.
+    expect(fieldOf(quantity).className).toBe('field field--invalid');
+    expect(fieldOf(notes).className).toBe('field');
+    expect(notes.getAttribute('aria-invalid')).toBe('false');
+    expect(within(fieldOf(notes)).queryByText(QUANTITY_ISSUE)).toBeNull();
+  });
+
+  it('posts only the item id and quantity of every line, so the server prices the order', async () => {
+    const user = userEvent.setup();
+    const { calls, placeOrder } = await renderCheckout(successReply(201, { order: CREATED_ORDER }));
+
+    await user.click(placeOrder);
+
+    await waitFor(() => {
+      expect(calls.filter((call) => call.url === ORDERS_URL)).toHaveLength(1);
     });
 
-    it('reports a validation detail naming the order itself at form level', async () => {
-        const user = userEvent.setup();
-        const ITEMS_ISSUE = 'items_must_contain_at_least_one_line';
-        const VALIDATION_MESSAGE = 'The order could not be validated.';
+    const call = onlyCall(calls, ORDERS_URL, 'POST');
 
-        const { quantity, placeOrder } = await renderCheckout(
-            errorReply(400, 'VALIDATION_ERROR', VALIDATION_MESSAGE, [{ field: 'items', issue: ITEMS_ISSUE }]),
-        );
-
-        await user.click(placeOrder);
-
-        const detail = await screen.findByText(ITEMS_ISSUE);
-
-        // The view renders no control for `items`, so the entry is surfaced as
-        // itself rather than being dropped or pinned to a line it does not describe.
-        expect(detail.textContent).toBe(ITEMS_ISSUE);
-        expect(detail.getAttribute('data-field')).toBe('items');
-        expect(detail.getAttribute('data-issue')).toBe(ITEMS_ISSUE);
-        expect(detail.closest('label')).toBeNull();
-        expect(fieldOf(quantity).contains(detail)).toBe(false);
-        expect(quantity.getAttribute('aria-invalid')).toBe('false');
-
-        const summary = screen.getByRole('alert');
-        expect(summary.getAttribute('data-code')).toBe('VALIDATION_ERROR');
-        expect(summary.textContent).toBe(VALIDATION_MESSAGE);
+    // Rule R-3: an id and a quantity per line, no amount of any kind and no
+    // owner; the totals on the confirmation are the server's own sum.
+    expect(call.body).toEqual({
+      items: [{ menu_item_id: MENU_ITEM.id, quantity: SEEDED_QUANTITY }],
     });
+    expect(call.body).not.toHaveProperty('notes');
+    expect(call.body).not.toHaveProperty('user_id');
 
-    it('marks the quantity field of the line a detail names, leaving an unmentioned field unmarked', async () => {
-        const user = userEvent.setup();
-        const VALIDATION_MESSAGE = 'The order could not be validated.';
-        const QUANTITY_ISSUE = 'must_be_an_integer_between_1_and_20';
-
-        const { quantity, placeOrder } = await renderCheckout(
-            errorReply(400, 'VALIDATION_ERROR', VALIDATION_MESSAGE, [
-                { field: 'items[0].quantity', issue: QUANTITY_ISSUE },
-            ]),
-        );
-
-        const notes = screen.getByLabelText<HTMLInputElement>(/^Notes/);
-
-        await user.click(placeOrder);
-
-        const detail = await screen.findByText(QUANTITY_ISSUE);
-
-        // The entry names the seeded line's quantity, so it is rendered inside that
-        // control's own field rather than at form level.
-        expect(errorText(quantity)).toBe(QUANTITY_ISSUE);
-        expect(fieldOf(quantity).contains(detail)).toBe(true);
-        expect(quantity.getAttribute('aria-invalid')).toBe('true');
-        // `.field--invalid .control` is the stylesheet rule that gives an invalid
-        // control its visible state, so the wrapper carries the modifier while this
-        // field is invalid, and only while it is.
-        expect(fieldOf(quantity).className).toBe('field field--invalid');
-        expect(fieldOf(notes).className).toBe('field');
-        expect(notes.getAttribute('aria-invalid')).toBe('false');
-        expect(within(fieldOf(notes)).queryByText(QUANTITY_ISSUE)).toBeNull();
-    });
-
-    it('posts only the item id and quantity of every line, so the server prices the order', async () => {
-        const user = userEvent.setup();
-        const { calls, placeOrder } = await renderCheckout(successReply(201, { order: CREATED_ORDER }));
-
-        await user.click(placeOrder);
-
-        await waitFor(() => {
-            expect(calls.filter((call) => call.url === ORDERS_URL)).toHaveLength(1);
-        });
-
-        const call = onlyCall(calls, ORDERS_URL, 'POST');
-
-        // Rule R-3: an id and a quantity per line, no amount of any kind and no
-        // owner; the totals on the confirmation are the server's own sum.
-        expect(call.body).toEqual({
-            items: [{ menu_item_id: MENU_ITEM.id, quantity: SEEDED_QUANTITY }],
-        });
-        expect(call.body).not.toHaveProperty('notes');
-        expect(call.body).not.toHaveProperty('user_id');
-
-        const serialised = JSON.stringify(call.body);
-        expect(serialised).not.toContain('price');
-        expect(serialised).not.toContain('total');
-        expect(serialised).not.toContain('cents');
-        // Rule R-8: the cart is client state and has no endpoint of its own.
-        expect(calls.some((entry) => entry.url.includes('/cart'))).toBe(false);
-    });
+    const serialised = JSON.stringify(call.body);
+    expect(serialised).not.toContain('price');
+    expect(serialised).not.toContain('total');
+    expect(serialised).not.toContain('cents');
+    // Rule R-8: the cart is client state and has no endpoint of its own.
+    expect(calls.some((entry) => entry.url.includes('/cart'))).toBe(false);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -988,269 +988,269 @@ describe('CartView checkout', () => {
 // ---------------------------------------------------------------------------
 
 describe('ReservationFormView', () => {
-    it('renders the seating time through the shared time control', () => {
-        renderReservationForm();
+  it('renders the seating time through the shared time control', () => {
+    renderReservationForm();
 
-        const time = screen.getByLabelText<HTMLInputElement>(/^Seating time/);
+    const time = screen.getByLabelText<HTMLInputElement>(/^Seating time/);
 
-        // The shared time control, stepped to the 30-minute seating grid: it offers
-        // the documented seatings without pinning the form to a list it owns.
-        expect(time.getAttribute('type')).toBe('time');
-        expect(time.getAttribute('step')).toBe('1800');
+    // The shared time control, stepped to the 30-minute seating grid: it offers
+    // the documented seatings without pinning the form to a list it owns.
+    expect(time.getAttribute('type')).toBe('time');
+    expect(time.getAttribute('step')).toBe('1800');
+  });
+
+  it('reports a missing date, seating time and party size beside their own controls', async () => {
+    const user = userEvent.setup();
+    const calls = stubFetch(() => successReply(201, {}));
+
+    renderReservationForm();
+    const controls = reservationControls();
+
+    // The party size starts at 2, so the field is emptied to be missing.
+    fireEvent.change(controls.party, { target: { value: '' } });
+    await user.click(screen.getByRole('button', { name: RESERVE_SUBMIT_LABEL }));
+
+    expect(calls).toHaveLength(0);
+    expect(errorText(controls.date)).toBe(RESERVATION_DATE_REQUIRED_MESSAGE);
+    expect(errorText(controls.time)).toBe(RESERVATION_TIME_REQUIRED_MESSAGE);
+    expect(errorText(controls.party)).toBe(RESERVATION_PARTY_REQUIRED_MESSAGE);
+    expect(fieldOf(controls.date).contains(errorNode(controls.date))).toBe(true);
+    expect(within(fieldOf(controls.time)).queryByText(RESERVATION_DATE_REQUIRED_MESSAGE)).toBeNull();
+    expect(within(fieldOf(controls.date)).queryByText(RESERVATION_TIME_REQUIRED_MESSAGE)).toBeNull();
+    expect(within(fieldOf(controls.party)).queryByText(RESERVATION_DATE_REQUIRED_MESSAGE)).toBeNull();
+  });
+
+  it('reports a conflict at form level with no field error beside any control', async () => {
+    const user = userEvent.setup();
+    const CONFLICT_MESSAGE = 'You already hold a reservation for that date and time.';
+    stubFetch(() => errorReply(409, 'RESERVATION_CONFLICT', CONFLICT_MESSAGE));
+
+    renderReservationForm();
+    const controls = reservationControls();
+
+    await fillReservation(user, controls, { date: FUTURE_DATE, time: OFFERED_SLOT, party: '2' });
+    await user.click(screen.getByRole('button', { name: RESERVE_SUBMIT_LABEL }));
+
+    const alert = await screen.findByRole('alert');
+
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
+    expect(alert.getAttribute('data-code')).toBe('RESERVATION_CONFLICT');
+    expect(alert.textContent).toBe(CONFLICT_MESSAGE);
+    expect(controls.date.getAttribute('aria-invalid')).toBe('false');
+    expect(controls.time.getAttribute('aria-invalid')).toBe('false');
+    expect(controls.party.getAttribute('aria-invalid')).toBe('false');
+    expect(queryErrorNode(controls.date)).toBeNull();
+    expect(queryErrorNode(controls.time)).toBeNull();
+    expect(queryErrorNode(controls.party)).toBeNull();
+    expect(within(fieldOf(controls.date)).queryByText(CONFLICT_MESSAGE)).toBeNull();
+  });
+
+  it('renders the past-datetime issue beside the date control', async () => {
+    const user = userEvent.setup();
+    stubFetch(() => errorReply(400, 'VALIDATION_ERROR', 'The booking could not be validated.', [
+      { field: 'reservation_date', issue: RESERVATION_ISSUES.DATETIME_IN_PAST },
+    ]));
+
+    renderReservationForm();
+    const controls = reservationControls();
+
+    await fillReservation(user, controls, { date: FUTURE_DATE, time: OFFERED_SLOT, party: '2' });
+    await user.click(screen.getByRole('button', { name: RESERVE_SUBMIT_LABEL }));
+
+    expect(await screen.findByText(RESERVATION_PAST_MESSAGE)).not.toBeNull();
+    expect(errorText(controls.date)).toBe(RESERVATION_PAST_MESSAGE);
+    // The sentence a reader sees is the form's own translation of the issue.
+    expect(errorText(controls.date)).not.toBe(RESERVATION_ISSUES.DATETIME_IN_PAST);
+    expect(within(fieldOf(controls.date)).getByText(RESERVATION_PAST_MESSAGE).textContent)
+      .toBe(RESERVATION_PAST_MESSAGE);
+    expect(queryErrorNode(controls.time)).toBeNull();
+    expect(screen.queryAllByRole('alert')).toHaveLength(0);
+  });
+
+  it('renders the outside-service-hours issue beside the seating-time control', async () => {
+    const user = userEvent.setup();
+    stubFetch(() => errorReply(400, 'VALIDATION_ERROR', 'The booking could not be validated.', [
+      { field: 'reservation_time', issue: RESERVATION_ISSUES.OUTSIDE_SERVICE_HOURS },
+    ]));
+
+    renderReservationForm();
+    const controls = reservationControls();
+
+    await fillReservation(user, controls, { date: FUTURE_DATE, time: OFFERED_SLOT, party: '2' });
+    await user.click(screen.getByRole('button', { name: RESERVE_SUBMIT_LABEL }));
+
+    expect(await screen.findByText(RESERVATION_OUTSIDE_HOURS_MESSAGE)).not.toBeNull();
+    expect(errorText(controls.time)).toBe(RESERVATION_OUTSIDE_HOURS_MESSAGE);
+    expect(errorText(controls.time)).not.toBe(RESERVATION_ISSUES.OUTSIDE_SERVICE_HOURS);
+    expect(controls.time.getAttribute('aria-invalid')).toBe('true');
+    expect(queryErrorNode(controls.date)).toBeNull();
+    expect(queryErrorNode(controls.party)).toBeNull();
+    expect(within(fieldOf(controls.time)).queryByText(RESERVATION_PAST_MESSAGE)).toBeNull();
+    expect(screen.queryAllByRole('alert')).toHaveLength(0);
+  });
+
+  // The party range is the API's fourth checkpoint, not this form's: the value
+  // leaves the form and the server's own sentence lands on the field it names.
+  it.each(['0', '13'])(
+    'posts a party size of %s and renders the server range verdict beside the party field',
+    async (partySize) => {
+      const user = userEvent.setup();
+      const calls = stubFetch(() => errorReply(400, 'VALIDATION_ERROR', RESERVATION_PARTY_OUT_OF_RANGE_MESSAGE, [
+        { field: 'party_size', issue: 'out_of_range' },
+      ]));
+
+      renderReservationForm();
+      const controls = reservationControls();
+
+      await fillReservation(user, controls, { date: FUTURE_DATE, time: OFFERED_SLOT, party: partySize });
+      await user.click(screen.getByRole('button', { name: RESERVE_SUBMIT_LABEL }));
+
+      expect(await screen.findByText(RESERVATION_PARTY_OUT_OF_RANGE_MESSAGE)).not.toBeNull();
+
+      await waitFor(() => {
+        expect(calls).toHaveLength(1);
+      });
+
+      const call = onlyCall(calls, RESERVATIONS_URL, 'POST');
+
+      // Rule R-5: the caller is the Bearer token, so no owner is posted. The
+      // party size travels as the number that was typed, unclamped.
+      expect(call.body).toEqual({
+        reservation_date: FUTURE_DATE,
+        reservation_time: OFFERED_SLOT,
+        party_size: Number(partySize),
+      });
+      expect(call.body).not.toHaveProperty('user_id');
+      expect(errorText(controls.party)).toBe(RESERVATION_PARTY_OUT_OF_RANGE_MESSAGE);
+      expect(queryErrorNode(controls.date)).toBeNull();
+      expect(queryErrorNode(controls.time)).toBeNull();
+      expect(screen.queryAllByRole('alert')).toHaveLength(0);
+    },
+  );
+
+  it('rejects a party size of 2.5 before any request, because the API takes a whole number', async () => {
+    const user = userEvent.setup();
+    const calls = stubFetch(() => successReply(201, {}));
+
+    renderReservationForm();
+    const controls = reservationControls();
+
+    await fillReservation(user, controls, { date: FUTURE_DATE, time: OFFERED_SLOT, party: '2.5' });
+    await user.click(screen.getByRole('button', { name: RESERVE_SUBMIT_LABEL }));
+
+    expect(calls).toHaveLength(0);
+    expect(errorText(controls.party)).toBe(RESERVATION_PARTY_INVALID_MESSAGE);
+    expect(queryErrorNode(controls.date)).toBeNull();
+    expect(queryErrorNode(controls.time)).toBeNull();
+  });
+
+  it('rejects a seating time with seconds before any request, because the API takes HH:MM', async () => {
+    const user = userEvent.setup();
+    const calls = stubFetch(() => successReply(201, {}));
+
+    renderReservationForm();
+    const controls = reservationControls();
+
+    // A time input keeps a value with seconds and drops one that is not a time
+    // at all, so this is the shape a browser can hand the form and the API's
+    // HH:MM contract cannot take.
+    await fillReservation(user, controls, { date: FUTURE_DATE, time: '19:30:15', party: '2' });
+    await user.click(screen.getByRole('button', { name: RESERVE_SUBMIT_LABEL }));
+
+    expect(calls).toHaveLength(0);
+    expect(errorText(controls.time)).toBe(RESERVATION_TIME_INVALID_MESSAGE);
+    expect(queryErrorNode(controls.date)).toBeNull();
+    expect(queryErrorNode(controls.party)).toBeNull();
+  });
+
+  // The regression proof for the server-authoritative window: 23:00 is outside
+  // the documented default, yet the form sends it and renders the API's verdict.
+  it('sends a seating time outside the documented window and renders the server verdict beside it', async () => {
+    const user = userEvent.setup();
+    const calls = stubFetch(() => errorReply(400, 'VALIDATION_ERROR', 'The booking could not be validated.', [
+      { field: 'reservation_time', issue: RESERVATION_ISSUES.OUTSIDE_SERVICE_HOURS },
+    ]));
+
+    renderReservationForm();
+    const controls = reservationControls();
+
+    await fillReservation(user, controls, { date: FUTURE_DATE, time: '23:00', party: '2' });
+    await user.click(screen.getByRole('button', { name: RESERVE_SUBMIT_LABEL }));
+
+    expect(await screen.findByText(RESERVATION_OUTSIDE_HOURS_MESSAGE)).not.toBeNull();
+
+    await waitFor(() => {
+      expect(calls).toHaveLength(1);
     });
 
-    it('reports a missing date, seating time and party size beside their own controls', async () => {
-        const user = userEvent.setup();
-        const calls = stubFetch(() => successReply(201, {}));
+    const call = onlyCall(calls, RESERVATIONS_URL, 'POST');
 
-        renderReservationForm();
-        const controls = reservationControls();
+    expect(call.body).toEqual({
+      reservation_date: FUTURE_DATE,
+      reservation_time: '23:00',
+      party_size: 2,
+    });
+    expect(errorText(controls.time)).toBe(RESERVATION_OUTSIDE_HOURS_MESSAGE);
+    expect(queryErrorNode(controls.date)).toBeNull();
+    expect(queryErrorNode(controls.party)).toBeNull();
+    expect(screen.queryAllByRole('alert')).toHaveLength(0);
+  });
 
-        // The party size starts at 2, so the field is emptied to be missing.
-        fireEvent.change(controls.party, { target: { value: '' } });
-        await user.click(screen.getByRole('button', { name: RESERVE_SUBMIT_LABEL }));
+  it('posts only the booking the form collected, with the note when one was typed', async () => {
+    const user = userEvent.setup();
+    const calls = stubFetch(() => successReply(201, { reservation: CREATED_RESERVATION }));
 
-        expect(calls).toHaveLength(0);
-        expect(errorText(controls.date)).toBe(RESERVATION_DATE_REQUIRED_MESSAGE);
-        expect(errorText(controls.time)).toBe(RESERVATION_TIME_REQUIRED_MESSAGE);
-        expect(errorText(controls.party)).toBe(RESERVATION_PARTY_REQUIRED_MESSAGE);
-        expect(fieldOf(controls.date).contains(errorNode(controls.date))).toBe(true);
-        expect(within(fieldOf(controls.time)).queryByText(RESERVATION_DATE_REQUIRED_MESSAGE)).toBeNull();
-        expect(within(fieldOf(controls.date)).queryByText(RESERVATION_TIME_REQUIRED_MESSAGE)).toBeNull();
-        expect(within(fieldOf(controls.party)).queryByText(RESERVATION_DATE_REQUIRED_MESSAGE)).toBeNull();
+    renderReservationForm();
+    const controls = reservationControls();
+
+    await fillReservation(user, controls, {
+      date: FUTURE_DATE,
+      time: OFFERED_SLOT,
+      party: '4',
+      notes: 'Window seat preferred.',
+    });
+    await user.click(screen.getByRole('button', { name: RESERVE_SUBMIT_LABEL }));
+
+    await waitFor(() => {
+      expect(calls).toHaveLength(1);
     });
 
-    it('reports a conflict at form level with no field error beside any control', async () => {
-        const user = userEvent.setup();
-        const CONFLICT_MESSAGE = 'You already hold a reservation for that date and time.';
-        stubFetch(() => errorReply(409, 'RESERVATION_CONFLICT', CONFLICT_MESSAGE));
+    const call = onlyCall(calls, RESERVATIONS_URL, 'POST');
 
-        renderReservationForm();
-        const controls = reservationControls();
+    // Rule R-5: the caller is the Bearer token, so no owner is posted. The
+    // party size travels as a number because the column is an integer.
+    expect(call.body).toEqual({
+      reservation_date: FUTURE_DATE,
+      reservation_time: OFFERED_SLOT,
+      party_size: 4,
+      notes: 'Window seat preferred.',
+    });
+    expect(call.body).not.toHaveProperty('user_id');
+  });
 
-        await fillReservation(user, controls, { date: FUTURE_DATE, time: OFFERED_SLOT, party: '2' });
-        await user.click(screen.getByRole('button', { name: RESERVE_SUBMIT_LABEL }));
+  it('omits the note from the body when none was typed', async () => {
+    const user = userEvent.setup();
+    const calls = stubFetch(() => successReply(201, { reservation: CREATED_RESERVATION }));
 
-        const alert = await screen.findByRole('alert');
+    renderReservationForm();
+    const controls = reservationControls();
 
-        expect(screen.getAllByRole('alert')).toHaveLength(1);
-        expect(alert.getAttribute('data-code')).toBe('RESERVATION_CONFLICT');
-        expect(alert.textContent).toBe(CONFLICT_MESSAGE);
-        expect(controls.date.getAttribute('aria-invalid')).toBe('false');
-        expect(controls.time.getAttribute('aria-invalid')).toBe('false');
-        expect(controls.party.getAttribute('aria-invalid')).toBe('false');
-        expect(queryErrorNode(controls.date)).toBeNull();
-        expect(queryErrorNode(controls.time)).toBeNull();
-        expect(queryErrorNode(controls.party)).toBeNull();
-        expect(within(fieldOf(controls.date)).queryByText(CONFLICT_MESSAGE)).toBeNull();
+    await fillReservation(user, controls, { date: FUTURE_DATE, time: OFFERED_SLOT, party: '2' });
+    await user.click(screen.getByRole('button', { name: RESERVE_SUBMIT_LABEL }));
+
+    await waitFor(() => {
+      expect(calls).toHaveLength(1);
     });
 
-    it('renders the past-datetime issue beside the date control', async () => {
-        const user = userEvent.setup();
-        stubFetch(() => errorReply(400, 'VALIDATION_ERROR', 'The booking could not be validated.', [
-            { field: 'reservation_date', issue: RESERVATION_ISSUES.DATETIME_IN_PAST },
-        ]));
+    const call = onlyCall(calls, RESERVATIONS_URL, 'POST');
 
-        renderReservationForm();
-        const controls = reservationControls();
-
-        await fillReservation(user, controls, { date: FUTURE_DATE, time: OFFERED_SLOT, party: '2' });
-        await user.click(screen.getByRole('button', { name: RESERVE_SUBMIT_LABEL }));
-
-        expect(await screen.findByText(RESERVATION_PAST_MESSAGE)).not.toBeNull();
-        expect(errorText(controls.date)).toBe(RESERVATION_PAST_MESSAGE);
-        // The sentence a reader sees is the form's own translation of the issue.
-        expect(errorText(controls.date)).not.toBe(RESERVATION_ISSUES.DATETIME_IN_PAST);
-        expect(within(fieldOf(controls.date)).getByText(RESERVATION_PAST_MESSAGE).textContent)
-            .toBe(RESERVATION_PAST_MESSAGE);
-        expect(queryErrorNode(controls.time)).toBeNull();
-        expect(screen.queryAllByRole('alert')).toHaveLength(0);
+    expect(call.body).toEqual({
+      reservation_date: FUTURE_DATE,
+      reservation_time: OFFERED_SLOT,
+      party_size: 2,
     });
-
-    it('renders the outside-service-hours issue beside the seating-time control', async () => {
-        const user = userEvent.setup();
-        stubFetch(() => errorReply(400, 'VALIDATION_ERROR', 'The booking could not be validated.', [
-            { field: 'reservation_time', issue: RESERVATION_ISSUES.OUTSIDE_SERVICE_HOURS },
-        ]));
-
-        renderReservationForm();
-        const controls = reservationControls();
-
-        await fillReservation(user, controls, { date: FUTURE_DATE, time: OFFERED_SLOT, party: '2' });
-        await user.click(screen.getByRole('button', { name: RESERVE_SUBMIT_LABEL }));
-
-        expect(await screen.findByText(RESERVATION_OUTSIDE_HOURS_MESSAGE)).not.toBeNull();
-        expect(errorText(controls.time)).toBe(RESERVATION_OUTSIDE_HOURS_MESSAGE);
-        expect(errorText(controls.time)).not.toBe(RESERVATION_ISSUES.OUTSIDE_SERVICE_HOURS);
-        expect(controls.time.getAttribute('aria-invalid')).toBe('true');
-        expect(queryErrorNode(controls.date)).toBeNull();
-        expect(queryErrorNode(controls.party)).toBeNull();
-        expect(within(fieldOf(controls.time)).queryByText(RESERVATION_PAST_MESSAGE)).toBeNull();
-        expect(screen.queryAllByRole('alert')).toHaveLength(0);
-    });
-
-    // The party range is the API's fourth checkpoint, not this form's: the value
-    // leaves the form and the server's own sentence lands on the field it names.
-    it.each(['0', '13'])(
-        'posts a party size of %s and renders the server range verdict beside the party field',
-        async (partySize) => {
-            const user = userEvent.setup();
-            const calls = stubFetch(() => errorReply(400, 'VALIDATION_ERROR', RESERVATION_PARTY_OUT_OF_RANGE_MESSAGE, [
-                { field: 'party_size', issue: 'out_of_range' },
-            ]));
-
-            renderReservationForm();
-            const controls = reservationControls();
-
-            await fillReservation(user, controls, { date: FUTURE_DATE, time: OFFERED_SLOT, party: partySize });
-            await user.click(screen.getByRole('button', { name: RESERVE_SUBMIT_LABEL }));
-
-            expect(await screen.findByText(RESERVATION_PARTY_OUT_OF_RANGE_MESSAGE)).not.toBeNull();
-
-            await waitFor(() => {
-                expect(calls).toHaveLength(1);
-            });
-
-            const call = onlyCall(calls, RESERVATIONS_URL, 'POST');
-
-            // Rule R-5: the caller is the Bearer token, so no owner is posted. The
-            // party size travels as the number that was typed, unclamped.
-            expect(call.body).toEqual({
-                reservation_date: FUTURE_DATE,
-                reservation_time: OFFERED_SLOT,
-                party_size: Number(partySize),
-            });
-            expect(call.body).not.toHaveProperty('user_id');
-            expect(errorText(controls.party)).toBe(RESERVATION_PARTY_OUT_OF_RANGE_MESSAGE);
-            expect(queryErrorNode(controls.date)).toBeNull();
-            expect(queryErrorNode(controls.time)).toBeNull();
-            expect(screen.queryAllByRole('alert')).toHaveLength(0);
-        },
-    );
-
-    it('rejects a party size of 2.5 before any request, because the API takes a whole number', async () => {
-        const user = userEvent.setup();
-        const calls = stubFetch(() => successReply(201, {}));
-
-        renderReservationForm();
-        const controls = reservationControls();
-
-        await fillReservation(user, controls, { date: FUTURE_DATE, time: OFFERED_SLOT, party: '2.5' });
-        await user.click(screen.getByRole('button', { name: RESERVE_SUBMIT_LABEL }));
-
-        expect(calls).toHaveLength(0);
-        expect(errorText(controls.party)).toBe(RESERVATION_PARTY_INVALID_MESSAGE);
-        expect(queryErrorNode(controls.date)).toBeNull();
-        expect(queryErrorNode(controls.time)).toBeNull();
-    });
-
-    it('rejects a seating time with seconds before any request, because the API takes HH:MM', async () => {
-        const user = userEvent.setup();
-        const calls = stubFetch(() => successReply(201, {}));
-
-        renderReservationForm();
-        const controls = reservationControls();
-
-        // A time input keeps a value with seconds and drops one that is not a time
-        // at all, so this is the shape a browser can hand the form and the API's
-        // HH:MM contract cannot take.
-        await fillReservation(user, controls, { date: FUTURE_DATE, time: '19:30:15', party: '2' });
-        await user.click(screen.getByRole('button', { name: RESERVE_SUBMIT_LABEL }));
-
-        expect(calls).toHaveLength(0);
-        expect(errorText(controls.time)).toBe(RESERVATION_TIME_INVALID_MESSAGE);
-        expect(queryErrorNode(controls.date)).toBeNull();
-        expect(queryErrorNode(controls.party)).toBeNull();
-    });
-
-    // The regression proof for the server-authoritative window: 23:00 is outside
-    // the documented default, yet the form sends it and renders the API's verdict.
-    it('sends a seating time outside the documented window and renders the server verdict beside it', async () => {
-        const user = userEvent.setup();
-        const calls = stubFetch(() => errorReply(400, 'VALIDATION_ERROR', 'The booking could not be validated.', [
-            { field: 'reservation_time', issue: RESERVATION_ISSUES.OUTSIDE_SERVICE_HOURS },
-        ]));
-
-        renderReservationForm();
-        const controls = reservationControls();
-
-        await fillReservation(user, controls, { date: FUTURE_DATE, time: '23:00', party: '2' });
-        await user.click(screen.getByRole('button', { name: RESERVE_SUBMIT_LABEL }));
-
-        expect(await screen.findByText(RESERVATION_OUTSIDE_HOURS_MESSAGE)).not.toBeNull();
-
-        await waitFor(() => {
-            expect(calls).toHaveLength(1);
-        });
-
-        const call = onlyCall(calls, RESERVATIONS_URL, 'POST');
-
-        expect(call.body).toEqual({
-            reservation_date: FUTURE_DATE,
-            reservation_time: '23:00',
-            party_size: 2,
-        });
-        expect(errorText(controls.time)).toBe(RESERVATION_OUTSIDE_HOURS_MESSAGE);
-        expect(queryErrorNode(controls.date)).toBeNull();
-        expect(queryErrorNode(controls.party)).toBeNull();
-        expect(screen.queryAllByRole('alert')).toHaveLength(0);
-    });
-
-    it('posts only the booking the form collected, with the note when one was typed', async () => {
-        const user = userEvent.setup();
-        const calls = stubFetch(() => successReply(201, { reservation: CREATED_RESERVATION }));
-
-        renderReservationForm();
-        const controls = reservationControls();
-
-        await fillReservation(user, controls, {
-            date: FUTURE_DATE,
-            time: OFFERED_SLOT,
-            party: '4',
-            notes: 'Window seat preferred.',
-        });
-        await user.click(screen.getByRole('button', { name: RESERVE_SUBMIT_LABEL }));
-
-        await waitFor(() => {
-            expect(calls).toHaveLength(1);
-        });
-
-        const call = onlyCall(calls, RESERVATIONS_URL, 'POST');
-
-        // Rule R-5: the caller is the Bearer token, so no owner is posted. The
-        // party size travels as a number because the column is an integer.
-        expect(call.body).toEqual({
-            reservation_date: FUTURE_DATE,
-            reservation_time: OFFERED_SLOT,
-            party_size: 4,
-            notes: 'Window seat preferred.',
-        });
-        expect(call.body).not.toHaveProperty('user_id');
-    });
-
-    it('omits the note from the body when none was typed', async () => {
-        const user = userEvent.setup();
-        const calls = stubFetch(() => successReply(201, { reservation: CREATED_RESERVATION }));
-
-        renderReservationForm();
-        const controls = reservationControls();
-
-        await fillReservation(user, controls, { date: FUTURE_DATE, time: OFFERED_SLOT, party: '2' });
-        await user.click(screen.getByRole('button', { name: RESERVE_SUBMIT_LABEL }));
-
-        await waitFor(() => {
-            expect(calls).toHaveLength(1);
-        });
-
-        const call = onlyCall(calls, RESERVATIONS_URL, 'POST');
-
-        expect(call.body).toEqual({
-            reservation_date: FUTURE_DATE,
-            reservation_time: OFFERED_SLOT,
-            party_size: 2,
-        });
-        expect(call.body).not.toHaveProperty('notes');
-    });
+    expect(call.body).not.toHaveProperty('notes');
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -1258,32 +1258,32 @@ describe('ReservationFormView', () => {
 // ---------------------------------------------------------------------------
 
 describe('error envelope discipline', () => {
-    it('renders a code outside the documented thirteen as the generic form-level message', async () => {
-        const user = userEvent.setup();
-        const SERVER_MESSAGE = 'The service is unavailable.';
+  it('renders a code outside the documented thirteen as the generic form-level message', async () => {
+    const user = userEvent.setup();
+    const SERVER_MESSAGE = 'The service is unavailable.';
 
-        // No endpoint answers with this code; the transport must down-level it to
-        // INTERNAL_ERROR rather than pass a fourteenth code through to a screen.
-        stubFetch(() => unknownCodeReply(503, 'DATABASE_UNAVAILABLE', SERVER_MESSAGE));
+    // No endpoint answers with this code; the transport must down-level it to
+    // INTERNAL_ERROR rather than pass a fourteenth code through to a screen.
+    stubFetch(() => unknownCodeReply(503, 'DATABASE_UNAVAILABLE', SERVER_MESSAGE));
 
-        renderLogin();
+    renderLogin();
 
-        const email = screen.getByLabelText<HTMLInputElement>(/^Email/);
-        const password = screen.getByLabelText<HTMLInputElement>(/^Password/);
+    const email = screen.getByLabelText<HTMLInputElement>(/^Email/);
+    const password = screen.getByLabelText<HTMLInputElement>(/^Password/);
 
-        await user.type(email, VALID_EMAIL);
-        await user.type(password, VALID_PASSWORD);
-        await user.click(screen.getByRole('button', { name: LOGIN_SUBMIT_LABEL }));
+    await user.type(email, VALID_EMAIL);
+    await user.type(password, VALID_PASSWORD);
+    await user.click(screen.getByRole('button', { name: LOGIN_SUBMIT_LABEL }));
 
-        const alert = await screen.findByRole('alert');
+    const alert = await screen.findByRole('alert');
 
-        expect(screen.getAllByRole('alert')).toHaveLength(1);
-        expect(alert.getAttribute('data-code')).toBe('INTERNAL_ERROR');
-        expect(alert.textContent).toBe(SERVER_MESSAGE);
-        expect(screen.queryByText('DATABASE_UNAVAILABLE')).toBeNull();
-        expect(queryErrorNode(email)).toBeNull();
-        expect(queryErrorNode(password)).toBeNull();
-        expect(within(fieldOf(email)).queryByText(SERVER_MESSAGE)).toBeNull();
-        expect(within(fieldOf(password)).queryByText(SERVER_MESSAGE)).toBeNull();
-    });
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
+    expect(alert.getAttribute('data-code')).toBe('INTERNAL_ERROR');
+    expect(alert.textContent).toBe(SERVER_MESSAGE);
+    expect(screen.queryByText('DATABASE_UNAVAILABLE')).toBeNull();
+    expect(queryErrorNode(email)).toBeNull();
+    expect(queryErrorNode(password)).toBeNull();
+    expect(within(fieldOf(email)).queryByText(SERVER_MESSAGE)).toBeNull();
+    expect(within(fieldOf(password)).queryByText(SERVER_MESSAGE)).toBeNull();
+  });
 });

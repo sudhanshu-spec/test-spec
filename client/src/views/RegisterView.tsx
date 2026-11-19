@@ -65,11 +65,11 @@ const EMAIL_INVALID_MESSAGE = 'Enter an email address such as name@example.com.'
 const PASSWORD_REQUIRED_MESSAGE = 'Choose a password.';
 const PASSWORD_TOO_SHORT_MESSAGE = `Use at least ${PASSWORD_MIN_LENGTH} characters.`;
 const PASSWORD_TOO_LONG_MESSAGE =
-    `Use a shorter password: ${PASSWORD_MAX_BYTES} bytes is the maximum, and accented letters and emoji count as several each.`;
+  `Use a shorter password: ${PASSWORD_MAX_BYTES} bytes is the maximum, and accented letters and emoji count as several each.`;
 const EMAIL_ALREADY_REGISTERED_MESSAGE =
-    'An account already uses this email address. Sign in instead of registering again.';
+  'An account already uses this email address. Sign in instead of registering again.';
 const UNEXPECTED_FAILURE_MESSAGE =
-    'Something went wrong while creating your account. Nothing was saved, and you can try again.';
+  'Something went wrong while creating your account. Nothing was saved, and you can try again.';
 const RETRY_MESSAGE = 'Correct what is highlighted above, then submit the form again to retry.';
 const PASSWORD_HINT = `At least ${PASSWORD_MIN_LENGTH} characters.`;
 const SUBMIT_LABEL = 'Create account';
@@ -86,25 +86,25 @@ type FieldDetails = Partial<Record<ValidatedField, ApiFieldDetail>>;
 
 /** @returns Whether the API's field name is one this form renders an input for. */
 function isValidatedField(field: string): field is ValidatedField {
-    return field === 'name' || field === 'email' || field === 'password';
+  return field === 'name' || field === 'email' || field === 'password';
 }
 
 /** @returns The length of the text as UTF-8 bytes, which is what the API caps. */
 function byteLength(value: string): number {
-    return new TextEncoder().encode(value).length;
+  return new TextEncoder().encode(value).length;
 }
 
 /** @returns The map with the field's entry removed, or the same map when it had none. */
 function withoutField<T>(
-    current: Partial<Record<ValidatedField, T>>,
-    field: ValidatedField,
+  current: Partial<Record<ValidatedField, T>>,
+  field: ValidatedField,
 ): Partial<Record<ValidatedField, T>> {
-    if (current[field] === undefined) {
-        return current;
-    }
-    const next = { ...current };
-    delete next[field];
-    return next;
+  if (current[field] === undefined) {
+    return current;
+  }
+  const next = { ...current };
+  delete next[field];
+  return next;
 }
 
 /**
@@ -117,231 +117,231 @@ function withoutField<T>(
  * @returns The registration form.
  */
 export function RegisterView(): JSX.Element {
-    const navigate = useNavigate();
-    const { login } = useSession();
-    const [name, setName] = useState('');
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [messages, setMessages] = useState<FieldMessages>({});
-    const [details, setDetails] = useState<FieldDetails>({});
-    const [summary, setSummary] = useState<ApiError | null>(null);
-    const [unexpectedFailure, setUnexpectedFailure] = useState(false);
-    const [submitting, setSubmitting] = useState(false);
+  const navigate = useNavigate();
+  const { login } = useSession();
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [messages, setMessages] = useState<FieldMessages>({});
+  const [details, setDetails] = useState<FieldDetails>({});
+  const [summary, setSummary] = useState<ApiError | null>(null);
+  const [unexpectedFailure, setUnexpectedFailure] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-    const hasFailure = unexpectedFailure || summary !== null
-        || Object.keys(messages).length > 0 || Object.keys(details).length > 0;
+  const hasFailure = unexpectedFailure || summary !== null
+    || Object.keys(messages).length > 0 || Object.keys(details).length > 0;
 
-    /**
-     * Drops the failures a user edit has made stale: the message and the server
-     * detail of the field being edited, and every form-level message. The other
-     * fields keep theirs, so correcting one value does not hide the rest.
-     *
-     * @param field - The field whose message is no longer accurate.
-     */
-    function clearFailure(field?: ValidatedField): void {
-        if (field !== undefined) {
-            setMessages((current) => withoutField(current, field));
-            setDetails((current) => withoutField(current, field));
-        }
-        setSummary(null);
-        setUnexpectedFailure(false);
+  /**
+   * Drops the failures a user edit has made stale: the message and the server
+   * detail of the field being edited, and every form-level message. The other
+   * fields keep theirs, so correcting one value does not hide the rest.
+   *
+   * @param field - The field whose message is no longer accurate.
+   */
+  function clearFailure(field?: ValidatedField): void {
+    if (field !== undefined) {
+      setMessages((current) => withoutField(current, field));
+      setDetails((current) => withoutField(current, field));
+    }
+    setSummary(null);
+    setUnexpectedFailure(false);
+  }
+
+  /**
+   * Renders a failed registration: the fields the API named inline, the
+   * duplicate address against the email field, and everything else as the
+   * form-level message of the one error envelope.
+   *
+   * @param error - Whatever `register` threw.
+   */
+  function reportFailure(error: unknown): void {
+    if (!(error instanceof ApiError)) {
+      setMessages({});
+      setDetails({});
+      setSummary(null);
+      setUnexpectedFailure(true);
+      return;
     }
 
-    /**
-     * Renders a failed registration: the fields the API named inline, the
-     * duplicate address against the email field, and everything else as the
-     * form-level message of the one error envelope.
-     *
-     * @param error - Whatever `register` threw.
-     */
-    function reportFailure(error: unknown): void {
-        if (!(error instanceof ApiError)) {
-            setMessages({});
-            setDetails({});
-            setSummary(null);
-            setUnexpectedFailure(true);
-            return;
+    const inlineDetails: FieldDetails = {};
+    const inlineMessages: FieldMessages = {};
+
+    if (error.code === 'EMAIL_ALREADY_REGISTERED') {
+      inlineMessages.email = EMAIL_ALREADY_REGISTERED_MESSAGE;
+    } else {
+      for (const detail of error.details) {
+        if (isValidatedField(detail.field)) {
+          inlineDetails[detail.field] = detail;
         }
-
-        const inlineDetails: FieldDetails = {};
-        const inlineMessages: FieldMessages = {};
-
-        if (error.code === 'EMAIL_ALREADY_REGISTERED') {
-            inlineMessages.email = EMAIL_ALREADY_REGISTERED_MESSAGE;
-        } else {
-            for (const detail of error.details) {
-                if (isValidatedField(detail.field)) {
-                    inlineDetails[detail.field] = detail;
-                }
-            }
-        }
-
-        const inlineCount = Object.keys(inlineDetails).length + Object.keys(inlineMessages).length;
-        // A field this form does not render, a validation failure the API
-        // explained with no usable detail, and every other code all have one
-        // place to be read: the single envelope message.
-        const formLevel = error.code === 'EMAIL_ALREADY_REGISTERED'
-            ? false
-            : error.code !== 'VALIDATION_ERROR'
-                || inlineCount === 0
-                || error.details.some((detail) => !isValidatedField(detail.field));
-
-        setMessages(inlineMessages);
-        setDetails(inlineDetails);
-        setSummary(formLevel ? error : null);
-        setUnexpectedFailure(false);
+      }
     }
 
-    /**
-     * The courtesy checks, reproducing exactly the registration rules the API
-     * documents and nothing more. The name counts characters, the password counts
-     * characters for its minimum and bytes for its maximum, so no value the API
-     * would accept is rejected here.
-     *
-     * @returns A message per offending field; empty when every value looks usable.
-     */
-    function courtesyMessages(): FieldMessages {
-        const found: FieldMessages = {};
-        const trimmedName = name.trim();
-        const trimmedEmail = email.trim();
+    const inlineCount = Object.keys(inlineDetails).length + Object.keys(inlineMessages).length;
+    // A field this form does not render, a validation failure the API
+    // explained with no usable detail, and every other code all have one
+    // place to be read: the single envelope message.
+    const formLevel = error.code === 'EMAIL_ALREADY_REGISTERED'
+      ? false
+      : error.code !== 'VALIDATION_ERROR'
+        || inlineCount === 0
+        || error.details.some((detail) => !isValidatedField(detail.field));
 
-        if (trimmedName === '') {
-            found.name = NAME_REQUIRED_MESSAGE;
-        } else if (trimmedName.length > NAME_MAX_LENGTH) {
-            found.name = NAME_TOO_LONG_MESSAGE;
-        }
+    setMessages(inlineMessages);
+    setDetails(inlineDetails);
+    setSummary(formLevel ? error : null);
+    setUnexpectedFailure(false);
+  }
 
-        if (trimmedEmail === '') {
-            found.email = EMAIL_REQUIRED_MESSAGE;
-        } else if (!EMAIL_PATTERN.test(trimmedEmail)) {
-            found.email = EMAIL_INVALID_MESSAGE;
-        }
+  /**
+   * The courtesy checks, reproducing exactly the registration rules the API
+   * documents and nothing more. The name counts characters, the password counts
+   * characters for its minimum and bytes for its maximum, so no value the API
+   * would accept is rejected here.
+   *
+   * @returns A message per offending field; empty when every value looks usable.
+   */
+  function courtesyMessages(): FieldMessages {
+    const found: FieldMessages = {};
+    const trimmedName = name.trim();
+    const trimmedEmail = email.trim();
 
-        if (password === '') {
-            found.password = PASSWORD_REQUIRED_MESSAGE;
-        } else if (password.length < PASSWORD_MIN_LENGTH) {
-            found.password = PASSWORD_TOO_SHORT_MESSAGE;
-        } else if (byteLength(password) > PASSWORD_MAX_BYTES) {
-            found.password = PASSWORD_TOO_LONG_MESSAGE;
-        }
-
-        return found;
+    if (trimmedName === '') {
+      found.name = NAME_REQUIRED_MESSAGE;
+    } else if (trimmedName.length > NAME_MAX_LENGTH) {
+      found.name = NAME_TOO_LONG_MESSAGE;
     }
 
-    /**
-     * Creates the account, opens its session and moves to the menu, or renders
-     * why it was not created.
-     *
-     * @param event - The form submission.
-     */
-    async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
-        event.preventDefault();
-
-        if (submitting) {
-            return;
-        }
-
-        const found = courtesyMessages();
-        setMessages(found);
-        setDetails({});
-        setSummary(null);
-        setUnexpectedFailure(false);
-
-        if (Object.keys(found).length > 0) {
-            return;
-        }
-
-        setSubmitting(true);
-        try {
-            const auth = await register({
-                name: name.trim(),
-                email: email.trim(),
-                password,
-            });
-            // The session is opened before the route changes, so the menu renders
-            // for a signed-in visitor rather than an anonymous one.
-            login(auth);
-            navigate('/menu', { replace: true });
-        } catch (error) {
-            reportFailure(error);
-        } finally {
-            setSubmitting(false);
-        }
+    if (trimmedEmail === '') {
+      found.email = EMAIL_REQUIRED_MESSAGE;
+    } else if (!EMAIL_PATTERN.test(trimmedEmail)) {
+      found.email = EMAIL_INVALID_MESSAGE;
     }
 
-    return (
-        <section className="stack" aria-labelledby="register-title">
-            <h1 className="page-title" id="register-title">Create your account</h1>
-            <p className="field__hint">
-                One account is all you need to order burgers and reserve a table.
-            </p>
+    if (password === '') {
+      found.password = PASSWORD_REQUIRED_MESSAGE;
+    } else if (password.length < PASSWORD_MIN_LENGTH) {
+      found.password = PASSWORD_TOO_SHORT_MESSAGE;
+    } else if (byteLength(password) > PASSWORD_MAX_BYTES) {
+      found.password = PASSWORD_TOO_LONG_MESSAGE;
+    }
 
-            <form className="stack" onSubmit={handleSubmit} aria-busy={submitting} noValidate>
-                {unexpectedFailure ? (
-                    <p className="error-summary" role="alert" data-code="INTERNAL_ERROR">
-                        {UNEXPECTED_FAILURE_MESSAGE}
-                    </p>
-                ) : null}
-                {summary ? <FormMessage error={summary} /> : null}
+    return found;
+  }
 
-                <TextField
-                    id="register-name"
-                    label="Name"
-                    required
-                    autoComplete="name"
-                    value={name}
-                    error={messages.name ?? null}
-                    detail={details.name ?? null}
-                    onChange={(event: ChangeEvent<HTMLInputElement>) => {
-                        setName(event.target.value);
-                        clearFailure('name');
-                    }}
-                />
+  /**
+   * Creates the account, opens its session and moves to the menu, or renders
+   * why it was not created.
+   *
+   * @param event - The form submission.
+   */
+  async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault();
 
-                <EmailField
-                    id="register-email"
-                    label="Email"
-                    required
-                    autoComplete="email"
-                    value={email}
-                    error={messages.email ?? null}
-                    detail={details.email ?? null}
-                    onChange={(event: ChangeEvent<HTMLInputElement>) => {
-                        setEmail(event.target.value);
-                        clearFailure('email');
-                    }}
-                />
+    if (submitting) {
+      return;
+    }
 
-                <PasswordField
-                    id="register-password"
-                    label="Password"
-                    required
-                    hint={PASSWORD_HINT}
-                    autoComplete="new-password"
-                    value={password}
-                    error={messages.password ?? null}
-                    detail={details.password ?? null}
-                    onChange={(event: ChangeEvent<HTMLInputElement>) => {
-                        setPassword(event.target.value);
-                        clearFailure('password');
-                    }}
-                />
+    const found = courtesyMessages();
+    setMessages(found);
+    setDetails({});
+    setSummary(null);
+    setUnexpectedFailure(false);
 
-                {submitting ? <p className="field__hint" role="status">{SUBMITTING_MESSAGE}</p> : null}
-                {hasFailure && !submitting ? <p className="field__hint">{RETRY_MESSAGE}</p> : null}
+    if (Object.keys(found).length > 0) {
+      return;
+    }
 
-                <div className="row">
-                    <button className="button" type="submit" disabled={submitting}>
-                        {SUBMIT_LABEL}
-                    </button>
-                </div>
-            </form>
+    setSubmitting(true);
+    try {
+      const auth = await register({
+        name: name.trim(),
+        email: email.trim(),
+        password,
+      });
+      // The session is opened before the route changes, so the menu renders
+      // for a signed-in visitor rather than an anonymous one.
+      login(auth);
+      navigate('/menu', { replace: true });
+    } catch (error) {
+      reportFailure(error);
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
-            <p className="field__hint">
-                Already have an account? <Link to="/login">Sign in</Link>
-            </p>
-        </section>
-    );
+  return (
+    <section className="stack" aria-labelledby="register-title">
+      <h1 className="page-title" id="register-title">Create your account</h1>
+      <p className="field__hint">
+        One account is all you need to order burgers and reserve a table.
+      </p>
+
+      <form className="stack" onSubmit={handleSubmit} aria-busy={submitting} noValidate>
+        {unexpectedFailure ? (
+          <p className="error-summary" role="alert" data-code="INTERNAL_ERROR">
+            {UNEXPECTED_FAILURE_MESSAGE}
+          </p>
+        ) : null}
+        {summary ? <FormMessage error={summary} /> : null}
+
+        <TextField
+          id="register-name"
+          label="Name"
+          required
+          autoComplete="name"
+          value={name}
+          error={messages.name ?? null}
+          detail={details.name ?? null}
+          onChange={(event: ChangeEvent<HTMLInputElement>) => {
+            setName(event.target.value);
+            clearFailure('name');
+          }}
+        />
+
+        <EmailField
+          id="register-email"
+          label="Email"
+          required
+          autoComplete="email"
+          value={email}
+          error={messages.email ?? null}
+          detail={details.email ?? null}
+          onChange={(event: ChangeEvent<HTMLInputElement>) => {
+            setEmail(event.target.value);
+            clearFailure('email');
+          }}
+        />
+
+        <PasswordField
+          id="register-password"
+          label="Password"
+          required
+          hint={PASSWORD_HINT}
+          autoComplete="new-password"
+          value={password}
+          error={messages.password ?? null}
+          detail={details.password ?? null}
+          onChange={(event: ChangeEvent<HTMLInputElement>) => {
+            setPassword(event.target.value);
+            clearFailure('password');
+          }}
+        />
+
+        {submitting ? <p className="field__hint" role="status">{SUBMITTING_MESSAGE}</p> : null}
+        {hasFailure && !submitting ? <p className="field__hint">{RETRY_MESSAGE}</p> : null}
+
+        <div className="row">
+          <button className="button" type="submit" disabled={submitting}>
+            {SUBMIT_LABEL}
+          </button>
+        </div>
+      </form>
+
+      <p className="field__hint">
+        Already have an account? <Link className="inline-link" to="/login">Sign in</Link>
+      </p>
+    </section>
+  );
 }
 
 export default RegisterView;

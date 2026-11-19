@@ -38,40 +38,40 @@ import { useSession } from '../state/session';
  * @returns The not-found block for the current session status.
  */
 export function NotFoundView(): JSX.Element {
-    const { status } = useSession();
+  const { status } = useSession();
 
-    return (
-        <div className="not-found">
-            <h1 className="page-title">Page not found</h1>
-            <p>We could not find the page you were looking for. It may have moved, or the link may be incomplete.</p>
+  return (
+    <div className="not-found">
+      <h1 className="page-title">Page not found</h1>
+      <p>We could not find the page you were looking for. It may have moved, or the link may be incomplete.</p>
 
-            <div className="row">
-                <Link className="button" to="/menu">
-                    Browse the menu
-                </Link>
-                {status === 'authenticated' ? (
-                    <>
-                        <Link className="button button--secondary" to="/orders">
-                            Your orders
-                        </Link>
-                        <Link className="button button--secondary" to="/reservations">
-                            Your reservations
-                        </Link>
-                    </>
-                ) : null}
-                {status === 'anonymous' ? (
-                    <>
-                        <Link className="button button--secondary" to="/login">
-                            Log in
-                        </Link>
-                        <Link className="button button--secondary" to="/register">
-                            Create an account
-                        </Link>
-                    </>
-                ) : null}
-            </div>
-        </div>
-    );
+      <div className="row">
+        <Link className="button" to="/menu">
+          Browse the menu
+        </Link>
+        {status === 'authenticated' ? (
+          <>
+            <Link className="button button--secondary" to="/orders">
+              Your orders
+            </Link>
+            <Link className="button button--secondary" to="/reservations">
+              Your reservations
+            </Link>
+          </>
+        ) : null}
+        {status === 'anonymous' ? (
+          <>
+            <Link className="button button--secondary" to="/login">
+              Log in
+            </Link>
+            <Link className="button button--secondary" to="/register">
+              Create an account
+            </Link>
+          </>
+        ) : null}
+      </div>
+    </div>
+  );
 }
 
 export default NotFoundView;

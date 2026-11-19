@@ -29,37 +29,37 @@ export type FormControlType = 'text' | 'email' | 'password' | 'date' | 'time' | 
  * caller may state a `type` only as the default the control overrides.
  */
 export interface FormControlProps
-    extends Omit<
-        InputHTMLAttributes<HTMLInputElement>,
-        'id' | 'className' | 'children' | 'aria-invalid' | 'aria-describedby'
-    > {
-    /** The input's id, and the target of the label's `htmlFor`. */
-    id: string;
-    /** Visible label text; never replaced by a placeholder. */
-    label: string;
-    /** Optional helper text, announced through `aria-describedby`. */
-    hint?: string;
-    /** A plain message, rendered only when no `detail` is supplied. */
-    error?: string | null;
-    /** The server's own `details` entry for this field; it wins over `error`. */
-    detail?: ApiFieldDetail | null;
+  extends Omit<
+    InputHTMLAttributes<HTMLInputElement>,
+    'id' | 'className' | 'children' | 'aria-invalid' | 'aria-describedby'
+  > {
+  /** The input's id, and the target of the label's `htmlFor`. */
+  id: string;
+  /** Visible label text; never replaced by a placeholder. */
+  label: string;
+  /** Optional helper text, announced through `aria-describedby`. */
+  hint?: string;
+  /** A plain message, rendered only when no `detail` is supplied. */
+  error?: string | null;
+  /** The server's own `details` entry for this field; it wins over `error`. */
+  detail?: ApiFieldDetail | null;
 }
 
 /** Props of {@link FieldError}. */
 export interface FieldErrorProps {
-    id?: string;
-    detail?: ApiFieldDetail | null;
-    message?: string | null;
-    /** Appended to `.field-error`, never a replacement for it. */
-    className?: string;
+  id?: string;
+  detail?: ApiFieldDetail | null;
+  message?: string | null;
+  /** Appended to `.field-error`, never a replacement for it. */
+  className?: string;
 }
 
 /** Props of {@link FormMessage}. */
 export interface FormMessageProps {
-    /** The failure as the transport reported it: code plus message. */
-    error?: ApiError | null;
-    /** Rendered when no `ApiError` object is available. */
-    message?: string | null;
+  /** The failure as the transport reported it: code plus message. */
+  error?: ApiError | null;
+  /** Rendered when no `ApiError` object is available. */
+  message?: string | null;
 }
 
 /**
@@ -73,18 +73,18 @@ export interface FormMessageProps {
  * @returns The error paragraph, or null when there is nothing to report.
  */
 export function FieldError({ id, detail, message, className }: FieldErrorProps): JSX.Element | null {
-    const text = detail?.issue ?? message;
+  const text = detail?.issue ?? message;
 
-    if (!text) {
-        return null;
-    }
+  if (!text) {
+    return null;
+  }
 
-    return (
-        <p className={className ? `field-error ${className}` : 'field-error'}
-            id={id} data-field={detail?.field} data-issue={detail?.issue}>
-            {text}
-        </p>
-    );
+  return (
+    <p className={className ? `field-error ${className}` : 'field-error'}
+      id={id} data-field={detail?.field} data-issue={detail?.issue}>
+      {text}
+    </p>
+  );
 }
 
 /**
@@ -96,28 +96,28 @@ export function FieldError({ id, detail, message, className }: FieldErrorProps):
  * @returns The alert element, or null when there is nothing to report.
  */
 export function FormMessage({ error, message }: FormMessageProps): JSX.Element | null {
-    const text = error ? error.message || error.code : message;
+  const text = error ? error.message || error.code : message;
 
-    if (!text) {
-        return null;
-    }
+  if (!text) {
+    return null;
+  }
 
-    return (
-        <div className="error-summary" role="alert" data-code={error?.code}>
-            {text}
-        </div>
-    );
+  return (
+    <div className="error-summary" role="alert" data-code={error?.code}>
+      {text}
+    </div>
+  );
 }
 
 /** @returns The ids that exist, space-separated, or undefined when none do. */
 function describedByIds(...ids: (string | undefined)[]): string | undefined {
-    const present = ids.filter((value): value is string => value !== undefined);
-    return present.length === 0 ? undefined : present.join(' ');
+  const present = ids.filter((value): value is string => value !== undefined);
+  return present.length === 0 ? undefined : present.join(' ');
 }
 
 /** Props of the internal {@link Field}: the shared props plus the type it renders. */
 interface FieldProps extends FormControlProps {
-    type: FormControlType;
+  type: FormControlType;
 }
 
 /**
@@ -128,37 +128,37 @@ interface FieldProps extends FormControlProps {
  * @returns The field element.
  */
 function Field({ id, label, hint, error, detail, type, required, value, onChange, ...rest }: FieldProps): JSX.Element {
-    const hasError = Boolean(detail?.issue ?? error);
-    const hintId = hint ? `${id}-hint` : undefined;
-    const errorId = hasError ? `${id}-error` : undefined;
+  const hasError = Boolean(detail?.issue ?? error);
+  const hintId = hint ? `${id}-hint` : undefined;
+  const errorId = hasError ? `${id}-error` : undefined;
 
-    return (
-        <div className={hasError ? 'field field--invalid' : 'field'}>
-            <label className="field__label" htmlFor={id}>
-                {label}
-                {required ? <span className="visually-hidden"> (required)</span> : null}
-            </label>
-            <input
-                {...rest}
-                id={id}
-                name={rest.name ?? id}
-                type={type}
-                className="control"
-                required={required}
-                value={value}
-                onChange={onChange}
-                aria-invalid={hasError}
-                aria-describedby={describedByIds(hintId, errorId)}
-            />
-            {hint ? <p className="field__hint" id={`${id}-hint`}>{hint}</p> : null}
-            <FieldError id={`${id}-error`} detail={detail} message={error} />
-        </div>
-    );
+  return (
+    <div className={hasError ? 'field field--invalid' : 'field'}>
+      <label className="field__label" htmlFor={id}>
+        {label}
+        {required ? <span className="visually-hidden"> (required)</span> : null}
+      </label>
+      <input
+        {...rest}
+        id={id}
+        name={rest.name ?? id}
+        type={type}
+        className="control"
+        required={required}
+        value={value}
+        onChange={onChange}
+        aria-invalid={hasError}
+        aria-describedby={describedByIds(hintId, errorId)}
+      />
+      {hint ? <p className="field__hint" id={`${id}-hint`}>{hint}</p> : null}
+      <FieldError id={`${id}-error`} detail={detail} message={error} />
+    </div>
+  );
 }
 
 /** @returns A single-line text field. */
 export function TextField(props: FormControlProps): JSX.Element {
-    return <Field {...props} type="text" />;
+  return <Field {...props} type="text" />;
 }
 
 /**
@@ -168,25 +168,25 @@ export function TextField(props: FormControlProps): JSX.Element {
  * form that renders it, since the form submits with `noValidate`.
  */
 export function EmailField(props: FormControlProps): JSX.Element {
-    return <Field {...props} type="email" />;
+  return <Field {...props} type="email" />;
 }
 
 /** @returns A password field. */
 export function PasswordField(props: FormControlProps): JSX.Element {
-    return <Field {...props} type="password" />;
+  return <Field {...props} type="password" />;
 }
 
 /** @returns A date field. */
 export function DateField(props: FormControlProps): JSX.Element {
-    return <Field {...props} type="date" />;
+  return <Field {...props} type="date" />;
 }
 
 /** @returns A time field, defaulting to 30-minute steps. */
 export function TimeField(props: FormControlProps): JSX.Element {
-    return <Field {...props} type="time" step={props.step ?? '1800'} />;
+  return <Field {...props} type="time" step={props.step ?? '1800'} />;
 }
 
 /** @returns A number field, defaulting to whole numbers. */
 export function NumberField(props: FormControlProps): JSX.Element {
-    return <Field {...props} type="number" inputMode={props.inputMode ?? 'numeric'} step={props.step ?? '1'} />;
+  return <Field {...props} type="number" inputMode={props.inputMode ?? 'numeric'} step={props.step ?? '1'} />;
 }

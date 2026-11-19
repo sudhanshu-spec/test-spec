@@ -38,10 +38,10 @@ import type { Order, OrderStatus } from '../api/types';
  * meaning; the badge colour beside it only reinforces it.
  */
 const STATUS_LABELS: Record<OrderStatus, string> = {
-    confirmed: 'Confirmed',
-    preparing: 'Preparing',
-    completed: 'Completed',
-    cancelled: 'Cancelled',
+  confirmed: 'Confirmed',
+  preparing: 'Preparing',
+  completed: 'Completed',
+  cancelled: 'Cancelled',
 };
 
 /**
@@ -49,38 +49,38 @@ const STATUS_LABELS: Record<OrderStatus, string> = {
  * A cancelled order reads as unavailable rather than carrying an invented class.
  */
 const STATUS_BADGE_CLASSES: Record<OrderStatus, string> = {
-    confirmed: 'badge badge--available',
-    preparing: 'badge badge--available',
-    completed: 'badge badge--available',
-    cancelled: 'badge badge--unavailable',
+  confirmed: 'badge badge--available',
+  preparing: 'badge badge--available',
+  completed: 'badge badge--available',
+  cancelled: 'badge badge--unavailable',
 };
 
 /** The failure a request ended with, flattened to what the view renders. */
 interface Failure {
-    /** The API's code, or `INTERNAL_ERROR` for a throw that never reached it. */
-    readonly code: string;
-    /** Safe to render: the API's message, never a stack or a secret. */
-    readonly message: string;
+  /** The API's code, or `INTERNAL_ERROR` for a throw that never reached it. */
+  readonly code: string;
+  /** Safe to render: the API's message, never a stack or a secret. */
+  readonly message: string;
 }
 
 /** The states this view renders, as one discriminated union. */
 type ViewState =
-    | { readonly kind: 'loading' }
-    | { readonly kind: 'order'; readonly order: Order }
-    | { readonly kind: 'history'; readonly orders: readonly Order[] }
-    | { readonly kind: 'not-found' }
-    | { readonly kind: 'error'; readonly code: string; readonly message: string };
+  | { readonly kind: 'loading' }
+  | { readonly kind: 'order'; readonly order: Order }
+  | { readonly kind: 'history'; readonly orders: readonly Order[] }
+  | { readonly kind: 'not-found' }
+  | { readonly kind: 'error'; readonly code: string; readonly message: string };
 
 /** Props of {@link OrderConfirmation}. */
 interface OrderConfirmationProps {
-    /** The order to present, exactly as the API returned it. */
-    readonly order: Order;
+  /** The order to present, exactly as the API returned it. */
+  readonly order: Order;
 }
 
 /** Props of {@link OrderHistoryEntry}. */
 interface OrderHistoryEntryProps {
-    /** One order of the caller's history, exactly as the API returned it. */
-    readonly order: Order;
+  /** One order of the caller's history, exactly as the API returned it. */
+  readonly order: Order;
 }
 
 /**
@@ -94,11 +94,11 @@ interface OrderHistoryEntryProps {
  * @returns The failure's code and the message safe to render.
  */
 function toFailure(error: unknown): Failure {
-    if (error instanceof ApiError) {
-        return { code: error.code, message: error.message || error.code };
-    }
+  if (error instanceof ApiError) {
+    return { code: error.code, message: error.message || error.code };
+  }
 
-    return { code: 'INTERNAL_ERROR', message: 'The order could not be loaded.' };
+  return { code: 'INTERNAL_ERROR', message: 'The order could not be loaded.' };
 }
 
 /**
@@ -108,7 +108,7 @@ function toFailure(error: unknown): Failure {
  * @returns The count with its noun: `1 item`, `4 items`.
  */
 function countLabel(count: number, singular: string, pluralForm: string): string {
-    return count === 1 ? '1 ' + singular : String(count) + ' ' + pluralForm;
+  return count === 1 ? '1 ' + singular : String(count) + ' ' + pluralForm;
 }
 
 /**
@@ -120,63 +120,63 @@ function countLabel(count: number, singular: string, pluralForm: string): string
  * @returns The confirmation for one order.
  */
 function OrderConfirmation({ order }: OrderConfirmationProps): JSX.Element {
-    const hasNotes = order.notes !== null && order.notes.trim() !== '';
+  const hasNotes = order.notes !== null && order.notes.trim() !== '';
 
-    return (
-        <div className="cart">
-            <h1 className="page-title">Order placed</h1>
+  return (
+    <div className="cart">
+      <h1 className="page-title">Order placed</h1>
 
-            <section className="card stack" aria-label="Order details">
-                <div className="row">
-                    <span className={STATUS_BADGE_CLASSES[order.status]}>{STATUS_LABELS[order.status]}</span>
-                    <span className="cart-line__unit-price">Placed {formatTimestamp(order.created_at)}</span>
-                </div>
-                <p className="cart-line__name">Order {order.id}</p>
-                {hasNotes ? (
-                    <p>
-                        <span className="cart-line__unit-price">Notes: </span>
-                        {order.notes}
-                    </p>
-                ) : null}
-            </section>
-
-            <section className="cart-summary" aria-label="Items and total">
-                <div className="cart-summary__lines">
-                    <h2 className="section-title">{countLabel(order.lines.length, 'item', 'items')}</h2>
-                    <ul className="cart-lines">
-                        {order.lines.map((line) => (
-                            <li className="cart-line" key={line.id}>
-                                <div className="cart-line__info">
-                                    <span className="cart-line__name">{line.name}</span>
-                                    <span className="cart-line__unit-price">Quantity {line.quantity}</span>
-                                    <span className="cart-line__unit-price">
-                                        {formatCents(line.unit_price_cents)} each
-                                    </span>
-                                </div>
-                                <span className="cart-line__total">{formatCents(line.line_total_cents)}</span>
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-
-                <div className="cart-summary__totals">
-                    <div className="cart-summary__total-row cart-summary__total-row--total">
-                        <span>Total</span>
-                        <span>{formatCents(order.total_cents)}</span>
-                    </div>
-                </div>
-            </section>
-
-            <div className="row">
-                <Link className="button" to="/orders">
-                    All your orders
-                </Link>
-                <Link className="button button--secondary" to="/menu">
-                    Browse the menu
-                </Link>
-            </div>
+      <section className="card stack" aria-label="Order details">
+        <div className="row">
+          <span className={STATUS_BADGE_CLASSES[order.status]}>{STATUS_LABELS[order.status]}</span>
+          <span className="cart-line__unit-price">Placed {formatTimestamp(order.created_at)}</span>
         </div>
-    );
+        <p className="cart-line__name">Order {order.id}</p>
+        {hasNotes ? (
+          <p>
+            <span className="cart-line__unit-price">Notes: </span>
+            {order.notes}
+          </p>
+        ) : null}
+      </section>
+
+      <section className="cart-summary" aria-label="Items and total">
+        <div className="cart-summary__lines">
+          <h2 className="section-title">{countLabel(order.lines.length, 'item', 'items')}</h2>
+          <ul className="cart-lines">
+            {order.lines.map((line) => (
+              <li className="cart-line" key={line.id}>
+                <div className="cart-line__info">
+                  <span className="cart-line__name">{line.name}</span>
+                  <span className="cart-line__unit-price">Quantity {line.quantity}</span>
+                  <span className="cart-line__unit-price">
+                    {formatCents(line.unit_price_cents)} each
+                  </span>
+                </div>
+                <span className="cart-line__total">{formatCents(line.line_total_cents)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="cart-summary__totals">
+          <div className="cart-summary__total-row cart-summary__total-row--total">
+            <span>Total</span>
+            <span>{formatCents(order.total_cents)}</span>
+          </div>
+        </div>
+      </section>
+
+      <div className="row">
+        <Link className="button" to="/orders">
+          All your orders
+        </Link>
+        <Link className="button button--secondary" to="/menu">
+          Browse the menu
+        </Link>
+      </div>
+    </div>
+  );
 }
 
 /**
@@ -188,31 +188,31 @@ function OrderConfirmation({ order }: OrderConfirmationProps): JSX.Element {
  * @returns A single list item of the history.
  */
 function OrderHistoryEntry({ order }: OrderHistoryEntryProps): JSX.Element {
-    return (
-        <li className="cart-line">
-            <div className="cart-line__info">
-                <span className="cart-line__name">Order {order.id}</span>
-                <span className="cart-line__unit-price">Placed {formatTimestamp(order.created_at)}</span>
-                <span className="cart-line__unit-price">{countLabel(order.lines.length, 'item', 'items')}</span>
-                {/*
-                 * The order id itself is a single line of text, so an anchor wrapped
-                 * around it cannot reach the 44x44px touch-target floor at wide
-                 * widths. The row's link is therefore an explicit control, and the
-                 * id is repeated visually hidden inside it so two links on the page
-                 * never share an accessible name.
-                 */}
-                <div className="cart-line__actions">
-                    <Link className="button button--secondary" to={'/orders/' + order.id}>
-                        View order<span className="visually-hidden"> {order.id}</span>
-                    </Link>
-                </div>
-            </div>
-            <div className="row">
-                <span className={STATUS_BADGE_CLASSES[order.status]}>{STATUS_LABELS[order.status]}</span>
-            </div>
-            <span className="cart-line__total">{formatCents(order.total_cents)}</span>
-        </li>
-    );
+  return (
+    <li className="cart-line">
+      <div className="cart-line__info">
+        <span className="cart-line__name">Order {order.id}</span>
+        <span className="cart-line__unit-price">Placed {formatTimestamp(order.created_at)}</span>
+        <span className="cart-line__unit-price">{countLabel(order.lines.length, 'item', 'items')}</span>
+        {/*
+         * The order id itself is a single line of text, so an anchor wrapped
+         * around it cannot reach the 44x44px touch-target floor at wide
+         * widths. The row's link is therefore an explicit control, and the
+         * id is repeated visually hidden inside it so two links on the page
+         * never share an accessible name.
+         */}
+        <div className="cart-line__actions">
+          <Link className="button button--secondary" to={'/orders/' + order.id}>
+            View order<span className="visually-hidden"> {order.id}</span>
+          </Link>
+        </div>
+      </div>
+      <div className="row">
+        <span className={STATUS_BADGE_CLASSES[order.status]}>{STATUS_LABELS[order.status]}</span>
+      </div>
+      <span className="cart-line__total">{formatCents(order.total_cents)}</span>
+    </li>
+  );
 }
 
 /**
@@ -229,143 +229,143 @@ function OrderHistoryEntry({ order }: OrderHistoryEntryProps): JSX.Element {
  *   failure states.
  */
 export function OrderConfirmationView(): JSX.Element {
-    const { id } = useParams<{ id: string }>();
-    const [state, setState] = useState<ViewState>({ kind: 'loading' });
-    const [attempt, setAttempt] = useState(0);
+  const { id } = useParams<{ id: string }>();
+  const [state, setState] = useState<ViewState>({ kind: 'loading' });
+  const [attempt, setAttempt] = useState(0);
 
-    useEffect(() => {
-        let ignore = false;
-        setState({ kind: 'loading' });
+  useEffect(() => {
+    let ignore = false;
+    setState({ kind: 'loading' });
 
-        async function load(): Promise<void> {
-            try {
-                if (id === undefined) {
-                    const orders = await listOrders();
+    async function load(): Promise<void> {
+      try {
+        if (id === undefined) {
+          const orders = await listOrders();
 
-                    if (!ignore) {
-                        setState({ kind: 'history', orders });
-                    }
+          if (!ignore) {
+            setState({ kind: 'history', orders });
+          }
 
-                    return;
-                }
-
-                const order = await getOrder(id);
-
-                if (!ignore) {
-                    setState({ kind: 'order', order });
-                }
-            } catch (error) {
-                if (ignore) {
-                    return;
-                }
-
-                const failure = toFailure(error);
-                // An order held by another account and an id that names none are
-                // answered identically, so both render the same not-found state.
-                const missing = failure.code === 'ORDER_NOT_FOUND' || failure.code === 'VALIDATION_ERROR';
-
-                if (missing) {
-                    setState({ kind: 'not-found' });
-                } else {
-                    setState({ kind: 'error', code: failure.code, message: failure.message });
-                }
-            }
+          return;
         }
 
-        void load();
+        const order = await getOrder(id);
 
-        return () => {
-            ignore = true;
-        };
-    }, [id, attempt]);
+        if (!ignore) {
+          setState({ kind: 'order', order });
+        }
+      } catch (error) {
+        if (ignore) {
+          return;
+        }
 
-    const retry = (): void => {
-        setAttempt((previous) => previous + 1);
+        const failure = toFailure(error);
+        // An order held by another account and an id that names none are
+        // answered identically, so both render the same not-found state.
+        const missing = failure.code === 'ORDER_NOT_FOUND' || failure.code === 'VALIDATION_ERROR';
+
+        if (missing) {
+          setState({ kind: 'not-found' });
+        } else {
+          setState({ kind: 'error', code: failure.code, message: failure.message });
+        }
+      }
+    }
+
+    void load();
+
+    return () => {
+      ignore = true;
     };
+  }, [id, attempt]);
 
-    if (state.kind === 'loading') {
-        return (
-            <div className="card" role="status">
-                {id === undefined ? 'Loading your orders…' : 'Loading your order…'}
-            </div>
-        );
-    }
+  const retry = (): void => {
+    setAttempt((previous) => previous + 1);
+  };
 
-    if (state.kind === 'not-found') {
-        return (
-            <div className="not-found">
-                <h1 className="page-title">Order not found</h1>
-                <p>We could not find that order in your account.</p>
-                <div className="row">
-                    <Link className="button" to="/orders">
-                        View your orders
-                    </Link>
-                    <Link className="button button--secondary" to="/menu">
-                        Browse the menu
-                    </Link>
-                </div>
-            </div>
-        );
-    }
-
-    if (state.kind === 'error') {
-        return (
-            <div className="stack">
-                <h1 className="page-title">Your order</h1>
-                <div className="error-summary" role="alert" data-code={state.code}>
-                    <p>{state.message}</p>
-                    <p>
-                        <span className="badge">{state.code}</span>
-                    </p>
-                </div>
-                <div className="row">
-                    <button type="button" className="button" onClick={retry}>
-                        Try again
-                    </button>
-                    <Link className="button button--secondary" to="/menu">
-                        Browse the menu
-                    </Link>
-                </div>
-            </div>
-        );
-    }
-
-    if (state.kind === 'order') {
-        return <OrderConfirmation order={state.order} />;
-    }
-
-    if (state.orders.length === 0) {
-        return (
-            <div className="empty-state stack">
-                <h1 className="page-title">No orders yet</h1>
-                <p>Once you place an order, its confirmation appears here.</p>
-                <p>
-                    <Link className="button" to="/menu">
-                        Browse the menu
-                    </Link>
-                </p>
-            </div>
-        );
-    }
-
+  if (state.kind === 'loading') {
     return (
-        <div className="cart">
-            <h1 className="page-title">Your orders</h1>
-            <p className="cart-line__unit-price">
-                {countLabel(state.orders.length, 'order', 'orders')} so far, most recent first.
-            </p>
-            <ul className="cart-lines">
-                {state.orders.map((order) => (
-                    <OrderHistoryEntry key={order.id} order={order} />
-                ))}
-            </ul>
-            <div className="row">
-                <Link className="button" to="/menu">
-                    Browse the menu
-                </Link>
-            </div>
-        </div>
+      <div className="card" role="status">
+        {id === undefined ? 'Loading your orders…' : 'Loading your order…'}
+      </div>
     );
+  }
+
+  if (state.kind === 'not-found') {
+    return (
+      <div className="not-found">
+        <h1 className="page-title">Order not found</h1>
+        <p>We could not find that order in your account.</p>
+        <div className="row">
+          <Link className="button" to="/orders">
+            View your orders
+          </Link>
+          <Link className="button button--secondary" to="/menu">
+            Browse the menu
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (state.kind === 'error') {
+    return (
+      <div className="stack">
+        <h1 className="page-title">Your order</h1>
+        <div className="error-summary" role="alert" data-code={state.code}>
+          <p>{state.message}</p>
+          <p>
+            <span className="badge">{state.code}</span>
+          </p>
+        </div>
+        <div className="row">
+          <button type="button" className="button" onClick={retry}>
+            Try again
+          </button>
+          <Link className="button button--secondary" to="/menu">
+            Browse the menu
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (state.kind === 'order') {
+    return <OrderConfirmation order={state.order} />;
+  }
+
+  if (state.orders.length === 0) {
+    return (
+      <div className="empty-state stack">
+        <h1 className="page-title">No orders yet</h1>
+        <p>Once you place an order, its confirmation appears here.</p>
+        <p>
+          <Link className="button" to="/menu">
+            Browse the menu
+          </Link>
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="cart">
+      <h1 className="page-title">Your orders</h1>
+      <p className="cart-line__unit-price">
+        {countLabel(state.orders.length, 'order', 'orders')} so far, most recent first.
+      </p>
+      <ul className="cart-lines">
+        {state.orders.map((order) => (
+          <OrderHistoryEntry key={order.id} order={order} />
+        ))}
+      </ul>
+      <div className="row">
+        <Link className="button" to="/menu">
+          Browse the menu
+        </Link>
+      </div>
+    </div>
+  );
 }
 
 export default OrderConfirmationView;
