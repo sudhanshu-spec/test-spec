@@ -973,13 +973,21 @@ describe('Reservation service - reservation.service.js', () => {
       expect(created.notes).toBeNull();
     });
 
-    test('stores a note that is not text as its text form', () => {
-      const { service, reservations } = buildService();
+    test.each([
+      ['notes that are an object', { a: 1 }],
+      ['notes that are an array', ['a', 'b']],
+      ['notes that are a number', 42],
+      ['notes that are a boolean', true]
+    ])('stores null notes for %s', (_case, notes) => {
+      const readBack = storedRow({ id: 'res-no-note', notes: null });
+      const { service, reservations } = buildService({ insert: () => readBack });
 
-      const created = service.createReservation(validRequest({ notes: 42 }));
+      const created = service.createReservation(validRequest({ notes }));
 
-      expect(reservations.insert.mock.calls[0][0].notes).toBe('42');
-      expect(created.notes).toBe('42');
+      expect(reservations.insert.mock.calls[0][0].notes).toBeNull();
+      expect(created).toEqual(toPublicReservation(readBack));
+      expect(created.notes).toBeNull();
+      expect(created.id).toBe('res-no-note');
     });
 
     test('reads the slot before inserting it, and never the listing', () => {

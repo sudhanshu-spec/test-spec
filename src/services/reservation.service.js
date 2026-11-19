@@ -109,6 +109,7 @@ function createReservationService({ reservations, config, now = () => new Date()
    * Book one table for the authenticated caller, running the six checkpoints in
    * order and storing the booking when all of them pass.
    * @param {Object} input - `{userId, reservation_date, reservation_time, party_size, notes}`.
+   *   A `notes` value that is not a string is stored as null.
    * @returns {Object} The row the repository stored, in the public shape.
    * @throws {AppError} VALIDATION_ERROR, or RESERVATION_CONFLICT for a slot the caller already holds.
    */
@@ -158,7 +159,8 @@ function createReservationService({ reservations, config, now = () => new Date()
     const row = {
       id: crypto.randomUUID(), userId, reservationDate: reservation_date, reservationTime: reservation_time,
       partySize: party_size, status: 'confirmed', createdAt: now().toISOString(),
-      notes: notes === undefined || notes === null ? null : String(notes)
+      // A note is free text: a non-string stores no note at all, exactly as the order path does.
+      notes: typeof notes === 'string' ? notes : null
     };
     let stored;
     try {
