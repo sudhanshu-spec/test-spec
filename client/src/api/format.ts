@@ -18,26 +18,21 @@
  * deliberately not used, because its output depends on the environment's locale.
  *
  * Timestamps: the order confirmation and the reservation confirmation present the
- * same kind of field — the `created_at` instant the server wrote — on two screens
- * of one application, so both render it through `formatTimestamp` here. A
- * formatter kept private to the screen that needed it first left the second
- * screen printing the raw ISO-8601 string, which is why this module, consumed by
- * every such screen, is the shared home rather than any single view.
+ * same kind of field — the `created_at` instant the server wrote — so both render it
+ * through `formatTimestamp` here, and no view formats a timestamp for itself.
  *
  * Date-only and time-of-day: a reservation stores its date and its seating time as
  * two separate wall-clock values — `reservation_date` as `YYYY-MM-DD` and
- * `reservation_time` as `HH:MM` — and neither carries a timezone, so neither may
- * be converted. `formatCalendarDate` and `formatClockTime` are the client's one
- * date-only and one time-of-day presentation; a screen that printed the stored
- * strings instead showed a raw ISO date and a 24-hour time beside a localised
- * timestamp, three formats for two kinds of value.
+ * `reservation_time` as `HH:MM` — and neither carries a timezone, so neither may be
+ * converted. `formatCalendarDate` and `formatClockTime` are the client's one
+ * presentation for those two stored values, so the screens that present a booking
+ * render its date and seating time through them instead of printing the stored ISO
+ * date or `HH:MM` beside a localised timestamp.
  *
  * Statuses: an order is stored as one of `confirmed`, `preparing`, `completed` or
- * `cancelled` and a reservation as `confirmed`, and the API sends every one of
- * them in lower case. Both screens show the value in a badge, so both render it
- * through `formatStatusLabel` here: the order view once capitalised through a
- * label map of its own while the reservation view printed the stored string, and
- * the same badge read two ways on two screens of one application.
+ * `cancelled` and a reservation as `confirmed`, and the API sends every one of them
+ * in lower case. Both screens show the value in a badge, so both render it through
+ * `formatStatusLabel` here and the same badge reads the same way on both.
  *
  * @module client/src/api/format
  */

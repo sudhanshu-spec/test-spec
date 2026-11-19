@@ -76,7 +76,7 @@ const UNEXPECTED_FAILURE_MESSAGE = 'Something went wrong while booking your tabl
 const SUBMIT_LABEL = 'Reserve a table';
 const SUBMITTING_MESSAGE = 'Booking your table…';
 
-/** `@returns` A minute offset from midnight rendered on the 24-hour clock as `HH:MM`. */
+/** @returns A minute offset from midnight rendered on the 24-hour clock as `HH:MM`. */
 function formatMinutes(minutes: number): string {
   const hours = Math.floor(minutes / 60);
   const remainder = minutes % 60;
@@ -143,7 +143,7 @@ type ValidatedField = 'reservation_date' | 'reservation_time' | 'party_size';
 /** Inline messages, keyed by the API's own field names. */
 type FieldMessages = Partial<Record<ValidatedField, string>>;
 
-/** `@returns` Whether the API's field name is one this form renders an input for. */
+/** @returns Whether the API's field name is one this form renders an input for. */
 function isValidatedField(field: string): field is ValidatedField {
   return field === 'reservation_date' || field === 'reservation_time' || field === 'party_size';
 }
@@ -156,7 +156,7 @@ function toDateInputValue(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-/** `@returns` Whether the value is a real calendar date written as `YYYY-MM-DD`. */
+/** @returns Whether the value is a real calendar date written as `YYYY-MM-DD`. */
 function isCalendarDate(value: string): boolean {
   if (!DATE_PATTERN.test(value)) {
     return false;
@@ -231,7 +231,7 @@ const FIELD_RULES: Record<ValidatedField, (value: string) => string | undefined>
   party_size: partySizeMessage,
 };
 
-/** `@returns` The map with the field's entry removed, or the same map when it had none. */
+/** @returns The map with the field's entry removed, or the same map when it had none. */
 function withoutField(current: FieldMessages, field: ValidatedField): FieldMessages {
   if (current[field] === undefined) {
     return current;

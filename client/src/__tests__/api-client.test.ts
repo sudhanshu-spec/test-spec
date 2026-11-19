@@ -40,7 +40,7 @@ import type {
 } from '../api/types';
 import { ProtectedRoute } from '../components/ProtectedRoute';
 import { CartProvider } from '../state/cart';
-import { SessionProvider } from '../state/session';
+import { SessionProvider, TOKEN_STORAGE_KEY } from '../state/session';
 import { LoginView } from '../views/LoginView';
 
 /** The token the transport is told to send; the API mints opaque values, so any string is one. */
@@ -51,9 +51,6 @@ const NEXT_TOKEN = 'def456';
 
 /** The token already in storage when the session provider mounts. */
 const STORED_TOKEN = 'stored-token-abc123';
-
-/** Storage key the session provider owns; the only literal this suite shares with it. */
-const TOKEN_STORAGE_KEY = 'burger.auth.token';
 
 /** The account projection the API returns: no password hash and no salt exist to leak (R-4). */
 const USER: User = {
@@ -613,6 +610,13 @@ describe('configureApiClient(null)', () => {
     expect(error).toBeInstanceOf(ApiError);
     expect(error.status).toBe(401);
     expect(error.code).toBe('TOKEN_REQUIRED');
+  });
+});
+
+describe('token storage key', () => {
+  it('pins the localStorage key the session provider persists the token under', () => {
+    // The suites import the key instead of repeating it, so this case is what reports a rename.
+    expect(TOKEN_STORAGE_KEY).toBe('burger.auth.token');
   });
 });
 

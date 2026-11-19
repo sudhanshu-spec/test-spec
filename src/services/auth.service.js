@@ -64,9 +64,9 @@ function normaliseEmail(email) {
 }
 
 // The duplicate-registration failure, shared by the pre-check and the constraint
-// mapping so both answer identically. AppError takes the code key, not its status.
-function emailAlreadyRegistered(email) {
-  return new AppError('EMAIL_ALREADY_REGISTERED', `An account with the email ${email} is already registered.`);
+// mapping so both answer identically. The text names no address; AppError takes the code key.
+function emailAlreadyRegistered() {
+  return new AppError('EMAIL_ALREADY_REGISTERED', 'An account with that email is already registered.');
 }
 
 // Constant-time password comparison, awaited: the length guard comes first because
@@ -113,7 +113,7 @@ function createAuthService({ users, tokens, config, now = () => new Date() }) {
   async function register({ name, email, password } = {}) {
     const normalisedEmail = normaliseEmail(email);
     if (users.findByEmail(normalisedEmail)) {
-      throw emailAlreadyRegistered(normalisedEmail);
+      throw emailAlreadyRegistered();
     }
 
     const issuedAt = now();
@@ -135,7 +135,7 @@ function createAuthService({ users, tokens, config, now = () => new Date() }) {
       return { user: toPublicUser(stored), token: issued.token };
     } catch (error) {
       if (isDuplicateEmailError(error)) {
-        throw emailAlreadyRegistered(normalisedEmail);
+        throw emailAlreadyRegistered();
       }
       throw error;
     }

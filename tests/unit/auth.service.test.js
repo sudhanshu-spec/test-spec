@@ -457,7 +457,8 @@ describe('Auth service - auth.service.js', () => {
       expect(error).toBeInstanceOf(AppError);
       expect(error.code).toBe('EMAIL_ALREADY_REGISTERED');
       expect(error.status).toBe(409);
-      expect(error.message).toContain(USER_EMAIL);
+      expect(error.message).not.toContain(USER_EMAIL);
+      expect(error.message).not.toMatch(/@/);
       expect(repositories.users.findByEmail).toHaveBeenCalledWith(USER_EMAIL);
       expect(repositories.users.insert).not.toHaveBeenCalled();
       expect(repositories.tokens.insert).not.toHaveBeenCalled();
@@ -486,7 +487,8 @@ describe('Auth service - auth.service.js', () => {
       expect(error).toBeInstanceOf(AppError);
       expect(error.code).toBe('EMAIL_ALREADY_REGISTERED');
       expect(error.status).toBe(409);
-      expect(error.message).toContain(USER_EMAIL);
+      expect(error.message).not.toContain(USER_EMAIL);
+      expect(error.message).not.toMatch(/@/);
       expect(repositories.users.insert).toHaveBeenCalledTimes(1);
     });
 

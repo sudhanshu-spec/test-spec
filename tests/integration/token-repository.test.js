@@ -6,8 +6,9 @@
  * verbatim and revoked_at written as NULL, the UUIDv4 and the ISO-8601 creation
  * instant minted when they are omitted, the driver's own unique-constraint error
  * on a repeated digest, the foreign key that binds a token to its users row, the
- * unfiltered lookup that hands revoked and expired rows back intact, and the
- * revocation that records revoked_at and leaves every other column alone. The
+ * unfiltered lookup that hands revoked and expired rows back intact, the
+ * revocation that records revoked_at and leaves every other column alone, and the
+ * retention prune an issuance performs on the rows whose lifetime has passed. The
  * database file lives in a directory the suite creates under the operating
  * system's temporary directory — outside the repository — so no run writes a
  * database file into the checkout.
@@ -277,5 +278,43 @@ describe('token repository module (src/repositories/token.repository.js)', () =>
       expect(new Date(revoked.revoked_at).toISOString()).toBe(revoked.revoked_at);
       expect(revoked.expires_at).toBe(row.expires_at);
     });
+  });
+});
+
+describe('token retention on issuance (src/repositories/token.repository.js)', () => {
+  beforeAll(() => {
+    workDir = fs.mkdtempSync(path.join(os.tmpdir(), 'blitzy-token-repository-retention-'));
+    ({ repository, getDb } = loadTokenRepository(path.join(workDir, 'app.db')));
+    insertUser(OWNER_ID);
+  });
+
+  afterAll(() => {
+    // closeDb() is idempotent, so closing every instance the suite loaded is safe.
+    for (const loaded of loadedModules) {
+      loaded.closeDb();
+    }
+
+    fs.rmSync(workDir, { recursive: true, force: true });
+  });
+
+  test('drops the rows whose lifetime has passed when the next token is issued', () => {
+    // The live row is written first, because every insert prunes before it writes:
+    // a token inserted after the expired one would drop it before this test could
+    // show that an issuance leaves a row whose own expiry is in the past alone.
+    const live = repository.insert(newToken());
+    const expired = repository.insert(newToken({ expiresAt: PAST }));
+
+    // Neither issuance took the other row with it: both are still there, whole.
+    expect(storedRow(live.id)).toEqual(live);
+    expect(storedRow(expired.id)).toEqual(expired);
+
+    const fresh = repository.insert(newToken());
+
+    // The dead digest is gone, as the repository and a direct read both report.
+    expect(repository.findByHash(expired.token_hash)).toBeNull();
+    expect(storedRow(expired.id)).toBeUndefined();
+    // ...and the two rows still inside their lifetime are handed back intact.
+    expect(repository.findByHash(live.token_hash)).toEqual(live);
+    expect(repository.findByHash(fresh.token_hash)).toEqual(fresh);
   });
 });

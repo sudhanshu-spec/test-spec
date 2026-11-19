@@ -54,14 +54,11 @@ import type {
 import { ProtectedRoute, RETURN_PATH_PARAM } from '../components/ProtectedRoute';
 import { routeManifest, routes } from '../main';
 import { CartProvider } from '../state/cart';
-import { SessionProvider } from '../state/session';
+import { SessionProvider, TOKEN_STORAGE_KEY } from '../state/session';
 
 // ---------------------------------------------------------------------------
 // Fixtures: UUID-shaped ids, integer cents and the API's secret-free account (rule R-4)
 // ---------------------------------------------------------------------------
-
-/** Storage key of the opaque token; the session provider owns it, this suite only seeds it. */
-const TOKEN_STORAGE_KEY = 'burger.auth.token';
 
 /** 64 hex characters, the shape of the opaque tokens the API mints. */
 const STORED_TOKEN = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';

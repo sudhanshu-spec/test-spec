@@ -11,7 +11,7 @@
  * The request pipeline is registered in one fixed order, and that order is the
  * contract:
  * 1. CORS - the single configured browser origin
- * 2. JSON body parser - express.json()
+ * 2. JSON body parser - express.json(), mounted for the API at '/api'
  * 3. Route matcher - the tutorial routes at '/', then the JSON API at '/api'
  * 4. Authentication - router-level, inside the protected API routers
  * 5. Service handler - the handler of the matched route
@@ -30,6 +30,15 @@ const { errorHandler } = require('./middleware/error-handler');
 const app = express();
 
 /**
+ * Remove the framework fingerprint
+ * Express advertises itself with an X-Powered-By header on every response,
+ * the API error envelopes included. Disabling the setting removes that header.
+ * It is an Express setting rather than a pipeline stage, so no response body,
+ * status or content type changes.
+ */
+app.disable('x-powered-by');
+
+/**
  * Allow the single configured browser origin to call the application
  * The browser client is served from its own origin, so exactly one origin is
  * allowed; only the methods the API contract uses are advertised, and only the
@@ -40,13 +49,15 @@ const app = express();
 app.use(cors({ origin: config.corsOrigin, methods: ['GET', 'POST'], allowedHeaders: ['Content-Type', 'Authorization'] }));
 
 /**
- * Parse JSON request bodies
- * A malformed body is rejected by the parser and handed to the API error
- * handler, which answers it as VALIDATION_ERROR. The only mounted error handler
- * is scoped to '/api', so a malformed body sent to any other path falls through
- * to Express's own default handler.
+ * Parse JSON request bodies, under the API only
+ * The API is the only surface that consumes a request body: the tutorial routes
+ * answer fixed text and read nothing, so no other path ever has a body parsed. A
+ * malformed API body is rejected by the parser and answered as VALIDATION_ERROR
+ * by the API error handler, which is mounted under the same mount point. A path
+ * outside '/api' never has its body read, so it keeps Express's own default 404
+ * rather than a parser failure reaching Express's default error handler.
  */
-app.use(express.json());
+app.use('/api', express.json());
 
 /**
  * Mount main routes at root path

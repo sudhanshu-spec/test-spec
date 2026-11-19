@@ -22,6 +22,39 @@ const { AppError, ERROR_CODES, RESERVATION_ISSUES } = require('../../src/errors'
 const STACK_PATTERN = /\bat \S+:\d+/;
 
 /**
+ * The three ways `express.json()` refuses a body outright, one label per
+ * body-parser rejection tag it raises: `entity.too.large` for a body above the
+ * parser's default size limit, `charset.unsupported` for a charset it cannot
+ * decode, and `encoding.unsupported` for a content encoding it cannot inflate.
+ * Each entry builds the request that provokes it from a supertest agent.
+ * @type {Array<[string, function]>}
+ */
+const REJECTED_BODY_CASES = [
+  [
+    'a body over the parser size limit',
+    (agent) => agent
+      .post('/api/echo')
+      .set('Content-Type', 'application/json')
+      .send(JSON.stringify({ a: 'x'.repeat(200000) }))
+  ],
+  [
+    'a charset the parser cannot decode',
+    (agent) => agent
+      .post('/api/echo')
+      .set('Content-Type', 'application/json; charset=latin1')
+      .send('{"a":1}')
+  ],
+  [
+    'a content encoding the parser cannot inflate',
+    (agent) => agent
+      .post('/api/echo')
+      .set('Content-Type', 'application/json')
+      .set('Content-Encoding', 'compress')
+      .send('{"a":1}')
+  ]
+];
+
+/**
  * Builds an Express app whose routes fail in each of the ways the handler must
  * classify, with the handler mounted under `/api` exactly as `src/app.js` does.
  * @returns {import('express').Express} Configured application
@@ -180,6 +213,25 @@ describe('API error handler middleware', () => {
         }
       });
     });
+  });
+
+  describe('a body the parser refuses outright', () => {
+    test.each(REJECTED_BODY_CASES)(
+      'answers 400 VALIDATION_ERROR with no details and no log for %s',
+      async (_case, build) => {
+        const response = await build(request(app));
+
+        expect(response.status).toBe(400);
+        expect(response.body).toEqual({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Request body is not acceptable.'
+          }
+        });
+        expect('details' in response.body.error).toBe(false);
+        expect(console.error).not.toHaveBeenCalled();
+      }
+    );
   });
 
   describe('domain failures', () => {

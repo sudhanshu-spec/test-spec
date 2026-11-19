@@ -454,6 +454,18 @@ describe('/api terminals and body parsing', () => {
   });
 });
 
+describe('framework fingerprint', () => {
+  test('omits the x-powered-by banner on a tutorial route and on an API envelope', async () => {
+    const tutorial = await request(app).get('/');
+    const api = await request(app).get('/api/nope');
+
+    expect(tutorial.status).toBe(200);
+    expectEnvelope(api, 404, 'ROUTE_NOT_FOUND');
+    expect(tutorial.headers['x-powered-by']).toBeUndefined();
+    expect(api.headers['x-powered-by']).toBeUndefined();
+  });
+});
+
 describe('cart routes', () => {
   const CART_REQUESTS = [
     { method: 'get', path: '/api/cart' },
@@ -490,6 +502,21 @@ describe('non-API paths stay with Express own handler', () => {
       expect(response.text).toBeDefined();
     }
   );
+
+  test('answers a malformed JSON body with Express own 404, never a stack or a path', async () => {
+    // No body parser is mounted outside '/api', so this body is never read: the
+    // request is an ordinary unknown POST '/', answered by Express's own handler.
+    const response = await request(app)
+      .post('/')
+      .set('Content-Type', 'application/json')
+      .send('{');
+
+    expect(response.status).toBe(404);
+    expect(response.body.error).toBeUndefined();
+    expect(response.text).not.toMatch(/\bat \S+:\d+/);
+    expect(response.text).not.toMatch(/node_modules\//);
+    expect(response.text).not.toMatch(/src\//);
+  });
 });
 
 describe('frozen tutorial routes beside the API surface', () => {

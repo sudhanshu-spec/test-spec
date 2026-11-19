@@ -9,9 +9,11 @@
  * `--control-min-size: 44px` token declared in global.css.
  *
  * Two things a later reader must not break: .category-filter is the only
- * element allowed to scroll sideways, and every grid track below is
- * minmax(0, ...) so a long item name can never widen the page at the
- * narrowest supported width.
+ * element allowed to scroll sideways, and every grid track that carries free
+ * content is minmax(0, ...) — a cart line's middle `auto` track holds only
+ * its quantity cell or its status badge, never the item name, and the amount
+ * column is the last track, `minmax(var(--amount-column-width), max-content)`
+ * — so a long item name can never widen the page.
  *
  * Prices reach these elements already formatted by client/src/api/format.ts;
  * this file sizes and aligns that string and never emits a currency symbol.

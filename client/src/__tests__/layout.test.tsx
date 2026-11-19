@@ -36,7 +36,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import Layout from '../components/Layout';
 import { CartProvider, useCart } from '../state/cart';
-import { SessionProvider } from '../state/session';
+import { SessionProvider, TOKEN_STORAGE_KEY } from '../state/session';
 import type { MenuItem, User } from '../api/types';
 
 // ---------------------------------------------------------------------------
@@ -63,9 +63,6 @@ const catalogCss = readFileSync(join(STYLES_DIRECTORY, 'catalog.css'), 'utf8');
 // ---------------------------------------------------------------------------
 // Fixtures
 // ---------------------------------------------------------------------------
-
-/** Storage key the session provider keeps its token under; the suite seeds and clears it verbatim. */
-const TOKEN_STORAGE_KEY = 'burger.auth.token';
 
 /** 64 hex characters, the shape of the opaque tokens the API mints. */
 const STORED_TOKEN = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';

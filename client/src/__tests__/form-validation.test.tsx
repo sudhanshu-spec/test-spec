@@ -46,7 +46,7 @@ import { RESERVATION_ISSUES } from '../api/types';
 import type { ErrorEnvelope, MenuItem, Order, Reservation, User } from '../api/types';
 import { FormFeedback } from '../components/FormControls';
 import { CartProvider, useCart } from '../state/cart';
-import { SessionProvider } from '../state/session';
+import { SessionProvider, TOKEN_STORAGE_KEY } from '../state/session';
 import { CartView } from '../views/CartView';
 import { LoginView } from '../views/LoginView';
 import { RegisterView } from '../views/RegisterView';
@@ -107,9 +107,6 @@ const RESERVE_SUBMIT_LABEL = 'Reserve a table';
 // ---------------------------------------------------------------------------
 // Fixtures
 // ---------------------------------------------------------------------------
-
-/** Storage key `client/src/state/session.tsx` keeps its opaque token under. */
-const STORED_TOKEN_KEY = 'burger.auth.token';
 
 /** The API path of the session restore and of the two posts under test. */
 const SESSION_URL = '/api/auth/session';
@@ -604,7 +601,7 @@ interface CheckoutControls {
  * @returns The requests made, the quantity control and the Place order control.
  */
 async function renderCheckout(ordersReply: StubReply): Promise<CheckoutControls> {
-  window.localStorage.setItem(STORED_TOKEN_KEY, 'opaque-session-token');
+  window.localStorage.setItem(TOKEN_STORAGE_KEY, 'opaque-session-token');
 
   const calls = stubFetch((call) => {
     if (call.url === SESSION_URL) {

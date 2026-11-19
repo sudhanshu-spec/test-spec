@@ -17,8 +17,9 @@
  * Money is an integer count of cents throughout (`price_cents`,
  * `unit_price_cents`, `line_total_cents`, `total_cents`); turning one into a
  * currency string happens once, in `client/src/api/format.ts`. Timestamps are
- * ISO-8601 strings exactly as the server sends them, since nothing in this
- * application parses them into `Date` objects.
+ * ISO-8601 strings exactly as the server sends them; the only module that
+ * reads one is `client/src/api/format.ts`, which parses it for display and
+ * never writes one back.
  *
  * @module client/src/api/types
  */

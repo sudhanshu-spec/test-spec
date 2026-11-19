@@ -58,14 +58,11 @@ import { getOrder } from '../api/orders';
 import type { Category, MenuItem, Order, User } from '../api/types';
 import { CartProvider, useCart } from '../state/cart';
 import type { CartValue } from '../state/cart';
-import { SessionProvider, useSession } from '../state/session';
+import { SessionProvider, TOKEN_STORAGE_KEY, useSession } from '../state/session';
 import type { SessionValue } from '../state/session';
 import { CartView } from '../views/CartView';
 import { MenuCatalogView } from '../views/MenuCatalogView';
 import { MenuItemView } from '../views/MenuItemView';
-
-/** The one storage key the client owns; the session writes it and the cart never does. */
-const TOKEN_STORAGE_KEY = 'burger.auth.token';
 
 /** Opaque session token handed to the client by the login and session endpoints. */
 const TOKEN = '0f8a4c2e6b1d9357a0c4e8b2d6f1a3c5e7b9d0f2a4c6e8b1d3f5a7c9e0b2d4f6';

@@ -27,8 +27,12 @@ import { configureApiClient } from '../api/client';
 import { logout as logoutRequest, session as fetchSession } from '../api/auth';
 import type { AuthResponse, User } from '../api/types';
 
-/** Storage key of the opaque token; the only place this literal appears. */
-const TOKEN_STORAGE_KEY = 'burger.auth.token';
+/**
+ * Storage key of the opaque token, and the only declaration of this literal in `client/src`: the
+ * suites that plant or inspect a stored session import this constant rather than repeating it, so a
+ * renamed key is one edit here, plus the case that pins the documented value.
+ */
+export const TOKEN_STORAGE_KEY = 'burger.auth.token';
 
 /** @returns The token kept for this browser, or null when none is stored or none is readable. */
 function readStoredToken(): string | null {
