@@ -1,5 +1,6 @@
 # Dependencies
 node_modules/
+client/node_modules/
 
 # Test coverage
 coverage/
@@ -22,3 +23,11 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+# Client build output
+client/dist/
+
+# Database files
+data/*.db
+data/*.db-wal
+data/*.db-shm

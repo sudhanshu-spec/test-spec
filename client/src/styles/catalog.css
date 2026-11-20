@@ -1,0 +1,298 @@
+/**
+ * Catalog Stylesheet — catalog grid, category filter, item detail and cart layout
+ *
+ * Imported by client/src/main.tsx after global.css, and carrying exactly one
+ * breakpoint at 768px: a single column below it, two columns at and above it.
+ * Every value comes from a global.css token — this file declares no colour,
+ * spacing, radius or control-size custom property of its own, and every
+ * interactive control it positions is sized by the shared
+ * `--control-min-size: 44px` token declared in global.css.
+ *
+ * Two things a later reader must not break: .category-filter is the only
+ * element allowed to scroll sideways, and every grid track that carries free
+ * content is minmax(0, ...) — a cart line's middle `auto` track holds only
+ * its quantity cell or its status badge, never the item name, and the amount
+ * column is the last track, `minmax(var(--amount-column-width), max-content)`
+ * — so a long item name can never widen the page. The strip's overflow cues are
+ * the edge fades on .category-filter-frame, which stays a sibling of the strip: an
+ * overlay drawn inside a scroll container travels away with the content it has to
+ * sit over. The sentence a quantity control renders under itself is bounded by
+ * `--cart-line-message-width` inside that breakpoint for the same reason: an
+ * unbounded message would size the middle track to its own max-content and take
+ * the width from the item name.
+ *
+ * Prices reach these elements already formatted by client/src/api/format.ts;
+ * this file sizes and aligns that string and never emits a currency symbol.
+ *
+ * @stylesheet client/src/styles/catalog.css
+ */
+
+/* ---- Catalog grid: one column by default ---- */
+
+.catalog { display: flex; flex-direction: column; gap: var(--space-4); max-width: 100%; }
+
+.catalog-grid {
+  display: grid; gap: var(--space-4);
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 100%;
+}
+
+/* Card children keep min-width: 0 so long content cannot blow the track out. */
+.catalog-card { display: flex; flex-direction: column; gap: var(--space-2); max-width: 100%; min-width: 0; }
+
+.catalog-card__media { max-width: 100%; overflow: hidden; border-radius: var(--radius-md); }
+.catalog-card__media img { display: block; max-width: 100%; height: auto; }
+
+/* Both image branches carry this class, so the picture's box is reserved before
+   it decodes. The ratio itself differs per branch: 4:3 here for a real picture,
+   and the shorter band the placeholder branch below declares for an item whose
+   image_url is null. object-fit crops the picture instead of distorting it. */
+.catalog-card__image { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
+
+/* The decorative complement of the image, shown for an item with no image_url:
+   a quiet surface with the same hairline every other bordered surface uses. The
+   radius and the clipping come from .catalog-card__media above.
+   It is a band, not a picture frame. With no picture to reserve space for, the
+   4:3 box above would be the largest surface on the card and would say nothing,
+   so this branch packs its glyph and its label into a short 16:5 strip instead
+   and leaves the 4:3 ratio to the branch that has a picture to show. */
+.catalog-card__image--placeholder { display: flex; align-items: center; justify-content: center;
+  gap: var(--space-2); aspect-ratio: 16 / 5; background: var(--color-surface-muted);
+  border: 1px solid var(--color-border); color: var(--color-text-muted); font-size: var(--font-size-sm); }
+
+/* The glyph draws in currentColor at its own 20px intrinsic size and never
+   stretches or shrinks the band it sits in. */
+.catalog-card__placeholder-glyph { flex: 0 0 auto; }
+
+/* The body takes the card's free height. Cards in one grid row are stretched to
+   the same height, so without this the footer sits directly under a description
+   that may run one line shorter than its neighbour's, and the price/availability/
+   action rows of sibling cards step apart. Growing the body pushes every footer to
+   the bottom of its own card, where the row of them shares one baseline. */
+.catalog-card__body { display: flex; flex-direction: column; flex: 1 1 auto; gap: var(--space-2); min-width: 0; }
+.catalog-card__title { overflow-wrap: anywhere; line-height: var(--line-height-tight); }
+
+/* The item name is a link, so it is an interactive control and takes the same
+   --control-min-size floor as every other one. An inline-flex box keeps the hit
+   area at the label's width while giving it the full 44px height. */
+.catalog-card__title a { display: inline-flex; align-items: center; min-height: var(--control-min-size); }
+
+/* Clamped to three lines so a long description cannot stretch a whole card row. */
+.catalog-card__description { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3; overflow-wrap: anywhere; color: var(--color-text-muted); }
+
+.catalog-card__meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); min-width: 0; }
+
+.catalog-card__price { font-variant-numeric: tabular-nums; font-weight: var(--font-weight-bold);
+  color: var(--color-text); white-space: nowrap; }
+
+/* Footer and actions wrap, so price and button stack instead of overflowing. */
+.catalog-card__footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: var(--space-2); min-height: var(--control-min-size); min-width: var(--control-min-size); }
+
+.catalog-card__actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2);
+  min-height: var(--control-min-size); min-width: var(--control-min-size); }
+
+/* ---- Category filter strip: the one element allowed to scroll sideways ---- */
+
+/* The strip's visible box, and the element that carries the cues saying the strip
+   continues past an edge. It scrolls nothing itself: the strip inside it stays the
+   one element in either stylesheet that scrolls sideways. */
+.category-filter-frame { position: relative; max-width: 100%; }
+
+/* One fade per edge, pinned to that box rather than travelling with the content,
+   and hidden until the view reports that options sit past that edge
+   (data-overflow names the edges: 'start', 'end', 'both'). Their width and the
+   surface they fade from are global.css tokens, so a clipped chip washes out into
+   the page instead of ending in a hard edge with nothing to say it continues.
+   pointer-events: none keeps the chip a fade covers clickable. */
+.category-filter-frame::before, .category-filter-frame::after { content: ''; position: absolute;
+  inset-block: 0; width: var(--space-6); pointer-events: none; opacity: 0; }
+
+.category-filter-frame::before { inset-inline-start: 0; background: linear-gradient(to right, var(--color-surface), transparent); }
+.category-filter-frame::after { inset-inline-end: 0; background: linear-gradient(to left, var(--color-surface), transparent); }
+
+.category-filter-frame[data-overflow='start']::before,
+.category-filter-frame[data-overflow='both']::before,
+.category-filter-frame[data-overflow='end']::after,
+.category-filter-frame[data-overflow='both']::after { opacity: 1; }
+
+.category-filter { display: flex; gap: var(--space-2); max-width: 100%; padding-bottom: var(--space-1);
+  overflow-x: auto; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; }
+
+/* flex: 0 0 auto with nowrap makes the strip scroll instead of shredding labels. */
+.category-filter__option { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto;
+  min-height: var(--control-min-size); min-width: var(--control-min-size); padding: 0 var(--space-3);
+  border: 1px solid var(--color-border); border-radius: var(--radius-pill);
+  background: var(--color-surface-raised); color: var(--color-text); font: inherit;
+  white-space: nowrap; cursor: pointer; }
+
+/* Every filter option carries the shared .control class for its touch target and
+   its focus styling, and .control sets width: 100% for the full-width form
+   fields it was written for. An option sizes to its own label instead, so the
+   strip scrolls sideways rather than stacking one pill per screen width. */
+.category-filter__option.control { width: auto; }
+
+/* Hover stays unwrapped: this file carries exactly one media query, the 768px
+   breakpoint, so no (hover: hover) or reduced-motion query is added here. */
+.category-filter__option:hover { background: var(--color-surface-muted); }
+.category-filter__option:active { background: var(--color-surface-muted); border-color: var(--color-brand-strong); }
+
+/* The selected filter takes a brand fill and a bold weight: not hue alone. */
+.category-filter__option--active { border-color: var(--color-brand); background: var(--color-brand);
+  color: var(--color-brand-contrast); font-weight: var(--font-weight-bold); }
+
+/* A selected pill keeps a brand fill while it is pointed at or held: the plain
+   :hover and :active rules above outrank --active on specificity, so without these
+   two rules the selection's white label would sit on the muted fill — a 1.1:1
+   contrast, i.e. unreadable. It darkens on hover and darkens again on press, the
+   same two steps .button takes. */
+.category-filter__option--active:hover { background: var(--color-brand-strong); border-color: var(--color-brand-strong); }
+.category-filter__option--active:active { background: var(--color-brand-pressed); border-color: var(--color-brand-pressed); }
+
+/* ---- Item detail: stacked, no fixed column widths ---- */
+
+.item-detail { display: flex; flex-direction: column; gap: var(--space-4); max-width: 100%; }
+
+.item-detail__body { display: flex; flex-direction: column; gap: var(--space-3);
+  max-width: 100%; min-width: 0; overflow-wrap: anywhere; }
+
+.item-detail__meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); min-width: 0; }
+
+.item-detail__price { font-variant-numeric: tabular-nums; font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold); color: var(--color-text); white-space: nowrap; }
+
+/* The quantity field and the Add to cart button share one grid row, so the two
+   controls in this row start at the same y at every width. The field wrapper is
+   display: contents, which lifts its label, control, hint and message slot into
+   this grid as items of their own: rows 1 to 4 for the four of them, with the
+   button in row 2 beside the control. Do not replace this with flex centring of
+   the field wrapper and the button: a field is a label, a control, a hint and a
+   reserved message slot, so centring the button against that whole taller box
+   drops it by half the extra height instead of aligning it to the control.
+
+   Column 1 is minmax(0, max-content): the control keeps the width it has on its
+   own rather than stretching to the column the view is laid out in, and that
+   track still shrinks when the narrow column cannot hold it, so nothing widens
+   the page at 360px. The hint and the message slot span both columns, which is
+   what keeps their text out of that width: a longer clamp message then wraps
+   under the row instead of growing the control the shopper is about to press.
+   Column 2 sizes to the button, which keeps the row's 44px touch-target floor. */
+.item-detail__actions { display: grid; grid-template-columns: minmax(0, max-content) max-content;
+  align-items: center; column-gap: var(--space-3); row-gap: var(--space-1);
+  min-height: var(--control-min-size); min-width: var(--control-min-size); }
+
+/* The wrapper drops its box but stays in the DOM, which is what keeps the field's
+   own rules working: `.field--invalid .control`, the label's htmlFor and the
+   input's aria-describedby are all descendant selectors and attributes on the
+   elements themselves, so none of them depends on this box existing. The gap it
+   put between those children is now this grid's row-gap, from the same token. */
+.item-detail__actions > .field { display: contents; }
+
+.item-detail__actions > .field > .field__label { grid-row: 1; grid-column: 1; }
+.item-detail__actions > .field > .control { grid-row: 2; grid-column: 1; }
+.item-detail__actions > .field > .field__hint { grid-row: 3; grid-column: 1 / -1; }
+.item-detail__actions > .field > .field__feedback { grid-row: 4; grid-column: 1 / -1; }
+
+/* The button keeps its own width instead of filling its track: a clamp message
+   wide enough to widen that track then has somewhere to go without stretching
+   the control, so the button the shopper is about to press never changes size
+   as a message appears. */
+.item-detail__actions > .button { grid-row: 2; grid-column: 2; justify-self: start; }
+
+/* ---- Cart lines: one grid column per line below the breakpoint ---- */
+
+.cart { display: flex; flex-direction: column; gap: var(--space-4); max-width: 100%; }
+
+.cart-lines { display: flex; flex-direction: column; gap: var(--space-3);
+  list-style: none; margin: 0; padding: 0; }
+
+.cart-line { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-2); align-items: center;
+  min-width: 0; max-width: 100%; padding: var(--space-3); border: 1px solid var(--color-border);
+  border-radius: var(--radius-md); background: var(--color-surface-raised); }
+
+.cart-line__info { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.cart-line__name { overflow-wrap: anywhere; }
+
+.cart-line__unit-price { font-variant-numeric: tabular-nums; color: var(--color-text-muted);
+  white-space: nowrap; }
+
+.cart-line__quantity { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2);
+  min-height: var(--control-min-size); min-width: var(--control-min-size); }
+
+/* The quantity input keeps the shared .control look; only its width — the
+   --quantity-field-width token — and the touch target are set here, so the
+   44x44px floor holds without restyling .control. */
+.cart-line__quantity .control { flex: 0 1 auto; width: var(--quantity-field-width); max-width: 100%; text-align: center;
+  min-height: var(--control-min-size); min-width: var(--control-min-size); }
+
+.cart-line__total { font-variant-numeric: tabular-nums; font-weight: var(--font-weight-bold);
+  white-space: nowrap; }
+
+.cart-line__actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2);
+  min-height: var(--control-min-size); min-width: var(--control-min-size); }
+
+/* ---- Cart summary: the line list above the totals panel below the breakpoint ---- */
+
+.cart-summary { display: grid; gap: var(--space-4); grid-template-columns: minmax(0, 1fr); max-width: 100%; }
+
+.cart-summary__lines { display: flex; flex-direction: column; gap: var(--space-3);
+  min-width: 0; max-width: 100%; }
+
+.cart-summary__totals { display: flex; flex-direction: column; gap: var(--space-2);
+  min-width: 0; max-width: 100%; padding: var(--space-4); border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg); background: var(--color-surface-raised); box-shadow: var(--shadow-card); }
+
+.cart-summary__total-row { display: flex; justify-content: space-between; gap: var(--space-3);
+  min-width: 0; font-variant-numeric: tabular-nums; }
+
+/* The grand total carries the emphasis: the row the view tags with --total, the
+   last row of the panel, or the row immediately before the actions block. A lone
+   :last-child would miss every case where .cart-summary__actions follows the
+   rows, which is the panel's usual shape. */
+.cart-summary__total-row--total,
+.cart-summary__total-row:last-child,
+.cart-summary__total-row:nth-last-child(2) { padding-block-start: var(--space-2);
+  border-block-start: 1px solid var(--color-border); font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold); }
+
+/* Full-width Place Order below the breakpoint, natural width above it. */
+.cart-summary__actions { display: flex; flex-direction: column; align-items: stretch; gap: var(--space-2);
+  margin-block-start: var(--space-2); min-height: var(--control-min-size); min-width: var(--control-min-size); }
+
+/* ---- The single breakpoint: two columns from 768px up ---- */
+
+@media (min-width: 768px) {
+  .catalog-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+  /* Name, quantity and total sit beside each other; further children wrap below.
+     The middle track is sized by the quantity control and the last one is the
+     shared amount column, so every line of a list puts its quantity field and
+     its amount on the same x position instead of sizing a track per line. */
+  .cart-line { grid-template-columns: minmax(0, 1fr) auto minmax(var(--amount-column-width), max-content);
+    gap: var(--space-3); }
+
+  /* The message under the quantity control is bounded here, in the row layout that
+     puts the control in a track of its own: an unbounded sentence contributes its
+     max-content to that track and takes the width from the item name beside it. The
+     bound is wide enough for two lines of the longest sentence the control shows and
+     narrow enough that the name keeps its column, and it leaves the pristine row —
+     label and input only — untouched. */
+  .cart-line__quantity .field { max-width: var(--cart-line-message-width); }
+
+  /* The amount is placed in the last track rather than following its siblings in
+     source order: a line with no middle cell — the order confirmation's, which
+     holds only an info cell and the amount — then still ends at the card's inner
+     right edge instead of stopping one empty track and its gap short of it. */
+  .cart-line__total { grid-column: -2 / -1; justify-self: end; }
+
+  /* The history row's info cell carries four lines, so centring the badge and the
+     amount against it drops them beside the second or third line. They start at
+     the row's top instead, beside the order they identify. */
+  .cart-line--history { align-items: start; }
+
+  /* Lines beside the totals panel, which sticks while the list scrolls. */
+  .cart-summary { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); align-items: start; }
+  .cart-summary__totals { position: sticky; top: var(--space-4); }
+  .cart-summary__actions { align-items: flex-start; }
+}
