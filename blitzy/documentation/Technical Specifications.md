@@ -8,7 +8,7 @@
 
 This Technical Specification defines the architecture, design, and implementation plan for a **full-stack burger restaurant web application** — a modern, customer-facing platform that empowers diners to authenticate, browse a menu, place online orders, and reserve tables for dine-in experiences. The system is built on an existing Express.js 5.1.0 backend foundation (currently the `hello_world` v1.0.0 project) and will be expanded into a comprehensive restaurant digital experience powered by **Vite.js** and **TypeScript** on the frontend.
 
-The project represents a complete transformation from a basic Node.js/Express.js tutorial server — currently serving two static greeting endpoints (`GET /` and `GET /evening`) as defined in `src/routes/main.routes.js` — into a production-grade, full-stack restaurant platform with authentication, e-commerce ordering, and reservation management capabilities.
+The project represents a complete transformation from a basic Node.js/Express.js tutorial server — currently serving three static greeting endpoints registered on a single Express Router in `src/routes/main.routes.js`: `GET /` and `GET /evening` as `text/html`, and `GET /good-evening` as `text/plain` — into a production-grade, full-stack restaurant platform with authentication, e-commerce ordering, and reservation management capabilities.
 
 ### 1.1.2 Core Business Problem
 
@@ -59,7 +59,7 @@ The repository currently exists as a minimal Express.js tutorial server, as docu
 | No database integration (stateless endpoints only) | Requires database layer for users, orders, reservations, menu catalog |
 | No authentication/authorization | Requires user registration, login, and session management |
 | No CORS configuration | Requires cross-origin support for frontend-backend communication |
-| Empty `server.js` entry point | Requires server bootstrap logic implementation |
+| No entry-point module — `server.js` is absent from the repository, although `package.json` still declares it as `main` and as the `npm start` target and `tests/lifecycle/server.test.js` requires it | Requires server bootstrap logic to be created, not completed, before `npm start` or the lifecycle tier can run |
 | CommonJS module system throughout | Requires migration path to TypeScript/ES Modules on frontend |
 
 #### Integration with Existing Foundation
@@ -133,7 +133,7 @@ end
 | Frontend SPA | Vite.js + TypeScript | Not yet implemented |
 | Backend API | Express.js 5.1.0 (Node.js) | Foundation exists (`src/app.js`, `src/routes/`) |
 | Data Persistence | Database (to be determined) | Not yet implemented |
-| Testing Framework | Jest 30.2.0 + Supertest 7.1.4 | Operational (41 tests, 100% coverage) |
+| Testing Framework | Jest 30.2.0 + Supertest 7.1.4 | 42 tests defined — config 15, routes 5, integration 17, lifecycle 5 — across the three tiers; the lifecycle tier requires the absent `server.js`, so the suite cannot pass until that module is created |
 
 #### Core Technical Approach
 
@@ -308,8 +308,7 @@ The current repository follows a well-organized modular structure as documented 
 
 ```
 hello_world/
-├── server.js                  # Entry point (currently empty)
-├── package.json               # npm manifest (hello_world v1.0.0)
+├── package.json               # npm manifest (hello_world v1.0.0); declares server.js as main/start
 ├── package-lock.json          # Dependency lockfile
 ├── jest.config.js             # Jest test configuration
 ├── README.md                  # Project documentation
@@ -320,11 +319,13 @@ hello_world/
 │   │   └── index.js           # Environment variable management
 │   └── routes/
 │       ├── index.js           # Route aggregator (barrel pattern)
-│       └── main.routes.js     # GET / and GET /evening handlers
+│       └── main.routes.js     # Three GET handlers: / and /evening (text/html), /good-evening (text/plain)
 ├── tests/                     # Test suite (unit, integration, lifecycle)
 └── blitzy/
     └── documentation/         # Technical documentation
 ```
+
+The entry-point module `server.js` does not exist in the repository — it is only referenced by `package.json` (`"main": "server.js"` and the `npm start` script) and by the lifecycle tests, which `require('../../server')`. Server bootstrap and the app-to-port wiring must therefore be created before the application can start.
 
 ---
 
@@ -334,10 +335,10 @@ hello_world/
 - `README.md` — Project overview, prerequisites, API reference, and directory structure documentation
 - `blitzy/documentation/Technical Specifications.md` — Comprehensive technical blueprint including scope boundaries, architecture patterns, dependency analysis, and implementation status
 - `src/app.js` — Express application factory implementation demonstrating the Factory Pattern
-- `src/routes/main.routes.js` — Current route handler implementations (GET `/` and GET `/evening`)
+- `src/routes/main.routes.js` — Current route handler implementations: `GET /` and `GET /evening` responding as `text/html`, `GET /good-evening` responding as `text/plain`
 - `src/routes/index.js` — Barrel pattern route aggregator
 - `src/config/index.js` — Twelve-Factor environment configuration module (HOST, PORT, NODE_ENV)
-- `server.js` — Designated entry point (currently empty, requiring bootstrap implementation)
+- `server.js` — Entry point declared by `package.json` (`main`, `npm start`) but absent from the repository; bootstrap implementation must be created
 - `jest.config.js` — Jest test framework configuration with coverage thresholds
 - `.gitignore` — Repository ignore patterns
 - https://vite.dev/guide/ — Vite.js official documentation for build tool capabilities and Node.js requirements
@@ -999,7 +1000,7 @@ The following constraints are derived from the current system state (Section 1.2
 
 | Constraint | Impact | Source |
 |---|---|---|
-| Empty `server.js` entry point | Server bootstrap logic must be implemented before any feature can run | `server.js` (current state) |
+| No entry-point module — `server.js` does not exist in the repository | Server bootstrap and the app-to-port wiring must be created before the application can start; `package.json` still targets `server.js` via `main` and the `npm start` script, and `tests/lifecycle/server.test.js` requires it | `package.json`, `tests/lifecycle/server.test.js` (current state) |
 | No database layer exists | All data-driven features (F-001 through F-004) are blocked until persistence is added | Section 1.2.1 |
 | No CORS configuration | Frontend-backend communication (F-005-RQ-004) requires CORS setup on `src/app.js` | Section 1.2.1 |
 | Dual module systems | Frontend uses ES Modules; backend uses CommonJS — requires careful boundary management | Section 1.3.1 |
@@ -1137,10 +1138,10 @@ The following matrix maps each feature to its data domains, user groups, success
 - `package.json` — Project metadata, dependency declarations (Express.js ^5.1.0, Jest ^30.2.0, Supertest ^7.1.4), npm scripts, and MIT license
 - `src/app.js` — Express application factory implementation demonstrating the Factory Pattern used by all backend services
 - `src/config/index.js` — Twelve-Factor environment configuration module managing HOST, PORT, and NODE_ENV with safe defaults
-- `src/routes/main.routes.js` — Current route handler implementations (GET `/` and GET `/evening`) representing the existing API surface
+- `src/routes/main.routes.js` — Current route handler implementations — three GET endpoints on one router: `GET /` and `GET /evening` responding as `text/html`, `GET /good-evening` responding as `text/plain` — representing the existing API surface
 - `src/routes/index.js` — Barrel pattern route aggregator through which all feature route modules are registered
 - `jest.config.js` — Jest test framework configuration with coverage thresholds (75% branches, 90% functions, 80% lines, 80% statements)
-- `server.js` — Designated entry point, currently empty, requiring bootstrap implementation
+- `server.js` — Entry point declared by `package.json` (`main`, `npm start`) but absent from the repository; the bootstrap module must be created
 - `tests/unit/` — Unit test directory containing `config.test.js` and `routes.test.js`
 - `tests/integration/` — Integration test directory containing `endpoints.test.js`
 - `tests/lifecycle/` — Lifecycle test directory containing `server.test.js`
@@ -1233,8 +1234,11 @@ Express.js 5.1.0 serves as the backend HTTP framework. It is the sole runtime de
 | Twelve-Factor Configuration | Environment variables with safe defaults | `src/config/index.js` |
 
 **Current API Surface:**
-- `GET /` — Returns greeting message (implemented in `src/routes/main.routes.js`)
-- `GET /evening` — Returns evening greeting (implemented in `src/routes/main.routes.js`)
+All three endpoints are registered on the single Express Router exported by `src/routes/main.routes.js`, which `src/app.js` mounts at `/`:
+
+- `GET /` — Returns `Hello, World!\n` (with trailing newline) as `text/html`
+- `GET /evening` — Returns `Good evening` (no trailing newline) as `text/html`
+- `GET /good-evening` — Returns `Good evening` (no trailing newline) as `text/plain`; the handler sets the media type with `res.type('text/plain')` before `res.send()`, because Express 5.1 emits `text/html` for a bare string send
 
 **Planned Extensions:**
 Four new service domains will be added as route modules registered through the Barrel Pattern, as defined in Sections 2.1.1–2.1.4: Auth Service, Menu Service, Order Service, and Reservation Service.
@@ -1270,7 +1274,7 @@ Vite 7+ requires Node.js 20.19+ or 22.12+, having dropped support for Node.js 18
 | **Minimum Node.js** | `^18.14.0 \|\| ^20.0.0 \|\| ^22.0.0 \|\| >=24.0.0` |
 | **Minimum TypeScript** | 5.4 (for type definitions) |
 | **License** | MIT |
-| **Status** | **Implemented** — 41 tests passing, 100% coverage |
+| **Status** | **Implemented** — 42 tests across the three tiers (config 15, routes 5, integration 17, lifecycle 5) |
 
 Jest 30 is the project's testing framework, configured via `jest.config.js` with the following specifications:
 
@@ -1429,7 +1433,7 @@ The following services from the suggested default stack or common patterns are *
 
 No database layer exists in the current system. Section 2.4.1 of the Technical Specification explicitly identifies this as a blocking constraint: "No database layer exists — All data-driven features (F-001 through F-004) are blocked until persistence is added."
 
-The application is currently entirely **stateless**, serving only hardcoded greeting responses via `GET /` and `GET /evening`.
+The application is currently entirely **stateless**, serving only three hardcoded greeting responses — `GET /` and `GET /evening` as `text/html`, and `GET /good-evening` as `text/plain` — with no database driver, database engine, or storage mechanism of any kind introduced.
 
 ### 3.5.2 Planned Database Layer
 
@@ -1558,7 +1562,7 @@ The following npm scripts are defined in `package.json` and constitute the proje
 | `npm run test:coverage` | `jest --coverage` | Run tests with coverage reporting |
 | `npm run test:ci` | `jest --ci --coverage --reporters=default` | Run tests in CI-compatible mode |
 
-> **Note:** The `npm start` script currently targets an empty `server.js` file. Server bootstrap logic must be implemented before the application can start (Section 2.4.1).
+> **Note:** The `npm start` script targets `server.js`, which is absent from the repository. `npm start` therefore cannot currently run; the bootstrap module and its wiring to `src/app.js` and `src/config/index.js` must be created (Section 2.4.1).
 
 ### 3.6.4 Test Infrastructure
 
@@ -1570,7 +1574,7 @@ The project employs a three-tier test architecture organized under the `tests/` 
 | **Integration** | `tests/integration/` | HTTP endpoint testing via Supertest | `endpoints.test.js` |
 | **Lifecycle** | `tests/lifecycle/` | Server bootstrap and shutdown testing | `server.test.js` |
 
-**Current Test Metrics:** 41 automated tests with 100% coverage across all measured dimensions. Section 2.4.5 requires that all new features maintain coverage above the thresholds configured in `jest.config.js`.
+**Current Test Metrics:** 42 automated tests across the three tiers — config 15, routes 5, integration 17, lifecycle 5. The lifecycle tier imports the entry-point module with `require('../../server')`, so the suite cannot run green until that module is created. Section 2.4.5 requires that all new features maintain coverage above the thresholds configured in `jest.config.js`.
 
 ### 3.6.5 Environment Configuration
 
@@ -1695,8 +1699,8 @@ end
 - `src/app.js` — Express application factory implementation (Factory Pattern, CommonJS module)
 - `src/config/index.js` — Twelve-Factor environment configuration module (HOST, PORT, NODE_ENV)
 - `src/routes/index.js` — Barrel pattern route aggregator for feature route registration
-- `src/routes/main.routes.js` — Express Router with GET `/` and GET `/evening` handlers
-- `server.js` — Designated entry point (currently empty)
+- `src/routes/main.routes.js` — Express Router with three GET handlers: `/` and `/evening` responding as `text/html`, `/good-evening` responding as `text/plain`
+- `server.js` — Entry point declared by `package.json` (`main`, `npm start`) but absent from the repository; the bootstrap module must be created
 - `.gitignore` — Repository ignore patterns for node_modules, .env, coverage, IDE files
 
 #### Technical Specification Sections Referenced
@@ -2343,8 +2347,8 @@ The Vite.js SPA implements graceful error handling for all API interactions as r
 - `src/app.js` — Express application factory (Factory Pattern); CORS middleware and route mounting point for all feature services
 - `src/config/index.js` — Twelve-Factor configuration module managing HOST, PORT, NODE_ENV; extensible for database connections, auth secrets, and CORS configuration
 - `src/routes/index.js` — Barrel pattern route aggregator where all feature route modules are registered
-- `src/routes/main.routes.js` — Current Express Router implementation with GET `/` and GET `/evening` handlers
-- `server.js` — Designated application entry point (currently empty; requires bootstrap implementation)
+- `src/routes/main.routes.js` — Current Express Router implementation with three GET handlers: `/` and `/evening` responding as `text/html`, `/good-evening` responding as `text/plain`
+- `server.js` — Entry point declared by `package.json` (`main`, `npm start`) but absent from the repository; the bootstrap module must be created
 - `jest.config.js` — Jest test framework configuration with coverage thresholds (75% branches, 90% functions, 80% lines, 80% statements)
 - `tests/lifecycle/server.test.js` — Server lifecycle tests including EADDRINUSE error handling validation
 
@@ -2416,7 +2420,7 @@ The following table catalogs all major architectural components, their current i
 | **Express App Factory** (`src/app.js`) | Creates configured Express app, mounts middleware and routes without port binding | Implemented |
 | **Route Aggregator** (`src/routes/index.js`) | Barrel pattern central registry for all route modules | Implemented |
 | **Configuration Module** (`src/config/index.js`) | Twelve-Factor environment config (HOST, PORT, NODE_ENV) with safe defaults | Implemented |
-| **Main Routes** (`src/routes/main.routes.js`) | Serves `GET /` and `GET /evening` greeting endpoints | Implemented |
+| **Main Routes** (`src/routes/main.routes.js`) | Serves three greeting endpoints on the single router mounted at `/` by `src/app.js`: `GET /` and `GET /evening` as `text/html`, `GET /good-evening` as `text/plain` | Implemented |
 | **Vite.js SPA** | Responsive TypeScript frontend with authentication, menu, cart, and reservation views | Planned |
 | **Auth Service** | User registration, login, token management, logout | Planned |
 | **Auth Middleware** | Shared token validation gate for protected routes (Orders, Reservations) | Planned |
@@ -2544,7 +2548,7 @@ Vite.js production builds generate content-hashed, cacheable static assets that 
 
 **Purpose and Responsibilities:**
 
-The server tier hosts all business logic, authentication enforcement, input validation, and data persistence operations. It extends the existing Express.js 5.1.0 foundation — which currently serves two static greeting endpoints — into a comprehensive REST API platform with four domain services.
+The server tier hosts all business logic, authentication enforcement, input validation, and data persistence operations. It extends the existing Express.js 5.1.0 foundation — which currently serves three static greeting endpoints (`GET /` and `GET /evening` as `text/html`, `GET /good-evening` as `text/plain`) — into a comprehensive REST API platform with four domain services.
 
 **Technologies and Frameworks:**
 
@@ -2838,19 +2842,19 @@ Error handling is implemented as a layered classification system that maps each 
 
 ```mermaid
 flowchart TD
-    ErrStart(["Incoming API Request"]) --> ErrCORS{{"CORS Origin<br/>Valid?"}}
+    ErrStart(["Incoming API Request"]) --> ErrCORS{"CORS Origin<br/>Valid?"}
     ErrCORS -->|"No"| Err403["403 Forbidden"]
-    ErrCORS -->|"Yes"| ErrRoute{{"Route Pattern<br/>Matched?"}}
+    ErrCORS -->|"Yes"| ErrRoute{"Route Pattern<br/>Matched?"}
     ErrRoute -->|"No"| Err404["404 Not Found"]
-    ErrRoute -->|"Yes"| ErrProt{{"Protected<br/>Route?"}}
-    ErrProt -->|"Yes"| ErrTok{{"Auth Token<br/>Valid?"}}
+    ErrRoute -->|"Yes"| ErrProt{"Protected<br/>Route?"}
+    ErrProt -->|"Yes"| ErrTok{"Auth Token<br/>Valid?"}
     ErrTok -->|"No / Expired"| Err401["401 Unauthorized"]
     ErrTok -->|"Yes"| ErrProc["Process Request"]
     ErrProt -->|"No"| ErrProc
-    ErrProc --> ErrInput{{"Input<br/>Valid?"}}
+    ErrProc --> ErrInput{"Input<br/>Valid?"}
     ErrInput -->|"No"| Err400["400 Bad Request"]
     ErrInput -->|"Yes"| ErrBiz["Execute Business Logic"]
-    ErrBiz --> ErrDB{{"Database<br/>Error?"}}
+    ErrBiz --> ErrDB{"Database<br/>Error?"}
     ErrDB -->|"Yes"| Err500["500 Internal Server Error"]
     ErrDB -->|"No"| ErrOk["200 Success Response"]
 ```
@@ -2925,7 +2929,7 @@ The system employs a three-tier test architecture that serves as a cross-cutting
 | **Integration Tests** | `tests/integration/` | Black-box Supertest HTTP assertions against Express app factory |
 | **Lifecycle Tests** | `tests/lifecycle/` | Server bootstrap, graceful shutdown, EADDRINUSE error handling |
 
-The current test suite includes 41 automated tests achieving 100% coverage across all measured dimensions. Jest 30.2.0 provides the testing framework with Supertest 7.1.4 enabling in-process HTTP endpoint testing. The Factory Pattern in `src/app.js` is critical to testability — by separating app creation from port binding, Supertest can accept the Express app instance directly, binding to ephemeral ports for each test to prevent port conflicts in parallel execution.
+The current test suite defines 42 automated tests across the three tiers — config 15, routes 5, integration 17, lifecycle 5. The lifecycle tier imports the entry-point module with `require('../../server')`, and that module is absent from the repository, so the suite cannot run green until it is created; coverage of `server.js` (listed in `jest.config.js` `collectCoverageFrom`) is therefore not yet measurable. Jest 30.2.0 provides the testing framework with Supertest 7.1.4 enabling in-process HTTP endpoint testing. The Factory Pattern in `src/app.js` is critical to testability — by separating app creation from port binding, Supertest can accept the Express app instance directly, binding to ephemeral ports for each test to prevent port conflicts in parallel execution.
 
 ### 5.4.5 Configuration Management
 
@@ -2967,7 +2971,7 @@ This module must be extended to manage additional configuration for database con
 
 | Limitation | Impact on Architecture |
 |---|---|
-| Empty `server.js` entry point | Server bootstrap logic must be implemented before any feature can run |
+| No entry-point module — `server.js` is absent from the repository (only `package.json` `main`/`start` and the lifecycle tests still reference it) | Server bootstrap must be implemented before any feature can run |
 | No database layer | All data-driven features (F-001 through F-004) are blocked until persistence is added |
 | No CORS configuration | Frontend-backend communication requires CORS setup on `src/app.js` |
 | Dual module systems (CommonJS / ES Modules) | Requires careful import/export boundary management between frontend and backend |
@@ -3022,8 +3026,8 @@ Architectural integrity must be preserved as new features are added. The followi
 - `src/app.js` — Express application factory implementing the Factory Pattern; route mounting point for all feature services; CORS middleware attachment point
 - `src/config/index.js` — Twelve-Factor configuration module managing HOST, PORT, NODE_ENV with safe defaults; extensible for database connections, auth secrets, and CORS configuration
 - `src/routes/index.js` — Barrel pattern route aggregator where all feature route modules are registered centrally
-- `src/routes/main.routes.js` — Current Express Router implementation with `GET /` and `GET /evening` handlers
-- `server.js` — Designated application entry point (currently empty; requires bootstrap implementation)
+- `src/routes/main.routes.js` — Current Express Router implementation with three GET handlers: `/` and `/evening` responding as `text/html`, `/good-evening` responding as `text/plain`
+- `server.js` — Entry point declared by `package.json` (`main`, `npm start`) but absent from the repository; the bootstrap module must be created
 - `package.json` — Project metadata, dependency declarations (Express.js ^5.1.0, Jest ^30.2.0, Supertest ^7.1.4), npm scripts, MIT license
 - `jest.config.js` — Jest test framework configuration with coverage thresholds (75% branches, 90% functions, 80% lines, 80% statements)
 - `tests/lifecycle/server.test.js` — Server lifecycle tests including EADDRINUSE error handling validation
@@ -3075,7 +3079,7 @@ This section provides a comprehensive justification for this determination, docu
 
 #### 6.1.1.1 Formal Determination
 
-The system employs a **three-tier, decoupled full-stack architecture** as explicitly established in Section 5.1.1 of the Technical Specification. The three tiers — Client (Vite.js + TypeScript SPA), Server (Express.js 5.1.0), and Data (single shared database) — are organized as a vertically layered monolith, not as independently deployable horizontal service units. All four domain services (Auth, Menu, Order, and Reservation) are route modules registered on a single Express application instance created in `src/app.js`, mounted through a centralized barrel pattern aggregator in `src/routes/index.js`, and executed within one operating system process initiated by `node server.js`.
+The system employs a **three-tier, decoupled full-stack architecture** as explicitly established in Section 5.1.1 of the Technical Specification. The three tiers — Client (Vite.js + TypeScript SPA), Server (Express.js 5.1.0), and Data (single shared database) — are organized as a vertically layered monolith, not as independently deployable horizontal service units. All four domain services (Auth, Menu, Order, and Reservation) are route modules registered on a single Express application instance created in `src/app.js`, mounted through a centralized barrel pattern aggregator in `src/routes/index.js`, and executed within one operating system process. That process is started by the `server.js` entry point, which `package.json` declares as `main` and as the `npm start` target but which does not exist in the repository — it must be created before the process can be launched.
 
 This architecture was selected to provide "clean separation of presentation, business logic, and data" while maintaining operational simplicity for a single-restaurant application serving a focused feature set: user authentication, burger menu browsing, online ordering, and table reservation.
 
@@ -3085,7 +3089,7 @@ The following table consolidates the definitive evidence confirming the absence 
 
 | Microservice Criterion | System Status | Evidence Source |
 |---|---|---|
-| Independent service deployment | **Not present** | Single `package.json` with `"main": "server.js"` |
+| Independent service deployment | **Not present** | Single `package.json` with `"main": "server.js"` (the entry-point module is declared but absent) |
 | Inter-service network calls | **Not present** | All service communication is in-process via `require()` |
 | Service discovery mechanism | **Not present or planned** | No configuration or library references |
 | API gateway (external) | **Not present** | Express Route Matcher serves as internal router only |
@@ -3103,7 +3107,7 @@ The monolithic approach was selected based on the following factors documented a
 
 - **Single Restaurant Scope**: Assumption A-003 establishes that the system serves a single restaurant location, eliminating the need for multi-location routing, geographic partitioning, or location-aware service decomposition.
 - **Four Bounded Domains Only**: The system manages exactly four data domains (Users, Menu Items, Orders, Reservations) — a scope well within the operational capacity of a monolithic Express.js process.
-- **Operational Simplicity**: A single deployment unit with one `package.json`, one runtime dependency (`express ^5.1.0`), and one entry point (`server.js`) minimizes operational overhead.
+- **Operational Simplicity**: A single deployment unit with one `package.json`, one runtime dependency (`express ^5.1.0`), and one declared entry point (`server.js`, which is absent from the repository and must be created) minimizes operational overhead.
 - **Development Team Context**: The user requirement specifies a burger restaurant website with login, online ordering, and table booking — a scope that does not warrant the complexity of distributed systems coordination.
 
 ```mermaid
@@ -3145,6 +3149,7 @@ flowchart TB
     OrderSvc --> DB
     ResSvc --> DB
     Config -.->|"In-process import"| AppFactory
+end
 ```
 
 ### 6.1.2 Monolithic Application Architecture
@@ -3391,8 +3396,8 @@ However, no roadmap for microservices migration exists within the current Techni
 - `src/app.js` — Express Application Factory; confirms single-app monolith with in-process route mounting via Factory Pattern
 - `src/routes/index.js` — Route Aggregator; confirms Barrel Pattern for in-process route module registration
 - `src/config/index.js` — Configuration Module; confirms centralized Twelve-Factor configuration consumed by all services via `require()`
-- `src/routes/main.routes.js` — Main Routes; confirms Express Router handler pattern (currently 2 GET endpoints)
-- `server.js` — Server Entry Point; confirms single deployment unit (currently empty, pending implementation)
+- `src/routes/main.routes.js` — Main Routes; confirms the Express Router handler pattern with three GET endpoints on one router — `/` and `/evening` as `text/html`, `/good-evening` as `text/plain`
+- `server.js` — Server Entry Point declared by `package.json` (`main`, `npm start`) but absent from the repository; the single deployment unit's bootstrap module must be created
 - `package.json` — Project Metadata; confirms single `"main": "server.js"` entry point with `express ^5.1.0` as sole runtime dependency
 - `tests/lifecycle/server.test.js` — Lifecycle Tests; confirms EADDRINUSE error handling validation
 - `tests/` — Test Directory; confirms three-tier test structure (unit, integration, lifecycle)
@@ -3420,7 +3425,7 @@ The repository contains zero database-related artifacts. A thorough examination 
 | Database drivers | Not present | `package.json` lists only `express ^5.1.0` as a runtime dependency |
 | Database configuration | Not present | `src/config/index.js` manages only `HOST`, `PORT`, and `NODE_ENV` |
 | Schema definitions | Not present | No model, schema, or migration files exist in `src/` |
-| Database initialization | Not present | `src/app.js` mounts only route middleware; `server.js` is empty |
+| Database initialization | Not present | `src/app.js` mounts only route middleware; no entry-point module exists in the repository |
 
 This absence is formally recognized as a blocking constraint: Section 5.5.3 states that the missing database layer blocks all data-driven features (F-001 User Authentication, F-002 Burger Menu Catalog, F-003 Online Ordering, and F-004 Table Reservation) until persistence is implemented.
 
@@ -4101,9 +4106,9 @@ All sensitive values (`DB_PASSWORD`, `DB_USER`) must be stored in environment fi
 - `package.json` — Confirms `express ^5.1.0` as sole runtime dependency; no database driver packages present; MIT license
 - `src/app.js` — Express Application Factory; no database initialization or connection setup; mounts only `mainRoutes`
 - `src/config/index.js` — Twelve-Factor configuration module; manages only `HOST`, `PORT`, `NODE_ENV`; no database connection parameters
-- `server.js` — Empty file; no server bootstrap or database initialization logic
+- `server.js` — Entry point declared by `package.json` (`main`, `npm start`) but absent from the repository; no server bootstrap or database initialization logic exists, so both must be created
 - `src/routes/index.js` — Barrel pattern route aggregator; no database references
-- `src/routes/main.routes.js` — Two GET endpoints (`/`, `/evening`); no database operations
+- `src/routes/main.routes.js` — Three GET endpoints (`/` and `/evening` as `text/html`; `/good-evening` as `text/plain`); no database operations
 
 #### Technical Specification Sections Referenced
 
@@ -4221,7 +4226,7 @@ flowchart LR
 
 #### 6.3.2.2 API Surface Definition
 
-The current API surface is minimal, consisting of two greeting endpoints defined in `src/routes/main.routes.js`. The planned API surface expands to four domain-specific service APIs that collectively fulfill the core user requirements: login, burger menu browsing, online ordering, and table reservation for dine-in.
+The current API surface is minimal, consisting of three greeting endpoints defined in `src/routes/main.routes.js`. The planned API surface expands to four domain-specific service APIs that collectively fulfill the core user requirements: login, burger menu browsing, online ordering, and table reservation for dine-in.
 
 #### Current API Endpoints (Implemented)
 
@@ -4229,6 +4234,9 @@ The current API surface is minimal, consisting of two greeting endpoints defined
 |---|---|---|---|
 | `GET` | `/` | `text/html` | Returns "Hello, World!\n" |
 | `GET` | `/evening` | `text/html` | Returns "Good evening" |
+| `GET` | `/good-evening` | `text/plain` | Returns "Good evening" |
+
+`GET /good-evening` deliberately serves the same 12-byte body — `Good evening`, with no trailing newline — as `GET /evening`, but under a different media type. Its handler sets the type explicitly with `res.type('text/plain')` before `res.send()`, because Express 5.1 emits `text/html` for a bare string send. Both registrations are retained, so clients of `/evening` that expect `text/html` are unaffected.
 
 #### Planned API Domains
 
@@ -4647,9 +4655,9 @@ However, no roadmap for microservices migration exists within the current Techni
 - `src/app.js` — Express Application Factory; confirms Factory Pattern, single route mount, and in-process middleware pipeline integration
 - `src/routes/index.js` — Barrel Pattern route aggregator; confirms centralized service registration via `require()` imports
 - `src/config/index.js` — Twelve-Factor configuration module; manages HOST, PORT, NODE_ENV with safe defaults
-- `src/routes/main.routes.js` — Current API surface with two GET endpoints (`/`, `/evening`) using Express Router pattern
+- `src/routes/main.routes.js` — Current API surface with three GET endpoints on one Express Router — `/` and `/evening` responding as `text/html`, `/good-evening` responding as `text/plain`
 - `package.json` — Project manifest confirming `express ^5.1.0` as sole runtime dependency; MIT license; `"main": "server.js"` entry point
-- `server.js` — Designated entry point (currently empty; pending bootstrap implementation)
+- `server.js` — Entry point declared by `package.json` (`main`, `npm start`) but absent from the repository; the bootstrap module must be created
 - `tests/lifecycle/server.test.js` — Lifecycle tests validating EADDRINUSE startup error handling
 
 #### Repository Folders Examined
@@ -4677,7 +4685,7 @@ However, no roadmap for microservices migration exists within the current Techni
 
 The security architecture for the burger restaurant web application follows a **defense-in-depth** design pattern, leveraging the Express.js 5.1.0 middleware pipeline as the primary enforcement mechanism. The system supports user authentication, burger menu browsing, online ordering, and table reservation for dine-in — built with a Vite.js and TypeScript frontend communicating with the Express.js backend via HTTP REST with JSON payloads.
 
-All security features documented in this section are **prescriptive** — they define the complete security posture required by the Technical Specification but are not yet implemented in the repository. The current codebase contains only `express ^5.1.0` as a runtime dependency with zero security infrastructure in place, as confirmed by `package.json`, `src/app.js`, and the empty `server.js` entry point. The authentication library and database engine are both to be determined (Sections 1.4.2 and 3.5.2), and all planned security dependencies — including the authentication library, CORS middleware, and database driver — remain pending selection per Section 3.3.
+All security features documented in this section are **prescriptive** — they define the complete security posture required by the Technical Specification but are not yet implemented in the repository. The current codebase contains only `express ^5.1.0` as a runtime dependency with zero security infrastructure in place, as confirmed by `package.json`, `src/app.js`, and the absence of any `server.js` entry point. The authentication library and database engine are both to be determined (Sections 1.4.2 and 3.5.2), and all planned security dependencies — including the authentication library, CORS middleware, and database driver — remain pending selection per Section 3.3.
 
 ### 6.4.1 Authentication Framework
 
@@ -4705,11 +4713,11 @@ The registration process transforms a guest visitor into a registered customer b
 ```mermaid
 flowchart TD
     RegStart(["Start Registration"]) --> RegInput["User Enters<br/>Email/Username + Password"]
-    RegInput --> RegFormat{{"Input Format<br/>Valid?"}}
+    RegInput --> RegFormat{"Input Format<br/>Valid?"}
     RegFormat -->|"No"| RegFmtErr["Display Validation<br/>Error Message"]
     RegFmtErr --> RegInput
     RegFormat -->|"Yes"| RegSanitize["Sanitize Input<br/>(Injection Prevention)"]
-    RegSanitize --> RegUnique{{"Email/Username<br/>Unique?"}}
+    RegSanitize --> RegUnique{"Email/Username<br/>Unique?"}
     RegUnique -->|"No"| RegDupErr["Display Duplicate<br/>Account Error"]
     RegDupErr --> RegInput
     RegUnique -->|"Yes"| RegHash["Hash Password<br/>(Server-Side)"]
@@ -4734,14 +4742,14 @@ The login process authenticates a registered customer by verifying credentials a
 ```mermaid
 flowchart TD
     LgnStart(["Start Login"]) --> LgnInput["User Enters Credentials<br/>(Email/Username + Password)"]
-    LgnInput --> LgnFormat{{"Input Format<br/>Valid?"}}
+    LgnInput --> LgnFormat{"Input Format<br/>Valid?"}
     LgnFormat -->|"No"| LgnFmtErr["Display Validation<br/>Error"]
     LgnFmtErr --> LgnInput
-    LgnFormat -->|"Yes"| LgnRate{{"Rate Limit<br/>Exceeded?"}}
+    LgnFormat -->|"Yes"| LgnRate{"Rate Limit<br/>Exceeded?"}
     LgnRate -->|"Yes"| LgnRateErr["429 Too Many Requests"]
     LgnRateErr --> LgnFail(["Login Blocked"])
     LgnRate -->|"No"| LgnCompare["Constant-Time<br/>Credential Comparison"]
-    LgnCompare --> LgnValid{{"Credentials<br/>Valid?"}}
+    LgnCompare --> LgnValid{"Credentials<br/>Valid?"}
     LgnValid -->|"No"| LgnGenErr["Return Generic Error<br/>(No Credential Hint)"]
     LgnGenErr --> LgnInput
     LgnValid -->|"Yes"| LgnToken["Generate Auth Token<br/>with Expiration Period"]
@@ -5056,15 +5064,15 @@ The following diagram, adapted from Section 5.3.4, illustrates the sequential se
 ```mermaid
 flowchart TD
     subgraph SecurityDecisionFlow["Security Architecture Decision Flow"]
-        Q1{{"Does the request<br/>cross origins?"}}
+        Q1{"Does the request<br/>cross origins?"}
         Q1 -->|"Yes"| D1["Apply CORS<br/>Origin Validation"]
         Q1 -->|"No"| Q2
 
-        Q2{{"Does the route<br/>require auth?"}}
+        Q2{"Does the route<br/>require auth?"}
         Q2 -->|"Yes"| D2["Validate Auth Token<br/>Server-Side"]
         Q2 -->|"No"| Q3
 
-        Q3{{"Does the request<br/>contain user input?"}}
+        Q3{"Does the request<br/>contain user input?"}
         Q3 -->|"Yes"| D3["Sanitize & Validate<br/>All Inputs"]
         Q3 -->|"No"| D4["Process Request"]
 
@@ -5072,7 +5080,7 @@ flowchart TD
         D2 --> Q3
         D3 --> Q4
 
-        Q4{{"Does the operation<br/>involve pricing?"}}
+        Q4{"Does the operation<br/>involve pricing?"}
         Q4 -->|"Yes"| D5["Recalculate Prices<br/>Server-Side"]
         Q4 -->|"No"| D4
 
@@ -5223,7 +5231,7 @@ The following assumptions and constraints from Section 5.5 directly influence th
 
 ### 6.4.8 Implementation Status
 
-All security features documented in this section are **planned but not yet implemented**. The following matrix captures the current implementation state of each security component, as confirmed by direct examination of `package.json`, `src/app.js`, `src/config/index.js`, and `server.js`.
+All security features documented in this section are **planned but not yet implemented**. The following matrix captures the current implementation state of each security component, as confirmed by direct examination of `package.json`, `src/app.js`, `src/config/index.js`, and the absence of `server.js`.
 
 #### 6.4.8.1 Security Component Status Matrix
 
@@ -5237,7 +5245,7 @@ All security features documented in this section are **planned but not yet imple
 | Rate Limiting | Not implemented | Rate limiting library selection pending |
 | Input Validation | Not implemented | Service handlers not yet created |
 | Database Layer | Not implemented | Database engine TBD |
-| Server Bootstrap | Not implemented | `server.js` is empty |
+| Server Bootstrap | Not implemented | No entry-point module exists in the repository; `server.js` must be created |
 
 #### 6.4.8.2 Current and Planned Dependencies
 
@@ -5255,9 +5263,9 @@ The phased delivery architecture in Section 5.6.1 dictates that authentication (
 - `package.json` — Confirmed sole runtime dependency (`express ^5.1.0`), no security libraries installed, MIT license
 - `src/app.js` — Express Application Factory; no security middleware mounted, no CORS, only `mainRoutes` registered
 - `src/config/index.js` — Twelve-Factor configuration with `HOST`/`PORT`/`NODE_ENV` only; no auth secrets or database configuration
-- `server.js` — Empty file; no bootstrap logic implemented
+- `server.js` — Entry point declared by `package.json` (`main`, `npm start`) but absent from the repository; no bootstrap logic exists and must be created
 - `.gitignore` — Confirms `.env` and `.env.local` excluded from version control (lines 8–9)
-- `src/routes/main.routes.js` — Two static GET endpoints (`/`, `/evening`); no authentication protection
+- `src/routes/main.routes.js` — Three static, unauthenticated GET endpoints (`/` and `/evening` responding as `text/html`; `/good-evening` responding as `text/plain`); no authentication protection
 
 #### Technical Specification Sections Referenced
 
@@ -5278,7 +5286,7 @@ The phased delivery architecture in Section 5.6.1 dictates that authentication (
 
 **Detailed Monitoring Architecture is not applicable for this system.** The burger restaurant web application — a monolithic three-tier Express.js application supporting user authentication, burger menu browsing, online ordering, and table reservation for dine-in — contains zero monitoring, observability, or logging infrastructure. No logging frameworks, metrics collection libraries, distributed tracing, health check endpoints, APM tooling, or alerting systems exist within the codebase, configuration layer, or dependency manifest, nor are any planned within the five-phase feature implementation roadmap defined in Section 5.6.1.
 
-This determination is supported by unanimous evidence across the repository (`package.json`, `src/app.js`, `src/config/index.js`, `server.js`) and every relevant section of the Technical Specification (Sections 1.3, 3.3, 3.4, 5.1, 5.4, 6.1, 6.3, 6.4). This section provides a comprehensive justification for this determination, catalogs all monitoring-adjacent capabilities that exist within the application, documents the basic monitoring practices to be followed, and identifies performance targets that lack production tracking mechanisms.
+This determination is supported by unanimous evidence across the repository (`package.json`, `src/app.js`, `src/config/index.js`, and the absent `server.js` entry point) and every relevant section of the Technical Specification (Sections 1.3, 3.3, 3.4, 5.1, 5.4, 6.1, 6.3, 6.4). This section provides a comprehensive justification for this determination, catalogs all monitoring-adjacent capabilities that exist within the application, documents the basic monitoring practices to be followed, and identifies performance targets that lack production tracking mechanisms.
 
 ---
 
@@ -5288,7 +5296,7 @@ This determination is supported by unanimous evidence across the repository (`pa
 
 The system does not require specific monitoring infrastructure beyond what is inherently provided by the Express.js 5.1.0 runtime, the Node.js process environment, and the application's built-in error classification system. This determination is grounded in three architectural factors:
 
-1. **Monolithic Single-Process Architecture**: All four domain services (Auth, Menu, Order, Reservation) execute within a single Node.js process initiated by `node server.js`, communicating via in-process `require()` calls (Section 6.1.2.2). There are no inter-service network boundaries, no distributed transactions, and no service-to-service latency to trace — eliminating the primary use case for distributed tracing, service mesh observability, and circuit breaker monitoring.
+1. **Monolithic Single-Process Architecture**: All four domain services (Auth, Menu, Order, Reservation) execute within a single Node.js process started by the `server.js` entry point declared in `package.json` — a module that is not yet present in the repository — communicating via in-process `require()` calls (Section 6.1.2.2). There are no inter-service network boundaries, no distributed transactions, and no service-to-service latency to trace — eliminating the primary use case for distributed tracing, service mesh observability, and circuit breaker monitoring.
 
 2. **Single-Restaurant Scope**: Assumption A-003 establishes that the system serves a single restaurant location with a focused feature set: user login, burger ordering, and table booking. This scope does not warrant production-grade APM, log aggregation pipelines, or multi-instance dashboard infrastructure.
 
@@ -5331,7 +5339,7 @@ flowchart TB
             SC["HTTP Status Code<br/>Classification"]
             SL["Server Lifecycle<br/>EADDRINUSE Detection"]
             TS["Database Record<br/>Timestamps"]
-            TQ["Test Suite<br/>41 Tests / 100% Coverage"]
+            TQ["Test Suite<br/>42 Tests Across 3 Tiers"]
         end
 
         subgraph NotPresent["Not Present (No Libraries / No Configuration)"]
@@ -5396,11 +5404,11 @@ flowchart TD
 
 The server lifecycle includes handling of the `EADDRINUSE` error condition at startup, validated by the test suite in `tests/lifecycle/server.test.js` (Section 5.4.1). This mechanism prevents silent startup failures when the configured port (`PORT`, default `3000` per `src/config/index.js`) is already occupied, providing the system's only process-level health signal.
 
-The application entry point (`server.js`) is designed to host bootstrap logic including a `console.log` confirmation of the `"Server running at http://host:port/"` message upon successful startup, as validated by lifecycle tests. The `src/app.js` Application Factory explicitly delegates logging and metrics concerns to the `server.js` bootstrap layer, "keeping logging, metrics, or shutdown control out of the factory and in higher-level bootstrap code."
+The entry-point module `server.js` — declared in `package.json` as `main` and as the `npm start` target, but absent from the repository — is the designated host for that bootstrap logic, including a `console.log` confirmation of the `"Server running at http://host:port/"` message upon successful startup. `tests/lifecycle/server.test.js` is written to assert exactly this contract: it mocks `src/app` and `src/config`, calls `require('../../server')`, and expects `listen(port, host, callback)`, the startup message, graceful-close support, and `EADDRINUSE` handling. The console-log startup behavior is therefore the contract the lifecycle tier validates once the bootstrap module is created; until then that tier cannot resolve its import. The `src/app.js` Application Factory deliberately delegates logging and metrics concerns to the bootstrap layer, "keeping logging, metrics, or shutdown control out of the factory and in higher-level bootstrap code."
 
 | Lifecycle Event | Detection Method | Diagnostic Output |
 |---|---|---|
-| Successful startup | `console.log` in `server.js` | Server host and port confirmation |
+| Successful startup | `console.log` in the `server.js` bootstrap (to be created) | Server host and port confirmation |
 | Port conflict | `EADDRINUSE` error handler | Port occupancy diagnostic |
 | Process termination | Node.js process signals | SIGTERM / SIGINT handling |
 
@@ -5425,14 +5433,14 @@ The testing infrastructure serves as the primary quality assurance mechanism in 
 | Integration Tests | `tests/integration/` | HTTP assertions via Supertest | End-to-end API behavior validation |
 | Lifecycle Tests | `tests/lifecycle/` | Bootstrap, shutdown, errors | Process health verification |
 
-| Coverage Metric | Required Threshold | Current Achieved |
+| Coverage Metric | Required Threshold | Configuration Source |
 |---|---|---|
-| Branch coverage | ≥ 75% | 100% |
-| Function coverage | ≥ 90% | 100% |
-| Line coverage | ≥ 80% | 100% |
-| Statement coverage | ≥ 80% | 100% |
+| Branch coverage | ≥ 75% | `jest.config.js` |
+| Function coverage | ≥ 90% | `jest.config.js` |
+| Line coverage | ≥ 80% | `jest.config.js` |
+| Statement coverage | ≥ 80% | `jest.config.js` |
 
-The current test suite includes 41 automated tests achieving 100% coverage across all measured dimensions. Jest 30.2.0 provides the testing framework with CI-compatible execution mode (`jest --ci --coverage --reporters=default`), functioning as a pre-deployment monitoring surrogate that verifies system behavior before release rather than during production operation.
+The test suite defines 42 automated tests across the three tiers — config 15, routes 5, integration 17, lifecycle 5 — which Jest 30.2.0 executes in CI-compatible mode (`jest --ci --coverage --reporters=default`), functioning as a pre-deployment monitoring surrogate that verifies system behavior before release rather than during production operation. The lifecycle tier imports the entry-point module with `require('../../server')`, so the suite cannot run green until that module is created and the thresholds above can be measured.
 
 #### 6.5.2.5 Console-Based Operational Logging
 
@@ -5558,7 +5566,7 @@ flowchart TB
 
     subgraph QualityLayer["Quality Assurance Layer"]
         direction TB
-        JT["Jest Test Suite<br/>(41 Tests / 100% Coverage)"]
+        JT["Jest Test Suite<br/>(42 Tests Across 3 Tiers)"]
         LT["Lifecycle Tests<br/>(EADDRINUSE Detection)"]
         CT["Coverage Thresholds<br/>(75% Branch / 90% Function)"]
     end
@@ -5692,9 +5700,9 @@ The burger restaurant web application operates without dedicated monitoring and 
 | **Startup health** | `EADDRINUSE` detection validated by lifecycle tests | Server process startup |
 | **Data auditability** | `created_at`/`updated_at` timestamps on all mutable tables | All persistent records |
 | **Session traceability** | `issued_at`/`expires_at`/`is_invalidated` on `auth_tokens` | Authentication lifecycle |
-| **Pre-deployment quality** | 41 automated tests with 100% coverage across 3 tiers | All implemented features |
+| **Pre-deployment quality** | 42 automated tests across 3 tiers (config 15, routes 5, integration 17, lifecycle 5) | All implemented features; a green run awaits creation of the `server.js` module the lifecycle tier requires |
 | **Environment awareness** | Twelve-Factor `NODE_ENV` configuration in `src/config/index.js` | Runtime environment differentiation |
-| **Operational output** | `console.log` at `server.js` bootstrap layer | Process lifecycle events |
+| **Operational output** | `console.log` in the `server.js` bootstrap layer (to be created) | Process lifecycle events |
 
 These practices, combined with the system's monolithic single-process architecture and single-restaurant scope, provide adequate observability for the current operational requirements without introducing unnecessary infrastructure complexity.
 
@@ -5705,9 +5713,9 @@ These practices, combined with the system's monolithic single-process architectu
 #### Repository Files Examined
 
 - `package.json` — Confirmed sole runtime dependency (`express ^5.1.0`); no monitoring, logging, or observability libraries present or planned
-- `src/app.js` — Express Application Factory; no monitoring middleware mounted; delegates logging to `server.js` bootstrap layer
+- `src/app.js` — Express Application Factory; no monitoring middleware mounted; delegates logging to the `server.js` bootstrap layer
 - `src/config/index.js` — Twelve-Factor configuration managing HOST, PORT, NODE_ENV only; no monitoring configuration parameters
-- `server.js` — Designated application entry point (currently empty); lifecycle tests validate startup logging behavior
+- `server.js` — Entry point declared by `package.json` (`main`, `npm start`) but absent from the repository; lifecycle tests are written to validate its startup logging behavior once the bootstrap module is created
 - `.gitignore` — Excludes `logs/`, `*.log`, `npm-debug.log*` (lines 11–14), `.env`, `.env.local` (lines 8–9)
 - `tests/lifecycle/server.test.js` — Validates EADDRINUSE error handling and server startup confirmation output
 - `jest.config.js` — Coverage thresholds: 75% branches, 90% functions, 80% lines, 80% statements
@@ -5734,7 +5742,7 @@ These practices, combined with the system's monolithic single-process architectu
 
 ## 6.6 Testing Strategy
 
-The testing strategy for the burger restaurant web application is grounded in a **three-tier test architecture** that validates component correctness, HTTP endpoint behavior, and server lifecycle management. The system — supporting user authentication, burger menu browsing, online ordering, and table reservation for dine-in, built with a Vite.js and TypeScript frontend — employs Jest 30.2.0 as the primary testing framework and Supertest 7.1.4 for in-process HTTP endpoint testing. The current test suite comprises **41 automated tests achieving 100% coverage** across all measured dimensions, organized into unit, integration, and lifecycle tiers under the `tests/` directory.
+The testing strategy for the burger restaurant web application is grounded in a **three-tier test architecture** that validates component correctness, HTTP endpoint behavior, and server lifecycle management. The system — supporting user authentication, burger menu browsing, online ordering, and table reservation for dine-in, built with a Vite.js and TypeScript frontend — employs Jest 30.2.0 as the primary testing framework and Supertest 7.1.4 for in-process HTTP endpoint testing. The current test suite comprises **42 automated tests** — config 15, routes 5, integration 17, lifecycle 5 — organized into unit, integration, and lifecycle tiers under the `tests/` directory. The lifecycle tier imports the entry-point module with `require('../../server')`, so the suite cannot run green, and no coverage or pass-rate figure can be asserted, until that bootstrap module is created.
 
 This section documents the complete testing approach for both the implemented backend foundation and the planned feature phases defined in the implementation roadmap (Section 5.6.1). All testing practices described here align with the Factory Pattern testability in `src/app.js`, the Barrel Pattern service registration in `src/routes/index.js`, and the Twelve-Factor configuration in `src/config/index.js` — the three architectural patterns that underpin the system's test design.
 
@@ -5762,7 +5770,7 @@ Unit tests are organized by the source module they validate, following a paralle
 | Test File | Source Module | Scope |
 |---|---|---|
 | `tests/unit/config.test.js` | `src/config/index.js` | Configuration parsing, defaults, edge cases |
-| `tests/unit/routes.test.js` | `src/routes/index.js` | Router structure, route definitions, handler presence |
+| `tests/unit/routes.test.js` | `src/routes/main.routes.js` | Router structure, three-route definitions, handler presence |
 
 Each test file begins with `'use strict';` and includes `@fileoverview` and `@module` JSDoc tags at the file header, establishing a consistent documentation standard across the test suite.
 
@@ -5778,7 +5786,7 @@ The unit test tier employs exclusively Jest built-in mocking facilities — no e
 
 The `config.test.js` test file demonstrates the core mocking pattern: each test captures the original `process.env` in a `beforeEach` hook, manipulates environment variables to test specific configuration scenarios, invokes `jest.resetModules()` to force fresh evaluation of `src/config/index.js`, and restores the original environment state in `afterAll`. This pattern validates the Twelve-Factor configuration module's behavior under various environment conditions including default values, custom values, invalid port strings, empty strings, whitespace, and decimal truncation.
 
-The `routes.test.js` file takes an alternative approach — rather than issuing HTTP requests, it inspects the `router.stack` layers directly through helper functions `getRouteLayers()` and `getRoutePaths()`. This validates route definitions, GET method presence, handler function existence, and route ordering without requiring the Express application to be mounted.
+The `routes.test.js` file (5 tests) takes an alternative approach — rather than issuing HTTP requests, it inspects the `router.stack` layers directly through the helper functions `getRouteLayers()` and `getRoutePaths()`. Two tests cover the router export itself: the module is a function carrying an array `stack`, and it exposes `handle` as a function. Three tests then pin the handler registrations exactly: the router registers exactly three route layers; those layers carry exactly the paths `'/'`, `'/evening'` and `'/good-evening'` in that registration order; and each of the three registers `get` as its only method with exactly one function handler. The expectations are full structural-equality assertions against the three-path stack — there are no per-verb loops.
 
 #### Test Naming Conventions
 
@@ -5819,12 +5827,13 @@ The Factory Pattern in `src/app.js` is the architectural foundation that enables
 
 #### Current Integration Test Coverage
 
-The `tests/integration/endpoints.test.js` file (126 lines) validates the complete HTTP endpoint surface through the following test groups:
+The `tests/integration/endpoints.test.js` file (154 lines) validates the complete HTTP endpoint surface through the following test groups:
 
 | Test Group | Assertions |
 |---|---|
 | `GET /` | 200 status, response body, content-type |
 | `GET /evening` | 200 status, response body, content-type |
+| `GET /good-evening` | 200 status, exact `Good evening` 12-byte body, `text/plain` content-type with utf-8 charset |
 | Error Handling | 404 for undefined routes, 404 for unsupported methods (POST, PUT, DELETE) |
 | Edge Cases | Query string resilience, double-slash path handling |
 
@@ -5833,7 +5842,8 @@ Integration tests use structured helper functions that encapsulate common assert
 | Helper Function | Purpose |
 |---|---|
 | `get(path)` | Wraps Supertest GET request |
-| `assertSuccessfulHtmlResponse(response, expectedBody)` | Asserts 200 status, body content, content-type |
+| `assertSuccessfulHtmlResponse(response, expectedBody)` | Asserts 200 status, body content, `text/html` content-type with utf-8 charset |
+| `assertSuccessfulPlainTextResponse(response, expectedBody)` | Asserts 200 status, body content, `text/plain` content-type with utf-8 charset |
 | `assert404Response(response)` | Asserts 404 status with expected body |
 
 Each helper is documented with JSDoc `@typedef` for the `SupertestResponse` shape, maintaining type awareness throughout the test suite.
@@ -5875,7 +5885,7 @@ Lifecycle tests constitute the third tier of the test architecture, validating s
 
 #### Server Lifecycle Test Coverage
 
-The `tests/lifecycle/server.test.js` file (205 lines) is the most complex test file in the suite, employing module-level dependency injection to validate the server entry point behavior:
+The `tests/lifecycle/server.test.js` file (204 lines) is the most complex test file in the suite, employing module-level dependency injection to validate the server entry point behavior:
 
 | Test Group | Scope |
 |---|---|
@@ -5943,12 +5953,12 @@ The test suite is organized into a three-tier directory hierarchy that mirrors t
 tests/
 ├── README.md                      # Test suite documentation
 ├── unit/                          # Tier 1: Module-level validation
-│   ├── config.test.js             # Configuration module tests (141 lines)
-│   └── routes.test.js             # Router structure tests (95 lines)
+│   ├── config.test.js             # Configuration module tests (140 lines)
+│   └── routes.test.js             # Router structure tests (71 lines)
 ├── integration/                   # Tier 2: HTTP endpoint validation
-│   └── endpoints.test.js          # Endpoint integration tests (126 lines)
+│   └── endpoints.test.js          # Endpoint integration tests (154 lines)
 └── lifecycle/                     # Tier 3: Process lifecycle validation
-    └── server.test.js             # Server lifecycle tests (205 lines)
+    └── server.test.js             # Server lifecycle tests (204 lines)
 ```
 
 #### 6.6.2.2 Test Tier Responsibilities
@@ -6024,6 +6034,8 @@ collectCoverageFrom: [
 ]
 ```
 
+Because `server.js` is listed in `collectCoverageFrom` but absent from the repository, its coverage cannot be measured until the bootstrap module is created.
+
 #### 6.6.3.2 npm Test Scripts
 
 The `package.json` defines four test-related scripts that serve different development and deployment contexts:
@@ -6075,7 +6087,7 @@ flowchart TD
         ThresholdCheck -->|"No"| Fail["Build Fails"]
     end
 
-    JestRun --> TestSuite["Three-Tier Test Suite<br/>41 Tests"]
+    JestRun --> TestSuite["Three-Tier Test Suite<br/>42 Tests"]
     JestWatch --> TestSuite
     JestCov --> TestSuite
     JestCI --> TestSuite
@@ -6120,12 +6132,14 @@ Jest provides built-in failed test management through:
 
 Coverage thresholds are enforced globally in `jest.config.js`. The test suite **fails** if any metric falls below its configured minimum:
 
-| Metric | Required Threshold | Current Achievement | Gap |
-|---|---|---|---|
-| Branch coverage | ≥ 75% | 100% | +25% |
-| Function coverage | ≥ 90% | 100% | +10% |
-| Line coverage | ≥ 80% | 100% | +20% |
-| Statement coverage | ≥ 80% | 100% | +20% |
+| Metric | Required Threshold | Configured In |
+|---|---|---|
+| Branch coverage | ≥ 75% | `jest.config.js` global threshold |
+| Function coverage | ≥ 90% | `jest.config.js` global threshold |
+| Line coverage | ≥ 80% | `jest.config.js` global threshold |
+| Statement coverage | ≥ 80% | `jest.config.js` global threshold |
+
+No current-coverage figure is asserted here: the lifecycle tier requires the entry-point module, which is absent from the repository, so the suite cannot run green and coverage of `server.js` cannot be measured until that bootstrap module is created.
 
 #### Maintenance Requirement
 
@@ -6165,7 +6179,7 @@ The sub-3-second page load target is addressed through build optimization (Vite.
 | Test suite stability | No flaky tests accepted |
 | Regression prevention | Coverage thresholds prevent untested code |
 
-The current suite of 41 tests demonstrates 100% pass rate across all three tiers. Jest's `--ci` mode provides additional stability guarantees by preventing automatic snapshot updates that could mask regressions.
+The suite defines 42 tests across all three tiers. A 100% pass rate is the requirement rather than a measured current state: the lifecycle tier requires the absent `server.js` module, so a green run must be re-established once that bootstrap module is created. Jest's `--ci` mode provides additional stability guarantees by preventing automatic snapshot updates that could mask regressions.
 
 ---
 
@@ -6388,7 +6402,7 @@ Each phase of the delivery architecture introduces new domain services that requ
 
 | Phase | Feature | Test Tier Additions |
 |---|---|---|
-| **Current** | Foundation | 41 tests: config, routes, endpoints, lifecycle |
+| **Current** | Foundation | 42 tests: config 15, routes 5, endpoints 17, lifecycle 5 |
 | **Phase 1** | F-005: Responsive Web UI | CORS middleware tests, Vite.js build verification, TypeScript compilation (zero errors) |
 | **Phase 2a** | F-001: User Authentication | Auth service unit tests, login/register integration tests, session lifecycle tests |
 | **Phase 2b** | F-002: Burger Menu Catalog | Menu service unit tests, category filtering integration tests |
@@ -6417,7 +6431,7 @@ As each phase is implemented, the test suite is expected to grow while maintaini
 
 | Phase | Estimated New Tests | Cumulative Total |
 |---|---|---|
-| Current (Foundation) | — | 41 |
+| Current (Foundation) | — | 42 |
 | Phase 1 (UI Foundation) | ~15–20 | ~55–60 |
 | Phase 2a (Authentication) | ~30–40 | ~85–100 |
 | Phase 2b (Menu Catalog) | ~15–20 | ~100–120 |
@@ -6456,14 +6470,14 @@ All testing tool additions must comply with the MIT license compatibility constr
 - `jest.config.js` — Complete Jest configuration with coverage thresholds, test discovery patterns, and reporter configuration
 - `package.json` — Dependencies (express, jest, supertest), npm test scripts, project metadata
 - `tests/README.md` — Test suite documentation with coverage requirements and tier descriptions
-- `tests/unit/config.test.js` — Unit test for configuration module (141 lines); environment isolation patterns
-- `tests/unit/routes.test.js` — Unit test for Express router structure (95 lines); direct router stack inspection
-- `tests/integration/endpoints.test.js` — Integration test for HTTP endpoints (126 lines); Supertest patterns
-- `tests/lifecycle/server.test.js` — Lifecycle test for server entry point (205 lines); advanced mock injection
+- `tests/unit/config.test.js` — Unit test for configuration module (140 lines); environment isolation patterns
+- `tests/unit/routes.test.js` — Unit test for Express router structure (71 lines); five tests pinning the exported router and the three-route `router.stack`
+- `tests/integration/endpoints.test.js` — Integration test for HTTP endpoints (154 lines); Supertest patterns
+- `tests/lifecycle/server.test.js` — Lifecycle test for server entry point (204 lines); advanced mock injection
 - `src/app.js` — Express Application Factory (28 lines); Factory Pattern enabling Supertest integration
 - `src/config/index.js` — Twelve-Factor configuration module; testable via environment variable mutation
 - `src/routes/index.js` — Barrel Pattern route aggregator; testable via direct router stack inspection
-- `server.js` — Server entry point (currently empty); lifecycle test target
+- `server.js` — Entry point declared by `package.json` (`main`, `npm start`) but absent from the repository; the lifecycle tests target it and require it to be created
 
 #### Repository Folders Examined
 
@@ -6506,11 +6520,11 @@ A thorough examination of the repository confirms the complete absence of any fr
 | Static assets | Not present | No images, fonts, or other UI assets in the project tree |
 | SPA entry point | Not present | No `index.html` served by Vite.js exists |
 
-The repository currently contains only the Express.js 5.1.0 backend foundation: the application factory in `src/app.js` (CommonJS), a Twelve-Factor configuration module in `src/config/index.js` managing `HOST`, `PORT`, and `NODE_ENV`, a barrel pattern route aggregator in `src/routes/index.js`, two static GET endpoints in `src/routes/main.routes.js` (`GET /` returning "Hello, World!" and `GET /evening` returning "Good evening"), and 41 backend-only Jest/Supertest tests with 100% coverage.
+The repository currently contains only the Express.js 5.1.0 backend foundation: the application factory in `src/app.js` (CommonJS), a Twelve-Factor configuration module in `src/config/index.js` managing `HOST`, `PORT`, and `NODE_ENV`, a barrel pattern route aggregator in `src/routes/index.js`, three static GET endpoints in `src/routes/main.routes.js` (`GET /` returning `Hello, World!\n` as `text/html`, `GET /evening` returning `Good evening` as `text/html`, and `GET /good-evening` returning `Good evening` as `text/plain`), and 42 backend-only Jest/Supertest tests — config 15, routes 5, integration 17, lifecycle 5. No coverage figure is asserted for that suite: the lifecycle tier requires the entry-point module, which is absent from the repository, so the suite cannot run green until it is created.
 
 ### 7.1.2 Frontend Implementation Requirement
 
-The entire frontend SPA must be implemented from scratch to satisfy Feature F-005 (Responsive Web UI), which serves as the foundation layer upon which all other user-facing features depend. Phase 1 of the implementation roadmap calls for the Vite.js SPA scaffold, CORS middleware integration, and the server bootstrap logic in the currently empty `server.js` file.
+The entire frontend SPA must be implemented from scratch to satisfy Feature F-005 (Responsive Web UI), which serves as the foundation layer upon which all other user-facing features depend. Phase 1 of the implementation roadmap calls for the Vite.js SPA scaffold, CORS middleware integration, and the server bootstrap logic in `server.js` — a module that must be created, because the file is not present in the repository.
 
 ---
 
@@ -7272,9 +7286,9 @@ The following UI elements are explicitly excluded from the current implementatio
 - `src/app.js` — Express Application Factory implementing Factory Pattern (CommonJS); mounts only `mainRoutes` at root path; no UI code
 - `src/config/index.js` — Twelve-Factor configuration module managing `HOST`, `PORT`, `NODE_ENV` only; no frontend configuration
 - `src/routes/index.js` — Barrel pattern route aggregator; no frontend-serving routes
-- `src/routes/main.routes.js` — Two GET endpoints (`/` and `/evening`); no UI rendering
-- `server.js` — Empty file; no server bootstrap or static asset serving logic
-- `tests/` — Backend-only Jest/Supertest test suite (41 tests, 100% coverage)
+- `src/routes/main.routes.js` — Three GET endpoints on one Express Router — `/` and `/evening` responding as `text/html`, `/good-evening` responding as `text/plain`; no UI rendering
+- `server.js` — Entry point declared by `package.json` (`main`, `npm start`) but absent from the repository; no server bootstrap or static asset serving logic exists yet
+- `tests/` — Backend-only Jest/Supertest suite of 42 tests (config 15, routes 5, integration 17, lifecycle 5)
 
 #### Repository Folders Examined
 
@@ -7529,7 +7543,7 @@ The `package.json` (lines 6–12) defines the project's task runner interface:
 | `npm run test:coverage` | `jest --coverage` | Run with coverage reporting |
 | `npm run test:ci` | `jest --ci --coverage --reporters=default` | CI-compatible execution |
 
-> **Note:** The `server.js` entry point is currently **empty**. Server bootstrap logic implementing the Express Application Factory binding must be implemented before the application can start (Section 3.6.3).
+> **Note:** The `npm start` target, `server.js`, is **absent from the repository**. The bootstrap module — which must bind the Express Application Factory from `src/app.js` to `config.host` and `config.port` — has to be created before the run step can succeed (Section 3.6.3).
 
 ### 8.6.3 Dependency Management
 
@@ -7574,12 +7588,14 @@ The test suite serves as the **primary pre-deployment quality gate** in the abse
 
 Coverage thresholds are enforced globally in `jest.config.js`. The test suite **fails** if any metric falls below its configured minimum:
 
-| Metric | Required Threshold | Current Achievement |
-|---|---|---|
-| Branch coverage | ≥ 75% | 100% |
-| Function coverage | ≥ 90% | 100% |
-| Line coverage | ≥ 80% | 100% |
-| Statement coverage | ≥ 80% | 100% |
+| Metric | Required Threshold |
+|---|---|
+| Branch coverage | ≥ 75% |
+| Function coverage | ≥ 90% |
+| Line coverage | ≥ 80% |
+| Statement coverage | ≥ 80% |
+
+Achieved coverage is not asserted here: the lifecycle tier requires the absent `server.js`, so the suite cannot run green and coverage — including the `server.js` entry listed in `collectCoverageFrom` — cannot be measured until that bootstrap module is created.
 
 #### 8.6.4.2 Quality Gate Enforcement
 
@@ -7596,11 +7612,12 @@ Coverage thresholds are enforced globally in `jest.config.js`. The test suite **
 
 | Metric | Value |
 |---|---|
-| Total automated tests | 41 |
+| Total automated tests | 42 |
 | Test tiers | 3 (unit, integration, lifecycle) |
 | Framework | Jest 30.2.0 + Supertest 7.1.4 |
 | Test environment | Node.js (`testEnvironment: 'node'`) |
 | Per-test timeout | 10 seconds |
+| Current execution status | Lifecycle tier requires the absent `server.js`, so a green run awaits creation of that module |
 
 ### 8.6.5 Artifact Generation
 
@@ -7615,7 +7632,7 @@ Coverage thresholds are enforced globally in `jest.config.js`. The test suite **
 
 **A deployment pipeline is not defined.** No deployment strategy (blue-green, canary, rolling), environment promotion workflow, rollback procedures, post-deployment validation, or release management process exists within the Technical Specification or codebase.
 
-The application currently starts via `npm start` (`node server.js`) and operates as a single instance bound to the configured host and port. Manual deployment is the implicit model.
+The application starts via `npm start` (`node server.js`) — once that entry-point module exists — and operates as a single instance bound to the configured host and port. Manual deployment is the implicit model.
 
 ---
 
@@ -7736,7 +7753,7 @@ flowchart TD
     Start(["Developer"]) --> Clone["Clone Repository"]
     Clone --> Install["npm ci<br/>(Deterministic Install<br/>405 Packages)"]
     Install --> EnvSetup["Configure .env<br/>HOST, PORT, NODE_ENV"]
-    EnvSetup --> Test["npm run test:ci<br/>(41 Tests, Coverage Gates)"]
+    EnvSetup --> Test["npm run test:ci<br/>(42 Tests, Coverage Gates)"]
     Test --> ThresholdCheck{"Coverage<br/>Thresholds<br/>Met?"}
     ThresholdCheck -->|"Fail"| Fix["Fix Code &<br/>Re-test"]
     Fix --> Test
@@ -7980,7 +7997,7 @@ Based on the system's architecture as a single-process Node.js monolith serving 
 #### Repository Files Examined
 
 - `package.json` — Project metadata, 3 direct dependencies (express, jest, supertest), npm scripts, MIT license; confirms zero infrastructure-related packages
-- `server.js` — Application entry point (currently empty); designated as single deployment artifact via `node server.js`
+- `server.js` — Entry point declared by `package.json` (`main`, `npm start`) but absent from the repository; designated as the single deployment artifact once the bootstrap module is created
 - `src/app.js` — Express Application Factory (28 lines); Factory Pattern enabling testability and deployment separation
 - `src/config/index.js` — Twelve-Factor configuration (42 lines); HOST, PORT, NODE_ENV with safe defaults; infrastructure configuration foundation
 - `src/routes/index.js` — Barrel Pattern route aggregator; monolith's internal service registry via `require()` calls
@@ -7993,7 +8010,7 @@ Based on the system's architecture as a single-process Node.js monolith serving 
 - `src/` — Application source directory containing app factory, configuration, and routing modules
 - `src/config/` — Configuration module directory with Twelve-Factor implementation
 - `src/routes/` — Routing layer directory with barrel pattern aggregation
-- `tests/` — Three-tier test architecture (unit, integration, lifecycle); 41 tests at 100% coverage
+- `tests/` — Three-tier test architecture (unit, integration, lifecycle); 42 tests (config 15, routes 5, integration 17, lifecycle 5), with the lifecycle tier requiring the absent `server.js`
 
 #### Technical Specification Sections Referenced
 
@@ -8021,7 +8038,7 @@ This section consolidates supplementary technical references, terminology defini
 
 The following external references were consulted during the specification of the technology stack and are relevant for ongoing implementation and maintenance. All URLs were verified as of the specification authoring date.
 
-## Express.js Backend Framework
+#### Express.js Backend Framework
 
 | Source | URL |
 |---|---|
@@ -8031,7 +8048,7 @@ The following external references were consulted during the specification of the
 
 Express.js 5.1.0 is the operational backend framework, as declared in `package.json` with the version range `^5.1.0` and locked to `5.1.0` in `package-lock.json`. The v5 release introduced native async/await error handling and ReDoS-safe routing via `path-to-regexp@8.x`, both of which are foundational to the system's middleware pipeline and security architecture documented in Sections 5.3 and 6.4.
 
-## Vite.js Frontend Build Tool
+#### Vite.js Frontend Build Tool
 
 | Source | URL |
 |---|---|
@@ -8051,7 +8068,7 @@ Vite.js 8.x is the planned frontend build tool, selected per the user requiremen
 
 Jest 30.2.0 and Supertest 7.1.4 are both operational in the current repository as development dependencies. The Jest 30 migration guide specifies TypeScript 5.4 as the minimum required version, which aligns with the planned TypeScript strict-mode frontend requirement.
 
-## Node.js Runtime
+#### Node.js Runtime
 
 | Source | URL |
 |---|---|
@@ -8455,8 +8472,7 @@ The current repository structure is documented in Section 1.4.3 and confirmed by
 
 ```
 hello_world/
-├── server.js                  # Entry point (currently empty)
-├── package.json               # npm manifest (hello_world v1.0.0)
+├── package.json               # npm manifest (hello_world v1.0.0); declares server.js as main/start
 ├── package-lock.json          # Dependency lockfile (405 transitive packages)
 ├── jest.config.js             # Jest test configuration
 ├── README.md                  # Project documentation
@@ -8467,7 +8483,7 @@ hello_world/
 │   │   └── index.js           # Environment variable management (Twelve-Factor)
 │   └── routes/
 │       ├── index.js           # Route aggregator (Barrel Pattern)
-│       └── main.routes.js     # GET / and GET /evening handlers
+│       └── main.routes.js     # Three GET handlers: / and /evening (text/html), /good-evening (text/plain)
 ├── tests/                     # Three-tier test suite
 │   ├── unit/                  # config.test.js, routes.test.js
 │   ├── integration/           # endpoints.test.js
@@ -8475,6 +8491,8 @@ hello_world/
 └── blitzy/
     └── documentation/         # Technical documentation
 ```
+
+The `server.js` entry point declared by `package.json` (`main` and the `npm start` script) is **not present** in the repository; `tests/lifecycle/server.test.js` requires it, so the bootstrap module must be created.
 
 #### Dependency Inventory
 
@@ -8498,7 +8516,7 @@ hello_world/
 | Version | `1.0.0` | `package.json` |
 | Description | Hello world in Node.js | `package.json` |
 | License | MIT | `package.json` |
-| Main entry point | `server.js` | `package.json` |
+| Main entry point | `server.js` — declared in `package.json` as `main` and as the `npm start` target; the module itself is not present in the repository | `package.json` |
 | Target system | Full-stack burger restaurant web application | Section 1.1.1 |
 
 ---
@@ -8677,8 +8695,8 @@ The following checklist consolidates the maintenance mandates from Section 5.6.2
 - `src/app.js` — Express Application Factory implementation (Factory Pattern, CommonJS module)
 - `src/config/index.js` — Twelve-Factor environment configuration module (HOST, PORT, NODE_ENV)
 - `src/routes/index.js` — Barrel Pattern route aggregator for feature route registration
-- `src/routes/main.routes.js` — Express Router with GET `/` and GET `/evening` handlers
-- `server.js` — Designated entry point (currently empty)
+- `src/routes/main.routes.js` — Express Router with three GET handlers: `/` and `/evening` responding as `text/html`, `/good-evening` responding as `text/plain`
+- `server.js` — Entry point declared by `package.json` (`main`, `npm start`) but absent from the repository; the bootstrap module must be created
 - `.gitignore` — Repository ignore patterns including `.env`, `.env.local`, `coverage/`, and `node_modules/`
 
 #### Repository Folders Examined
